@@ -68,70 +68,7 @@
                     </button>
                 </form>
             </div>
-
-            <div class="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4 text-xs text-slate-200" id="demo-credentials">
-                <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-300/70">Демо-доступ</div>
-                <div class="mt-2 grid gap-2">
-                    <button
-                        type="button"
-                        class="w-full rounded-xl border border-white/10 bg-[#242f3d]/40 px-3 py-2 text-left hover:bg-[#242f3d]/60 transition"
-                        data-demo-email="user@vortanix.app"
-                        data-demo-password="password"
-                    >
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-slate-300/80">Email</span>
-                            <span class="font-mono text-slate-100">user@vortanix.app</span>
-                        </div>
-                        <div class="mt-1 flex items-center justify-between gap-3">
-                            <span class="text-slate-300/80">Password</span>
-                            <span class="font-mono text-slate-100">password</span>
-                        </div>
-                    </button>
-                    <div class="h-px bg-white/10"></div>
-                    <button
-                        type="button"
-                        class="w-full rounded-xl border border-white/10 bg-[#242f3d]/40 px-3 py-2 text-left hover:bg-[#242f3d]/60 transition"
-                        data-demo-email="admin@vortanix.app"
-                        data-demo-password="password"
-                    >
-                        <div class="flex items-center justify-between gap-3">
-                            <span class="text-slate-300/80">Email</span>
-                            <span class="font-mono text-slate-100">admin@vortanix.app</span>
-                        </div>
-                        <div class="mt-1 flex items-center justify-between gap-3">
-                            <span class="text-slate-300/80">Password</span>
-                            <span class="font-mono text-slate-100">password</span>
-                        </div>
-                    </button>
-                </div>
-            </div>
         </div>
     </section>
-
-    <script>
-        (() => {
-            const root = document.getElementById('demo-credentials');
-            if (!root) return;
-
-            root.addEventListener('click', (e) => {
-                const btn = e.target && e.target.closest ? e.target.closest('[data-demo-email]') : null;
-                if (!btn) return;
-
-                const email = btn.getAttribute('data-demo-email') || '';
-                const password = btn.getAttribute('data-demo-password') || '';
-
-                const emailInput = document.getElementById('email');
-                const passwordInput = document.getElementById('password');
-                if (!emailInput || !passwordInput) return;
-
-                emailInput.value = email;
-                passwordInput.value = password;
-
-                emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-                passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-                passwordInput.focus();
-            });
-        })();
-    </script>
 @endsection
+
