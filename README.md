@@ -1,2 +1,2 @@
-# vortanix
-Vortanix is a closed-source game server management system built using Laravel and Python. Vortanix runs all game servers in isolated Docker containers, providing end users with a beautiful and intuitive user interface.
+# Vortanix - панель управления игровым хостингом
+Vortanix — закрытая панель управления игровым хостингом, созданная с использованием Laravel и Python. Vortanix запускает все игровые серверы в изолированных контейнерах Docker, предоставляя конечным пользователям красивый и интуитивно понятный пользовательский интерфейс.
