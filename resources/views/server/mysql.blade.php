@@ -1,0 +1,29 @@
+@extends($layout ?? 'layouts.app-user')
+
+@section('title', $server->name)
+
+@section('breadcrumb')
+    <a href="{{ route('dashboard') }}" class="text-xs text-slate-200 hover:text-white">Кабинет</a>
+    <span class="h-1 w-1 rounded-full bg-white/25"></span>
+    <a href="{{ route('my-servers') }}" class="text-xs text-slate-200 hover:text-white">Мои серверы</a>
+    <span class="h-1 w-1 rounded-full bg-white/25"></span>
+    <span class="text-xs text-slate-100">{{ $server->name }}</span>
+@endsection
+
+@section('content')
+    <section class="py-6">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
+            @php
+                $tab = 'mysql';
+            @endphp
+
+            <div class="rounded-2xl bg-white text-slate-900 shadow-sm overflow-hidden">
+                <div class="bg-slate-50">
+                    @include('server.partials.tabs')
+                </div>
+            </div>
+
+            @include('server.partials.mysql')
+        </div>
+    </section>
+@endsection
