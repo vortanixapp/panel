@@ -29,7 +29,7 @@
                                 <th class="w-20 px-4 py-3 text-left">ID</th>
                                 <th class="w-28 px-4 py-3 text-left">Уровень</th>
                                 <th class="w-72 px-4 py-3 text-left">Заголовок</th>
-                                <th class="px-4 py-3 text-left">Текст</th>
+                                <th class="w-[520px] px-4 py-3 text-left">Текст</th>
                                 <th class="w-44 px-4 py-3 text-left">Создано</th>
                                 <th class="w-28 px-4 py-3 text-right">Действие</th>
                             </tr>
@@ -45,11 +45,65 @@
         </div>
     </section>
 
+    <div id="vtxNotifModal" class="fixed inset-0 z-[60] hidden">
+        <div id="vtxNotifModalBackdrop" class="absolute inset-0 bg-black/60"></div>
+        <div class="relative mx-auto mt-16 w-[calc(100%-2rem)] max-w-3xl">
+            <div class="rounded-2xl border border-white/10 bg-[#242f3d] shadow-xl shadow-black/40">
+                <div class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                    <div id="vtxNotifModalTitle" class="text-sm font-semibold text-slate-100">Уведомление</div>
+                    <button id="vtxNotifModalClose" type="button" class="inline-flex h-9 items-center justify-center rounded-xl border border-white/10 bg-black/10 px-4 text-xs font-semibold text-slate-200 hover:bg-black/15 hover:text-white">
+                        Закрыть
+                    </button>
+                </div>
+                <div class="px-4 py-4">
+                    <div id="vtxNotifModalBody" class="max-h-[70vh] overflow-auto whitespace-pre-wrap break-words text-sm text-slate-200"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .vtx-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .vtx-wrap-anywhere {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+    </style>
+
     @push('scripts')
         <script>
             (function () {
                 const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 const tbody = document.getElementById('notificationsTableBody');
+
+                const modal = document.getElementById('vtxNotifModal');
+                const modalBackdrop = document.getElementById('vtxNotifModalBackdrop');
+                const modalClose = document.getElementById('vtxNotifModalClose');
+                const modalTitle = document.getElementById('vtxNotifModalTitle');
+                const modalBody = document.getElementById('vtxNotifModalBody');
+
+                function openModal(title, body) {
+                    if (!modal || !modalTitle || !modalBody) return;
+                    modalTitle.textContent = title || 'Уведомление';
+                    modalBody.textContent = body || '';
+                    modal.classList.remove('hidden');
+                }
+
+                function closeModal() {
+                    if (!modal) return;
+                    modal.classList.add('hidden');
+                }
+
+                if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
+                if (modalClose) modalClose.addEventListener('click', closeModal);
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeModal();
+                });
 
                 function esc(s) {
                     return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -84,6 +138,8 @@
                         return;
                     }
 
+                    const itemsById = new Map(items.map((n) => [Number(n.id || 0), n]));
+
                     tbody.innerHTML = items.map((n) => {
                         const id = Number(n.id || 0);
                         const isRead = !!n.is_read;
@@ -96,14 +152,25 @@
                                 <td class="px-4 py-3 align-top font-mono text-xs text-slate-300/80 whitespace-nowrap">#${id}</td>
                                 <td class="px-4 py-3 align-top whitespace-nowrap">${badge(n.level)}</td>
                                 <td class="px-4 py-3 align-top text-slate-100 font-medium break-words">${esc(n.title)}</td>
-                                <td class="px-4 py-3 align-top text-slate-200">
-                                    <div class="max-w-[680px] whitespace-pre-wrap break-words">${esc(n.body)}</div>
+                                <td class="px-4 py-3 align-top text-slate-200 w-[520px]">
+                                    <button type="button" data-id="${id}" class="openBodyBtn block w-full text-left">
+                                        <div class="vtx-clamp-3 vtx-wrap-anywhere whitespace-pre-wrap text-[13px] text-slate-200 hover:text-white">${esc(n.body)}</div>
+                                        <div class="mt-1 text-[11px] text-slate-300/70">Нажмите, чтобы открыть полностью</div>
+                                    </button>
                                 </td>
                                 <td class="px-4 py-3 align-top text-slate-300/80 whitespace-nowrap">${esc(n.created_at)}</td>
                                 <td class="px-4 py-3 align-top text-right whitespace-nowrap">${btn}</td>
                             </tr>
                         `;
                     }).join('');
+
+                    for (const el of Array.from(tbody.querySelectorAll('.openBodyBtn'))) {
+                        el.addEventListener('click', (e) => {
+                            const id = Number(e.currentTarget?.getAttribute('data-id') || 0);
+                            const n = itemsById.get(id);
+                            openModal(n?.title || 'Уведомление', n?.body || '');
+                        });
+                    }
 
                     for (const el of Array.from(tbody.querySelectorAll('.markReadBtn'))) {
                         el.addEventListener('click', async (e) => {
