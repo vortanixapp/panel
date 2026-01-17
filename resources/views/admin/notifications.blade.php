@@ -23,15 +23,15 @@
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-white/10 text-sm">
+                    <table class="min-w-[1000px] w-full table-fixed divide-y divide-white/10 text-sm">
                         <thead class="bg-black/10 text-[11px] uppercase tracking-wide text-slate-300/70">
                             <tr>
-                                <th class="px-4 py-3 text-left">ID</th>
-                                <th class="px-4 py-3 text-left">Уровень</th>
-                                <th class="px-4 py-3 text-left">Заголовок</th>
+                                <th class="w-20 px-4 py-3 text-left">ID</th>
+                                <th class="w-28 px-4 py-3 text-left">Уровень</th>
+                                <th class="w-72 px-4 py-3 text-left">Заголовок</th>
                                 <th class="px-4 py-3 text-left">Текст</th>
-                                <th class="px-4 py-3 text-left">Создано</th>
-                                <th class="px-4 py-3 text-right">Действие</th>
+                                <th class="w-44 px-4 py-3 text-left">Создано</th>
+                                <th class="w-28 px-4 py-3 text-right">Действие</th>
                             </tr>
                         </thead>
                         <tbody id="notificationsTableBody" class="divide-y divide-white/10 bg-[#242f3d] text-[13px]">
@@ -93,12 +93,14 @@
 
                         return `
                             <tr class="hover:bg-black/10">
-                                <td class="px-4 py-3 font-mono text-xs text-slate-300/80">#${id}</td>
-                                <td class="px-4 py-3">${badge(n.level)}</td>
-                                <td class="px-4 py-3 text-slate-100 font-medium">${esc(n.title)}</td>
-                                <td class="px-4 py-3 text-slate-200 whitespace-pre-line">${esc(n.body)}</td>
-                                <td class="px-4 py-3 text-slate-300/80">${esc(n.created_at)}</td>
-                                <td class="px-4 py-3 text-right">${btn}</td>
+                                <td class="px-4 py-3 align-top font-mono text-xs text-slate-300/80 whitespace-nowrap">#${id}</td>
+                                <td class="px-4 py-3 align-top whitespace-nowrap">${badge(n.level)}</td>
+                                <td class="px-4 py-3 align-top text-slate-100 font-medium break-words">${esc(n.title)}</td>
+                                <td class="px-4 py-3 align-top text-slate-200">
+                                    <div class="max-w-[680px] whitespace-pre-wrap break-words">${esc(n.body)}</div>
+                                </td>
+                                <td class="px-4 py-3 align-top text-slate-300/80 whitespace-nowrap">${esc(n.created_at)}</td>
+                                <td class="px-4 py-3 align-top text-right whitespace-nowrap">${btn}</td>
                             </tr>
                         `;
                     }).join('');

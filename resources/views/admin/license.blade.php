@@ -88,8 +88,14 @@
                         </div>
                     </div>
 
+                    @if(!empty($hbError))
+                        <div class="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-200">
+                            {{ $hbError }}
+                        </div>
+                    @endif
+
                     <div class="mt-3 text-[11px] text-slate-300/70">
-                        Если статус не обновляется, открой раздел ещё раз или подожди heartbeat.
+                        Данные обновляются в реальном времени при каждом открытии страницы.
                     </div>
                 </div>
             </div>

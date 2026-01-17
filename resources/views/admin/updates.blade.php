@@ -7,7 +7,7 @@
         <div class="w-full max-w-none space-y-6">
             <div>
                 <h1 class="text-xl md:text-2xl font-semibold tracking-tight text-slate-100">Обновления</h1>
-                <p class="mt-1 text-sm text-slate-300/80">Статус версии панели и политика обновлений из облака.</p>
+                <p class="mt-1 text-sm text-slate-300/80">Статус версии панели и политика обновлений из облака (данные в реальном времени).</p>
             </div>
 
             <div class="grid gap-4 md:grid-cols-3 text-sm">
