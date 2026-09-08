@@ -1,0 +1,43 @@
+Vortanix
+Copyright (c) 2026 Vortanix
+
+This product includes third-party material under the licences listed below.
+Dependencies resolved by the Go module system and by npm carry their own
+licences and are not repeated here; see go.mod and web/package.json.
+
+--------------------------------------------------------------------------------
+User interface components
+--------------------------------------------------------------------------------
+web/components/ui/ is derived from shadcn/ui, which is distributed under the
+MIT licence and is intended to be copied into projects.
+
+    https://github.com/shadcn-ui/ui
+
+--------------------------------------------------------------------------------
+Generated avatars
+--------------------------------------------------------------------------------
+Default user avatars are generated with DiceBear. The styles used are released
+under CC0 1.0 Universal (public domain dedication).
+
+    https://www.dicebear.com
+
+--------------------------------------------------------------------------------
+Fonts
+--------------------------------------------------------------------------------
+The interface requests Inter at runtime through next/font. No font files are
+distributed in this repository. Inter is licensed under the SIL Open Font
+License 1.1.
+
+    https://github.com/rsms/inter
+
+--------------------------------------------------------------------------------
+Game images
+--------------------------------------------------------------------------------
+The recipes under deploy/images build containers for third-party game servers.
+The recipes are ours and MIT-licensed. The game software they download is not:
+each game is subject to its publisher's own terms, and it is the operator's
+responsibility to hold the rights to run it. Nothing in this repository grants
+any right to a game.
+
+Game names and trademarks belong to their respective owners. Their use here is
+descriptive and does not imply endorsement or affiliation.

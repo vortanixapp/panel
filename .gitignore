@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+.pnp.*
+
+# Build
+dist/
+build/
+.next/
+out/
+bin/
+vendor/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Env
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+# Примеры окружения остаются в репозитории. Сказано явно: один неосторожный
+# шаблон вида .env.* скрыл бы их все разом, и человек, ставящий панель, не
+# нашёл бы, с чего начинать.
+!*.env.example
+!.env.example
+
+# Ключи и сертификаты в любом виде. Одного *.pem мало: приватный ключ уезжает
+# и в .key, и в .p12, и в id_rsa.
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.ppk
+id_rsa*
+keys/
+
+# Данные и дампы
+*.rdb
+*.zip
+docker-data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Tests and build artifacts
+coverage/
+*.test
+*.tsbuildinfo
