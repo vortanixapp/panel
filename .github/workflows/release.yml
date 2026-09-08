@@ -56,7 +56,7 @@ jobs:
             type=raw,value=edge,enable=${{ github.ref_type != 'tag' }}
             type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -97,7 +97,7 @@ jobs:
             type=raw,value=edge,enable=${{ github.ref_type != 'tag' }}
             type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: web
           push: true
