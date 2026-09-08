@@ -1,0 +1,27 @@
+
+# Реестр закрытый: перед запуском нужен вход ключом лицензии
+#   docker login registry.vortanix.app --username vortanix --password-stdin
+# Штатная установка делает это сама — см. panel-up.sh.
+services:
+  panel-ui:
+    container_name: vortanix-panel-ui
+    image: ${PANEL_IMAGE:-registry.vortanix.app/vortanix/panel-ui}:${PANEL_VERSION:-latest}
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${PANEL_PORT:-3000}:3000"
+
+  updater:
+    container_name: vortanix-updater
+    image: ${UPDATER_IMAGE:-registry.vortanix.app/vortanix/updater}:${UPDATER_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      LICENSE_URL: ${LICENSE_URL:-https://license.vortanix.app}
+      LICENSE_KEY: ${LICENSE_KEY}
+      PANEL_CONTAINER: vortanix-panel-ui
+      PANEL_PORT: ${PANEL_PORT:-3000}
+      PANEL_ENV_FILE: /etc/vortanix/panel.env
+      UPDATE_WINDOW: ${UPDATE_WINDOW:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./.env:/etc/vortanix/panel.env:ro

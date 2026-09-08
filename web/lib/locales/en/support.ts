@@ -1,0 +1,262 @@
+// Support: user tickets, operator queue, knowledge base.
+export const support = {
+  // Ticket statuses. One state is named the same way in the customer list,
+  // the conversation and the operator queue — otherwise the customer and the
+  // operator talk about different things.
+  "support.status.open": "Open",
+  "support.status.pending": "In progress",
+  "support.status.answered": "Awaiting you",
+  "support.status.closed": "Closed",
+  "support.status.answered_admin": "Awaiting customer",
+  "support.status.open_hint": "waiting for a reply",
+  "support.status.pending_hint": "an agent is assigned",
+  "support.status.answered_hint": "your reply is needed",
+  "support.status.closed_hint": "the ticket is finished",
+
+  "support.priority.low": "Low",
+  "support.priority.normal": "Normal",
+  "support.priority.high": "High",
+  "support.priority.urgent": "Urgent",
+  "support.priority.title": "Priority: {label}",
+
+  // Fallback set of departments: the real one comes from the server and is
+  // configured per panel.
+  "support.department.billing": "Billing and payments",
+  "support.department.technical": "Technical support",
+  "support.department.hosting": "Web hosting",
+  "support.department.other": "Other",
+
+  "support.time.just_now": "just now",
+  "support.time.minutes_ago": "{n} min ago",
+  "support.time.hours_ago": "{n} h ago",
+  "support.time.days_ago": "{n} d ago",
+  "support.time.minutes": "{n} min",
+  "support.time.hours": "{n} h",
+  "support.time.hours_minutes": "{h} h {m} min",
+  "support.time.days": "{n} d",
+  "support.time.less_than_minute": "less than a minute",
+
+  "support.chat.staff": "Support",
+  "support.chat.you": "You",
+  "support.chat.client": "Customer",
+
+  "support.field.number": "Number",
+  "support.field.department": "Department",
+  "support.field.priority": "Urgency",
+  "support.field.service": "Service",
+  "support.field.messages": "Messages",
+  "support.field.created": "Created",
+  "support.field.email": "Email",
+  "support.field.agent": "Agent",
+
+  "support.aria.back_to_tickets": "Back to tickets",
+  "support.aria.back_to_kb": "Back to the knowledge base",
+
+  "support.attachment.size_b": "{n} B",
+  "support.attachment.size_kb": "{n} KB",
+  "support.attachment.size_mb": "{n} MB",
+  "support.attachment.missing": "— file was not stored",
+  "support.attachment.download_failed": "Could not download the attachment",
+
+  "support.list.title": "Support",
+  "support.list.subtitle": "Tickets, conversations and answers to common questions",
+  "support.list.new_ticket": "New ticket",
+  "support.list.create": "Create a ticket",
+  "support.list.load_failed": "Could not load your tickets",
+  "support.list.search_placeholder": "Search by subject or number",
+  "support.list.messages_short": "{n} msg.",
+  "support.list.created_ago": "created {ago}",
+  "support.list.empty_title": "No tickets yet",
+  "support.list.empty_text":
+    "Check the knowledge base first: it answers most of the questions we get",
+  "support.list.not_found_text":
+    "Try another query or start from one of the suggestions",
+  "support.list.reset_filters": "Reset filters",
+
+  "support.filter.open": "Open",
+  "support.filter.pending": "In progress",
+  "support.filter.answered": "Awaiting you",
+  "support.filter.closed": "Closed",
+
+  "support.stats.open_note": "waiting for a reply",
+  "support.stats.pending_note": "an agent is assigned",
+  "support.stats.answered_note": "your reply is needed",
+  "support.stats.closed_note": "all time",
+
+  // Ready-made queries for an empty result: they drop a word into the search box.
+  "support.hint.server_label": "server will not start",
+  "support.hint.server_query": "server",
+  "support.hint.billing_label": "payments and charges",
+  "support.hint.billing_query": "payment",
+  "support.hint.domain_label": "domain and SSL",
+  "support.hint.domain_query": "domain",
+
+  "support.create.title": "New ticket",
+  "support.create.subtitle": "The more detail you give, the faster the answer",
+  "support.create.subject": "Subject",
+  "support.create.subject_placeholder": "Briefly: what happened",
+  "support.create.kb_hint": "The answer may already be in the knowledge base",
+  "support.create.service_none": "Not related to a service",
+  "support.create.body": "Description",
+  "support.create.body_placeholder":
+    "What you did, what you expected and what happened. Add the service number and the time of the event.",
+  "support.create.attachments": "Attachments",
+  "support.create.pick_files": "Click to choose files",
+  "support.create.file_types": "png, jpg, txt, log, json, zip, pdf · up to 8 MB",
+  "support.create.remove_file": "Remove {name}",
+  "support.create.created": "Ticket created",
+  "support.create.created_with_failed":
+    "Ticket created, but these files were not attached: {files}",
+  "support.create.create_failed": "Could not create the ticket",
+  "support.create.sla_title": "Response time",
+  "support.create.sla_note":
+    "Average time to the first reply over the last 7 days. At night a reply may take longer",
+  "support.create.templates_title": "Ticket templates",
+  "support.create.templates_note":
+    "They contain the details support will need anyway",
+  "support.create.open_kb": "Open the knowledge base",
+
+  "support.template.server.label": "Server will not start",
+  "support.template.server.subject": "Server will not start",
+  "support.template.server.body":
+    "Service: \nWhat I did: \nWhat I expected: \nWhat happened: \nI will attach the startup log in the next message.",
+  "support.template.billing.label": "Payment or charge",
+  "support.template.billing.subject": "Payment problem",
+  "support.template.billing.body":
+    "Payment number: \nDate and time: \nAmount: \nWhat happened: ",
+  "support.template.domain.label": "Domain, DNS or SSL",
+  "support.template.domain.subject": "Domain does not work",
+  "support.template.domain.body":
+    "Domain: \nWhere it should point: \nWhat I have already checked: ",
+  "support.template.account.label": "Account access",
+  "support.template.account.subject": "I cannot sign in to my account",
+  "support.template.account.body":
+    "Account email: \nWhat happens on sign-in: \nLast successful sign-in: ",
+
+  "support.ticket.fallback_subject": "Ticket #{id}",
+  "support.ticket.not_found": "Ticket not found",
+  "support.ticket.back_to_list": "Back to the ticket list",
+  "support.ticket.reply_failed": "Could not send the message",
+  "support.ticket.attached_many": "Files attached: {n}",
+  "support.ticket.attached_one": "File “{name}” attached",
+  "support.ticket.upload_failed": "Could not upload the file",
+  "support.ticket.notify_on": "Notifications enabled",
+  "support.ticket.notify_off": "Notifications for this ticket are off",
+  "support.ticket.notify_failed": "Could not change the setting",
+  "support.ticket.closed_toast": "Ticket closed",
+  "support.ticket.close_failed": "Could not close the ticket",
+  "support.ticket.closing": "Closing…",
+  "support.ticket.resolved": "Issue resolved",
+  "support.ticket.closed_note":
+    "The ticket is closed. If the problem comes back, create a new one and link to this ticket.",
+  "support.ticket.reply_placeholder": "Write a reply…",
+  "support.ticket.file_button": "File",
+  "support.ticket.card_title": "Ticket",
+  "support.ticket.related_articles": "Related articles",
+  "support.ticket.notify_disable": "Turn off notifications",
+  "support.ticket.notify_enable": "Turn on notifications",
+  "support.ticket.close_action": "Close the ticket",
+
+  "support.kb.title": "Knowledge base",
+  "support.kb.subtitle":
+    "Common questions and how-tos. Most tickets are answered here",
+  "support.kb.search_placeholder": "Describe the problem in your own words",
+  "support.kb.load_failed": "Could not load the knowledge base",
+  "support.kb.empty_title": "No articles yet",
+  "support.kb.empty_text":
+    "Published articles will show up here. In the meantime you can contact support",
+  "support.kb.write_support": "Contact support",
+  "support.kb.all_sections": "All sections",
+  "support.kb.found": "Found: {items}",
+  "support.kb.not_found_text": "Change the query or contact support",
+  "support.kb.faq_title": "Common questions",
+  "support.kb.no_answer": "Didn't find the answer?",
+  "support.kb.excerpt_empty":
+    "There is no summary yet — open the full article.",
+  "support.kb.read_article": "Read the article",
+  "support.kb.articles_one": "{n} article",
+  "support.kb.articles_few": "{n} articles",
+  "support.kb.articles_many": "{n} articles",
+  "support.kb.views": "{n} views",
+
+  "support.kb.article.not_found": "Article not found",
+  "support.kb.article.empty_body": "The article has no text yet.",
+  "support.kb.article.nearby": "More in this section",
+  "support.kb.article.not_helpful": "Didn't this article help?",
+  "support.kb.article.not_helpful_text":
+    "Describe your case and a support agent will look into it",
+
+  "support.kb.admin.subtitle":
+    "Ready-made answers the customer sees before creating a ticket",
+  "support.kb.admin.new_article": "New article",
+  "support.kb.admin.edit_article": "Edit article",
+  "support.kb.admin.saved": "Article saved",
+  "support.kb.admin.save_failed": "Could not save the article",
+  "support.kb.admin.deleted": "Article deleted",
+  "support.kb.admin.delete_failed": "Could not delete the article",
+  "support.kb.admin.slug": "URL slug (Latin letters)",
+  "support.kb.admin.slug_hint":
+    "For an article titled in Cyrillic the slug has to be set by hand",
+  "support.kb.admin.position": "Order",
+  "support.kb.admin.published": "Visible",
+  "support.kb.admin.excerpt": "Short summary",
+  "support.kb.admin.excerpt_placeholder": "One line, shown in the list",
+  "support.kb.admin.body": "Text",
+  "support.kb.admin.empty_text":
+    "Start with the questions support gets most often — the customer sees these articles right in the ticket form",
+  "support.kb.admin.draft": "draft",
+  "support.kb.admin.edit": "Edit",
+  "support.kb.admin.delete_confirm": "Delete the article “{title}”?",
+  "support.kb.admin.delete_aria": "Delete article {title}",
+
+  "support.queue.title": "Support queue",
+  "support.queue.subtitle": "Customer tickets, priority and agent assignment",
+  "support.queue.filter_answered": "Awaiting customer",
+  "support.queue.col_ticket": "Ticket",
+  "support.queue.col_subject": "Subject",
+  "support.queue.col_client": "Customer",
+  "support.queue.col_waiting": "Waiting",
+  "support.queue.tickets_count": "{n} tickets",
+  "support.queue.first_ticket": "first ticket",
+  "support.queue.closed_short": "closed",
+  "support.queue.client_turn": "customer's turn",
+  "support.queue.take": "Take",
+  "support.queue.stat_queue": "In queue",
+  "support.queue.stat_overdue": "Waiting over a day",
+  "support.queue.stat_unassigned": "Unassigned",
+  "support.queue.all_departments": "All departments",
+  "support.queue.search_placeholder": "Subject, email or number",
+  "support.queue.empty_title": "No tickets",
+  "support.queue.empty_text": "The queue is empty for the selected filters",
+  "support.queue.updated": "Ticket updated",
+  "support.queue.update_failed": "Could not update the ticket",
+
+  // Canned operator replies: they fill the field instead of sending at once.
+  "support.canned.accepted.label": "Taken into work",
+  "support.canned.accepted.text":
+    "Hello! We have taken your ticket into work and will get back to you within 30 minutes.",
+  "support.canned.log.label": "Log needed",
+  "support.canned.log.text":
+    "Please send the startup log: Console → Download log. Without it the cause is not visible.",
+  "support.canned.solved.label": "Issue resolved",
+  "support.canned.solved.text":
+    "The problem has been fixed on our side. Please check and confirm — after that we will close the ticket.",
+  "support.canned.waiting.label": "Waiting for you",
+  "support.canned.waiting.text":
+    "We are waiting for your clarification. If there is no reply within 72 hours the ticket closes automatically — the conversation is kept.",
+
+  "support.admin.reply_failed": "Could not send the reply",
+  "support.admin.update_failed": "Could not update",
+  "support.admin.back_aria": "Back to the ticket queue",
+  "support.admin.back_to_queue": "Back to the queue",
+  "support.admin.waiting_for_reply": "waiting {time} for a reply",
+  "support.admin.take": "Take into work",
+  "support.admin.thread": "Conversation",
+  "support.admin.reply_placeholder": "Reply to the customer",
+  "support.admin.reply_and_close": "Reply and close",
+  "support.admin.client_card": "Customer",
+  "support.admin.unassigned": "unassigned",
+  "support.admin.manage": "Management",
+  "support.admin.assigned_to": "Handled by {email}",
+  "support.admin.assign_to_me": "Assign to me",
+};

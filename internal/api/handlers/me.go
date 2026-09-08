@@ -1,0 +1,101 @@
+package handlers
+
+import (
+	"encoding/json"
+	"errors"
+	"log"
+	"net/http"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/vortanix/vortanix/pkg/notify"
+	"golang.org/x/crypto/bcrypt"
+)
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	claims, ok := tenantClaims(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req changePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if req.CurrentPassword == "" || req.NewPassword == "" {
+		writeError(w, http.StatusBadRequest, "current_password and new_password are required")
+		return
+	}
+	if len(req.NewPassword) < 8 {
+		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		return
+	}
+
+	ctx := r.Context()
+	var hash string
+	err := h.dbOf(ctx).QueryRow(ctx, `
+		SELECT password_hash FROM core.users
+		WHERE id = $1 AND tenant_id = $2 AND status = 'active'
+	`, claims.UserID, claims.TenantID).Scan(&hash)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeError(w, http.StatusNotFound, "user not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.CurrentPassword)); err != nil {
+		writeError(w, http.StatusUnauthorized, "invalid current password")
+		return
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to hash password")
+		return
+	}
+
+	_, err = h.dbOf(ctx).Exec(ctx, `
+		UPDATE core.users SET password_hash = $1
+		WHERE id = $2 AND tenant_id = $3
+	`, string(newHash), claims.UserID, claims.TenantID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update password")
+		return
+	}
+
+	// Чужие сеансы переживали смену пароля: refresh жил до тридцати дней и
+	// продлевался сам, поэтому угнанный аккаунт не возвращался сменой пароля —
+	// это первое, что делает человек, заметив взлом.
+	closed := int64(0)
+	if tag, err := h.dbOf(ctx).Exec(ctx, `
+		DELETE FROM core.user_sessions
+		WHERE user_id = $1 AND tenant_id = $2 AND id != $3
+	`, claims.UserID, claims.TenantID, claims.SessionID); err != nil {
+		log.Printf("смена пароля %s: чужие сеансы не закрыты: %v", claims.UserID, err)
+	} else {
+		closed = tag.RowsAffected()
+	}
+
+	// Смена пароля не оставляла вообще никакого следа: ни уведомления, ни
+	// письма, ни даже записи в аудите. Если пароль сменил не владелец, узнать об
+	// этом было неоткуда.
+	audit(ctx, h.dbOf(ctx), claims.TenantID, claims.UserID, "user.password_change", "user:"+claims.UserID,
+		map[string]any{"sessions_closed": closed})
+	h.notifyUser(ctx, claims.TenantID, claims.UserID, notify.Event{
+		Kind:   notify.KindPasswordChange,
+		Title:  "Пароль изменён",
+		Body:   "Пароль вашей учётной записи только что изменён, остальные сеансы завершены. Если это были не вы, восстановите доступ через сброс пароля.",
+		Action: h.panelAction("Проверить сеансы", "/settings"),
+	})
+
+	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "sessions_closed": closed})
+}

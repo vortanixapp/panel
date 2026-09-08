@@ -1,0 +1,17 @@
+
+services:
+  agent:
+    container_name: vortanix-agent
+    image: vortanix/agent:latest
+    build:
+      context: ../..
+      dockerfile: apps/agent/Dockerfile
+    restart: unless-stopped
+    environment:
+      RELAY_URL: ${RELAY_URL:-ws://217.149.31.107:8082/v1/agent/connect}
+      AGENT_TOKEN: ${AGENT_TOKEN}
+      NODE_ID: ${NODE_ID}
+      VORTANIX_DATA_DIR: /var/lib/vortanix/servers
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/vortanix/servers:/var/lib/vortanix/servers

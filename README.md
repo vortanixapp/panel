@@ -25,19 +25,23 @@ who use them.
 - PostgreSQL 16+ and Redis for the panel
 - Go 1.26 and Node 22+ to build from source
 
-## Quick start
+## Building
 
 ```bash
 git clone https://github.com/vortanix/vortanix
 cd vortanix
-cp deploy/panel/.env.example .env   # edit database credentials
-docker compose -f deploy/docker-compose.yml up -d
+go build ./...
+cd web && npm ci && npm run build
 ```
 
-The panel comes up on `http://localhost:3000`. The first visit opens the setup
-wizard, which creates the owner account.
+That much works today. **Running it does not yet** — the setup wizard still
+demands a licence token from a service that is not part of this repository, so
+there is no way to create the first account. That is the top item on the
+roadmap below, and until it lands there is no install guide to point you at.
 
-Full instructions: [docs/install.md](docs/install.md).
+The compose files under `deploy/` are the ones the closed product used: they
+pull prebuilt images from a private registry and will not work for you. They
+are here as a starting point, not as instructions.
 
 ## Layout
 

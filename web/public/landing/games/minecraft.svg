@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 616 300" width="616" height="300" role="img" aria-label="Minecraft">
+  <defs>
+    <linearGradient id="mc-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2c5a8f" />
+      <stop offset="0.55" stop-color="#5b96cf" />
+      <stop offset="1" stop-color="#9ec9e8" />
+    </linearGradient>
+    <g id="mc-cube">
+      <polygon points="0,-16 32,0 0,16 -32,0" fill="#7cb342" />
+      <polygon points="-32,0 0,16 0,52 -32,36" fill="#6d4c41" />
+      <polygon points="32,0 0,16 0,52 32,36" fill="#553a30" />
+    </g>
+    <g id="mc-log">
+      <polygon points="0,-16 32,0 0,16 -32,0" fill="#8d6e4b" />
+      <polygon points="-32,0 0,16 0,52 -32,36" fill="#6b5236" />
+      <polygon points="32,0 0,16 0,52 32,36" fill="#54402a" />
+    </g>
+    <g id="mc-leaf">
+      <polygon points="0,-16 32,0 0,16 -32,0" fill="#4f9d34" />
+      <polygon points="-32,0 0,16 0,52 -32,36" fill="#3f7f2a" />
+      <polygon points="32,0 0,16 0,52 32,36" fill="#336821" />
+    </g>
+  </defs>
+
+  <rect width="616" height="300" fill="url(#mc-sky)" />
+
+  <g fill="#ffffff" opacity="0.85">
+    <rect x="64" y="54" width="88" height="16" />
+    <rect x="80" y="38" width="56" height="16" />
+    <rect x="424" y="76" width="104" height="16" />
+    <rect x="448" y="60" width="64" height="16" />
+  </g>
+  <rect x="500" y="26" width="52" height="52" fill="#fff6c2" opacity="0.95" />
+
+  <g transform="translate(308 155) scale(0.8)">
+    <use href="#mc-cube" x="0" y="0" />
+    <use href="#mc-cube" x="-32" y="16" />
+    <use href="#mc-cube" x="32" y="16" />
+    <use href="#mc-cube" x="-64" y="32" />
+    <use href="#mc-cube" x="0" y="32" />
+    <use href="#mc-cube" x="64" y="32" />
+
+    <g transform="translate(0 32)">
+      <use href="#mc-log" x="0" y="-72" />
+      <use href="#mc-log" x="0" y="-108" />
+      <use href="#mc-leaf" x="-32" y="-128" />
+      <use href="#mc-leaf" x="32" y="-128" />
+      <use href="#mc-leaf" x="0" y="-144" />
+    </g>
+
+    <use href="#mc-cube" x="-96" y="48" />
+    <use href="#mc-cube" x="-32" y="48" />
+    <use href="#mc-cube" x="32" y="48" />
+    <use href="#mc-cube" x="96" y="48" />
+    <use href="#mc-cube" x="-64" y="64" />
+    <use href="#mc-cube" x="0" y="64" />
+    <use href="#mc-cube" x="64" y="64" />
+    <use href="#mc-cube" x="-32" y="80" />
+    <use href="#mc-cube" x="32" y="80" />
+    <use href="#mc-cube" x="0" y="96" />
+  </g>
+</svg>
