@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/vortanix/vortanix/internal/api/tenantdb"
 	"log"
 	"net/http"
 	"os"
@@ -10,12 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"strings"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
 	"github.com/vortanix/vortanix/internal/api/cache"
@@ -23,9 +19,6 @@ import (
 	"github.com/vortanix/vortanix/internal/api/db"
 	"github.com/vortanix/vortanix/internal/api/handlers"
 	"github.com/vortanix/vortanix/internal/api/jobwake"
-	"github.com/vortanix/vortanix/internal/api/licenseclient"
-	"github.com/vortanix/vortanix/internal/api/licensejwt"
-	"github.com/vortanix/vortanix/internal/api/licensestate"
 	"github.com/vortanix/vortanix/internal/api/mail"
 	"github.com/vortanix/vortanix/internal/api/paneljwt"
 	"github.com/vortanix/vortanix/internal/api/relay"
@@ -68,11 +61,6 @@ func main() {
 	}
 	defer redisCache.Close()
 
-	licenseVerifier, err := loadLicenseVerifier(ctx, pools.Write, cfg)
-	if err != nil {
-		log.Fatalf("license verifier: %v (запустите license-service, чтобы он создал ключи)", err)
-	}
-
 	tokens := paneljwt.New(cfg.JWTSecret, cfg.AccessTokenTTLMin, cfg.RefreshTokenTTLDays)
 	relayClient := relay.New(cfg.RelayURL, cfg.InternalSecret)
 	closeNATS := jobwake.ConnectNATS(cfg.NATSURL)
@@ -93,60 +81,19 @@ func main() {
 	}
 	apiPublicURL := getEnv("API_PUBLIC_URL", "http://localhost:"+cfg.Port)
 
-	tenants := tenantdb.New(pools.Write, cfg.DatabaseURL, cfg.MigrationsDir)
-	defer tenants.Close()
-
-	// Базы арендаторов заведены раньше нынешнего кода, поэтому схему в них
-	// докатываем на старте, а каталог засеваем в каждой отдельно: он лежит
-	// в базе арендатора, а не в общей.
-	tenants.MigrateAll(ctx)
-	if slugs, err := tenants.Slugs(ctx); err == nil {
-		for _, slug := range slugs {
-			pool, err := tenants.Pool(ctx, slug)
-			if err != nil {
-				continue
-			}
-			if err := handlers.SyncCatalogForAllTenants(ctx, pool); err != nil {
-				log.Printf("каталог арендатора %s не засеян: %v", slug, err)
-			}
-		}
-	}
-
-	h := handlers.New(pools.Write, pools.Reader(), licenseVerifier, tokens, redisCache, relayClient, eggCDN, handlers.HandlerDeps{
+	h := handlers.New(pools.Write, pools.Reader(), tokens, redisCache, relayClient, eggCDN, handlers.HandlerDeps{
 		OAuth: oauthRegistry,
 		Mail: mail.Config{
 			Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser,
 			Pass: cfg.SMTPPass, From: cfg.MailFrom, DevExpose: cfg.MailDevExposeURL,
 		},
-		FrontendURL:       cfg.FrontendURL,
-		APIPublicURL:      apiPublicURL,
-		JWTSecret:         cfg.JWTSecret,
-		Tenants:           tenants,
-		InternalSecret:    cfg.InternalSecret,
-		DBPublicHost:      cfg.DBPublicHost,
-		DBPublicPort:      cfg.DBPublicPort,
-		LicenseGraceHours: cfg.LicenseGraceHours,
-		TelegramBotToken:  cfg.TelegramBotToken,
-		UploadDir:         cfg.UploadDir,
-		Secrets:           secrets,
+		FrontendURL:      cfg.FrontendURL,
+		APIPublicURL:     apiPublicURL,
+		JWTSecret:        cfg.JWTSecret,
+		TelegramBotToken: cfg.TelegramBotToken,
+		UploadDir:        cfg.UploadDir,
+		Secrets:          secrets,
 	})
-
-	licenseStore := licensestate.NewStore()
-	licenseRefresher := licensestate.New(
-		pools.Write, licenseStore,
-		licenseclient.New(cfg.LicenseServiceURL),
-		licenseVerifier,
-		licensestate.Config{
-			PollInterval: time.Duration(cfg.LicensePollSeconds) * time.Second,
-			Grace:        time.Duration(cfg.LicenseGraceHours) * time.Hour,
-			Version:      cfg.PanelVersion,
-		},
-		h.CountUsage,
-	)
-	h.AttachLicense(licenseStore, licenseRefresher)
-	licenseRefresher.SetTenantPools(tenants.Pools)
-	licenseRefresher.SetUpdateNotice(h.NotifyPanelUpdate)
-	licenseRefresher.Start(ctx)
 
 	samplerCtx, stopSampler := context.WithCancel(ctx)
 	defer stopSampler()
@@ -198,62 +145,6 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutdownCtx)
-}
-
-func loadLicenseVerifier(ctx context.Context, db *pgxpool.Pool, cfg config.Config) (*licensejwt.Verifier, error) {
-	if pemText := strings.TrimSpace(cfg.LicensePublicKeyPEM); pemText != "" {
-		v, err := licensejwt.LoadVerifierFromPEM(pemText, cfg.LicenseIssuer)
-		if err == nil {
-			cacheLicenseKey(ctx, db, v)
-			return v, nil
-		}
-		log.Printf("license verifier: LICENSE_PUBLIC_KEY_PEM непригоден: %v", err)
-	}
-
-	var lastErr error
-	for attempt := 1; attempt <= 5; attempt++ {
-		v, err := licensejwt.LoadVerifier(cfg.LicensePublicKeyPath, cfg.LicenseIssuer)
-		if err == nil {
-			cacheLicenseKey(ctx, db, v)
-			return v, nil
-		}
-		lastErr = err
-		time.Sleep(time.Second)
-	}
-	log.Printf("license verifier: файл ключа недоступен (%v), пробую кэш в базе", lastErr)
-
-	if row, err := licensestate.EnsureRow(ctx, db); err == nil && row.PublicKeyPEM != "" {
-		if v, err := licensejwt.LoadVerifierFromPEM(row.PublicKeyPEM, cfg.LicenseIssuer); err == nil {
-			log.Printf("license verifier: взят из кэша в базе")
-			return v, nil
-		}
-	}
-
-	client := licenseclient.New(cfg.LicenseServiceURL)
-	for attempt := 1; attempt <= 5; attempt++ {
-		pemText, err := client.PublicKey(ctx)
-		if err == nil {
-			v, err := licensejwt.LoadVerifierFromPEM(pemText, cfg.LicenseIssuer)
-			if err == nil {
-				log.Printf("license verifier: получен от сервиса лицензий")
-				cacheLicenseKey(ctx, db, v)
-				return v, nil
-			}
-		}
-		lastErr = err
-		time.Sleep(2 * time.Second)
-	}
-
-	return nil, lastErr
-}
-
-func cacheLicenseKey(ctx context.Context, db *pgxpool.Pool, v *licensejwt.Verifier) {
-	if _, err := licensestate.EnsureRow(ctx, db); err != nil {
-		return
-	}
-	if err := licensestate.SavePublicKey(ctx, db, v.PEM()); err != nil {
-		log.Printf("license verifier: не удалось закэшировать ключ: %v", err)
-	}
 }
 
 func getEnv(key, fallback string) string {

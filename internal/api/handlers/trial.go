@@ -164,9 +164,6 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, reason)
 		return
 	}
-	if !h.checkServerQuota(ctx, claims.TenantID, w) {
-		return
-	}
 
 	limits := gamecatalog.DefaultLimits(gameID)
 	if cfg.MemoryMB > 0 {

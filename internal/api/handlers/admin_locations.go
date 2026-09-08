@@ -338,9 +338,6 @@ func (h *Handler) CreateAdminLocation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "code and name are required")
 		return
 	}
-	if !h.checkNodeQuota(r.Context(), claims.TenantID, w) {
-		return
-	}
 
 	fqdn := code
 	if ip := strings.TrimSpace(fmt.Sprint(body["ip_address"])); ip != "" {

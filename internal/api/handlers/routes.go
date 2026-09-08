@@ -7,11 +7,9 @@ import (
 func (h *Handler) mountProtected(r chi.Router) {
 	r.Group(func(r chi.Router) {
 		r.Use(h.authWithAPIKey)
-		r.Use(h.requireTenantPool)
-		r.Use(h.licenseGate)
+
 		r.Use(h.tenantWriteRateLimit)
 		r.Get("/v1/me", h.Me)
-		r.Get("/v1/license/state", h.LicenseState)
 		r.Patch("/v1/me/password", h.ChangePassword)
 		r.Post("/v1/auth/logout", h.Logout)
 
@@ -274,10 +272,6 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/jobs/{id}/retry", h.AdminJobRetry)
 			r.Post("/jobs/{id}/cancel", h.AdminJobCancel)
 			r.Delete("/jobs/{id}", h.AdminJobDelete)
-			r.Get("/updates", h.AdminUpdatesCheck)
-			r.Post("/updates", h.AdminUpdatesApply)
-			r.Post("/updates/auto", h.AdminUpdatesAuto)
-			r.Post("/locations/{id}/daemon/update", h.AdminDaemonSelfUpdate)
 			r.Get("/games", h.ListAdminGames)
 			r.Post("/games", h.CreateAdminGame)
 			r.Get("/games/{id}", h.GetAdminGame)
@@ -337,9 +331,6 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Get("/settings/readiness", h.AdminCutoverReadiness)
 			r.Get("/settings/appearance", h.GetAdminAppearance)
 			r.Post("/settings/appearance", h.UpdateAdminAppearance)
-			r.Get("/license", h.AdminLicense)
-			r.Post("/license/bind", h.AdminBindLicenseKey)
-			r.Post("/license/refresh", h.AdminLicenseRefresh)
 			r.Get("/groups", h.GetGroups)
 			r.Patch("/groups", h.UpdateGroups)
 			r.Post("/groups", h.UpdateGroups)

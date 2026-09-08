@@ -81,11 +81,6 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if role == "admin" && !h.checkAdminQuota(r.Context(), claims.TenantID, w) {
-		return
-
-	}
-
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
 	if err != nil {

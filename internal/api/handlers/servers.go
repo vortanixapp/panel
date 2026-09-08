@@ -108,9 +108,6 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	if !h.checkServerQuota(ctx, claims.TenantID, w) {
-		return
-	}
 
 	var nodeExists bool
 	if err := h.dbOf(ctx).QueryRow(ctx, `

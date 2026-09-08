@@ -40,7 +40,7 @@ func (h *Handler) YooKassaWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, found := h.withPaymentTenant(r.Context(), paymentID)
+	ctx, found := h.knownPayment(r.Context(), paymentID)
 	if !found {
 		writeError(w, http.StatusNotFound, "payment not found")
 		return
@@ -75,7 +75,7 @@ func (h *Handler) FreekassaWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, found := h.withPaymentTenant(r.Context(), orderID)
+	ctx, found := h.knownPayment(r.Context(), orderID)
 	if !found {
 		writeError(w, http.StatusNotFound, "payment not found")
 		return
@@ -114,7 +114,7 @@ func (h *Handler) RobokassaWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, found := h.withPaymentTenant(r.Context(), invID)
+	ctx, found := h.knownPayment(r.Context(), invID)
 	if !found {
 		writeError(w, http.StatusNotFound, "payment not found")
 		return
@@ -179,7 +179,7 @@ func (h *Handler) PayPalWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, found := h.withPaymentTenant(r.Context(), paymentID)
+	ctx, found := h.knownPayment(r.Context(), paymentID)
 	if !found {
 		writeError(w, http.StatusNotFound, "payment not found")
 		return
@@ -260,7 +260,7 @@ func (h *Handler) NowPaymentsWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, found := h.withPaymentTenant(r.Context(), ev.OrderID)
+	ctx, found := h.knownPayment(r.Context(), ev.OrderID)
 	if !found {
 		writeError(w, http.StatusNotFound, "payment not found")
 		return

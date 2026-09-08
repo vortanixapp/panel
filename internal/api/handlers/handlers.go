@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -19,7 +18,6 @@ import (
 
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
-	r.Use(h.withTenantPool)
 	r.Get("/health", h.Health)
 	r.Get("/v1/branding", h.GetBranding)
 	r.Get("/v1/home", h.Home)
@@ -35,10 +33,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/v1/uploads/branding/{filename}", h.ServeBranding)
 	r.Get("/v1/tenants/status", h.TenantStatus)
 	r.Post("/v1/tenants/bootstrap", h.Bootstrap)
-	r.Post("/v1/internal/tenants/provision", h.ProvisionTenantDatabase)
-	r.Post("/v1/internal/tenants/drop", h.DropTenantDatabase)
 	r.Get("/v1/setup/status", h.SetupStatus)
-	r.Post("/v1/setup/activate", h.SetupActivate)
 	r.Post("/v1/auth/login", h.Login)
 	r.Post("/v1/auth/register", h.Register)
 	r.Post("/v1/webhooks/stripe", h.StripeWebhook)
@@ -66,12 +61,9 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 }
 
 type bootstrapRequest struct {
-	LicenseKey    string `json:"license_key"`
-	LicenseToken  string `json:"license_token"`
-	Domain        string `json:"domain"`
 	OwnerEmail    string `json:"owner_email"`
 	OwnerPassword string `json:"owner_password"`
-	TenantName    string `json:"tenant_name"`
+	PanelName     string `json:"panel_name"`
 }
 
 func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
@@ -94,25 +86,17 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lic, err := h.bootstrapClaims(w, r, req)
-	if err != nil {
-		return
-	}
-
-	// Заголовку с ключом арендатора верить нельзя: настоящее имя приходит из
-	// проверенной лицензии, и только по нему можно судить, настроен ли он.
-	if h.tenantExistsBySlug(r, lic.TenantSlug) {
-		writeError(w, http.StatusConflict, "панель уже настроена")
-		return
-	}
-
-	tenantID := lic.Subject
-	tenantName := req.TenantName
-	if tenantName == "" {
-		tenantName = lic.TenantSlug
-	}
-
 	ctx := r.Context()
+
+	// Установка одна и владелец один, но столбец tenant_id пронизывает всю
+	// схему: на него ссылаются серверы, ноды, платежи — сотни запросов. Дешевле
+	// завести одну запись владения и оставить столбец постоянным, чем вынимать
+	// его из каждого запроса ради косметики.
+	tenantID := uuid.NewString()
+	panelName := strings.TrimSpace(req.PanelName)
+	if panelName == "" {
+		panelName = "Vortanix"
+	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.OwnerPassword), bcrypt.DefaultCost)
 	if err != nil {
@@ -120,52 +104,17 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settingsJSON, err := json.Marshal(map[string]any{
-		"installation_id": lic.InstallationID,
-	})
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to encode settings")
-		return
-	}
-
-	// База арендатора заводится при настройке панели, если её ещё нет: данные
-	// клиентов держим у себя, но каждого в своей базе — потом он получит доступ
-	// к ней и только к ней.
-	dbName, err := h.tenants.Provision(ctx, lic.TenantSlug)
-	if err != nil {
-		log.Printf("база арендатора %s не заведена: %v", lic.TenantSlug, err)
-		writeError(w, http.StatusInternalServerError, "не удалось подготовить базу панели")
-		return
-	}
-
-	tenantPool, err := h.tenants.Pool(ctx, lic.TenantSlug)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "база панели недоступна")
-		return
-	}
-
-	// Дальше весь запрос работает с базой из лицензии. Заголовок панели может
-	// звать другого арендатора: слаг в её настройках считается от домена, а он
-	// после выдачи лицензии мог смениться. Верить нужно лицензии, иначе
-	// владелец создаётся в одной базе, а сессия ему выписывается в другой.
-	ctx = context.WithValue(ctx, tenantPoolKey{}, tenantPool)
-	r = r.WithContext(ctx)
-
-	tx, err := tenantPool.Begin(ctx)
+	tx, err := h.db.Begin(ctx)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
 	defer tx.Rollback(ctx)
 
-	// Запись об арендаторе нужна в обеих базах: в центральной это реестр, по
-	// которому ищется база, а в своей на неё ссылается core.users.
-	_, err = tx.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO core.tenants (id, slug, name, settings)
-		VALUES ($1, $2, $3, $4::jsonb)
-		ON CONFLICT (id) DO NOTHING
-	`, tenantID, lic.TenantSlug, tenantName, settingsJSON)
-	if err != nil {
+		VALUES ($1, $2, $3, '{}'::jsonb)
+	`, tenantID, singleTenantSlug, panelName); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create tenant")
 		return
 	}
@@ -191,17 +140,7 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := h.dbOf(ctx).Exec(ctx, `
-		INSERT INTO core.tenants (id, slug, name, settings, db_name)
-		VALUES ($1, $2, $3, $4::jsonb, $5)
-		ON CONFLICT (slug) DO UPDATE SET db_name = EXCLUDED.db_name
-	`, tenantID, lic.TenantSlug, tenantName, settingsJSON, dbName); err != nil {
-		log.Printf("арендатор %s не попал в реестр: %v", lic.TenantSlug, err)
-		writeError(w, http.StatusInternalServerError, "не удалось зарегистрировать панель")
-		return
-	}
-
-	access, refresh, err := h.issueAuthTokens(r, tenantID, lic.TenantSlug, userID, req.OwnerEmail, "owner", "", rememberRefreshTTL)
+	access, refresh, err := h.issueAuthTokens(r, tenantID, singleTenantSlug, userID, req.OwnerEmail, "owner", "", rememberRefreshTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
@@ -209,7 +148,7 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"tenant_id":     tenantID,
-		"tenant_slug":   lic.TenantSlug,
+		"tenant_slug":   singleTenantSlug,
 		"access_token":  access,
 		"refresh_token": refresh,
 		"user": map[string]string{
@@ -233,12 +172,15 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if req.Email == "" || req.Password == "" || req.TenantSlug == "" {
-		writeError(w, http.StatusBadRequest, "email, password and tenant_slug are required")
+	if req.Email == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
+	if req.TenantSlug == "" {
+		req.TenantSlug = singleTenantSlug
+	}
 
-	ctx := h.withTenantSlug(r.Context(), req.TenantSlug)
+	ctx := r.Context()
 	if blocked, reason := h.ipBlocked(ctx, clientIP(r)); blocked {
 		h.recordLoginAttempt(ctx, r, "", "", req.Email, "адрес заблокирован", false)
 		msg := "доступ с этого адреса заблокирован"
@@ -325,15 +267,10 @@ func (h *Handler) tenantIDBySlug(ctx context.Context, slug string) string {
 func (h *Handler) TenantStatus(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimSpace(r.URL.Query().Get("slug"))
 	if slug == "" {
-		writeError(w, http.StatusBadRequest, "slug is required")
-		return
+		slug = singleTenantSlug
 	}
 
-	// Базу выбираем по слагу из запроса, а не по заголовку: этот вызов приходит
-	// с сервера панели, где заголовку взяться неоткуда, и раньше он попадал в
-	// центральную базу — арендатор там не находился, и панель считала себя
-	// ненастроенной, отправляя все страницы обратно на активацию.
-	ctx := h.withTenantSlug(r.Context(), slug)
+	ctx := r.Context()
 
 	var exists bool
 	if err := h.dbOf(ctx).QueryRow(ctx, `

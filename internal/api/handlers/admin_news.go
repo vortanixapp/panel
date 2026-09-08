@@ -294,16 +294,8 @@ func (h *Handler) DeleteNewsImage(w http.ResponseWriter, r *http.Request) {
 // публичных страницах. У скрытой новости картинка не отдаётся.
 func (h *Handler) ServeNewsImage(w http.ResponseWriter, r *http.Request) {
 	imageID := chi.URLParam(r, "id")
-	// Картинка запрашивается тегом <img>, заголовка арендатора в таком запросе
-	// нет. Читали из центральной базы, где новостей арендатора не бывает, —
-	// изображения не открывались ни у кого, кроме установки с одной базой.
 	ctx := r.Context()
-	pool := h.poolWithRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM core.news_images WHERE id = $1::uuid)`, imageID)
-	if pool == nil {
-		writeError(w, http.StatusNotFound, "not found")
-		return
-	}
+	pool := h.db
 	var rel string
 	var active bool
 	if err := pool.QueryRow(ctx, `

@@ -348,9 +348,6 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, "node_capacity", reason+", выберите другую")
 		return
 	}
-	if !h.checkServerQuota(r.Context(), claims.TenantID, w) {
-		return
-	}
 
 	periodDays := 30
 	if body.Period > 0 {

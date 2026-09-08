@@ -1,16 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/vortanix/vortanix/internal/api/licenseclient"
-	"github.com/vortanix/vortanix/internal/api/licensestate"
 )
 
 func (h *Handler) AdminLogs(w http.ResponseWriter, r *http.Request) {
@@ -276,83 +271,18 @@ func (h *Handler) AdminBugReportCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Отчёт уходит разработчику панели, а не остаётся в очереди самого клиента:
-	// починить панель может только он, а копия в очереди нужна, чтобы автор
-	// видел судьбу своего обращения у себя.
-	delivered, deliverErr := h.deliverBugReport(ctx, bugReportDelivery{
-		title:       title,
-		description: desc,
-		severity:    severity,
-		component:   component,
-		scope:       node,
-	})
-
 	audit(ctx, h.dbOf(ctx), claims.TenantID, claims.UserID, "admin.bug_report.create", ticketID, map[string]any{
 		"severity":  severity,
 		"component": component,
 		"node":      node,
 		"priority":  priority,
-		"delivered": delivered > 0,
 	})
-	res := map[string]any{
+	writeJSON(w, http.StatusCreated, map[string]any{
 		"ok":        true,
 		"ticket_id": ticketID,
 		"priority":  priority,
 		"status":    "created",
-		"delivered": delivered > 0,
-	}
-	if delivered > 0 {
-		res["report_number"] = delivered
-	}
-	if deliverErr != "" {
-		// Не скрываем: отчёт сохранён, но разработчик его не увидит, пока
-		// панель не достучится до сервиса лицензий.
-		res["delivery_error"] = deliverErr
-	}
-	writeJSON(w, http.StatusCreated, res)
-}
-
-type bugReportDelivery struct {
-	title       string
-	description string
-	severity    string
-	component   string
-	scope       string
-}
-
-// deliverBugReport отправляет отчёт в консоль разработчика через сервис
-// лицензий. Возвращает номер отчёта и текст ошибки для показа автору.
-func (h *Handler) deliverBugReport(ctx context.Context, d bugReportDelivery) (int64, string) {
-	if h.licenseOps == nil {
-		return 0, "панель не подключена к сервису лицензий"
-	}
-	row, err := licensestate.LoadRow(ctx, h.dbOf(ctx))
-	if err != nil || row.LicenseKey == "" {
-		return 0, "у панели нет ключа лицензии"
-	}
-	number, err := h.licenseOps.ReportBug(ctx, licenseclient.BugReport{
-		LicenseKey:  row.LicenseKey,
-		Title:       d.title,
-		Description: d.description,
-		Severity:    bugSeverityForVendor(d.severity),
-		Component:   d.component,
-		Scope:       d.scope,
-		AppVersion:  envOr("VORTANIX_VERSION", "dev"),
 	})
-	if err != nil {
-		log.Printf("отчёт об ошибке не доставлен: %v", err)
-		return 0, "сервис лицензий недоступен, отчёт сохранён только в панели"
-	}
-	return number, ""
-}
-
-// Шкала критичности в форме своя, у консоли разработчика своя: «medium» там
-// не существует, и без перевода отчёт лёг бы с критичностью по умолчанию.
-func bugSeverityForVendor(severity string) string {
-	if severity == "medium" {
-		return "normal"
-	}
-	return severity
 }
 
 // bugReportTitle достаёт заголовок из темы вида «[BUG][HIGH][panel-ui] текст».

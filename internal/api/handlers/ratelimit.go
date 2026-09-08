@@ -26,14 +26,7 @@ func (h *Handler) tenantWriteRateLimit(next http.Handler) http.Handler {
 			return
 		}
 
-		limit := h.licenseFor(r.Context()).Limits.APIRPM
-		switch {
-		case limit < 0:
-			next.ServeHTTP(w, r)
-			return
-		case limit == 0:
-			limit = defaultWriteRPM
-		}
+		limit := defaultWriteRPM
 
 		allowed, err := h.cache.AllowWrite(r.Context(), claims.TenantID, limit, rateWindow)
 		if err != nil {

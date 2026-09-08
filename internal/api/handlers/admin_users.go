@@ -551,9 +551,6 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusForbidden, "only owner can change admin roles")
 			return
 		}
-		if role == "admin" && existingRole != "admin" && !h.checkAdminQuota(ctx, claims.TenantID, w) {
-			return
-		}
 		_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.users SET role = $3 WHERE id = $1 AND tenant_id = $2`, id, claims.TenantID, role)
 	}
 

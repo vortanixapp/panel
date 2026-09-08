@@ -64,7 +64,7 @@ func (h *Handler) StripeWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, found := h.withPaymentTenant(r.Context(), paymentID)
+	ctx, found := h.knownPayment(r.Context(), paymentID)
 	if !found {
 		writeError(w, http.StatusNotFound, "payment not found")
 		return

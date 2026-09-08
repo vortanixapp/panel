@@ -88,11 +88,6 @@ func (h *Handler) ServeCatalogArchive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pool := h.db
-	if h.tenants != nil {
-		if p := h.tenants.PoolForTenantID(r.Context(), claims.Tenant); p != nil {
-			pool = p
-		}
-	}
 	table := "core.plugins"
 	if claims.Kind == catalogMaps {
 		table = "core.maps"
