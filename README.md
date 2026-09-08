@@ -25,25 +25,38 @@ who use them.
 - PostgreSQL 16+ and Redis for the panel
 - Go 1.26 and Node 22+ to build from source
 
-## Building
+## Install
 
 ```bash
 git clone https://github.com/vortanix/vortanix
 cd vortanix
+cp deploy/.env.example deploy/.env   # fill in the three secrets it asks for
+docker compose -f deploy/docker-compose.yml up -d --build
+```
+
+Open `http://localhost:3000`. The setup wizard asks for a panel name and the
+owner's email and password — that is the whole setup. There is no licence key,
+no activation step, and nothing is sent anywhere: the panel talks to its own
+database, its own Redis, and your own game nodes.
+
+The database schema is created on first start; there is no separate migration
+command.
+
+Step by step, including reverse proxies, backups and what to do when it does
+not come up: [docs/install.md](docs/install.md).
+
+> The images are built from source on your machine. Prebuilt images anyone can
+> pull are on the roadmap; until then the first `up` takes a few minutes.
+
+## Building without Docker
+
+```bash
 go build ./...
 cd web && npm ci && npm run build
 ```
 
-Point it at a PostgreSQL database and a Redis, run the migrations in
-`migrations/core`, start `vortanix-api` and the web app, and the first visit
-opens the setup wizard: panel name, owner email, owner password. Nothing else
-is asked for, and nothing is checked against any server of ours — the panel has
-no licence and no phone-home.
-
-**There is still no packaged install.** The compose files under `deploy/` are
-the ones the closed product used: they pull prebuilt images from a private
-registry and will not work for you. Replacing them, and publishing images
-anyone can pull, is the next thing on the roadmap.
+You then need a PostgreSQL and a Redis of your own, and the environment
+variables listed in `deploy/.env.example`.
 
 ## Layout
 
@@ -70,7 +83,7 @@ The extraction is not finished. Landing next:
 
 - [x] Setup without an external licence service
 - [x] One panel, one owner, one database
-- [ ] A compose file and an install guide that work from a clean machine
+- [x] A compose file and an install guide
 - [ ] Prebuilt images on a public registry
 - [ ] English as the default interface language
 - [ ] Landing page artwork we hold the rights to

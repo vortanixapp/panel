@@ -1,4 +1,4 @@
-import { API_URL, fetchBranding, TENANT_SLUG, type Branding } from "@/lib/api";
+import { API_URL, fetchBranding, type Branding } from "@/lib/api";
 import { runtimeConfig } from "@/lib/runtime-config";
 
 export const DEFAULT_BRAND = "VORTANIX";
@@ -15,10 +15,10 @@ export const BRAND_LOGO_URL = runtimeConfig().brand_logo_url;
 
 let cachedBranding: Branding | null = null;
 
-export async function loadRuntimeBranding(tenantSlug = TENANT_SLUG) {
+export async function loadRuntimeBranding() {
   if (typeof window === "undefined") return null;
   try {
-    cachedBranding = await fetchBranding(tenantSlug);
+    cachedBranding = await fetchBranding();
     return cachedBranding;
   } catch {
     return null;

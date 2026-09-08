@@ -88,10 +88,6 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Установка одна и владелец один, но столбец tenant_id пронизывает всю
-	// схему: на него ссылаются серверы, ноды, платежи — сотни запросов. Дешевле
-	// завести одну запись владения и оставить столбец постоянным, чем вынимать
-	// его из каждого запроса ради косметики.
 	tenantID := uuid.NewString()
 	panelName := strings.TrimSpace(req.PanelName)
 	if panelName == "" {
@@ -176,9 +172,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
-	if req.TenantSlug == "" {
-		req.TenantSlug = singleTenantSlug
-	}
+	req.TenantSlug = singleTenantSlug
 
 	ctx := r.Context()
 	if blocked, reason := h.ipBlocked(ctx, clientIP(r)); blocked {
@@ -297,10 +291,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if req.Email == "" || req.Password == "" || req.TenantSlug == "" {
-		writeError(w, http.StatusBadRequest, "email, password and tenant_slug are required")
+	if req.Email == "" || req.Password == "" {
+		writeError(w, http.StatusBadRequest, "email and password are required")
 		return
 	}
+	req.TenantSlug = singleTenantSlug
 	if len(req.Password) < 8 {
 		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
 		return

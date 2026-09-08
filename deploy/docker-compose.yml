@@ -1,0 +1,112 @@
+name: vortanix
+
+x-panel: &panel
+  build:
+    context: ..
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    DATABASE_URL: postgres://vortanix:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}@postgres:5432/vortanix?sslmode=disable
+    REDIS_URL: redis://redis:6379/0
+    RELAY_URL: http://relay:8082
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vortanix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: vortanix
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vortanix -d vortanix"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    <<: *panel
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        COMPONENT: vortanix-api
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  worker:
+    <<: *panel
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        COMPONENT: vortanix-worker
+    depends_on:
+      api:
+        condition: service_healthy
+
+  relay:
+    <<: *panel
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        COMPONENT: vortanix-relay
+    ports:
+      - "${RELAY_PORT:-8082}:8082"
+
+  console:
+    <<: *panel
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        COMPONENT: vortanix-console
+    ports:
+      - "${CONSOLE_PORT:-8083}:8083"
+
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${PANEL_URL:-http://localhost:8080}
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres:
+  redis:
+  uploads:

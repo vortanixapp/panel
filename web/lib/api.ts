@@ -12,32 +12,11 @@ import { t } from "@/lib/i18n";
 
 export const API_URL = runtimeConfig().api_url;
 export const CONSOLE_URL = runtimeConfig().console_url;
-const TENANT_SLUG_KEY = "vx_tenant_slug";
-
-// Слаг из настроек панели считается от домена и после его смены расходится с
-// тем, что записан в лицензии. Активация возвращает верный — его и запоминаем,
-// иначе запросы уходили бы в базу другого арендатора.
-function storedTenantSlug(): string {
-  try {
-    return localStorage.getItem(TENANT_SLUG_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-export function rememberTenantSlug(slug: string) {
-  try {
-    if (slug) localStorage.setItem(TENANT_SLUG_KEY, slug);
-  } catch {
-    // приватный режим — обойдёмся значением из настроек
-  }
-}
+export const TENANT_SLUG = "default";
 
 export function tenantSlug(): string {
-  return storedTenantSlug() || runtimeConfig().tenant_slug;
+  return TENANT_SLUG;
 }
-
-export const TENANT_SLUG = runtimeConfig().tenant_slug;
 
 const ACCESS_TOKEN_KEY = "vortanix_access_token";
 const REFRESH_TOKEN_KEY = "vortanix_refresh_token";
@@ -223,9 +202,6 @@ export async function apiFetch<T>(
   const url = API_URL + path;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    // API общий для всех панелей, поэтому каждый запрос называет арендатора:
-    // по нему сервер выбирает базу, в которой лежат данные этой установки.
-    ...(tenantSlug() ? { "X-Tenant-Slug": tenantSlug() } : {}),
     ...(options.headers as Record<string, string>),
   };
   if (base === "api" && path !== "/v1/auth/refresh" && getRefreshToken()) {
@@ -3331,10 +3307,8 @@ export type Branding = {
   user_menu_variant?: "default" | "screenshot";
 };
 
-export async function fetchBranding(tenantSlug = TENANT_SLUG) {
-  const res = await fetch(`${API_URL}/v1/branding`, {
-    headers: { "X-Tenant-Slug": tenantSlug },
-  });
+export async function fetchBranding() {
+  const res = await fetch(`${API_URL}/v1/branding`);
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error ?? "Request failed");
@@ -3555,7 +3529,6 @@ async function uploadAdminFile<T>(path: string, form: FormData): Promise<T> {
   const headers: Record<string, string> = {};
   const token = getAccessToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  if (tenantSlug()) headers["X-Tenant-Slug"] = tenantSlug();
   const res = await fetch(API_URL + path, { method: "POST", headers, body: form });
   const text = await res.text();
   let data: Record<string, unknown> = {};

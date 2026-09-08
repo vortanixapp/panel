@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
 import { AuthAside, AuthShell } from "@/components/auth/auth-shell";
-import { bootstrapPanel, rememberTenantSlug, setTokens } from "@/lib/api";
+import { bootstrapPanel, setTokens } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
@@ -78,7 +78,6 @@ export function SetupForm() {
     try {
       const boot = await bootstrapPanel(values.email, values.password, values.panelName);
       queryClient.clear();
-      rememberTenantSlug(boot.tenant_slug);
       setTokens(boot.access_token, boot.refresh_token);
       window.location.replace(postLoginPath("owner"));
     } catch (err) {

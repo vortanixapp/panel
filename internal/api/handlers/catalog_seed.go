@@ -140,7 +140,7 @@ func seedDefaultCatalog(ctx context.Context, tx pgx.Tx, tenantID string) error {
 	return syncCatalog(ctx, tx, tenantID)
 }
 
-func SyncCatalogForAllTenants(ctx context.Context, db catalogDB) error {
+func SyncCatalog(ctx context.Context, db catalogDB) error {
 	rows, err := db.Query(ctx, `SELECT id::text FROM core.tenants WHERE status = 'active'`)
 	if err != nil {
 		return fmt.Errorf("список тенантов: %w", err)

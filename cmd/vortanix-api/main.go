@@ -51,7 +51,11 @@ func main() {
 		log.Printf("database: read replica enabled")
 	}
 
-	if err := handlers.SyncCatalogForAllTenants(ctx, pools.Write); err != nil {
+	if err := db.Migrate(ctx, pools.Write, cfg.MigrationsDir); err != nil {
+		log.Fatalf("схема базы: %v", err)
+	}
+
+	if err := handlers.SyncCatalog(ctx, pools.Write); err != nil {
 		log.Printf("catalog sync: %v", err)
 	}
 

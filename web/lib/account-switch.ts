@@ -1,7 +1,6 @@
 import {
   API_URL,
   clearAuthAndForget,
-  rememberTenantSlug,
   setTokens,
 } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
@@ -98,7 +97,6 @@ export async function prepareSwitch(id: string): Promise<SwitchOutcome> {
 
   // Арендатор — раньше токенов: заголовок X-Tenant-Slug читается из этого же
   // хранилища, и запрос сразу после переключения должен уйти в нужную базу.
-  rememberTenantSlug(account.tenantSlug);
   setTokens(tokens.access_token, tokens.refresh_token);
 
   return { ok: true, path: postLoginPath(account.role) };

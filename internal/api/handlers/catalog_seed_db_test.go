@@ -152,7 +152,7 @@ func TestSyncCatalogMarksOversizedGamesInactive(t *testing.T) {
 	}
 }
 
-func TestSyncCatalogForAllTenantsFillsMissingVersions(t *testing.T) {
+func TestSyncCatalogFillsMissingVersions(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 
@@ -164,8 +164,8 @@ func TestSyncCatalogForAllTenantsFillsMissingVersions(t *testing.T) {
 		t.Skip("в тестовой базе нет тенантов")
 	}
 
-	if err := SyncCatalogForAllTenants(ctx, pool); err != nil {
-		t.Fatalf("SyncCatalogForAllTenants: %v", err)
+	if err := SyncCatalog(ctx, pool); err != nil {
+		t.Fatalf("SyncCatalog: %v", err)
 	}
 
 	var withoutVersion int

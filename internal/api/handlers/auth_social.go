@@ -85,14 +85,7 @@ func (h *Handler) startSocialOAuth(w http.ResponseWriter, r *http.Request, inten
 		writeError(w, http.StatusNotFound, "provider not configured")
 		return
 	}
-	tenantSlug := strings.TrimSpace(r.URL.Query().Get("tenant_slug"))
-	if tenantSlug == "" {
-		tenantSlug = strings.TrimSpace(r.Header.Get("X-Tenant-Slug"))
-	}
-	if tenantSlug == "" {
-		writeError(w, http.StatusBadRequest, "tenant_slug is required")
-		return
-	}
+	tenantSlug := singleTenantSlug
 	returnPath := "/login"
 	if intent == socialIntentLink {
 		returnPath = "/settings/account"
@@ -333,14 +326,7 @@ func (h *Handler) TelegramLink(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleTelegram(w http.ResponseWriter, r *http.Request, intent string) {
-	tenantSlug := strings.TrimSpace(r.URL.Query().Get("tenant_slug"))
-	if tenantSlug == "" {
-		tenantSlug = strings.TrimSpace(r.Header.Get("X-Tenant-Slug"))
-	}
-	if tenantSlug == "" {
-		writeError(w, http.StatusBadRequest, "tenant_slug is required")
-		return
-	}
+	tenantSlug := singleTenantSlug
 	st := oauthState{Intent: intent, TenantSlug: tenantSlug, ReturnPath: "/login"}
 	h.handleTelegramWithState(w, r, st)
 }

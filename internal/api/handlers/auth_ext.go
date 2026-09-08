@@ -101,7 +101,8 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if req.Email == "" || req.TenantSlug == "" {
+	req.TenantSlug = singleTenantSlug
+	if req.Email == "" {
 		writeError(w, http.StatusBadRequest, "email and tenant_slug are required")
 		return
 	}
