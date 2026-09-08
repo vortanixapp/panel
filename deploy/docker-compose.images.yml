@@ -3,20 +3,20 @@ name: vortanix
 services:
   api:
     build: !reset null
-    image: ghcr.io/vortanix/vortanix/vortanix-api:${VORTANIX_VERSION:-latest}
+    image: ghcr.io/vortanix/vortanix-api:${VORTANIX_VERSION:-latest}
 
   worker:
     build: !reset null
-    image: ghcr.io/vortanix/vortanix/vortanix-worker:${VORTANIX_VERSION:-latest}
+    image: ghcr.io/vortanix/vortanix-worker:${VORTANIX_VERSION:-latest}
 
   relay:
     build: !reset null
-    image: ghcr.io/vortanix/vortanix/vortanix-relay:${VORTANIX_VERSION:-latest}
+    image: ghcr.io/vortanix/vortanix-relay:${VORTANIX_VERSION:-latest}
 
   console:
     build: !reset null
-    image: ghcr.io/vortanix/vortanix/vortanix-console:${VORTANIX_VERSION:-latest}
+    image: ghcr.io/vortanix/vortanix-console:${VORTANIX_VERSION:-latest}
 
   web:
     build: !reset null
-    image: ghcr.io/vortanix/vortanix/vortanix-web:${VORTANIX_VERSION:-latest}
+    image: ghcr.io/vortanix/vortanix-web:${VORTANIX_VERSION:-latest}
