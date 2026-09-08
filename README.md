@@ -95,7 +95,8 @@ The extraction is not finished. Landing next:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go to
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/development.md](docs/development.md).
+Security reports go to
 [SECURITY.md](SECURITY.md) instead of the issue tracker.
 
 ## Licence
