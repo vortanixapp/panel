@@ -1,0 +1,33 @@
+name: Feature request
+description: Something the panel should be able to do and cannot
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: >
+        Describe the situation, not the solution. Knowing what you were trying
+        to achieve often leads somewhere better than the feature as imagined.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How you cope today
+      description: If there is a workaround, it tells us how much this hurts.
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Would you like to build it?
+      options:
+        - label: I would be willing to open a pull request for this

@@ -6,6 +6,9 @@ never had to explain.
 
 ## Before you start
 
+By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). It is
+short and it says what you would expect.
+
 For anything larger than a bug fix, open an issue first and say what you intend
 to do. It costs you a paragraph and can save you a weekend: some areas are
 mid-rewrite (see the roadmap in the README) and a patch against them will not

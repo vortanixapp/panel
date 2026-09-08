@@ -1,0 +1,34 @@
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Заплатки от вспомогательных пакетов приходят пачками и по одной ничего
+    # не значат: собираем их в один запрос, чтобы обзор не тонул в шуме.
+    groups:
+      aws-sdk:
+        patterns:
+          - github.com/aws/*
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
