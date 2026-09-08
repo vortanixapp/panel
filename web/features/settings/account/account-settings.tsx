@@ -34,7 +34,7 @@ import {
 import { TelegramLoginButton } from "@/components/auth/telegram-login-button";
 import { useChangePassword } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
-import { localeTag } from "@/lib/i18n";
+import { browserLocale, DEFAULT_LOCALE, localeTag } from "@/lib/i18n";
 import { setAccountPreferences, getAccountPreferences } from "@/lib/user-preferences";
 
 const SOCIAL_PROVIDERS = [
@@ -77,7 +77,7 @@ export function AccountSettings() {
   const [lastName, setLastName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
-  const [locale, setLocale] = useState("ru");
+  const [locale, setLocale] = useState(DEFAULT_LOCALE as string);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -121,7 +121,7 @@ export function AccountSettings() {
     setLastName(user.last_name ?? "");
     setDisplayName(user.display_name ?? "");
     setPhone(user.phone ?? "");
-    setLocale(user.locale || getAccountPreferences().language || "ru");
+    setLocale(user.locale || getAccountPreferences().language || browserLocale());
     setNewEmail(user.email ?? "");
   }, [user]);
 

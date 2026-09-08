@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 
 import { fetchTranslations, getAccessToken } from "@/lib/api";
-import { setLocale, setTranslationOverrides } from "@/lib/i18n";
+import { browserLocale, setLocale, setTranslationOverrides } from "@/lib/i18n";
 import {
   ACCOUNT_PREFS_EVENT,
   getAccountPreferences,
@@ -13,7 +13,8 @@ export function TranslationsProvider({ children }: { children: ReactNode }) {
   // Язык читаем только после монтирования: на сервере localStorage нет,
   // и выбор из него в разметке сервера дал бы расхождение при гидрации.
   useEffect(() => {
-    const applyLocale = () => setLocale(getAccountPreferences().language);
+    const applyLocale = () =>
+      setLocale(getAccountPreferences().language || browserLocale());
     applyLocale();
     window.addEventListener(ACCOUNT_PREFS_EVENT, applyLocale);
     return () => window.removeEventListener(ACCOUNT_PREFS_EVENT, applyLocale);

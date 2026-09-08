@@ -3,15 +3,15 @@ import { RU } from "@/lib/locales/ru";
 
 export type Locale = "ru" | "en";
 
-export const DEFAULT_LOCALE: Locale = "ru";
-export const SUPPORTED_LOCALES: Locale[] = ["ru", "en"];
+export const DEFAULT_LOCALE: Locale = "en";
+export const SUPPORTED_LOCALES: Locale[] = ["en", "ru"];
 
 const CATALOGS: Record<Locale, Record<string, string>> = { ru: RU, en: EN };
 
-// Английский каталог обязан покрывать все ключи русского: без этой проверки
-// пропущенный перевод молча показывался бы по-русски посреди английского экрана.
 const EN_COVERS_RU: Record<keyof typeof RU, string> = EN;
+const RU_COVERS_EN: Record<keyof typeof EN, string> = RU;
 void EN_COVERS_RU;
+void RU_COVERS_EN;
 
 export type OverridableString = {
   key: string;
@@ -19,10 +19,6 @@ export type OverridableString = {
   groupKey: string;
 };
 
-// Закрытый список строк, которые хостер правит через /admin/language.
-// Значения берём из русского каталога, чтобы не держать вторую копию текстов.
-// Название раздела — тоже ключ: раньше здесь стоял русский текст и на
-// английском интерфейсе заголовки разделов оставались русскими.
 const OVERRIDABLE_KEYS: { key: string; groupKey: string }[] = [
   { key: "nav.dashboard", groupKey: "admin.language.group.user_menu" },
   { key: "nav.servers", groupKey: "admin.language.group.user_menu" },
@@ -132,7 +128,7 @@ export const OVERRIDABLE_STRINGS: OverridableString[] = OVERRIDABLE_KEYS.map(
   ({ key, groupKey }) => ({
     key,
     groupKey,
-    default: RU[key as keyof typeof RU] ?? key,
+    default: EN[key as keyof typeof EN] ?? key,
   })
 );
 
@@ -173,6 +169,15 @@ export function normalizeLocale(value: string | null | undefined): Locale {
   return SUPPORTED_LOCALES.includes(value as Locale)
     ? (value as Locale)
     : DEFAULT_LOCALE;
+}
+
+export function browserLocale(): Locale {
+  if (typeof navigator === "undefined") return DEFAULT_LOCALE;
+  for (const candidate of navigator.languages ?? [navigator.language]) {
+    const base = candidate?.split("-")[0];
+    if (SUPPORTED_LOCALES.includes(base as Locale)) return base as Locale;
+  }
+  return DEFAULT_LOCALE;
 }
 
 export function getLocale(): Locale {

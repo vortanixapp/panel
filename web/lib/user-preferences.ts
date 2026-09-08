@@ -11,7 +11,7 @@ export type DisplayPreferences = {
   items: string[];
 };
 
-const DEFAULT_ACCOUNT: AccountPreferences = { language: "ru" };
+const DEFAULT_ACCOUNT: AccountPreferences = { language: "" };
 const DEFAULT_DISPLAY: DisplayPreferences = {
   items: ["dashboard", "locations", "servers", "users"],
 };
