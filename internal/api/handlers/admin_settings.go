@@ -282,25 +282,13 @@ func (h *Handler) AdminCutoverReadiness(w http.ResponseWriter, r *http.Request) 
 	}
 	blockers := []map[string]any{}
 	if !smtpConfigured || mailer == "log" || mailer == "array" {
-		blockers = append(blockers, map[string]any{
-			"key":      "mail",
-			"message":  "Почта не настроена — письма для восстановления пароля и подтверждения адреса не отправляются.",
-			"fallback": "Пока настраиваете SMTP, подтверждайте адреса вручную в разделе «Пользователи».",
-		})
+		blockers = append(blockers, map[string]any{"key": "mail"})
 	}
 	if !oauthReady {
-		blockers = append(blockers, map[string]any{
-			"key":      "oauth",
-			"message":  "Вход через Google, Discord и VK не настроен — не заданы ключи приложений.",
-			"fallback": "Вход по логину с паролем и двухфакторной проверкой работает как обычно.",
-		})
+		blockers = append(blockers, map[string]any{"key": "oauth"})
 	}
 	if enabledProviders == 0 {
-		blockers = append(blockers, map[string]any{
-			"key":      "payments",
-			"message":  "Не включён ни один способ оплаты — клиенты не смогут пополнить баланс сами.",
-			"fallback": "Баланс можно пополнить вручную из карточки пользователя.",
-		})
+		blockers = append(blockers, map[string]any{"key": "payments"})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": len(blockers) == 0,

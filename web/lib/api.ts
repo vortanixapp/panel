@@ -3803,9 +3803,7 @@ export async function sendAdminMailing(id: string) {
 }
 
 export type AdminReadinessBlocker = {
-  key: string;
-  message: string;
-  fallback?: string;
+  key: "mail" | "oauth" | "payments";
 };
 
 export type AdminReadiness = {

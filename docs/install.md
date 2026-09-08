@@ -22,17 +22,29 @@ cp deploy/.env.example deploy/.env
 ```
 
 Open `deploy/.env` and fill in the three secrets. Generate each one separately —
-do not reuse the same value:
+do not reuse the same value.
+
+`POSTGRES_PASSWORD` goes into a connection URL, so generate it as hex:
+
+```bash
+openssl rand -hex 32
+```
+
+Base64 output is a trap here: it contains `/` and `+`, which cut the URL in
+half, and the error you get back talks about an invalid port rather than the
+password.
+
+The other three never appear in a URL, so anything goes:
 
 ```bash
 openssl rand -base64 32
 ```
 
-`POSTGRES_PASSWORD` is the database password. `JWT_SECRET` signs sessions:
-change it later and everyone is logged out. `SECRETS_KEY` encrypts payment
-gateway keys and node passwords in the database — **if you lose it, the panel
-cannot decrypt them and you will be re-entering every credential by hand.**
-Keep a copy somewhere you will still have it after a disk failure.
+`JWT_SECRET` signs sessions: change it later and everyone is logged out.
+`SECRETS_KEY` encrypts payment gateway keys and node passwords in the database
+— **if you lose it, the panel cannot decrypt them and you will be re-entering
+every credential by hand.** Keep a copy somewhere you will still have it after
+a disk failure.
 
 Set `PANEL_URL` to the address the browser will use. `http://localhost:8080` is
 fine while you are on the machine itself; for anyone else it has to be the real

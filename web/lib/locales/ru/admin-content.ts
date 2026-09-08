@@ -29,6 +29,18 @@ export const adminContent = {
   "admin.dashboard.blockers_title": "Панель не готова к продажам: {count} {word}",
   "admin.dashboard.blockers_hint":
     "Пока эти пункты не закрыты, часть возможностей панели работает не полностью",
+  "admin.dashboard.blocker_mail":
+    "Почта не настроена — письма для восстановления пароля и подтверждения адреса не отправляются.",
+  "admin.dashboard.blocker_mail_fallback":
+    "Пока настраиваете SMTP, подтверждайте адреса вручную в разделе «Пользователи».",
+  "admin.dashboard.blocker_oauth":
+    "Вход через Google, Discord и VK не настроен — не заданы ключи приложений.",
+  "admin.dashboard.blocker_oauth_fallback":
+    "Вход по логину с паролем и двухфакторной проверкой работает как обычно.",
+  "admin.dashboard.blocker_payments":
+    "Не включён ни один способ оплаты — клиенты не смогут пополнить баланс сами.",
+  "admin.dashboard.blocker_payments_fallback":
+    "Баланс можно пополнить вручную из карточки пользователя.",
 
   "admin.dashboard.kpi.revenue_30d": "Выручка 30 дней",
   "admin.dashboard.kpi.last_24h": "за последние сутки",

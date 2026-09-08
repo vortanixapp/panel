@@ -578,13 +578,11 @@ export function AdminDashboardPageContent() {
                   <span className="mt-1.5 size-[7px] flex-shrink-0 rounded-full bg-[var(--vx-warn)]" />
                   <div className="min-w-0 flex-1">
                     <div className="text-[13.5px] leading-[1.4] font-medium">
-                      {b.message}
+                      {t(`admin.dashboard.blocker_${b.key}`)}
                     </div>
-                    {b.fallback && (
-                      <div className="mt-[3px] text-[13px] text-muted-foreground">
-                        {b.fallback}
-                      </div>
-                    )}
+                    <div className="mt-[3px] text-[13px] text-muted-foreground">
+                      {t(`admin.dashboard.blocker_${b.key}_fallback`)}
+                    </div>
                   </div>
                 </li>
               ))}

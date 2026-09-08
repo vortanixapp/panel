@@ -26,6 +26,18 @@ export const adminContent = {
     "The panel is not ready to sell: {count} {word}",
   "admin.dashboard.blockers_hint":
     "Until these items are closed, some panel features work only partially",
+  "admin.dashboard.blocker_mail":
+    "Mail is not configured — password reset and address confirmation emails are not sent.",
+  "admin.dashboard.blocker_mail_fallback":
+    "While you set up SMTP, confirm addresses by hand under Users.",
+  "admin.dashboard.blocker_oauth":
+    "Sign-in through Google, Discord and VK is not configured — no application keys are set.",
+  "admin.dashboard.blocker_oauth_fallback":
+    "Email and password sign-in, with two-factor, works as usual.",
+  "admin.dashboard.blocker_payments":
+    "No payment method is enabled — customers cannot top up their balance themselves.",
+  "admin.dashboard.blocker_payments_fallback":
+    "You can top up a balance by hand from the user's card.",
 
   "admin.dashboard.kpi.revenue_30d": "Revenue, 30 days",
   "admin.dashboard.kpi.last_24h": "in the last 24 hours",
