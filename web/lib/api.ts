@@ -4407,6 +4407,26 @@ export async function updateAdminPaymentProvider(
 }
 
 
+export type AdminUpdates = {
+  current_version: string;
+  latest_version?: string;
+  update_available: boolean;
+  notes?: string;
+  release_url?: string;
+  published_at?: string;
+  prerelease?: boolean;
+  checked_at?: string;
+  from_cache?: boolean;
+  repo?: string;
+  checks_disabled?: boolean;
+  error?: string;
+};
+
+export async function fetchAdminUpdates(refresh = false) {
+  const q = refresh ? "?refresh=1" : "";
+  return apiFetch<AdminUpdates>(`/v1/admin/updates${q}`);
+}
+
 export async function fetchPanelVersion(): Promise<string> {
   try {
     const res = await fetch("/api/version", { cache: "no-store" });

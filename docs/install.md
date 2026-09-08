@@ -129,3 +129,8 @@ docker compose -f deploy/docker-compose.yml logs api
 - **The setup wizard says the panel is already configured** — it is: an owner
   exists. Log in instead, or drop the database volume and start over
   (`docker compose down -v`, which deletes everything).
+- **You changed `POSTGRES_PASSWORD` and now the API cannot connect** — Postgres
+  sets that password once, when it first creates its data directory. Changing
+  the variable afterwards changes what the panel sends, not what the database
+  expects. Change it inside the database instead (`ALTER USER vortanix WITH
+  PASSWORD '…'`), or wipe the volume and start over.

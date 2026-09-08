@@ -272,6 +272,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/jobs/{id}/retry", h.AdminJobRetry)
 			r.Post("/jobs/{id}/cancel", h.AdminJobCancel)
 			r.Delete("/jobs/{id}", h.AdminJobDelete)
+			r.Get("/updates", h.AdminUpdates)
 			r.Get("/games", h.ListAdminGames)
 			r.Post("/games", h.CreateAdminGame)
 			r.Get("/games/{id}", h.GetAdminGame)

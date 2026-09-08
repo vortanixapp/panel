@@ -58,6 +58,7 @@ func rbacAllPermissionKeys() []string {
 		"admin.logs.read",
 		"admin.jobs.read",
 		"admin.jobs.write",
+		"admin.updates.read",
 		"admin.groups.write",
 		"admin.hosting.read",
 		"admin.hosting.write",
@@ -107,6 +108,7 @@ func rbacPermissionLabels() map[string]string {
 		"admin.logs.read":               "Логи (просмотр)",
 		"admin.jobs.read":               "Очередь задач (просмотр)",
 		"admin.jobs.write":              "Очередь задач (перезапуск/отмена)",
+		"admin.updates.read":            "Обновления (просмотр)",
 		"admin.groups.write":            "Группы (управление правами)",
 		"admin.hosting.read":            "Веб-хостинг (просмотр)",
 		"admin.hosting.write":           "Веб-хостинг (управление)",
@@ -388,6 +390,8 @@ func rbacResolveAdminPermission(path, method string) (permission string, bypass 
 		return "admin.logs.read", false
 	case "jobs":
 		return readWrite("admin.jobs.read", "admin.jobs.write")
+	case "updates":
+		return "admin.updates.read", false
 	case "groups":
 		return "admin.groups.write", false
 	case "locations", "images":

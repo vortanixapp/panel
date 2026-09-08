@@ -18,6 +18,11 @@ who use them.
 - **A panel for end users.** Console, file manager, backups, scheduled tasks,
   subusers with per-permission access, resource graphs.
 - **Backups.** Local and off-site to any S3-compatible storage.
+- **Update checks.** An Updates tab asks GitHub whether a newer release exists
+  and shows what changed. It does not update itself — that would mean handing
+  the panel access to docker on your machine, which is far too much power for
+  one button, so it shows you the commands instead. The check runs only when
+  you open that tab; clear `UPDATE_REPO` to switch it off entirely.
 
 ## Requirements
 

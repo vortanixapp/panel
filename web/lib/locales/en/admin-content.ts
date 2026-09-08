@@ -793,4 +793,25 @@ export const adminContent = {
   "admin.language.group.menu_sections": "Menu sections",
   "admin.language.group.server_tabs": "Server tabs",
   "admin.language.group.other": "Other keys",
+
+  "admin.updates.title": "Updates",
+  "admin.updates.subtitle":
+    "The panel asks GitHub whether a newer release exists. The request goes out only when you open this page or press Check again.",
+  "admin.updates.recheck": "Check again",
+  "admin.updates.installed": "Installed",
+  "admin.updates.latest": "Available",
+  "admin.updates.available": "Update available",
+  "admin.updates.up_to_date": "Up to date",
+  "admin.updates.checks_disabled": "Checking is off — UPDATE_REPO is not set",
+  "admin.updates.checked_at": "Checked: {when}",
+  "admin.updates.published_at": "Released: {when}",
+  "admin.updates.open_release": "Open on GitHub",
+  "admin.updates.notes": "What changed",
+  "admin.updates.how": "How to upgrade",
+  "admin.updates.how_hint":
+    "The panel does not update itself: doing so would need access to docker on your machine, which is far too much power for one button. Run the commands on the server — the same pair you installed with.",
+  "admin.updates.from_source": "If you built from source",
+  "admin.updates.from_images": "If you pulled published images",
+  "admin.updates.backup_first":
+    "Take a database backup first: migrations only move forward, and there is no way back.",
 };

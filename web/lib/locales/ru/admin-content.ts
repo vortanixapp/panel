@@ -811,4 +811,26 @@ export const adminContent = {
   "admin.language.group.menu_sections": "Разделы меню",
   "admin.language.group.server_tabs": "Вкладки сервера",
   "admin.language.group.other": "Прочие ключи",
+
+  "admin.updates.title": "Обновления",
+  "admin.updates.subtitle":
+    "Панель спрашивает у GitHub, вышел ли новый выпуск. Запрос уходит только когда вы открываете эту страницу или нажимаете «Проверить снова».",
+  "admin.updates.recheck": "Проверить снова",
+  "admin.updates.installed": "Установлено",
+  "admin.updates.latest": "Доступно",
+  "admin.updates.available": "Есть обновление",
+  "admin.updates.up_to_date": "Версия последняя",
+  "admin.updates.checks_disabled":
+    "Проверка выключена — не задан UPDATE_REPO",
+  "admin.updates.checked_at": "Проверено: {when}",
+  "admin.updates.published_at": "Выпущено: {when}",
+  "admin.updates.open_release": "Открыть на GitHub",
+  "admin.updates.notes": "Что изменилось",
+  "admin.updates.how": "Как обновить",
+  "admin.updates.how_hint":
+    "Панель не обновляет себя сама: для этого ей понадобился бы доступ к docker на вашей машине, а это слишком много прав ради одной кнопки. Выполните команды на сервере — той парой, которой ставили.",
+  "admin.updates.from_source": "Если собирали из исходников",
+  "admin.updates.from_images": "Если тянули готовые образы",
+  "admin.updates.backup_first":
+    "Перед обновлением снимите копию базы: миграции идут только вперёд, отката нет.",
 };

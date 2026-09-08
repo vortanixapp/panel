@@ -124,9 +124,9 @@ export const auth = {
     "Его почта и пароль — единственный вход после настройки",
   "auth.setup.aside_name_title": "Название можно сменить позже",
   "auth.setup.aside_name_note": "Оно показывается клиентам и в письмах от панели",
-  "auth.setup.aside_local_title": "Ничего не уходит наружу",
+  "auth.setup.aside_local_title": "Ни лицензии, ни активации",
   "auth.setup.aside_local_note":
-    "Панель работает сама по себе: ни ключей, ни обращений к чужим серверам",
+    "Единственный запрос наружу — проверка обновлений на GitHub, и только когда вы её попросите",
   "auth.setup.panel_label": "Название панели",
   "auth.setup.panel_placeholder": "Как вас увидят клиенты",
   "auth.setup.panel_hint": "Можно изменить позже.",

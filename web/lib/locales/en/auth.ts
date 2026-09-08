@@ -122,9 +122,9 @@ export const auth = {
   "auth.setup.aside_name_title": "The name can be changed later",
   "auth.setup.aside_name_note":
     "It is shown to your customers and in mail sent by the panel",
-  "auth.setup.aside_local_title": "Nothing leaves this machine",
+  "auth.setup.aside_local_title": "No licence, no activation",
   "auth.setup.aside_local_note":
-    "The panel runs on its own — no keys, no calls to anyone else's servers",
+    "The only request that ever leaves is the update check on GitHub, and only when you ask for it",
   "auth.setup.panel_label": "Panel name",
   "auth.setup.panel_placeholder": "How your customers will see you",
   "auth.setup.panel_hint": "Can be changed later.",
