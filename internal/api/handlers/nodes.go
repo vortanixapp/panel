@@ -6,13 +6,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vortanix/vortanix/internal/api/cache"
-	"github.com/vortanix/vortanix/internal/api/mail"
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
-	"github.com/vortanix/vortanix/internal/api/relay"
-	"github.com/vortanix/vortanix/internal/api/storage"
-	"github.com/vortanix/vortanix/pkg/oauth"
-	"github.com/vortanix/vortanix/pkg/secretbox"
+	"github.com/vortanixapp/panel/internal/api/cache"
+	"github.com/vortanixapp/panel/internal/api/mail"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/relay"
+	"github.com/vortanixapp/panel/internal/api/storage"
+	"github.com/vortanixapp/panel/pkg/oauth"
+	"github.com/vortanixapp/panel/pkg/secretbox"
 )
 
 type Handler struct {

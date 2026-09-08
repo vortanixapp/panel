@@ -7,7 +7,7 @@ import (
 
 	"fmt"
 	"github.com/jackc/pgx/v5"
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 func (h *Handler) completeTopupPayment(ctx context.Context, paymentID, providerPaymentID, providerLabel string) error {

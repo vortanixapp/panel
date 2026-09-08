@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vortanix/vortanix/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/protocol"
 )
 
 type CommandWaiter struct {

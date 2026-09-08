@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/vortanix/vortanix/internal/api/hosting"
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/internal/api/hosting"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 const hostingExpiryInterval = 5 * time.Minute

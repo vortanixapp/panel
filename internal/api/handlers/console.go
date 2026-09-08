@@ -9,9 +9,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
-	"github.com/vortanix/vortanix/internal/api/relay"
-	"github.com/vortanix/vortanix/pkg/protocol"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/relay"
+	"github.com/vortanixapp/panel/pkg/protocol"
 )
 
 // consoleCommandAllowed говорит, вправе ли зритель вводить команды. Владелец и

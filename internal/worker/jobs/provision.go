@@ -10,12 +10,12 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
-	"github.com/vortanix/vortanix/pkg/portalloc"
-	"github.com/vortanix/vortanix/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/portalloc"
+	"github.com/vortanixapp/panel/pkg/secretbox"
 
-	"github.com/vortanix/vortanix/internal/worker/mail"
-	"github.com/vortanix/vortanix/internal/worker/relay"
+	"github.com/vortanixapp/panel/internal/worker/mail"
+	"github.com/vortanixapp/panel/internal/worker/relay"
 )
 
 type Runner struct {

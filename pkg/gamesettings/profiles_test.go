@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 // notYetCovered — игры с Linux-сервером, для которых профиль ещё не написан.

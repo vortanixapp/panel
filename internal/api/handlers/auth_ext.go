@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/vortanix/vortanix/internal/api/mail"
+	"github.com/vortanixapp/panel/internal/api/mail"
 )
 
 // Logout закрывает сессию на сервере. Раньше он только отвечал "logged_out":

@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vortanix/vortanix/internal/status/checks"
+	"github.com/vortanixapp/panel/internal/status/checks"
 )
 
 type Store struct {

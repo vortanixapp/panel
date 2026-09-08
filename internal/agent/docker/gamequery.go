@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 type GameQueryResult struct {

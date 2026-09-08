@@ -16,13 +16,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/vortanix/vortanix/internal/relay/events"
-	"github.com/vortanix/vortanix/internal/relay/hub"
-	"github.com/vortanix/vortanix/internal/relay/metricsclient"
-	"github.com/vortanix/vortanix/pkg/notify"
-	"github.com/vortanix/vortanix/pkg/protocol"
-	"github.com/vortanix/vortanix/pkg/secretbox"
-	"github.com/vortanix/vortanix/pkg/tenantpools"
+	"github.com/vortanixapp/panel/internal/relay/events"
+	"github.com/vortanixapp/panel/internal/relay/hub"
+	"github.com/vortanixapp/panel/internal/relay/metricsclient"
+	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/tenantpools"
 )
 
 type Handler struct {

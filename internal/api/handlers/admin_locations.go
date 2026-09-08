@@ -14,10 +14,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanix/vortanix/internal/api/jobwake"
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
-	"github.com/vortanix/vortanix/internal/api/sshclient"
-	"github.com/vortanix/vortanix/pkg/secretbox"
+	"github.com/vortanixapp/panel/internal/api/jobwake"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/sshclient"
+	"github.com/vortanixapp/panel/pkg/secretbox"
 )
 
 // Квоты идут до агента: он сообщает панели, работают ли они, и до его

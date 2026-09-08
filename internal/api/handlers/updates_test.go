@@ -116,7 +116,7 @@ func TestPrereleaseSuffixIgnoredInComparison(t *testing.T) {
 
 func TestUnsetRepoFallsBackToProject(t *testing.T) {
 	t.Setenv("UPDATE_REPO", "")
-	if got := updateRepo(); got != "vortanix/vortanix" {
+	if got := updateRepo(); got != "vortanixapp/panel" {
 		t.Errorf("без настройки ожидался репозиторий проекта, получено %q", got)
 	}
 	t.Setenv("UPDATE_REPO", "someone/fork/")

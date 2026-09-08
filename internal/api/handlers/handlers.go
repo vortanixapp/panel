@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
 )
 
 func (h *Handler) Routes() chi.Router {

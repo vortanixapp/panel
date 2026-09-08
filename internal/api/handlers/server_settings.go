@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
-	"github.com/vortanix/vortanix/pkg/gamesettings"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamesettings"
 )
 
 // Настройки игрового сервера: схема, значения и правка файлов.

@@ -33,7 +33,7 @@ who use them.
 ## Install
 
 ```bash
-git clone https://github.com/vortanix/vortanix
+git clone https://github.com/vortanixapp/panel
 cd vortanix
 cp deploy/.env.example deploy/.env   # fill in the three secrets it asks for
 docker compose -f deploy/docker-compose.yml up -d --build

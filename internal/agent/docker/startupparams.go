@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/vortanix/vortanix/pkg/gamesettings"
+	"github.com/vortanixapp/panel/pkg/gamesettings"
 )
 
 // Параметры запуска для entrypoint контейнера.

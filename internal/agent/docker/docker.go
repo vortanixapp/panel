@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 func runDocker(ctx context.Context, args ...string) error {

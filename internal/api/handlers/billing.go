@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/internal/api/payments"
+	"github.com/vortanixapp/panel/internal/api/payments"
 )
 
 var walletCurrencies = []string{"RUB", "USD", "EUR", "UAH"}

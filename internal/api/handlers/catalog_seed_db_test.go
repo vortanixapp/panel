@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 func testPool(t *testing.T) *pgxpool.Pool {

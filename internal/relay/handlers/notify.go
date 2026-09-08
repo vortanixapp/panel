@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 // Оповещения о том, что relay узнаёт первым.

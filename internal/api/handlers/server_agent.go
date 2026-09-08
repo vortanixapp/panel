@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
-	"github.com/vortanix/vortanix/internal/api/relay"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/relay"
 )
 
 func (h *Handler) serverNodeID(ctx context.Context, tenantID, serverID string) (string, error) {

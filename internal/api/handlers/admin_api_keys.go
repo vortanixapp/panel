@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
 )
 
 const apiKeyPrefix = "vtx_"

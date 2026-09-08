@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 type Querier interface {

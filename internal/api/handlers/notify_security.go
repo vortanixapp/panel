@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 // notifyNewLogin сообщает владельцу аккаунта о входе с незнакомого устройства.

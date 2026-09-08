@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 func versionLegacyJSON(id, name, sourceType, archiveURL, dockerImage string, steamAppID *int64, steamBranch *string, active bool, sortOrder int) map[string]any {

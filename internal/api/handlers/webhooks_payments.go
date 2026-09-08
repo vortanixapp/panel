@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vortanix/vortanix/internal/api/payments"
-	"github.com/vortanix/vortanix/pkg/yookassa"
+	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/yookassa"
 )
 
 func (h *Handler) YooKassaWebhook(w http.ResponseWriter, r *http.Request) {

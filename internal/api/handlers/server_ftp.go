@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/internal/api/jobwake"
+	"github.com/vortanixapp/panel/internal/api/jobwake"
 )
 
 var ftpSuffixRe = regexp.MustCompile(`^[a-z0-9_-]{0,12}$`)

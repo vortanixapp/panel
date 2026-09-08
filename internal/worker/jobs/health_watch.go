@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 // Наблюдение за тем, что ломается не сразу: кончающиеся деньги и кончающееся

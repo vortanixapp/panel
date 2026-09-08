@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/internal/api/jobwake"
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/internal/api/jobwake"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 func (h *Handler) LocationDaemonAction(w http.ResponseWriter, r *http.Request) {

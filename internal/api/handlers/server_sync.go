@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/vortanix/vortanix/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/protocol"
 )
 
 func (h *Handler) loadCronJobs(ctx context.Context, serverID string) ([]map[string]any, error) {

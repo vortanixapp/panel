@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/pkg/gamesettings"
+	"github.com/vortanixapp/panel/pkg/gamesettings"
 )
 
 type settingsSaveRequest struct {

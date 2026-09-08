@@ -10,7 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vortanix/vortanix/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/secretbox"
 )
 
 const (

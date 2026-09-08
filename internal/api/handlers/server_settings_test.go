@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"github.com/vortanix/vortanix/pkg/gamesettings"
+	"github.com/vortanixapp/panel/pkg/gamesettings"
 )
 
 func TestResolveSettingsTemplate(t *testing.T) {

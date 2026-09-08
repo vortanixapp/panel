@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanix/vortanix/internal/worker/relay"
+	"github.com/vortanixapp/panel/internal/worker/relay"
 
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 func (r *Runner) BackupLoop(ctx context.Context, wake <-chan struct{}) {

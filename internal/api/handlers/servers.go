@@ -12,9 +12,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanix/vortanix/internal/api/relay"
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
-	"github.com/vortanix/vortanix/pkg/portalloc"
+	"github.com/vortanixapp/panel/internal/api/relay"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/portalloc"
 )
 
 type serverResponse struct {

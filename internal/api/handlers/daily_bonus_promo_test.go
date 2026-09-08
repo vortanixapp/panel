@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vortanix/vortanix/internal/api/payments"
+	"github.com/vortanixapp/panel/internal/api/payments"
 )
 
 // Четыре промо-типа приза списывали попытку и писали красивую строку в историю,

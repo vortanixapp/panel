@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/internal/api/mail"
-	"github.com/vortanix/vortanix/pkg/oauth"
+	"github.com/vortanixapp/panel/internal/api/mail"
+	"github.com/vortanixapp/panel/pkg/oauth"
 	"golang.org/x/crypto/bcrypt"
 )
 

@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 func TestEveryTariffMeetsGameMinimum(t *testing.T) {

@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vortanix/vortanix/internal/api/jobwake"
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
-	"github.com/vortanix/vortanix/internal/api/payments"
-	"github.com/vortanix/vortanix/internal/api/pricing"
-	"github.com/vortanix/vortanix/internal/api/relay"
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
-	"github.com/vortanix/vortanix/pkg/portalloc"
+	"github.com/vortanixapp/panel/internal/api/jobwake"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/internal/api/pricing"
+	"github.com/vortanixapp/panel/internal/api/relay"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/portalloc"
 )
 
 func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {

@@ -12,7 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/go-chi/chi/v5"
 
-	"github.com/vortanix/vortanix/internal/api/jobwake"
+	"github.com/vortanixapp/panel/internal/api/jobwake"
 )
 
 func (h *Handler) remoteBackupsConfigured(ctx context.Context, tenantID string) bool {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vortanix/vortanix/pkg/sshclient"
+	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 var ftpUsernameRe = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 // notifySupportReply сообщает клиенту, что оператор ответил.

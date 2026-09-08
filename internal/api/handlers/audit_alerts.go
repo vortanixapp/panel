@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 	"strings"
 )
 

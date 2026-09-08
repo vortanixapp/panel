@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/vortanix/vortanix/pkg/portalloc"
+	"github.com/vortanixapp/panel/pkg/portalloc"
 )
 
 type ipPoolAddBody struct {

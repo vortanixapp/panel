@@ -16,8 +16,8 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/vortanix/vortanix/internal/status/checks"
-	"github.com/vortanix/vortanix/internal/status/store"
+	"github.com/vortanixapp/panel/internal/status/checks"
+	"github.com/vortanixapp/panel/internal/status/store"
 )
 
 //go:embed static

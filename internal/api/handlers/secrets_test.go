@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/vortanix/vortanix/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/secretbox"
 )
 
 func testHandlerWithSecrets(t *testing.T, key string) *Handler {

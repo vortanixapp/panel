@@ -1,6 +1,6 @@
 package main
 
-import "github.com/vortanix/vortanix/internal/agent/agent"
+import "github.com/vortanixapp/panel/internal/agent/agent"
 
 func main() {
 	agent.New().Run()

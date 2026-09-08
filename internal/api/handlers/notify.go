@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 // Оповещения из обработчиков.

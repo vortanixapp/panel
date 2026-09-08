@@ -13,13 +13,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 
-	"github.com/vortanix/vortanix/internal/worker/jobs"
-	"github.com/vortanix/vortanix/internal/worker/jobwake"
-	"github.com/vortanix/vortanix/internal/worker/mail"
-	"github.com/vortanix/vortanix/internal/worker/relay"
-	"github.com/vortanix/vortanix/pkg/netaddr"
-	"github.com/vortanix/vortanix/pkg/secretbox"
-	"github.com/vortanix/vortanix/pkg/tenantpools"
+	"github.com/vortanixapp/panel/internal/worker/jobs"
+	"github.com/vortanixapp/panel/internal/worker/jobwake"
+	"github.com/vortanixapp/panel/internal/worker/mail"
+	"github.com/vortanixapp/panel/internal/worker/relay"
+	"github.com/vortanixapp/panel/pkg/netaddr"
+	"github.com/vortanixapp/panel/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/tenantpools"
 	"strings"
 )
 

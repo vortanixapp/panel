@@ -15,8 +15,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/vortanix/vortanix/internal/agent/docker"
-	"github.com/vortanix/vortanix/pkg/protocol"
+	"github.com/vortanixapp/panel/internal/agent/docker"
+	"github.com/vortanixapp/panel/pkg/protocol"
 )
 
 type Agent struct {

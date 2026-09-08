@@ -8,8 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"github.com/vortanix/vortanix/pkg/metricsquery"
-	"github.com/vortanix/vortanix/pkg/tenantpools"
+	"github.com/vortanixapp/panel/pkg/metricsquery"
+	"github.com/vortanixapp/panel/pkg/tenantpools"
 )
 
 const (

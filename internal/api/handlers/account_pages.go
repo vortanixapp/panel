@@ -15,8 +15,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/vortanix/vortanix/internal/api/payments"
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 var auditCategories = []struct {

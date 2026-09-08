@@ -15,12 +15,12 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/vortanix/vortanix/internal/relay/handlers"
-	"github.com/vortanix/vortanix/internal/relay/hub"
-	"github.com/vortanix/vortanix/pkg/httplog"
-	"github.com/vortanix/vortanix/pkg/httpprom"
-	"github.com/vortanix/vortanix/pkg/netaddr"
-	"github.com/vortanix/vortanix/pkg/tenantpools"
+	"github.com/vortanixapp/panel/internal/relay/handlers"
+	"github.com/vortanixapp/panel/internal/relay/hub"
+	"github.com/vortanixapp/panel/pkg/httplog"
+	"github.com/vortanixapp/panel/pkg/httpprom"
+	"github.com/vortanixapp/panel/pkg/netaddr"
+	"github.com/vortanixapp/panel/pkg/tenantpools"
 )
 
 func main() {

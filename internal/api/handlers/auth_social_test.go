@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vortanix/vortanix/pkg/oauth"
+	"github.com/vortanixapp/panel/pkg/oauth"
 )
 
 func TestVerifyTelegramHash(t *testing.T) {

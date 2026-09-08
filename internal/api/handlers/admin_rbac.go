@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
 )
 
 const (

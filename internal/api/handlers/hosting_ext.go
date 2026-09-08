@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/internal/api/hosting"
+	"github.com/vortanixapp/panel/internal/api/hosting"
 )
 
 func (h *Handler) ListHostingDomains(w http.ResponseWriter, r *http.Request) {

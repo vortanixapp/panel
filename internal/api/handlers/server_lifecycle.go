@@ -6,8 +6,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/vortanix/vortanix/internal/api/jobwake"
-	"github.com/vortanix/vortanix/internal/api/relay"
+	"github.com/vortanixapp/panel/internal/api/jobwake"
+	"github.com/vortanixapp/panel/internal/api/relay"
 )
 
 func (h *Handler) UpdateServerGame(w http.ResponseWriter, r *http.Request) {

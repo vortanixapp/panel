@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/internal/api/jobwake"
+	"github.com/vortanixapp/panel/internal/api/jobwake"
 )
 
 func (h *Handler) ListSupportTickets(w http.ResponseWriter, r *http.Request) {

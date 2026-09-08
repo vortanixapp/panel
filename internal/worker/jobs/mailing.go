@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanix/vortanix/internal/worker/mail"
+	"github.com/vortanixapp/panel/internal/worker/mail"
 )
 
 func (r *Runner) MailingLoop(ctx context.Context, wake <-chan struct{}) {

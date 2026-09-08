@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/vortanix/vortanix/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/protocol"
 )
 
 func TenantChannel(tenantID string) string {

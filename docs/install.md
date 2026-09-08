@@ -16,7 +16,7 @@ from inside the panel.
 ## Install
 
 ```bash
-git clone https://github.com/vortanix/vortanix
+git clone https://github.com/vortanixapp/panel
 cd vortanix
 cp deploy/.env.example deploy/.env
 ```

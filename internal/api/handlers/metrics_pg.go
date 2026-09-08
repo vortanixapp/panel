@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/vortanix/vortanix/pkg/metricsquery"
+	"github.com/vortanixapp/panel/pkg/metricsquery"
 )
 
 func getMetricsFromPG(ctx context.Context, db *pgxpool.Pool, serverID string, hours, limit int) ([]map[string]any, error) {

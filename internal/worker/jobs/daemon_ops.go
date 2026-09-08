@@ -12,7 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanix/vortanix/pkg/sshclient"
+	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 func (r *Runner) DaemonLoop(ctx context.Context, wake <-chan struct{}) {

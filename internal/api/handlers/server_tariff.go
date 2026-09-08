@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanix/vortanix/internal/api/pricing"
+	"github.com/vortanixapp/panel/internal/api/pricing"
 )
 
 func (h *Handler) ServerTariffList(w http.ResponseWriter, r *http.Request) {

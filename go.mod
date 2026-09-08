@@ -1,4 +1,4 @@
-module github.com/vortanix/vortanix
+module github.com/vortanixapp/panel
 
 go 1.26.0
 

@@ -10,9 +10,9 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/vortanix/vortanix/internal/console/relayclient"
-	"github.com/vortanix/vortanix/pkg/paneljwt"
-	"github.com/vortanix/vortanix/pkg/protocol"
+	"github.com/vortanixapp/panel/internal/console/relayclient"
+	"github.com/vortanixapp/panel/pkg/paneljwt"
+	"github.com/vortanixapp/panel/pkg/protocol"
 )
 
 type Handler struct {

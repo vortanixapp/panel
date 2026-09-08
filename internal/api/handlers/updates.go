@@ -34,7 +34,7 @@ func updateEnv(key, fallback string) string {
 }
 
 func updateRepo() string {
-	return strings.Trim(updateEnv("UPDATE_REPO", "vortanix/vortanix"), "/")
+	return strings.Trim(updateEnv("UPDATE_REPO", "vortanixapp/panel"), "/")
 }
 
 func panelVersion() string {

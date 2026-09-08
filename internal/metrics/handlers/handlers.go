@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/vortanix/vortanix/internal/metrics/store"
+	"github.com/vortanixapp/panel/internal/metrics/store"
 )
 
 type Handler struct {

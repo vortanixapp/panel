@@ -15,8 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/google/uuid"
 
-	"github.com/vortanix/vortanix/internal/worker/relay"
-	"github.com/vortanix/vortanix/pkg/sshclient"
+	"github.com/vortanixapp/panel/internal/worker/relay"
+	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 const (

@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/vortanix/vortanix/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
 )
 
 func (h *Handler) SupportCreateForm(w http.ResponseWriter, r *http.Request) {

@@ -13,8 +13,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
-	"github.com/vortanix/vortanix/pkg/sshclient"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 const setupProgressFlushInterval = 700 * time.Millisecond

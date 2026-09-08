@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vortanix/vortanix/internal/api/jobwake"
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
-	"github.com/vortanix/vortanix/pkg/notify"
-	"github.com/vortanix/vortanix/pkg/portalloc"
+	"github.com/vortanixapp/panel/internal/api/jobwake"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/portalloc"
 )
 
 type trialSettings struct {

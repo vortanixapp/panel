@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 // Оповещения из воркера и разбор очереди доставки.

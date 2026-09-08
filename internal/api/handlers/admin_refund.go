@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/vortanix/vortanix/internal/api/payments"
-	"github.com/vortanix/vortanix/pkg/notify"
+	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 type refundBody struct {

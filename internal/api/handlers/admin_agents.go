@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanix/vortanix/internal/api/sshclient"
+	"github.com/vortanixapp/panel/internal/api/sshclient"
 )
 
 const agentContainerName = "vortanix-agent"

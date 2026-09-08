@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vortanix/vortanix/internal/worker/jobs"
-	"github.com/vortanix/vortanix/internal/worker/mail"
-	"github.com/vortanix/vortanix/internal/worker/relay"
-	"github.com/vortanix/vortanix/pkg/secretbox"
-	"github.com/vortanix/vortanix/pkg/tenantpools"
+	"github.com/vortanixapp/panel/internal/worker/jobs"
+	"github.com/vortanixapp/panel/internal/worker/mail"
+	"github.com/vortanixapp/panel/internal/worker/relay"
+	"github.com/vortanixapp/panel/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/tenantpools"
 )
 
 const tenantRescanInterval = time.Minute

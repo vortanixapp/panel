@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vortanix/vortanix/internal/api/mail"
-	"github.com/vortanix/vortanix/internal/api/payments"
-	"github.com/vortanix/vortanix/pkg/secretbox"
+	"github.com/vortanixapp/panel/internal/api/mail"
+	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/secretbox"
 	"golang.org/x/crypto/ssh"
 )
 

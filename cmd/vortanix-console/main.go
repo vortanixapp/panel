@@ -16,11 +16,11 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/vortanix/vortanix/internal/console/handlers"
-	"github.com/vortanix/vortanix/internal/console/relayclient"
-	"github.com/vortanix/vortanix/pkg/httplog"
-	"github.com/vortanix/vortanix/pkg/netaddr"
-	"github.com/vortanix/vortanix/pkg/paneljwt"
+	"github.com/vortanixapp/panel/internal/console/handlers"
+	"github.com/vortanixapp/panel/internal/console/relayclient"
+	"github.com/vortanixapp/panel/pkg/httplog"
+	"github.com/vortanixapp/panel/pkg/netaddr"
+	"github.com/vortanixapp/panel/pkg/paneljwt"
 )
 
 func main() {

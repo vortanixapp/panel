@@ -3,7 +3,7 @@ package gamesettings
 import (
 	"testing"
 
-	"github.com/vortanix/vortanix/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 // Не проверка, а сводка: сколько игр каталога уже описано. Удобно смотреть в

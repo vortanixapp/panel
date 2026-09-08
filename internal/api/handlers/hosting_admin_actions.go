@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/vortanix/vortanix/internal/api/hosting"
+	"github.com/vortanixapp/panel/internal/api/hosting"
 )
 
 func (h *Handler) adminHostingPanelRef(r *http.Request, tenantID, accountID string) (string, hosting.ServerConfig, error) {
