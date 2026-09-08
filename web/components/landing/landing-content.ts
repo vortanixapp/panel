@@ -10,31 +10,16 @@ export const LANDING_DEPLOY_LOG = [
   { t: "14,7", text: "anti-ddos profile applied · L3-L7", color: "text-muted-foreground" },
   { t: "22,9", text: "paper 1.21.4 downloaded · aikar flags set", color: "text-muted-foreground" },
   { t: "36,5", text: "world generated · 4 096 chunks", color: "text-muted-foreground" },
-  { t: "40,2", text: "server online · 194.36.12.88:25565", color: "text-primary" },
+  { t: "40,2", text: "server online · 203.0.113.10:25565", color: "text-primary" },
 ] as const;
 
 export const LANDING_FEATURED_GAMES = [
-  {
-    name: "Minecraft",
-    tag: "MC",
-    from: 199,
-    image: "/landing/games/minecraft.svg",
-  },
-  { name: "CS2", tag: "CS2", from: 349, image: "/landing/games/cs2.jpg" },
-  { name: "Rust", tag: "RST", from: 690, image: "/landing/games/rust.jpg" },
-  { name: "ARK: SE", tag: "ARK", from: 790, image: "/landing/games/ark.jpg" },
-  {
-    name: "Valheim",
-    tag: "VH",
-    from: 399,
-    image: "/landing/games/valheim.jpg",
-  },
-  {
-    name: "Palworld",
-    tag: "PAL",
-    from: 590,
-    image: "/landing/games/palworld.jpg",
-  },
+  { name: "Minecraft", tag: "MC", from: 199, hue: 122 },
+  { name: "CS2", tag: "CS2", from: 349, hue: 32 },
+  { name: "Rust", tag: "RST", from: 690, hue: 14 },
+  { name: "ARK: SE", tag: "ARK", from: 790, hue: 190 },
+  { name: "Valheim", tag: "VH", from: 399, hue: 212 },
+  { name: "Palworld", tag: "PAL", from: 590, hue: 268 },
 ] as const;
 
 export const LANDING_MORE_GAMES = [
@@ -241,29 +226,6 @@ export function landingLocations(t: TranslateFn) {
     status: row.ok ? available : lowSlots,
     ok: row.ok,
   }));
-}
-
-export function landingQuotes(t: TranslateFn) {
-  return [
-    {
-      text: t("landing.quote1.text"),
-      name: t("landing.quote1.name"),
-      meta: t("landing.quote1.meta"),
-      avatar: "/landing/avatars/artem.svg",
-    },
-    {
-      text: t("landing.quote2.text"),
-      name: t("landing.quote2.name"),
-      meta: t("landing.quote2.meta"),
-      avatar: "/landing/avatars/maria.svg",
-    },
-    {
-      text: t("landing.quote3.text"),
-      name: t("landing.quote3.name"),
-      meta: t("landing.quote3.meta"),
-      avatar: "/landing/avatars/kirill.svg",
-    },
-  ];
 }
 
 export function landingFaq(t: TranslateFn) {

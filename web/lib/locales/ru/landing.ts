@@ -122,18 +122,6 @@ export const landing = {
   "landing.location.status_low_slots": "Мало слотов",
 
   // Отзывы
-  "landing.quote1.text":
-    "Перевезли 12 серверов сети с прошлого хостера за один вечер. TPS на тяжёлом модпаке вырос с 15 до 19,8 без смены конфигов.",
-  "landing.quote1.name": "Артём Соколов",
-  "landing.quote1.meta": "RuCraft · 4 200 игроков в пике",
-  "landing.quote2.text":
-    "Единственный хостинг, где в тикете отвечает человек, читающий stacktrace. За два года — один инцидент, и постмортем вышел раньше, чем мы спросили.",
-  "landing.quote2.name": "Мария Левченко",
-  "landing.quote2.meta": "админ сети CS2, 40 серверов",
-  "landing.quote3.text":
-    "Часовая тарификация закрыла нашу боль с турнирами: поднимаем 30 серверов на выходные и гасим в воскресенье вечером.",
-  "landing.quote3.name": "Кирилл Дёмин",
-  "landing.quote3.meta": "организатор лиги, 180 матчей в сезон",
 
   // Частые вопросы
   "landing.faq1.q": "Что будет, если сервер упрётся в лимит памяти?",
@@ -221,7 +209,6 @@ export const landing = {
   "landing.locations.col_uplink": "Аплинк",
   "landing.locations.col_capacity": "Ёмкость",
   "landing.locations.col_status": "Статус",
-  "landing.quotes.kicker": "Отзывы клиентов",
   "landing.faq.kicker": "Частые вопросы",
   "landing.pricing.kicker": "Тарифы",
   "landing.pricing.per_month": "₽/мес",

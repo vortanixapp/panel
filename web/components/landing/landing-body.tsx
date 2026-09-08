@@ -21,7 +21,6 @@ import {
   landingPanelMetrics,
   landingPanelPoints,
   landingPricing,
-  landingQuotes,
   landingSteps,
 } from "@/components/landing/landing-content";
 import { useLandingReveal } from "@/components/landing/use-landing-reveal";
@@ -94,7 +93,6 @@ export function LandingBody() {
   const panelPoints = landingPanelPoints(t);
   const panelMetrics = landingPanelMetrics(t);
   const locations = landingLocations(t);
-  const quotes = landingQuotes(t);
   const faq = landingFaq(t);
   const pricing = landingPricing(t);
 
@@ -176,7 +174,7 @@ export function LandingBody() {
               <div className="flex items-center gap-2.5 border-b border-border bg-[var(--vx-surface)] px-4 py-3">
                 <span className="vx-pulse size-[9px] rounded-full bg-primary" />
                 <span className="font-mono text-[11.5px] text-[var(--vx-ink-faint)]">
-                  deploy · survival.vortanix.net
+                  deploy · survival.example.net
                 </span>
                 <span className="ml-auto font-mono text-[11px] text-primary">
                   40,2 c
@@ -279,15 +277,17 @@ export function LandingBody() {
                 style={{ transitionDelay: `${(i % 3) * 60}ms` }}
                 className="vx-reveal block overflow-hidden rounded-[14px] border border-border bg-[var(--vx-surface)] transition-[border-color,transform] duration-200 hover:-translate-y-1 hover:border-[var(--vx-btn-line)]"
               >
-                <div className="relative h-[172px] bg-[var(--vx-surface-4)]">
-                  <Image
-                    src={g.image}
-                    alt={g.name}
-                    fill
-                    unoptimized={g.image.endsWith(".svg")}
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
-                    className="object-cover"
-                  />
+                <div
+                  className="relative h-[172px] bg-[var(--vx-surface-4)]"
+                  style={{
+                    backgroundImage: `radial-gradient(120% 90% at 20% 0%, hsl(${g.hue} 62% 32%) 0%, hsl(${g.hue} 48% 16%) 45%, var(--vx-surface-4) 100%)`,
+                  }}
+                >
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <span className="font-mono text-[46px] font-bold tracking-[-0.03em] text-white/10">
+                      {g.tag}
+                    </span>
+                  </div>
                   <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(10,11,13,0)_45%,rgba(10,11,13,0.88))]" />
                   <div className="pointer-events-none absolute top-3 left-3 flex size-[38px] items-center justify-center rounded-[9px] border border-[var(--vx-hairline)] bg-[rgba(15,16,18,0.85)] font-mono text-[11px] font-bold text-primary">
                     {g.tag}
@@ -437,12 +437,18 @@ export function LandingBody() {
             data-reveal
             className="vx-reveal relative mt-3.5 h-[220px] overflow-hidden rounded-[14px] border border-border bg-[var(--vx-surface-4)] sm:h-[300px]"
           >
-            <Image
-              src="/landing/datacenter.jpg"
-              alt={t("landing.hardware.photo_alt")}
-              fill
-              sizes="(max-width: 1180px) 100vw, 1180px"
-              className="object-cover grayscale-[0.85] brightness-[0.72]"
+            <div
+              aria-label={t("landing.hardware.photo_alt")}
+              role="img"
+              className="absolute inset-0"
+              style={{
+                backgroundColor: "var(--vx-surface-4)",
+                backgroundImage: [
+                  "repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 2px, transparent 2px 46px)",
+                  "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 18px)",
+                  "radial-gradient(80% 120% at 78% 12%, rgba(120,180,255,0.16) 0%, transparent 62%)",
+                ].join(","),
+              }}
             />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(10,11,13,0.94),rgba(10,11,13,0.4)_60%,rgba(10,11,13,0))]" />
             <div className="pointer-events-none absolute bottom-6 left-6 max-w-[420px] sm:left-[30px]">
@@ -492,7 +498,7 @@ export function LandingBody() {
               <div className="flex items-center gap-2.5 border-b border-border bg-[var(--vx-surface)] px-4 py-[13px]">
                 <span className="vx-pulse size-[7px] rounded-full bg-primary" />
                 <span className="text-[12.5px] font-semibold">
-                  survival.vortanix.net
+                  survival.example.net
                 </span>
                 <span className="ml-auto font-mono text-[11px] text-[var(--vx-ink-faint)]">
                   Paper 1.21.4 · FRA-2
@@ -588,47 +594,6 @@ export function LandingBody() {
       </section>
       </LandingBlock>
 
-      <LandingBlock name="quotes" blocks={blocks}>
-      <section className="border-b border-border px-4 py-16 sm:px-10 sm:py-20">
-        <div className="mx-auto max-w-[1180px]">
-          <SectionKicker>{t("landing.quotes.kicker")}</SectionKicker>
-          <div className="grid gap-4 md:grid-cols-3">
-            {quotes.map((q, i) => (
-              <div
-                key={q.name}
-                data-reveal
-                style={{ transitionDelay: `${i * 60}ms` }}
-                className="vx-reveal flex flex-col rounded-[14px] border border-border bg-[var(--vx-surface)] px-[26px] py-7 transition-[border-color,transform] duration-200 hover:-translate-y-[3px] hover:border-[var(--vx-btn-line)]"
-              >
-                <div className="text-[15.5px] leading-[1.6] text-[#d6d7d9]">
-                  {q.text}
-                </div>
-                <div className="mt-auto flex items-center gap-3 pt-[22px]">
-                  <span className="relative block size-10 flex-shrink-0 overflow-hidden rounded-full bg-[var(--vx-surface-2)]">
-                    <Image
-                      src={q.avatar}
-                      alt=""
-                      fill
-                      unoptimized
-                      sizes="40px"
-                      className="object-cover"
-                    />
-                  </span>
-                  <span>
-                    <span className="block text-[13.5px] font-semibold">
-                      {q.name}
-                    </span>
-                    <span className="mt-[3px] block font-mono text-[11.5px] text-[var(--vx-ink-faint)]">
-                      {q.meta}
-                    </span>
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      </LandingBlock>
 
       <LandingBlock name="faq" blocks={blocks}>
       <section

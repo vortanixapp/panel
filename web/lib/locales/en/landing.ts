@@ -113,18 +113,6 @@ export const landing = {
   "landing.location.status_available": "Available",
   "landing.location.status_low_slots": "Few slots left",
 
-  "landing.quote1.text":
-    "We moved 12 network servers off our previous host in a single evening. TPS on a heavy modpack went from 15 to 19.8 without touching a config.",
-  "landing.quote1.name": "Artem Sokolov",
-  "landing.quote1.meta": "RuCraft · 4,200 players at peak",
-  "landing.quote2.text":
-    "The only host where the person answering the ticket actually reads the stacktrace. One incident in two years, and the postmortem landed before we asked for it.",
-  "landing.quote2.name": "Maria Levchenko",
-  "landing.quote2.meta": "CS2 network admin, 40 servers",
-  "landing.quote3.text":
-    "Hourly billing solved our tournament problem: we spin up 30 servers for the weekend and shut them down on Sunday evening.",
-  "landing.quote3.name": "Kirill Dyomin",
-  "landing.quote3.meta": "league organiser, 180 matches a season",
 
   "landing.faq1.q": "What happens if a server hits its memory limit?",
   "landing.faq1.a":
@@ -208,7 +196,6 @@ export const landing = {
   "landing.locations.col_uplink": "Uplink",
   "landing.locations.col_capacity": "Capacity",
   "landing.locations.col_status": "Status",
-  "landing.quotes.kicker": "Customer reviews",
   "landing.faq.kicker": "Frequently asked questions",
   "landing.pricing.kicker": "Plans",
   "landing.pricing.per_month": "₽/mo",

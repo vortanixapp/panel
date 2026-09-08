@@ -89,8 +89,9 @@ The extraction is not finished. Landing next:
 - [x] One panel, one owner, one database
 - [x] A compose file and an install guide
 - [x] Images published to GHCR on every tag
-- [ ] English as the default interface language
-- [ ] Landing page artwork we hold the rights to
+- [x] English as the default interface language
+- [x] A landing page that ships no artwork we do not own
+- [ ] API error messages in English (they are still Russian)
 
 ## Contributing
 
