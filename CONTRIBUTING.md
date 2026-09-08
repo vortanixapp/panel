@@ -38,8 +38,13 @@ cd web && npx tsc --noEmit
 
 ## Style
 
-- Comments explain **why**, not what. If a default looks arbitrary, the comment
-  should say what broke when it was something else.
+- **No comments.** The code carries its meaning in names and structure. If a
+  line needs a sentence next to it to be understood, rewrite the line. Build
+  and tool directives — `//go:build`, `//nolint`, `// @ts-ignore` and the like
+  — are not comments and must stay.
+- The reasoning goes in the commit message instead, and that makes the commit
+  message load-bearing: say what was broken and why this answer, not what the
+  patch touched.
 - Errors travel up. Do not swallow one into a `nil` or an empty string to make
   a signature tidy — a silent failure here means somebody's game server is
   quietly gone.
