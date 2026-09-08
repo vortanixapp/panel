@@ -220,16 +220,6 @@ export function adminSidebarNavGroups(): NavGroup[] {
         icon: Webhook,
       },
       {
-        title: t("nav.admin.license"),
-        url: "/admin/license",
-        icon: Key,
-      },
-      {
-        title: t("nav.admin.updates"),
-        url: "/admin/updates",
-        icon: CloudDownload,
-      },
-      {
         title: t("nav.admin.bug_report"),
         url: "/admin/bug-report",
         icon: Bug,

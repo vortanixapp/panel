@@ -262,57 +262,17 @@ export async function apiFetch<T>(
   return data as T;
 }
 
-export async function activateSetup(licenseKey: string, domain: string) {
-  return apiFetch<{
-    plan: string;
-    tenant_slug: string;
-    key_hint: string;
-    limits: { max_servers: number; max_nodes: number; max_admins: number; api_rpm: number };
-    license_expires_at: string | null;
-    domain: string;
-  }>("/v1/setup/activate", {
-    method: "POST",
-    body: JSON.stringify({ license_key: licenseKey, domain }),
-  });
-}
-
 export async function fetchSetupStatus() {
   return apiFetch<{
     bootstrapped: boolean;
-    activated: boolean;
-    plan: string;
-    key_hint: string;
-    limits: { max_servers: number; max_nodes: number; max_admins: number; api_rpm: number };
-    domain: string;
     suggested_domain: string;
   }>("/v1/setup/status");
 }
 
-export type LicenseStateResponse = {
-  state: "active" | "grace" | "read_only";
-  license_status: string;
-  plan: string;
-  key_hint: string;
-  legacy: boolean;
-  activated: boolean;
-  limits: { max_servers: number; max_nodes: number; max_admins: number; api_rpm: number };
-  usage: { servers: number; nodes: number; admins: number };
-  license_expires_at: string | null;
-  grace_until: string | null;
-  last_verified_at: string | null;
-  message: string;
-};
-
-export async function fetchLicenseState() {
-  return apiFetch<LicenseStateResponse>("/v1/license/state");
-}
-
-export async function bootstrapTenant(
-  licenseKey: string,
-  domain: string,
+export async function bootstrapPanel(
   email: string,
   password: string,
-  tenantName?: string
+  panelName?: string
 ) {
   return apiFetch<{
     access_token: string;
@@ -321,11 +281,9 @@ export async function bootstrapTenant(
   }>("/v1/tenants/bootstrap", {
     method: "POST",
     body: JSON.stringify({
-      license_key: licenseKey,
-      domain,
       owner_email: email,
       owner_password: password,
-      tenant_name: tenantName,
+      panel_name: panelName,
     }),
   });
 }
@@ -4009,53 +3967,6 @@ export function brandingUploadUrl(path: string): string {
   return `${API_URL}/v1/uploads/branding/${name}`;
 }
 
-export type LicenseLimits = {
-  max_servers: number;
-  max_nodes: number;
-  max_admins: number;
-  api_rpm: number;
-};
-
-export type AdminLicenseInfo = {
-  tenant_slug: string;
-  tenant_name: string;
-  plan: string;
-  installation_id: string;
-  state: "active" | "grace" | "read_only";
-  license_status: string;
-  key_hint: string;
-  legacy: boolean;
-  activated: boolean;
-  revision: number;
-  limits: LicenseLimits;
-  effective_limits: LicenseLimits;
-  api_write_rpm: number;
-  license_expires_at: string | null;
-  token_expires_at: string | null;
-  grace_until: string | null;
-  last_verified_at: string | null;
-  last_error: string;
-  message: string;
-  usage: { nodes: number; servers: number; admins: number };
-};
-
-export async function fetchAdminLicense() {
-  return apiFetch<AdminLicenseInfo>("/v1/admin/license");
-}
-
-export async function bindAdminLicenseKey(licenseKey: string) {
-  return apiFetch<{ state: string }>("/v1/admin/license/bind", {
-    method: "POST",
-    body: JSON.stringify({ license_key: licenseKey }),
-  });
-}
-
-export async function refreshAdminLicense() {
-  return apiFetch<{ status: string }>("/v1/admin/license/refresh", {
-    method: "POST",
-  });
-}
-
 export type AdminGroupsResponse = {
   groups: Record<string, string>;
   keys: string[];
@@ -4524,71 +4435,6 @@ export async function updateAdminPaymentProvider(
   });
 }
 
-export type AdminUpdatesDaemon = {
-  id: string;
-  name: string;
-  version: string;
-  status: string;
-  last_seen_at?: string;
-};
-
-// Три обновляемых части системы. У каждой своя версия, свои релизы и свой
-// журнал, поэтому страница обновлений разложена на вкладки.
-export type UpdateComponent = "panel-ui" | "agent" | "updater";
-
-export type AdminUpdateRelease = {
-  version: string;
-  channel: string;
-  published_at: string;
-  notes: string;
-  mandatory_after?: string | null;
-  is_target: boolean;
-  is_current: boolean;
-};
-
-// Агентов обновляет не служба обновления, а воркер заданиями по SSH — поэтому
-// журнал у них свой, из очереди задач.
-export type AdminAgentUpdateEvent = {
-  node: string;
-  status: string;
-  version: string;
-  error: string;
-  created_at: string;
-};
-
-export type AdminUpdatesInfo = {
-  component: UpdateComponent;
-  core_version: string;
-  current_version: string;
-  target_version: string;
-  update_available: boolean;
-  mandatory_after?: string | null;
-  overdue: boolean;
-  notes?: string;
-  deferred_until?: string | null;
-  /** Ставить обновления без участия владельца. По умолчанию выключено. */
-  auto_update?: boolean;
-  max_defer_hours: number;
-  last_verified_at?: string | null;
-  releases?: AdminUpdateRelease[];
-  daemons?: AdminUpdatesDaemon[];
-  events?: AdminUpdateEvent[];
-  agent_events?: AdminAgentUpdateEvent[];
-};
-
-export type AdminUpdateEvent = {
-  stage: string;
-  component?: string;
-  message: string;
-  version: string;
-  created_at: string;
-};
-
-export async function fetchAdminUpdates(component: UpdateComponent = "panel-ui", refresh = false) {
-  const params = new URLSearchParams({ component });
-  if (refresh) params.set("refresh", "1");
-  return apiFetch<AdminUpdatesInfo>(`/v1/admin/updates?${params.toString()}`);
-}
 
 export async function fetchPanelVersion(): Promise<string> {
   try {
@@ -4599,29 +4445,6 @@ export async function fetchPanelVersion(): Promise<string> {
   } catch {
     return "";
   }
-}
-
-// Компонент обязателен: «Обновить сейчас» на вкладке службы обновления и на
-// вкладке панели — разные команды. Без него признак «применить сейчас»
-// доставался панели, а нажатие на другой вкладке пропадало впустую.
-export async function applyAdminUpdates(component: UpdateComponent) {
-  return apiFetch<{ status: string }>(`/v1/admin/updates`, {
-    method: "POST",
-    body: JSON.stringify({ component }),
-  });
-}
-
-export async function setAdminUpdatesAuto(enabled: boolean) {
-  return apiFetch<{ auto_update: boolean }>(`/v1/admin/updates/auto`, {
-    method: "POST",
-    body: JSON.stringify({ enabled }),
-  });
-}
-
-export async function updateDaemon(nodeId: string) {
-  return apiFetch<{ status: string }>(`/v1/admin/locations/${nodeId}/daemon/update`, {
-    method: "POST",
-  });
 }
 
 export type AdminJob = {

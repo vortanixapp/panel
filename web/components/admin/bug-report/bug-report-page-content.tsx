@@ -29,7 +29,6 @@ import {
   createAdminBugReport,
   fetchAdminBugReports,
   fetchAdminLogsFiltered,
-  fetchAdminUpdates,
   fetchNodes,
   fetchPanelVersion,
   uploadSupportAttachment,
@@ -45,19 +44,13 @@ import { useT } from "@/hooks/use-translations";
 
 type Severity = "low" | "medium" | "high" | "critical";
 
-/** Модули монорепозитория: компонент выбирается списком, а не вводится руками.
- *  Свободный ввод давал «panel», «Panel UI» и «фронт» в одном поле, и очередь
- *  отчётов переставала группироваться по коду. */
 const COMPONENTS = [
   "panel-ui",
   "core-api",
   "agent",
   "agent-relay",
   "console-gateway",
-  "billing",
-  "license-service",
   "metrics-ingest",
-  "updater",
   "worker",
   "status-page",
 ];
@@ -239,11 +232,6 @@ export function BugReportPageContent() {
     };
   }, []);
 
-  const updates = useQuery({
-    queryKey: ["admin-updates", "panel-ui"],
-    queryFn: () => fetchAdminUpdates("panel-ui"),
-    staleTime: 60_000,
-  });
   const panelBuild = useQuery({
     queryKey: ["panel-version"],
     queryFn: fetchPanelVersion,
@@ -269,14 +257,12 @@ export function BugReportPageContent() {
 
   const env: { label: string; value: string }[] = useMemo(
     () => [
-      { label: t("admin.bug.env_panel"), value: updates.data?.current_version ?? "—" },
       { label: t("admin.bug.env_build"), value: panelBuild.data || "—" },
-      { label: t("admin.bug.env_core"), value: updates.data?.core_version ?? "—" },
       { label: t("admin.bug.env_browser"), value: browserLabel(ua) || "—" },
       { label: t("admin.bug.env_account"), value: me?.email ?? "—" },
       { label: t("admin.bug.env_time"), value: clock || "—" },
     ],
-    [t, updates.data, panelBuild.data, ua, me?.email, clock]
+    [t, panelBuild.data, ua, me?.email, clock]
   );
 
   const myReports = reports.data?.mine ?? 0;
@@ -675,16 +661,6 @@ export function BugReportPageContent() {
                   </div>
                 ))}
               </div>
-              {updates.isError && (
-                <span className="text-[11.5px]" style={{ color: "var(--vx-danger)" }}>
-                  {t("admin.bug.env_failed", {
-                    message:
-                      updates.error instanceof Error
-                        ? updates.error.message
-                        : String(updates.error),
-                  })}
-                </span>
-              )}
               <label className="flex cursor-pointer items-center gap-2.5">
                 <Switch checked={attachLogs} onCheckedChange={setAttachLogs} />
                 <span className="text-[12.5px]">

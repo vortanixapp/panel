@@ -10,7 +10,6 @@ import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { useLiveSync } from "@/hooks/use-live-sync";
 import type { PanelVariant } from "@/lib/panel-paths";
 import { VxPageLoader } from "@/components/vx/loader";
-import { LicenseBanner } from "@/components/license-banner";
 import { useT } from "@/hooks/use-translations";
 
 function hasStoredSession() {
@@ -61,7 +60,6 @@ export function DashboardLayout({
 
   return (
     <AuthenticatedLayout email={me.email} role={me.role} variant={variant}>
-      <LicenseBanner />
       {children}
     </AuthenticatedLayout>
   );

@@ -79,8 +79,6 @@ const OVERRIDABLE_KEYS: { key: string; groupKey: string }[] = [
   { key: "nav.admin.logs", groupKey: "admin.language.group.admin_menu" },
   { key: "nav.admin.security", groupKey: "admin.language.group.admin_menu" },
   { key: "nav.admin.integrations", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.license", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.updates", groupKey: "admin.language.group.admin_menu" },
   { key: "nav.admin.bug_report", groupKey: "admin.language.group.admin_menu" },
 
   { key: "nav.settings", groupKey: "admin.language.group.settings_menu" },

@@ -58,8 +58,6 @@ func rbacAllPermissionKeys() []string {
 		"admin.logs.read",
 		"admin.jobs.read",
 		"admin.jobs.write",
-		"admin.license.write",
-		"admin.updates.write",
 		"admin.groups.write",
 		"admin.hosting.read",
 		"admin.hosting.write",
@@ -109,8 +107,6 @@ func rbacPermissionLabels() map[string]string {
 		"admin.logs.read":               "Логи (просмотр)",
 		"admin.jobs.read":               "Очередь задач (просмотр)",
 		"admin.jobs.write":              "Очередь задач (перезапуск/отмена)",
-		"admin.license.write":           "Лицензия (изменение)",
-		"admin.updates.write":           "Обновления (запуск)",
 		"admin.groups.write":            "Группы (управление правами)",
 		"admin.hosting.read":            "Веб-хостинг (просмотр)",
 		"admin.hosting.write":           "Веб-хостинг (управление)",
@@ -339,9 +335,6 @@ func rbacResolveAdminPermission(path, method string) (permission string, bypass 
 	}
 
 	if section == "locations" {
-		if strings.Contains(slashPath, "/daemon/update") {
-			return "admin.updates.write", false
-		}
 		if strings.Contains(slashPath, "/daemon") || strings.Contains(slashPath, "/pull-daemon") {
 			return readWrite("admin.daemons.read", "admin.daemons.write")
 		}
@@ -395,10 +388,6 @@ func rbacResolveAdminPermission(path, method string) (permission string, bypass 
 		return "admin.logs.read", false
 	case "jobs":
 		return readWrite("admin.jobs.read", "admin.jobs.write")
-	case "license":
-		return "admin.license.write", false
-	case "updates":
-		return "admin.updates.write", false
 	case "groups":
 		return "admin.groups.write", false
 	case "locations", "images":

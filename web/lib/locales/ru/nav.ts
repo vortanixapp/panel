@@ -44,8 +44,6 @@ export const nav = {
   "nav.admin.logs": "Логи",
   "nav.admin.security": "Безопасность",
   "nav.admin.integrations": "Интеграции",
-  "nav.admin.license": "Лицензия",
-  "nav.admin.updates": "Обновления",
   "nav.admin.bug_report": "Сообщить об ошибке",
 
   // Подменю настроек ведёт на одни и те же страницы из обеих панелей,

@@ -110,38 +110,30 @@ export const auth = {
     "Could not confirm the email. Sign in to your account and try again.",
   "auth.verify.resend_failed": "Could not send the email. Sign in to your account.",
 
-  "auth.setup.title": "Panel activation",
+  "auth.setup.title": "Panel setup",
   "auth.setup.subtitle":
     "A one-time setup — this page will not open again afterwards",
   "auth.setup.aside_title": "The panel is almost ready",
   "auth.setup.aside_text":
-    "All that is left is to activate the license and create the owner. It takes a minute.",
-  "auth.setup.aside_license_title": "The license binds to this machine",
-  "auth.setup.aside_license_note":
-    "The key from your Vortanix account, section “My panels”",
+    "All that is left is to name the panel and create the owner. It takes a minute.",
   "auth.setup.aside_owner_title": "The panel owner will be created",
   "auth.setup.aside_owner_note":
-    "Their email and password are the only way in after activation",
-  "auth.setup.aside_domain_title": "The address can be changed later",
-  "auth.setup.aside_domain_note":
-    "Until a domain is set, the panel is available at the machine's IP address",
-  "auth.setup.tenant_footer": "tenant:",
-  "auth.setup.license_label": "Activation key",
-  "auth.setup.license_hint":
-    "Issued in your Vortanix account, section “My panels”.",
-  "auth.setup.domain_label": "Panel address",
-  "auth.setup.domain_hint": "Filled in from the address bar.",
-  "auth.setup.tenant_label": "Hosting name",
-  "auth.setup.tenant_placeholder": "How your customers will see you",
-  "auth.setup.tenant_hint": "Can be changed later.",
+    "Their email and password are the only way in afterwards",
+  "auth.setup.aside_name_title": "The name can be changed later",
+  "auth.setup.aside_name_note":
+    "It is shown to your customers and in mail sent by the panel",
+  "auth.setup.aside_local_title": "Nothing leaves this machine",
+  "auth.setup.aside_local_note":
+    "The panel runs on its own — no keys, no calls to anyone else's servers",
+  "auth.setup.panel_label": "Panel name",
+  "auth.setup.panel_placeholder": "How your customers will see you",
+  "auth.setup.panel_hint": "Can be changed later.",
   "auth.setup.owner_email_label": "Owner email",
   "auth.setup.owner_password_label": "Owner password",
   "auth.setup.password_hint": "At least 8 characters.",
-  "auth.setup.submit": "Activate the panel",
-  "auth.setup.submitting": "Activating…",
+  "auth.setup.submit": "Set up the panel",
+  "auth.setup.submitting": "Setting up…",
   "auth.setup.failed": "Setup error",
-  "auth.setup.error_license_required": "Enter the license key",
-  "auth.setup.error_domain_required": "Enter the panel domain",
-  "auth.setup.error_tenant_required": "Enter the hosting name",
+  "auth.setup.error_panel_required": "Enter the panel name",
   "auth.setup.error_email_invalid": "Enter a valid owner email",
 };

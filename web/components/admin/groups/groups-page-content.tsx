@@ -38,8 +38,6 @@ const CATEGORY_LABEL_KEYS: Record<string, string> = {
   payment_providers: "admin.groups.cat.payment_providers",
   language: "admin.groups.cat.language",
   logs: "admin.groups.cat.logs",
-  license: "admin.groups.cat.license",
-  updates: "admin.groups.cat.updates",
   groups: "admin.groups.cat.groups",
   hosting: "admin.groups.cat.hosting",
 };

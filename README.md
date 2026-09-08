@@ -34,20 +34,25 @@ go build ./...
 cd web && npm ci && npm run build
 ```
 
-That much works today. **Running it does not yet** — the setup wizard still
-demands a licence token from a service that is not part of this repository, so
-there is no way to create the first account. That is the top item on the
-roadmap below, and until it lands there is no install guide to point you at.
+Point it at a PostgreSQL database and a Redis, run the migrations in
+`migrations/core`, start `vortanix-api` and the web app, and the first visit
+opens the setup wizard: panel name, owner email, owner password. Nothing else
+is asked for, and nothing is checked against any server of ours — the panel has
+no licence and no phone-home.
 
-The compose files under `deploy/` are the ones the closed product used: they
-pull prebuilt images from a private registry and will not work for you. They
-are here as a starting point, not as instructions.
+**There is still no packaged install.** The compose files under `deploy/` are
+the ones the closed product used: they pull prebuilt images from a private
+registry and will not work for you. Replacing them, and publishing images
+anyone can pull, is the next thing on the roadmap.
 
 ## Layout
 
 | Path | What lives there |
 |---|---|
-| `cmd/vortanix` | The panel: API, job worker, node relay, console gateway, metrics |
+| `cmd/vortanix-api` | The panel API |
+| `cmd/vortanix-worker` | Job queue: provisioning, backups, mail |
+| `cmd/vortanix-relay`, `cmd/vortanix-console` | The link to game nodes |
+| `cmd/vortanix-metrics`, `cmd/vortanix-status` | Metrics intake, status page |
 | `cmd/vortanix-agent` | The daemon that runs on each game node |
 | `internal/` | Panel implementation |
 | `pkg/` | Packages meant to be imported from outside |
@@ -55,18 +60,20 @@ are here as a starting point, not as instructions.
 | `migrations/` | Database schema |
 | `deploy/` | Compose files, systemd units, game image recipes |
 
-The panel is a single binary. By default it runs every component in one
-process, which is what a single-machine install wants. Flags split them apart
-when you outgrow that.
+One panel, one owner, one database. There is no multi-tenancy and no tenant
+registry: this is software you run for yourself, not a platform hosting other
+people's panels.
 
 ## Roadmap
 
 The extraction is not finished. Landing next:
 
-- [ ] Setup without an external licence service
-- [ ] Single-tenant mode as the default
+- [x] Setup without an external licence service
+- [x] One panel, one owner, one database
+- [ ] A compose file and an install guide that work from a clean machine
 - [ ] Prebuilt images on a public registry
 - [ ] English as the default interface language
+- [ ] Landing page artwork we hold the rights to
 
 ## Contributing
 

@@ -42,8 +42,6 @@ export const nav = {
   "nav.admin.logs": "Logs",
   "nav.admin.security": "Security",
   "nav.admin.integrations": "Integrations",
-  "nav.admin.license": "License",
-  "nav.admin.updates": "Updates",
   "nav.admin.bug_report": "Report a bug",
 
   "nav.settings": "Settings",
