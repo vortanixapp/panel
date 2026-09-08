@@ -45,8 +45,12 @@ command.
 Step by step, including reverse proxies, backups and what to do when it does
 not come up: [docs/install.md](docs/install.md).
 
-> The images are built from source on your machine. Prebuilt images anyone can
-> pull are on the roadmap; until then the first `up` takes a few minutes.
+That builds the images from source. To pull published ones instead, add the
+overlay:
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.images.yml up -d
+```
 
 ## Building without Docker
 
@@ -84,7 +88,7 @@ The extraction is not finished. Landing next:
 - [x] Setup without an external licence service
 - [x] One panel, one owner, one database
 - [x] A compose file and an install guide
-- [ ] Prebuilt images on a public registry
+- [x] Images published to GHCR on every tag
 - [ ] English as the default interface language
 - [ ] Landing page artwork we hold the rights to
 

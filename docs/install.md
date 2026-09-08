@@ -47,6 +47,17 @@ docker compose -f deploy/docker-compose.yml up -d --build
 The first build takes a few minutes. The database schema is created on the
 first start of the API — there is no separate migration step.
 
+If you would rather not build anything, add the images overlay and published
+images are pulled instead:
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.images.yml up -d
+```
+
+Pin a version with `VORTANIX_VERSION` in `deploy/.env` — `latest` moves under
+you on the next pull, which is rarely what you want on a machine other people
+depend on.
+
 Open `http://localhost:3000`. The setup wizard asks for a panel name and the
 owner's email and password. That is the whole setup: there is no licence key,
 no activation, and nothing is sent anywhere.
