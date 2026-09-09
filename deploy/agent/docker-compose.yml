@@ -1,0 +1,19 @@
+services:
+  agent:
+    container_name: vortanix-agent
+    image: ${AGENT_IMAGE:-ghcr.io/vortanixapp/vortanix-agent:latest}
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+      args:
+        COMPONENT: vortanix-agent
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      RELAY_URL: ${RELAY_URL:?внешний адрес relay панели, вида wss://panel.example.com/v1/agent/connect}
+      AGENT_TOKEN: ${AGENT_TOKEN:?токен ноды из «Локации» в панели}
+      NODE_ID: ${NODE_ID:?идентификатор ноды из «Локации» в панели}
+      VORTANIX_DATA_DIR: /var/lib/vortanix/servers
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/vortanix/servers:/var/lib/vortanix/servers

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180" role="img" aria-label="Minecraft">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="hsl(104, 40%, 17%)"/>
+      <stop offset="1" stop-color="hsl(130, 36%, 8%)"/>
+    </linearGradient>
+    <pattern id="stripes" width="14" height="14" patternTransform="rotate(35)" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="none"/>
+      <line x1="0" y1="0" x2="0" y2="14" stroke="hsl(104, 60%, 70%)" stroke-opacity="0.06" stroke-width="7"/>
+    </pattern>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="hsl(104, 72%, 58%)" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="hsl(104, 72%, 58%)" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.5" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.55"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="320" height="180" fill="url(#bg)"/>
+  <rect width="320" height="180" fill="url(#stripes)"/>
+  <circle cx="252" cy="40" r="104" fill="url(#glow)"/>
+  <rect x="186" y="96" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.030"/>
+  <rect x="206" y="96" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.046"/>
+  <rect x="226" y="96" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.062"/>
+  <rect x="246" y="96" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.078"/>
+  <rect x="266" y="96" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.094"/>
+  <rect x="286" y="96" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.030"/>
+  <rect x="306" y="96" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.046"/>
+  <rect x="186" y="116" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.062"/>
+  <rect x="206" y="116" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.078"/>
+  <rect x="226" y="116" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.094"/>
+  <rect x="246" y="116" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.030"/>
+  <rect x="266" y="116" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.046"/>
+  <rect x="286" y="116" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.062"/>
+  <rect x="306" y="116" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.078"/>
+  <rect x="186" y="136" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.094"/>
+  <rect x="206" y="136" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.030"/>
+  <rect x="226" y="136" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.046"/>
+  <rect x="246" y="136" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.062"/>
+  <rect x="266" y="136" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.078"/>
+  <rect x="286" y="136" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.094"/>
+  <rect x="306" y="136" width="16" height="16" rx="3" fill="hsl(104, 70%, 72%)" fill-opacity="0.030"/>
+  <rect width="320" height="180" fill="url(#fade)"/>
+</svg>

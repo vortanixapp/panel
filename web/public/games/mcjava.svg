@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180" role="img" aria-label="Minecraft Java (Vanilla)">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="hsl(11, 42%, 17%)"/>
+      <stop offset="1" stop-color="hsl(39, 38%, 8%)"/>
+    </linearGradient>
+    <pattern id="stripes" width="14" height="14" patternTransform="rotate(35)" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="none"/>
+      <line x1="0" y1="0" x2="0" y2="14" stroke="hsl(11, 60%, 70%)" stroke-opacity="0.07" stroke-width="7"/>
+    </pattern>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.45" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.72"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="320" height="180" fill="url(#bg)"/>
+  <rect width="320" height="180" fill="url(#stripes)"/>
+  <circle cx="258" cy="42" r="78" fill="hsl(11, 70%, 55%)" fill-opacity="0.10"/>
+  <text x="24" y="126" font-family="Inter, Segoe UI, system-ui, sans-serif" font-size="86"
+        font-weight="700" fill="#fff" fill-opacity="0.13" letter-spacing="-3">MJ</text>
+  <rect width="320" height="180" fill="url(#fade)"/>
+  <text x="20" y="156" font-family="Inter, Segoe UI, system-ui, sans-serif" font-size="17"
+        font-weight="600" fill="#f4f4f5">Minecraft Java (Vanilla)</text>
+  <rect x="20" y="164" width="26" height="2.5" rx="1.25" fill="hsl(11, 72%, 62%)"/>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180" role="img" aria-label="ARK: Survival Evolved">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="hsl(172, 40%, 17%)"/>
+      <stop offset="1" stop-color="hsl(198, 36%, 8%)"/>
+    </linearGradient>
+    <pattern id="stripes" width="14" height="14" patternTransform="rotate(18)" patternUnits="userSpaceOnUse">
+      <rect width="14" height="14" fill="none"/>
+      <line x1="0" y1="0" x2="0" y2="14" stroke="hsl(172, 60%, 70%)" stroke-opacity="0.06" stroke-width="7"/>
+    </pattern>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="hsl(172, 72%, 58%)" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="hsl(172, 72%, 58%)" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0.5" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.55"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="320" height="180" fill="url(#bg)"/>
+  <rect width="320" height="180" fill="url(#stripes)"/>
+  <circle cx="60" cy="140" r="104" fill="url(#glow)"/>
+  <path d="M0 152 L64 96 L118 138 L182 74 L246 128 L320 68 L320 180 L0 180 Z" fill="hsl(172, 70%, 72%)" fill-opacity="0.07"/>
+  <path d="M0 168 L82 122 L146 158 L214 108 L282 150 L320 122 L320 180 L0 180 Z" fill="hsl(172, 70%, 72%)" fill-opacity="0.05"/>
+  <rect width="320" height="180" fill="url(#fade)"/>
+</svg>

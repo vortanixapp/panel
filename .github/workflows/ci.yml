@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Не по формату:"
+            echo "$unformatted"
+            echo
+            echo "Почините: gofmt -w ."
+            exit 1
+          fi
+
+      - name: build
+        run: go build ./...
+
+      - name: vet
+        run: go vet ./...
+
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: типы
+        run: npx tsc --noEmit
+
+      - name: сборка
+        run: npm run build
+
+  deploy:
+    name: Развёртывание
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: настройки Caddy разбираются
+        run: |
+          for addr in "example.com" "http://203.0.113.10"; do
+            echo "=== SITE_ADDRESS=$addr ==="
+            docker run --rm -e SITE_ADDRESS="$addr" \
+              -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+              caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+          done
+
+      - name: установка настраивает окружение
+        run: |
+          sh scripts/init-env.sh --ip
+          for key in POSTGRES_PASSWORD JWT_SECRET SECRETS_KEY SITE_ADDRESS RELAY_PUBLIC_URL; do
+            value=$(grep "^$key=" deploy/.env | cut -d= -f2-)
+            if [ -z "$value" ]; then
+              echo "init-env.sh не заполнил $key"
+              exit 1
+            fi
+          done
+          docker compose -f deploy/docker-compose.yml config >/dev/null
+          docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.images.yml config >/dev/null
+
+  images:
+    name: Рецепты образов
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: собрать базовые слои
+        run: |
+          for layer in java native srcds steam; do
+            echo "=== $layer ==="
+            docker build -t "vortanix-runtime-$layer:ci" "deploy/images/_runtime/$layer"
+          done

@@ -1,0 +1,106 @@
+package config
+
+import (
+	"os"
+	"strconv"
+	"strings"
+)
+
+type OAuthProvider struct {
+	ClientID     string
+	ClientSecret string
+}
+
+type Config struct {
+	Port                string
+	DatabaseURL         string
+	DatabaseReadURL     string
+	RedisURL            string
+	PanelVersion        string
+	JWTSecret           string
+	AccessTokenTTLMin   int
+	RefreshTokenTTLDays int
+	RelayURL            string
+	InternalSecret      string
+	MigrationsDir       string
+	StripeWebhookSecret string
+	EggCDNPrefix        string
+	NATSURL             string
+	CORSOrigins         []string
+	FrontendURL         string
+	GoogleOAuth         OAuthProvider
+	DiscordOAuth        OAuthProvider
+	VKOAuth             OAuthProvider
+	TelegramBotToken    string
+	SMTPHost            string
+	SMTPPort            string
+	SMTPUser            string
+	SMTPPass            string
+	MailFrom            string
+	MailDevExposeURL    bool
+	UploadDir           string
+	SecretsKey          string
+}
+
+func Load() Config {
+	accessMin, _ := strconv.Atoi(getEnv("ACCESS_TOKEN_TTL_MIN", "60"))
+	refreshDays, _ := strconv.Atoi(getEnv("REFRESH_TOKEN_TTL_DAYS", "7"))
+	return Config{
+		Port:                getEnv("PORT", "8080"),
+		DatabaseURL:         getEnv("DATABASE_URL", "postgres://vortanix:vortanix@localhost:5432/vortanix?sslmode=disable"),
+		DatabaseReadURL:     getEnv("DATABASE_READ_URL", ""),
+		RedisURL:            getEnv("REDIS_URL", "redis://localhost:6379/0"),
+		PanelVersion:        getEnv("PANEL_VERSION", "dev"),
+		JWTSecret:           getEnv("JWT_SECRET", "dev-secret-change-in-production"),
+		AccessTokenTTLMin:   accessMin,
+		RefreshTokenTTLDays: refreshDays,
+		RelayURL:            getEnv("RELAY_URL", "http://localhost:8082"),
+		InternalSecret:      getEnv("INTERNAL_SECRET", "dev-internal-secret"),
+		MigrationsDir:       getEnv("CORE_MIGRATIONS_DIR", "migrations/core"),
+		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
+		EggCDNPrefix:        getEnv("EGG_CDN_PREFIX", ""),
+		NATSURL:             getEnv("NATS_URL", ""),
+		CORSOrigins:         parseCORSOrigins(),
+		FrontendURL:         getEnv("FRONTEND_URL", "http://localhost:3000"),
+		GoogleOAuth: OAuthProvider{
+			ClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
+			ClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+		},
+		DiscordOAuth: OAuthProvider{
+			ClientID:     getEnv("DISCORD_CLIENT_ID", ""),
+			ClientSecret: getEnv("DISCORD_CLIENT_SECRET", ""),
+		},
+		VKOAuth: OAuthProvider{
+			ClientID:     getEnv("VK_CLIENT_ID", ""),
+			ClientSecret: getEnv("VK_CLIENT_SECRET", ""),
+		},
+		TelegramBotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
+		SMTPHost:         getEnv("SMTP_HOST", ""),
+		SMTPPort:         getEnv("SMTP_PORT", "587"),
+		SMTPUser:         getEnv("SMTP_USER", ""),
+		SMTPPass:         getEnv("SMTP_PASS", ""),
+		MailFrom:         getEnv("MAIL_FROM", "noreply@localhost"),
+		MailDevExposeURL: getEnv("MAIL_DEV_EXPOSE_URL", "false") == "true",
+		UploadDir:        getEnv("UPLOAD_DIR", "data/uploads"),
+		SecretsKey:       getEnv("SECRETS_KEY", ""),
+	}
+}
+
+func parseCORSOrigins() []string {
+	raw := getEnv("CORS_ORIGINS", "*")
+	parts := strings.Split(raw, ",")
+	origins := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if origin := strings.TrimSpace(part); origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	return origins
+}
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}

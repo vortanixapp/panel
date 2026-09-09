@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+.pnp.*
+
+# Build
+dist/
+build/
+.next/
+out/
+bin/
+vendor/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Env
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+!*.env.example
+!.env.example
+
+# Keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.ppk
+id_rsa*
+keys/
+
+# Data
+*.rdb
+*.zip
+docker-data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Tests
+*_test.go
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+testdata/
+
+# Build artifacts
+coverage/
+*.test
+*.tsbuildinfo

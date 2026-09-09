@@ -1,0 +1,32 @@
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.jar binary
+
+# Скрипты для Windows обязаны остаться с CRLF: cmd.exe не выполнит файл,
+# в котором строки заканчиваются одним переводом.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Скрипты запуска в контейнерах — наоборот, только LF: shebang с возвратом
+# каретки на конце превращается в «bad interpreter» на старте.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+
+# Словари перевода — данные, а не код: одни и те же строки на двух языках.
+web/lib/locales/** linguist-detectable=false
