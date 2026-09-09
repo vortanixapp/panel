@@ -50,7 +50,7 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
+/logs/
 
 # Tests
 *_test.go

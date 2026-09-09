@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { type Table } from '@tanstack/react-table'
+import { type ReactTable } from '@tanstack/react-table'
+import { type DataTableFeatures } from '@/components/data-table/features'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -11,13 +12,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
-type DataTableBulkActionsProps<TData> = {
-  table: Table<TData>
+type DataTableBulkActionsProps<TData extends object> = {
+  table: ReactTable<DataTableFeatures, TData>
   entityName: string
   children: React.ReactNode
 }
 
-export function DataTableBulkActions<TData>({
+export function DataTableBulkActions<TData extends object>({
   table,
   entityName,
   children,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
+import { type DataTableFeatures } from "@/components/data-table/features";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ export function getServersColumns({
   powerPending,
   canManage = true,
   showAdminOps = false,
-}: ServerActions): ColumnDef<Server>[] {
+}: ServerActions): ColumnDef<DataTableFeatures, Server>[] {
   return [
     {
       accessorKey: "name",

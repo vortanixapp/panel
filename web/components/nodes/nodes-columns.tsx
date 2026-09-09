@@ -1,6 +1,7 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
+import { type DataTableFeatures } from "@/components/data-table/features";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,7 @@ type NodeActions = {
 export function getNodesColumns(
   actions: NodeActions,
   t: TranslateFn
-): ColumnDef<Node>[] {
+): ColumnDef<DataTableFeatures, Node>[] {
   return [
     {
       accessorKey: "name",

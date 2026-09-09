@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { type ColumnDef } from "@tanstack/react-table";
+import { type DataTableFeatures } from "@/components/data-table/features";
 import { PageShell } from "@/components/layout/page-shell";
 import { DataTable } from "@/components/data-table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +14,7 @@ type AdminListPageProps<T extends object> = {
   description?: string;
   queryKey?: readonly unknown[];
   queryFn?: () => Promise<T[]>;
-  columns?: ColumnDef<T>[];
+  columns?: ColumnDef<DataTableFeatures, T>[];
   searchKey?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
@@ -21,7 +22,7 @@ type AdminListPageProps<T extends object> = {
   dataKey?: string;
 };
 
-function defaultColumns<T extends object>(rows: T[]): ColumnDef<T>[] {
+function defaultColumns<T extends object>(rows: T[]): ColumnDef<DataTableFeatures, T>[] {
   if (rows.length === 0) {
     return [{ accessorKey: "id", header: "ID" }];
   }

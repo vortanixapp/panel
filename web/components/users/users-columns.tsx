@@ -1,6 +1,7 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
+import { type DataTableFeatures } from "@/components/data-table/features";
 import { Trash2 } from "lucide-react";
 import { DataTableColumnHeader } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,7 @@ function formatDate(value: string) {
 export function getUsersColumns(
   actions: UserActions,
   t: TranslateFn
-): ColumnDef<PanelUser>[] {
+): ColumnDef<DataTableFeatures, PanelUser>[] {
   return [
     {
       accessorKey: "email",
