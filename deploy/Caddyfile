@@ -1,0 +1,23 @@
+{$SITE_ADDRESS} {
+	handle /v1/agent/* {
+		reverse_proxy relay:8082
+	}
+
+	handle /v1/console* {
+		reverse_proxy console:8083
+	}
+
+	handle /v1/dashboard* {
+		reverse_proxy console:8083
+	}
+
+	handle /v1/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	encode zstd gzip
+}

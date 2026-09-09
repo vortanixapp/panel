@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ru" data-vx-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vortanix Status</title>
+  <link rel="icon" href="/assets/vortanix-mark-square.png" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" />
+  <style>
+    [data-vx-theme="dark"] {
+      --vx-bg:#0a0b0d; --vx-card:#0c0d0f; --vx-card-2:#0f1012; --vx-inset:#151618;
+      --vx-tint:#1b1c1e; --vx-border:#1c1d1f; --vx-divider:#131416; --vx-border-strong:#343537;
+      --vx-fg-strong:#f1f2ed; --vx-fg:#e8e9eb; --vx-dim:#c9cacc; --vx-muted:#8b8c8e; --vx-faint:#5c5d5f; --vx-on-fill:#0a0b0d;
+      --vx-ok:#10b981; --vx-warn:#e8a03c; --vx-danger:#e07a7a;
+      --vx-ok-tint:rgba(16,185,129,.12); --vx-warn-tint:rgba(232,160,60,.12); --vx-danger-tint:rgba(224,122,122,.12);
+      --vx-bar-ok:#1c7a5b; --vx-bar-warn:#8a6021; --vx-bar-bad:#8f4747; --vx-bar-none:#1e1f21;
+      color-scheme: dark;
+    }
+    [data-vx-theme="light"] {
+      --vx-bg:#f5f6f8; --vx-card:#ffffff; --vx-card-2:#f7f8fa; --vx-inset:#f1f2f4;
+      --vx-tint:#eef0f3; --vx-border:#e4e6e9; --vx-divider:#edeef1; --vx-border-strong:#c3c7cc;
+      --vx-fg-strong:#0a0b0d; --vx-fg:#16171a; --vx-dim:#45474b; --vx-muted:#64666a; --vx-faint:#8a8c90; --vx-on-fill:#ffffff;
+      --vx-ok:#0f9d6e; --vx-warn:#9a6410; --vx-danger:#b3403a;
+      --vx-ok-tint:rgba(15,157,110,.12); --vx-warn-tint:rgba(154,100,16,.12); --vx-danger-tint:rgba(179,64,58,.12);
+      --vx-bar-ok:#6fc8a9; --vx-bar-warn:#e0b478; --vx-bar-bad:#dd9a9a; --vx-bar-none:#e4e6e9;
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--vx-bg); color: var(--vx-fg);
+      font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .mono { font-family: 'DM Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace; }
+    a { color: inherit; text-decoration: none; }
+    a:hover { color: var(--vx-fg-strong); }
+    h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+    @keyframes vx-breathe { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.55; transform:scale(.94); } }
+
+    .topbar {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 28px; border-bottom: 1px solid var(--vx-border); background: var(--vx-card);
+    }
+    .topbar img { height: 26px; width: auto; }
+    .wordmark { font-weight: 700; font-size: 16px; letter-spacing: .2em; text-transform: uppercase; }
+    .wordmark span { color: var(--vx-muted); }
+    .topbar .sub { font-size: 13px; color: var(--vx-muted); border-left: 1px solid var(--vx-border); padding-left: 14px; }
+    .topbar .actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .btn-ghost {
+      display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+      border: 1px solid var(--vx-border); border-radius: 8px; background: transparent;
+      font-family: inherit; font-size: 12.5px; color: var(--vx-dim); cursor: pointer;
+    }
+    .btn-ghost:hover { background: var(--vx-tint); color: var(--vx-fg); }
+    .btn-icon { width: 32px; padding: 0; justify-content: center; }
+
+    .wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; padding: 26px 28px 40px; }
+    .card { border: 1px solid var(--vx-border); background: var(--vx-card); border-radius: 14px; }
+    .card-head { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--vx-border); }
+    .card-title { font-size: 13.5px; font-weight: 600; }
+    .card-note { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--vx-muted); }
+    .hint { margin-left: auto; font-size: 11.5px; color: var(--vx-faint); }
+
+    .hero { padding: 24px 26px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
+    .hero-main { display: flex; align-items: center; gap: 16px; min-width: 340px; flex: 1; }
+    .hero-badge { display: flex; align-items: center; justify-content: center; height: 44px; width: 44px; border-radius: 12px; }
+    .hero-badge i { height: 12px; width: 12px; border-radius: 50%; animation: vx-breathe 1.8s ease-in-out infinite; }
+    .hero p { margin: 5px 0 0; font-size: 13px; color: var(--vx-muted); }
+    .stats { display: flex; flex-wrap: wrap; gap: 10px; }
+    .stat { border: 1px solid var(--vx-border); background: var(--vx-bg); border-radius: 12px; padding: 12px 18px; min-width: 118px; }
+    .stat-label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--vx-muted); }
+    .stat-value { margin-top: 5px; font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; }
+
+    .bars { display: flex; gap: 2px; align-items: flex-end; }
+    .bars span { flex: 1; border-radius: 2px; }
+    .axis { display: flex; justify-content: space-between; margin-top: 8px; font-family: 'DM Mono', monospace; font-size: 10.5px; color: var(--vx-faint); }
+
+    .row { border-bottom: 1px solid var(--vx-divider); }
+    .row:last-of-type { border-bottom: 0; }
+    .row-head { display: flex; align-items: center; gap: 14px; padding: 14px 20px; cursor: pointer; }
+    .row-head:hover { background: var(--vx-card-2); }
+    .dot { height: 8px; width: 8px; border-radius: 50%; flex: none; }
+    .row-name { min-width: 190px; }
+    .row-name b { display: block; font-size: 14px; font-weight: 500; }
+    .row-name small { display: block; margin-top: 2px; font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--vx-faint); }
+    .row-mini { display: flex; gap: 2px; align-items: flex-end; flex: 1; height: 22px; min-width: 140px; }
+    .row-mini span { flex: 1; height: 22px; border-radius: 1.5px; }
+    .row-num { width: 74px; text-align: right; font-family: 'DM Mono', monospace; font-size: 12.5px; color: var(--vx-dim); }
+    .row-num.soft { color: var(--vx-muted); }
+    .pill {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 600; width: 104px; flex: none;
+    }
+    .chev { flex: none; color: var(--vx-faint); transition: transform .15s ease; }
+    .row.open .chev { transform: rotate(180deg); }
+
+    .row-body { padding: 4px 20px 20px; display: flex; flex-wrap: wrap; gap: 12px; }
+    .panel { border: 1px solid var(--vx-border); background: var(--vx-bg); border-radius: 12px; padding: 16px 18px; }
+    .panel.grow { flex: 1; min-width: 300px; }
+    .panel-head { display: flex; align-items: baseline; gap: 10px; }
+    .panel-head span:first-child { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--vx-muted); }
+    .panel-head span:last-child { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--vx-faint); }
+    .probe { width: 236px; display: flex; flex-direction: column; gap: 12px; }
+    .probe .k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--vx-muted); }
+    .probe .v { margin-top: 5px; font-family: 'DM Mono', monospace; font-size: 12.5px; color: var(--vx-dim); word-break: break-all; }
+    .probe a { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; border: 1px solid var(--vx-border); border-radius: 8px; font-size: 12.5px; color: var(--vx-fg); }
+    .probe a:hover { background: var(--vx-tint); }
+
+    .inc { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 13px 20px; border-bottom: 1px solid var(--vx-divider); }
+    .inc-date { width: 118px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--vx-muted); }
+    .inc-text { flex: 1; min-width: 0; }
+    .inc-text b { display: block; font-size: 13.5px; font-weight: 500; }
+    .inc-text small { display: block; margin-top: 2px; font-size: 12px; color: var(--vx-muted); }
+    .inc-dur { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--vx-dim); }
+    .card-foot { padding: 12px 20px; font-size: 12px; color: var(--vx-faint); }
+    .empty { padding: 18px 20px; font-size: 13px; color: var(--vx-muted); }
+
+    .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding-top: 4px; font-size: 12px; color: var(--vx-faint); }
+    .foot nav { margin-left: auto; display: flex; gap: 14px; }
+
+    @media (max-width: 720px) {
+      .topbar { padding: 14px 16px; }
+      .topbar .sub { display: none; }
+      .wrap { padding: 18px 16px 32px; }
+      .hero { padding: 20px; }
+      .hero-main { min-width: 0; }
+      .row-mini, .row-num.soft, .hint { display: none; }
+      .row-head { gap: 10px; }
+      .row-name { min-width: 0; flex: 1; }
+      .probe { width: 100%; }
+    }
+    @media (max-width: 560px) {
+      .row-num { display: none; }
+      .pill { width: auto; }
+      .inc-date { width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <img src="/assets/vortanix-mark-square.png" alt="" />
+    <span class="wordmark">VORTAN<span>IX</span></span>
+    <span class="sub">Статус систем</span>
+    <div class="actions">
+      <button type="button" class="btn-ghost btn-icon" id="theme" title="Тема" aria-label="Переключить тему">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card hero">
+      <div class="hero-main">
+        <span class="hero-badge" id="hero-badge"><i></i></span>
+        <div>
+          <h1 id="hero-title">Загрузка…</h1>
+          <p id="hero-note">Получаем данные проверок…</p>
+        </div>
+      </div>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section class="card" id="summary-card" hidden>
+      <div style="padding:18px 20px">
+        <div class="panel-head">
+          <span class="card-title" style="text-transform:none;letter-spacing:0;color:var(--vx-fg)">Все сервисы · <span id="summary-days">90</span> дней</span>
+          <span class="mono" id="summary-uptime"></span>
+        </div>
+        <div class="bars" id="summary-bars" style="margin-top:14px"></div>
+        <div class="axis"><span id="axis-start">90 дней назад</span><span id="axis-mid">45 дней назад</span><span>сегодня</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <span class="card-title">Сервисы</span>
+        <span class="card-note" id="services-count"></span>
+        <span class="hint">Нажмите на сервис, чтобы раскрыть детали</span>
+      </div>
+      <div id="services"><div class="empty">Загрузка…</div></div>
+    </section>
+
+    <section class="card" id="incidents-card" hidden>
+      <div class="card-head">
+        <span class="card-title">Инциденты</span>
+        <span class="card-note">за 90 дней</span>
+      </div>
+      <div id="incidents"></div>
+      <div class="card-foot">Инциденты собираются автоматически из проверок каждые 60 секунд.</div>
+    </section>
+
+    <footer class="foot">
+      <span>Vortanix Status</span>
+    </footer>
+  </main>
+
+  <script>
+    var LABELS = { operational: "Работает", degraded: "Деградация", down: "Недоступно" };
+    var HERO = {
+      operational: "Все системы работают",
+      degraded: "Частичная деградация",
+      down: "Сбой в работе сервисов"
+    };
+    var TONE = { operational: "--vx-ok", degraded: "--vx-warn", down: "--vx-danger" };
+    var TINT = { operational: "--vx-ok-tint", degraded: "--vx-warn-tint", down: "--vx-danger-tint" };
+    var BAR = { operational: "--vx-bar-ok", degraded: "--vx-bar-warn", down: "--vx-bar-bad", no_data: "--vx-bar-none" };
+
+    var open = {};
+    var updatedAt = null;
+    var tick = null;
+
+    function css(name) { return "var(" + name + ")"; }
+    function tone(status) { return css(TONE[status] || "--vx-muted"); }
+    function esc(v) {
+      return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function label(status) { return LABELS[status] || status; }
+    function pct(v) { return (Math.round(v * 100) / 100).toFixed(2) + "%"; }
+
+    function bars(days, height) {
+      if (!days || !days.length) return "";
+      return days.map(function (d) {
+        var title = d.date + " · " + (d.status === "no_data" ? "нет данных" : label(d.status) + " · " + pct(d.uptime));
+        return '<span title="' + esc(title) + '" style="height:' + height + 'px;background:' + css(BAR[d.status] || "--vx-bar-none") + '"></span>';
+      }).join("");
+    }
+
+    function ago(iso) {
+      if (!iso) return "";
+      var sec = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+      if (sec < 60) return "обновлено " + sec + " с назад";
+      if (sec < 3600) return "обновлено " + Math.round(sec / 60) + " мин назад";
+      return "обновлено " + Math.round(sec / 3600) + " ч назад";
+    }
+
+    function stat(label, value) {
+      return '<div class="stat"><div class="stat-label">' + esc(label) + '</div>' +
+             '<div class="stat-value">' + esc(value) + '</div></div>';
+    }
+
+    function renderHero(data) {
+      var status = data.overall;
+      var badge = document.getElementById("hero-badge");
+      badge.style.background = css(TINT[status] || "--vx-tint");
+      badge.firstElementChild.style.background = tone(status);
+      document.getElementById("hero-title").textContent = HERO[status] || label(status);
+
+      var bad = (data.components || []).filter(function (c) { return c.status !== "operational"; });
+      var head = bad.length
+        ? bad.map(function (c) { return c.name + " — " + label(c.status).toLowerCase(); }).join(", ")
+        : "Все проверки проходят успешно";
+      document.getElementById("hero-note").textContent =
+        head + " · проверка каждые 60 секунд · " + ago(data.updated_at);
+    }
+
+    function renderStats(data) {
+      var comps = data.components || [];
+      var out = "";
+
+      var days = data.uptime_daily || [];
+      var known = days.filter(function (d) { return d.status !== "no_data"; });
+      if (known.length) {
+        var avg = known.reduce(function (a, d) { return a + d.uptime; }, 0) / known.length;
+        out += stat("Аптайм " + days.length + " дн.", pct(avg));
+      }
+
+      if (comps.length) {
+        var latency = comps.reduce(function (a, c) { return a + (c.latency_ms || 0); }, 0) / comps.length;
+        out += stat("Средний отклик", Math.round(latency) + " мс");
+      }
+
+      if (data.incidents) out += stat("Инциденты", String(data.incidents.length));
+      out += stat("Сервисов", String(comps.length));
+
+      document.getElementById("stats").innerHTML = out;
+    }
+
+    function renderSummary(data) {
+      var days = data.uptime_daily || [];
+      var card = document.getElementById("summary-card");
+      if (!days.length) { card.hidden = true; return; }
+      card.hidden = false;
+
+      document.getElementById("summary-days").textContent = days.length;
+      document.getElementById("axis-start").textContent = days.length + " дней назад";
+      document.getElementById("axis-mid").textContent = Math.round(days.length / 2) + " дней назад";
+
+      var known = days.filter(function (d) { return d.status !== "no_data"; });
+      document.getElementById("summary-uptime").textContent = known.length
+        ? pct(known.reduce(function (a, d) { return a + d.uptime; }, 0) / known.length) + " аптайм"
+        : "";
+      document.getElementById("summary-bars").innerHTML = bars(days, 30);
+    }
+
+    function renderServices(data) {
+      var comps = data.components || [];
+      document.getElementById("services-count").textContent = comps.length || "";
+
+      if (!comps.length) {
+        document.getElementById("services").innerHTML = '<div class="empty">Проверки не настроены.</div>';
+        return;
+      }
+
+      document.getElementById("services").innerHTML = comps.map(function (c) {
+        var days = c.uptime_daily || [];
+        var mini = days.slice(-45);
+        var host = c.url ? c.url.replace(/^https?:\/\//, "") : c.key;
+        var isOpen = !!open[c.key];
+
+        var body = "";
+        if (isOpen) {
+          body =
+            '<div class="row-body">' +
+              (days.length
+                ? '<div class="panel grow">' +
+                    '<div class="panel-head"><span>Аптайм по дням</span><span>' + esc(c.detail || label(c.status)) + '</span></div>' +
+                    '<div class="bars" style="margin-top:12px">' + bars(days, 26) + '</div>' +
+                    '<div class="axis"><span>' + days.length + ' дней назад</span><span>сегодня</span></div>' +
+                  '</div>'
+                : '<div class="panel grow"><div class="panel-head"><span>Аптайм по дням</span></div>' +
+                  '<div class="v mono" style="margin-top:10px;color:var(--vx-muted)">История недоступна</div></div>') +
+              '<div class="panel probe">' +
+                '<div><div class="k">Проверка</div><div class="v">GET ' + esc(c.url || "внутренний адрес") + '</div></div>' +
+                '<div><div class="k">Последний ответ</div><div class="v">' + esc(c.detail || "HTTP 200") + ' · ' + (c.latency_ms || 0) + ' мс</div></div>' +
+                (c.url
+                  ? '<a href="' + esc(c.url) + '" rel="noopener">Открыть сервис' +
+                    '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg></a>'
+                  : '') +
+              '</div>' +
+            '</div>';
+        }
+
+        return '<div class="row' + (isOpen ? " open" : "") + '" data-key="' + esc(c.key) + '">' +
+            '<div class="row-head" role="button" tabindex="0" aria-expanded="' + isOpen + '">' +
+              '<span class="dot" style="background:' + tone(c.status) + '"></span>' +
+              '<div class="row-name"><b>' + esc(c.name) + '</b><small>' + esc(host) + '</small></div>' +
+              '<div class="row-mini">' + bars(mini, 22) + '</div>' +
+              '<div class="row-num">' + pct(c.uptime_percent == null ? 100 : c.uptime_percent) + '</div>' +
+              '<div class="row-num soft">' + (c.latency_ms || 0) + ' мс</div>' +
+              '<span class="pill" style="background:' + css(TINT[c.status] || "--vx-tint") + ';color:' + tone(c.status) + '">' + esc(label(c.status)) + '</span>' +
+              '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>' +
+            '</div>' + body +
+          '</div>';
+      }).join("");
+    }
+
+    function renderIncidents(data) {
+      var list = data.incidents || [];
+      var card = document.getElementById("incidents-card");
+      if (!list.length) { card.hidden = true; return; }
+      card.hidden = false;
+
+      document.getElementById("incidents").innerHTML = list.map(function (i) {
+        var started = new Date(i.started_at);
+        var date = started.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
+        var time = started.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+        var dur = i.minutes >= 60
+          ? Math.floor(i.minutes / 60) + " ч " + (i.minutes % 60) + " мин"
+          : i.minutes + " мин";
+        return '<div class="inc">' +
+            '<div class="inc-date">' + esc(date) + ' · ' + esc(time) + '</div>' +
+            '<span class="pill" style="background:' + css(TINT[i.status] || "--vx-tint") + ';color:' + tone(i.status) + '">' + esc(label(i.status)) + '</span>' +
+            '<div class="inc-text"><b>' + esc(i.service) + '</b><small>' + esc(i.detail || "без описания") + '</small></div>' +
+            '<div class="inc-dur">' + esc(dur) + '</div>' +
+          '</div>';
+      }).join("");
+    }
+
+    function render(data) {
+      renderHero(data);
+      renderStats(data);
+      renderSummary(data);
+      renderServices(data);
+      renderIncidents(data);
+    }
+
+    var latest = null;
+
+    async function refresh() {
+      try {
+        var r = await fetch("/api/v1/status");
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        latest = await r.json();
+        updatedAt = latest.updated_at;
+        render(latest);
+      } catch (e) {
+        document.getElementById("hero-title").textContent = "Не удалось получить статус";
+        document.getElementById("hero-note").textContent = "Страница повторит запрос через 30 секунд.";
+      }
+    }
+
+    document.getElementById("services").addEventListener("click", function (e) {
+      var head = e.target.closest(".row-head");
+      if (!head) return;
+      var key = head.parentElement.getAttribute("data-key");
+      open[key] = !open[key];
+      if (latest) renderServices(latest);
+    });
+
+    document.getElementById("services").addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      var head = e.target.closest(".row-head");
+      if (!head) return;
+      e.preventDefault();
+      head.click();
+    });
+
+    var root = document.documentElement;
+    try {
+      var saved = localStorage.getItem("vx-status-theme");
+      if (saved) root.setAttribute("data-vx-theme", saved);
+      else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) {
+        root.setAttribute("data-vx-theme", "light");
+      }
+    } catch (e) { /* приватный режим — остаётся тёмная тема */ }
+
+    document.getElementById("theme").addEventListener("click", function () {
+      var next = root.getAttribute("data-vx-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-vx-theme", next);
+      try { localStorage.setItem("vx-status-theme", next); } catch (e) { /* игнорируем */ }
+    });
+
+    refresh();
+    setInterval(refresh, 30000);
+    setInterval(function () {
+      if (latest) document.getElementById("hero-note").textContent =
+        document.getElementById("hero-note").textContent.replace(/обновлено .*$/, ago(updatedAt));
+    }, 5000);
+  </script>
+</body>
+</html>

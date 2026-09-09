@@ -1,0 +1,59 @@
+name: Bug report
+description: Something behaves differently from how it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Found a security problem instead? Do not file it here —
+        [SECURITY.md](../blob/main/SECURITY.md) says where it goes.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Settings → Groups
+        2. Change the slot limit to 12
+        3. Press Save
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Output of `git rev-parse --short HEAD`, or the release tag.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Where
+      options:
+        - Panel (web interface)
+        - Panel API
+        - Node agent
+        - Game image
+        - Build or install
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        Relevant output from the panel or the agent. Strip tokens, passwords
+        and licence keys first — this issue is public.
+      render: text
