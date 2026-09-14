@@ -47,12 +47,21 @@ export function LocationCreateContent() {
     if (key.startsWith("ssh_")) setSshOk(false);
   }
 
+  function sshHost() {
+    return form.ssh_host.trim() || form.ip_address.trim();
+  }
+
+  function goToSSH() {
+    setForm((p) => (p.ssh_host.trim() ? p : { ...p, ssh_host: p.ip_address.trim() }));
+    setStep(2);
+  }
+
   async function testSSH() {
     setTesting(true);
     try {
       const res = await testAdminLocationSSHBody({
-        ssh_host: form.ssh_host,
-        ssh_user: form.ssh_user,
+        ssh_host: sshHost(),
+        ssh_user: form.ssh_user.trim(),
         ssh_password: form.ssh_password,
         ssh_port: form.ssh_port,
       });
@@ -86,10 +95,9 @@ export function LocationCreateContent() {
       } else {
         ip_pool = [];
       }
-      const host = form.ssh_host.trim() || form.ip_address.trim();
       const res = await createAdminLocation({
         ...form,
-        ssh_host: host || form.ssh_host,
+        ssh_host: sshHost(),
         ip_pool,
       });
       setCreated({ id: res.id, agent_token: res.agent_token });
@@ -232,7 +240,7 @@ export function LocationCreateContent() {
               <Button
                 type="button"
                 disabled={!form.code.trim() || !form.name.trim()}
-                onClick={() => setStep(2)}
+                onClick={goToSSH}
               >
                 {t("admin.location.next_ssh")}
               </Button>
@@ -255,7 +263,7 @@ export function LocationCreateContent() {
                 <Label>Host</Label>
                 <Input
                   placeholder={t("admin.location.node_ip_placeholder")}
-                  value={form.ssh_host || form.ip_address}
+                  value={form.ssh_host}
                   onChange={(e) => setField("ssh_host", e.target.value)}
                 />
               </div>
@@ -299,7 +307,7 @@ export function LocationCreateContent() {
               </Button>
               <Button
                 type="button"
-                disabled={saving || !(form.ssh_host.trim() || form.ip_address.trim())}
+                disabled={saving || !sshHost()}
                 onClick={() => onSubmit()}
               >
                 {saving
