@@ -23,6 +23,7 @@ var jobTypeLabels = map[string]string{
 	"daemon_pull":      "Обновление образов",
 	"send_mailing":     "Рассылка",
 	"ftp_account":      "FTP-аккаунт",
+	"server_destroy":   "Очистка удалённого сервера",
 }
 
 func jobTypeLabel(t string) string {

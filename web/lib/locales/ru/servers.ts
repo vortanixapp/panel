@@ -468,6 +468,8 @@ export const servers = {
   "servers.settings.section_startup": "Параметры запуска",
   "servers.settings.saved": "Настройки сохранены",
   "servers.settings.server_deleted": "Сервер удалён",
+  "servers.settings.server_deleted_deferred":
+    "Сервер удалён. Нода сейчас не в сети — контейнер и файлы на ней удалятся, когда она подключится",
   "servers.settings.load_failed": "Не удалось загрузить настройки сервера.",
   "servers.settings.unsupported": "Для этой игры настройки пока не описаны.",
   "servers.settings.restarting": "Сервер перезапускается",

@@ -210,12 +210,17 @@ func (h *Handler) DeleteServer(w http.ResponseWriter, r *http.Request) {
 		ServerID:  id,
 		Payload:   map[string]any{"wipe": true},
 	})
-	force := r.URL.Query().Get("force") == "1"
-	if agentErr != nil && !force {
-		writeError(w, http.StatusConflict,
-			"нода недоступна: "+agentErr.Error()+
-				". Повторите позже или удалите принудительно (?force=1) — тогда контейнер на ноде придётся снять вручную")
-		return
+	deferred := false
+	if agentErr != nil {
+		payload, _ := json.Marshal(map[string]string{"server_id": id, "node_id": nodeID})
+		if _, err := h.dbOf(ctx).Exec(ctx, `
+			INSERT INTO core.jobs (type, status, payload) VALUES ('server_destroy', 'pending', $1::jsonb)
+		`, payload); err != nil {
+			log.Printf("удаление сервера %s: отложенная очистка ноды не поставлена: %v", id, err)
+			writeError(w, http.StatusInternalServerError, "нода недоступна, а очистку на потом поставить не удалось")
+			return
+		}
+		deferred = true
 	}
 
 	h.enqueueFtpCleanup(r, id, nodeID)
@@ -234,12 +239,12 @@ func (h *Handler) DeleteServer(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = h.cache.InvalidateTenantServers(ctx)
 	audit(ctx, h.dbOf(ctx), claims.UserID, "server.delete", "server:"+id, map[string]any{
-		"node_cleaned": agentErr == nil,
-		"forced":       force,
+		"node_cleaned":     agentErr == nil,
+		"cleanup_deferred": deferred,
 	})
 	res := map[string]string{"status": "deleted"}
-	if agentErr != nil {
-		res["warning"] = "контейнер на ноде не снят: нода была недоступна"
+	if deferred {
+		res["cleanup"] = "deferred"
 	}
 	writeJSON(w, http.StatusOK, res)
 }

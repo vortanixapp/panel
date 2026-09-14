@@ -81,6 +81,7 @@ func (r *Runner) drainDaemonJobs(ctx context.Context) {
 	}
 	for r.processDaemonPull(ctx) {
 	}
+	r.processServerDestroys(ctx)
 }
 
 func (r *Runner) processDaemonJob(ctx context.Context) bool {

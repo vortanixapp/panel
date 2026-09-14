@@ -98,8 +98,12 @@ export function ServerSettingsContent({ variant = "user" }: { variant?: PanelVar
 
   async function onDelete() {
     try {
-      await deleteServer.mutateAsync(id);
-      toast.success(t("servers.settings.server_deleted"));
+      const res = await deleteServer.mutateAsync(id);
+      if (res.cleanup === "deferred") {
+        toast.warning(t("servers.settings.server_deleted_deferred"));
+      } else {
+        toast.success(t("servers.settings.server_deleted"));
+      }
       router.push(serversListPath(basePath));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("common.error"));

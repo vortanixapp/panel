@@ -716,7 +716,9 @@ export async function createServer(nodeId: string, name: string, gameId = "test"
 }
 
 export async function deleteServer(id: string) {
-  return apiFetch<{ status: string }>(`/v1/servers/${id}`, { method: "DELETE" });
+  return apiFetch<{ status: string; cleanup?: "deferred" }>(`/v1/servers/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export async function powerServer(id: string, action: string) {

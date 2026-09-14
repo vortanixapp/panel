@@ -469,6 +469,8 @@ export const servers = {
   "servers.settings.section_startup": "Startup parameters",
   "servers.settings.saved": "Settings saved",
   "servers.settings.server_deleted": "Server deleted",
+  "servers.settings.server_deleted_deferred":
+    "Server deleted. The node is offline — its container and files there are removed once it reconnects",
   "servers.settings.load_failed": "Could not load the server settings.",
   "servers.settings.unsupported":
     "Settings for this game have not been described yet.",

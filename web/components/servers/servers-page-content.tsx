@@ -120,8 +120,16 @@ export function ServersPageContent({
 
   async function onDelete(id: string) {
     if (!confirm(t("servers.admin.delete_confirm"))) return;
-    await deleteServer.mutateAsync(id);
-    toast.success(t("servers.settings.server_deleted"));
+    try {
+      const res = await deleteServer.mutateAsync(id);
+      if (res.cleanup === "deferred") {
+        toast.warning(t("servers.settings.server_deleted_deferred"));
+      } else {
+        toast.success(t("servers.settings.server_deleted"));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    }
   }
 
   const columns = useMemo(
