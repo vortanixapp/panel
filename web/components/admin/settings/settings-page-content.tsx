@@ -1,21 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ImageIcon, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   fetchAdminSettings,
   saveAdminSettings,
-  brandingUploadUrl,
   testAdminSettingsFilesStorage,
   testAdminSettingsMail,
   testAdminSettingsTelegram,
@@ -63,14 +60,10 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
   });
 
   const [values, setValues] = useState<Record<string, string>>({});
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [iconFile, setIconFile] = useState<File | null>(null);
   const [baseline, setBaseline] = useState<{
     values: Record<string, string>;
   }>({ values: {} });
 
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const iconInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.adminSettings,
@@ -83,8 +76,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
     const nextValues = data.values || {};
     setValues(nextValues);
     setBaseline({ values: nextValues });
-    setLogoFile(null);
-    setIconFile(null);
   }, [data]);
 
   useEffect(() => {
@@ -173,7 +164,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
         : "ftp";
 
   const isDirty = useMemo(() => {
-    if (logoFile || iconFile) return true;
     const keys = new Set([
       ...Object.keys(baseline.values),
       ...Object.keys(values),
@@ -182,14 +172,10 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
       if ((baseline.values[key] ?? "") !== (values[key] ?? "")) return true;
     }
     return false;
-  }, [baseline, values, logoFile, iconFile]);
+  }, [baseline, values]);
 
   const reset = () => {
     setValues(baseline.values);
-    setLogoFile(null);
-    setIconFile(null);
-    if (logoInputRef.current) logoInputRef.current.value = "";
-    if (iconInputRef.current) iconInputRef.current.value = "";
   };
 
   const save = () => {
@@ -201,8 +187,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
     Object.entries(SETTINGS_KEY_MAP).forEach(([dotKey, formKey]) => {
       fd.append(formKey, normalizedValues[dotKey] ?? "");
     });
-    if (logoFile) fd.append("logo", logoFile);
-    if (iconFile) fd.append("icon", iconFile);
     saveMutation.mutate(fd);
   };
 
@@ -286,13 +270,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
               description={t("admin.settings.project.description")}
             >
               <FieldGrid>
-                <TextField
-                  span="full"
-                  label={t("admin.settings.project.name")}
-                  value={val("app.name")}
-                  onChange={(v) => updateValue("app.name", v)}
-                  placeholder="Vortanix"
-                />
                 <TextAreaField
                   span="full"
                   label={t("admin.settings.project.site_description")}
@@ -322,12 +299,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
                   value={val("app.site.subnet")}
                   onChange={(v) => updateValue("app.site.subnet", v)}
                   placeholder="1.2.3.0/24"
-                />
-                <TextField
-                  label={t("admin.settings.project.default_template")}
-                  value={val("app.site.default_template")}
-                  onChange={(v) => updateValue("app.site.default_template", v)}
-                  placeholder="default"
                 />
               </FieldGrid>
             </SettingsCard>
@@ -369,48 +340,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
                   value={val("trial.games")}
                   onChange={(v) => updateValue("trial.games", v)}
                   placeholder={t("admin.settings.trial.games_placeholder")}
-                />
-              </div>
-            </SettingsCard>
-
-            <SettingsCard title={t("admin.settings.links.title")}>
-              <FieldGrid cols={3}>
-                <TextField
-                  label="Telegram"
-                  value={val("app.links.telegram")}
-                  onChange={(v) => updateValue("app.links.telegram", v)}
-                  placeholder="https://t.me/example"
-                />
-                <TextField
-                  label="Discord"
-                  value={val("app.links.discord")}
-                  onChange={(v) => updateValue("app.links.discord", v)}
-                  placeholder="https://discord.gg/example"
-                />
-                <TextField
-                  label="Support"
-                  value={val("app.links.support")}
-                  onChange={(v) => updateValue("app.links.support", v)}
-                  placeholder="https://example.com/support"
-                />
-              </FieldGrid>
-            </SettingsCard>
-
-            <SettingsCard title={t("admin.settings.branding.title")}>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <BrandingPicker
-                  label={t("admin.settings.branding.logo")}
-                  inputRef={logoInputRef}
-                  file={logoFile}
-                  currentPath={val("app.branding.logo")}
-                  onSelect={setLogoFile}
-                />
-                <BrandingPicker
-                  label={t("admin.settings.branding.icon")}
-                  inputRef={iconInputRef}
-                  file={iconFile}
-                  currentPath={val("app.branding.icon")}
-                  onSelect={setIconFile}
                 />
               </div>
             </SettingsCard>
@@ -971,72 +900,3 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
   );
 }
 
-function BrandingPicker({
-  label,
-  file,
-  currentPath,
-  onSelect,
-  inputRef,
-}: {
-  label: string;
-  file: File | null;
-  currentPath: string;
-  onSelect: (file: File | null) => void;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-}) {
-  const t = useT();
-  const previewUrl = currentPath ? brandingUploadUrl(currentPath) : "";
-  const name =
-    file?.name || currentPath || t("admin.settings.branding.no_file");
-
-  return (
-    <div className="flex flex-col gap-2.5">
-      <Label className="text-xs font-normal text-muted-foreground">
-        {label}
-      </Label>
-      <div className="flex items-center gap-3.5 rounded-xl border border-dashed bg-muted/30 p-3.5">
-        <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
-          {previewUrl && !file ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={previewUrl}
-              alt={label}
-              className="size-full object-contain"
-            />
-          ) : (
-            <ImageIcon className="size-4 text-muted-foreground" />
-          )}
-        </div>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <span
-            className={cn(
-              "truncate font-mono text-xs",
-              file || currentPath ? "text-foreground" : "text-muted-foreground"
-            )}
-          >
-            {name}
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-[26px] w-fit gap-1.5 px-2.5 text-xs"
-            onClick={() => inputRef.current?.click()}
-          >
-            <Upload className="size-3" />
-            {file || currentPath
-              ? t("admin.settings.branding.replace")
-              : t("admin.settings.branding.choose")}
-          </Button>
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => onSelect(e.target.files?.[0] || null)}
-        />
-      </div>
-    </div>
-  );
-}

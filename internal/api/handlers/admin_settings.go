@@ -95,19 +95,6 @@ func (h *Handler) UpdateAdminSettings(w http.ResponseWriter, r *http.Request) {
 		h.setTenantSettingString(ctx, "mail.mailers.smtp.scheme", scheme)
 	}
 
-	if file, header, err := r.FormFile("logo"); err == nil {
-		defer file.Close()
-		if path, err := h.saveBrandingFile(file, header.Filename, "logo"); err == nil {
-			h.setTenantSettingString(ctx, "app.branding.logo", path)
-		}
-	}
-	if file, header, err := r.FormFile("icon"); err == nil {
-		defer file.Close()
-		if path, err := h.saveBrandingFile(file, header.Filename, "icon"); err == nil {
-			h.setTenantSettingString(ctx, "app.branding.icon", path)
-		}
-	}
-
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Настройки сохранены"})
 }
 
@@ -139,8 +126,8 @@ func (h *Handler) AdminSettingsTestMail(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "message": "SMTP не настроен"})
 		return
 	}
-	subject := "Vortanix test mail"
-	bodyHTML := fmt.Sprintf("<p>Тестовое письмо отправлено на %s</p>", to)
+	subject := "Тестовое письмо"
+	bodyHTML := mail.TestBody(h.mailBrand(r.Context(), r), to)
 	if err := cfg.Send(to, subject, bodyHTML); err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
 			"ok": false, "message": fmt.Sprintf("Не удалось отправить тестовое письмо (mailer: %s): %s", mailer, err.Error()),
@@ -545,16 +532,15 @@ func testSFTPConnection(in map[string]any, password string) error {
 
 func adminSettingsFormToDotKey() map[string]string {
 	return map[string]string{
-		"app_name": "app.name", "site_description": "app.site.description", "site_domain": "app.site.domain",
-		"site_ip": "app.site.ip", "site_subnet": "app.site.subnet", "default_template": "app.site.default_template",
+		"site_description": "app.site.description", "site_domain": "app.site.domain",
+		"site_ip": "app.site.ip", "site_subnet": "app.site.subnet",
 		"recaptcha_site_key": "services.recaptcha.site_key", "recaptcha_secret_key": "services.recaptcha.secret_key",
 		"google_client_id": "services.google.client_id", "google_client_secret": "services.google.client_secret",
 		"google_redirect_uri": "services.google.redirect", "discord_client_id": "services.discord.client_id",
 		"discord_client_secret": "services.discord.client_secret", "discord_redirect_uri": "services.discord.redirect",
 		"vk_client_id": "services.vkontakte.client_id", "vk_client_secret": "services.vkontakte.client_secret",
-		"vk_redirect_uri": "services.vkontakte.redirect", "telegram_url": "app.links.telegram",
-		"discord_url": "app.links.discord", "support_url": "app.links.support",
-		"mail_mailer": "mail.default", "mail_host": "mail.mailers.smtp.host", "mail_port": "mail.mailers.smtp.port",
+		"vk_redirect_uri": "services.vkontakte.redirect",
+		"mail_mailer":     "mail.default", "mail_host": "mail.mailers.smtp.host", "mail_port": "mail.mailers.smtp.port",
 		"mail_username": "mail.mailers.smtp.username", "mail_password": "mail.mailers.smtp.password",
 		"mail_from_address": "mail.from.address", "mail_from_name": "mail.from.name",
 		"dockerhub_username": "dockerhub.username", "dockerhub_token": "dockerhub.token",

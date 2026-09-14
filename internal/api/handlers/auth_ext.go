@@ -120,7 +120,7 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	resetURL := strings.TrimRight(envOr("FRONTEND_URL", "http://localhost:3000"), "/") +
 		"/reset-password?token=" + url.QueryEscape(token)
 	if h.mail.Enabled() {
-		if err := h.mail.Send(req.Email, "Восстановление пароля", mail.PasswordResetBody(resetURL)); err != nil {
+		if err := h.mail.Send(req.Email, "Восстановление пароля", mail.PasswordResetBody(h.mailBrand(ctx, r), resetURL)); err != nil {
 			log.Printf("forgot-password: письмо на %s не отправлено: %v", req.Email, err)
 		}
 	} else {

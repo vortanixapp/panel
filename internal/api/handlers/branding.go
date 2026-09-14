@@ -7,59 +7,44 @@ import (
 )
 
 func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
-	defaults := map[string]string{
-		"brand_name":    "VORTANIX",
-		"logo_url":      "",
-		"primary_color": "#6366f1",
-	}
-	ctx := r.Context()
-	settings := map[string]string{}
-	for _, k := range []string{
-		"brand.name", "brand.logo_url", "brand.primary_color",
-		"app.name", "app.branding.logo", "app.site.template.colors",
-		"app.site.template.blocks", "app.site.template.user_menu_variant",
-	} {
-		settings[k] = h.tenantSettingString(ctx, k)
-	}
+	settings := h.loadTenantSettingStrings(r.Context())
+	a := appearanceFromSettings(settings)
 
-	result := map[string]string{
-		"brand_name":    defaults["brand_name"],
-		"logo_url":      defaults["logo_url"],
-		"primary_color": defaults["primary_color"],
-	}
-
+	name := "VORTANIX"
 	if v := strings.TrimSpace(settings["brand.name"]); v != "" {
-		result["brand_name"] = strings.ToUpper(v)
-	} else if v := strings.TrimSpace(settings["app.name"]); v != "" {
-		result["brand_name"] = strings.ToUpper(v)
+		name = strings.ToUpper(v)
+	} else if a.Name != "" {
+		name = strings.ToUpper(a.Name)
+	}
+	logo := strings.TrimSpace(settings["brand.logo_url"])
+	if logo == "" {
+		logo = h.brandingPublicURL(r, a.Logo)
+	}
+	primary := a.Accent.Panel
+	if primary == "" {
+		primary = defaultPanelAccent
 	}
 
-	if v := strings.TrimSpace(settings["brand.logo_url"]); v != "" {
-		result["logo_url"] = v
-	} else if v := brandingLogoFromSetting(settings["app.branding.logo"]); v != "" {
-		result["logo_url"] = h.brandingPublicURL(r, v)
-	}
-
-	if v := strings.TrimSpace(settings["brand.primary_color"]); v != "" {
-		result["primary_color"] = v
-	} else if v := primaryColorFromTemplate(settings["app.site.template.colors"]); v != "" {
-		result["primary_color"] = v
-	}
-
-	variant := strings.TrimSpace(settings["app.site.template.user_menu_variant"])
-	if variant != "screenshot" {
-		variant = "default"
-	}
-	out := map[string]any{
-		"brand_name":        result["brand_name"],
-		"logo_url":          result["logo_url"],
-		"primary_color":     result["primary_color"],
-		"colors":            jsonObjectOfStrings(settings["app.site.template.colors"]),
-		"blocks":            jsonObjectOfBools(settings["app.site.template.blocks"]),
-		"user_menu_variant": variant,
-	}
-
-	writeJSON(w, http.StatusOK, out)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"brand_name":        name,
+		"logo_url":          logo,
+		"logo_dark_url":     h.brandingPublicURL(r, a.LogoDark),
+		"icon_url":          h.brandingPublicURL(r, a.Icon),
+		"primary_color":     primary,
+		"blocks":            a.Blocks,
+		"user_menu_variant": a.UserMenu,
+		"appearance": map[string]any{
+			"accent":       a.Accent,
+			"theme":        a.Theme,
+			"theme_locked": a.ThemeLocked,
+			"radius":       a.Radius,
+			"font_panel":   a.FontPanel,
+			"font_landing": a.FontLanding,
+			"custom_css":   a.CustomCSS,
+			"hero":         a.Hero,
+			"links":        a.Links,
+		},
+	})
 }
 
 func jsonObjectOfStrings(raw string) map[string]string {
@@ -101,33 +86,4 @@ func jsonObjectOfBools(raw string) map[string]bool {
 		}
 	}
 	return out
-}
-
-func brandingLogoFromSetting(raw string) string {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return ""
-	}
-	if strings.HasPrefix(raw, "http://") || strings.HasPrefix(raw, "https://") {
-		return raw
-	}
-	return raw
-}
-
-func primaryColorFromTemplate(raw string) string {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return ""
-	}
-	var parsed map[string]any
-	if json.Unmarshal([]byte(raw), &parsed) != nil {
-		return ""
-	}
-	if v, ok := parsed["primary"].(string); ok {
-		v = strings.TrimSpace(v)
-		if v != "" {
-			return v
-		}
-	}
-	return ""
 }

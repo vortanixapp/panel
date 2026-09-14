@@ -101,7 +101,6 @@ export const adminInfra = {
   "admin.settings.project.domain": "Domain",
   "admin.settings.project.site_ip": "Site IP address",
   "admin.settings.project.subnet": "Site subnet",
-  "admin.settings.project.default_template": "Default template",
 
   "admin.settings.trial.title": "Trial server",
   "admin.settings.trial.description":
@@ -115,15 +114,6 @@ export const adminInfra = {
   "admin.settings.trial.memory_placeholder": "as the game requires",
   "admin.settings.trial.games": "Games (comma separated)",
   "admin.settings.trial.games_placeholder": "empty — any game in the catalog",
-
-  "admin.settings.links.title": "Links",
-
-  "admin.settings.branding.title": "Branding",
-  "admin.settings.branding.logo": "Logo",
-  "admin.settings.branding.icon": "Icon",
-  "admin.settings.branding.no_file": "No file selected",
-  "admin.settings.branding.replace": "Replace",
-  "admin.settings.branding.choose": "Choose a file",
 
   "admin.settings.security.title": "Security",
   "admin.settings.security.description":
@@ -593,22 +583,108 @@ export const adminInfra = {
   "admin.security.result_denied": "denied",
 
   "admin.appearance.title": "Appearance",
-  "admin.appearance.subtitle": "Template settings: colors and blocks",
+  "admin.appearance.subtitle":
+    "Colors, theme, logos, the home page and custom CSS. Changes are visible to everyone right after saving",
   "admin.appearance.saved": "Appearance saved",
+  "admin.appearance.asset_saved": "File uploaded",
+  "admin.appearance.asset_removed": "File removed",
+  "admin.appearance.unsaved": "You have unsaved changes",
+  "admin.appearance.discard": "Discard",
+  "admin.appearance.reset": "Reset",
+  "admin.appearance.invalid_color": "Colors use the #RRGGBB format",
+  "admin.appearance.tab.colors": "Colors and theme",
+  "admin.appearance.tab.brand": "Logo and name",
   "admin.appearance.tab.landing": "Landing",
-  "admin.appearance.tab.template": "Template",
-  "admin.appearance.palette.title": "Visual palette editor",
-  "admin.appearance.palette.hint":
-    "Changes are synced to the JSON below right away",
-  "admin.appearance.colors.title": "Landing colors",
-  "admin.appearance.colors.hint": "A JSON object with the landing color tokens",
-  "admin.appearance.blocks.title": "Landing blocks",
-  "admin.appearance.blocks.hint":
-    "A JSON object that switches blocks on and off and sets their order",
-  "admin.appearance.template.title": "Basic template settings",
-  "admin.appearance.user_menu_variant": "User block variant in the header",
+  "admin.appearance.tab.css": "Custom CSS",
+  "admin.appearance.accent.panel_title": "Panel accent color",
+  "admin.appearance.accent.panel_hint":
+    "Buttons, links, switches and highlights in the client area, admin area and emails. Button text color is picked automatically",
+  "admin.appearance.accent.landing_title": "Landing accent color",
+  "admin.appearance.accent.landing_hint":
+    "Buttons and accents on the home page and other public pages",
+  "admin.appearance.accent.color": "Color",
+  "admin.appearance.accent.light": "Light theme",
+  "admin.appearance.accent.dark": "Dark theme",
+  "admin.appearance.accent.separate_dark": "Separate color for the dark theme",
+  "admin.appearance.accent.separate_dark_hint":
+    "When off, the dark theme uses the same color",
+  "admin.appearance.accent.landing_custom": "Custom landing color",
+  "admin.appearance.accent.landing_custom_hint":
+    "When off, landing accents use the panel color and buttons stay neutral",
+  "admin.appearance.preview.button": "Button",
+  "admin.appearance.preview.link": "Link",
+  "admin.appearance.preview.badge": "Badge",
+  "admin.appearance.theme.title": "Theme",
+  "admin.appearance.theme.hint":
+    "The theme for visitors who have not picked one themselves",
+  "admin.appearance.theme.default": "Default theme",
+  "admin.appearance.theme.dark": "Dark",
+  "admin.appearance.theme.light": "Light",
+  "admin.appearance.theme.system": "Follow system",
+  "admin.appearance.theme.locked": "Do not allow switching the theme",
+  "admin.appearance.theme.locked_hint":
+    "The theme switch disappears and everyone gets the default theme",
+  "admin.appearance.user_menu": "User menu in the header",
   "admin.appearance.user_menu.default": "Compact",
   "admin.appearance.user_menu.screenshot": "Expanded",
+  "admin.appearance.radius.title": "Corner radius",
+  "admin.appearance.radius.hint": "Cards, buttons and fields across the interface",
+  "admin.appearance.radius.strict": "Sharp",
+  "admin.appearance.radius.standard": "Standard",
+  "admin.appearance.radius.soft": "Soft",
+  "admin.appearance.font.title": "Fonts",
+  "admin.appearance.font.hint":
+    "Every option supports Cyrillic and is served from your server, not from Google",
+  "admin.appearance.font.panel": "Panel",
+  "admin.appearance.font.landing": "Landing",
+  "admin.appearance.font.default": "Standard",
+  "admin.appearance.font.sample": "The quick brown fox jumps over the lazy dog",
+  "admin.appearance.brand.title": "Name and logos",
+  "admin.appearance.brand.hint":
+    "Shown in the header, the landing footer, the browser tab and emails",
+  "admin.appearance.brand.logo": "Logo",
+  "admin.appearance.brand.logo_hint": "PNG, JPG, WEBP or SVG, up to 5 MB",
+  "admin.appearance.brand.logo_dark": "Logo for the dark theme",
+  "admin.appearance.brand.logo_dark_hint":
+    "When not uploaded, the main logo is used in the dark theme",
+  "admin.appearance.brand.icon": "Site icon",
+  "admin.appearance.brand.icon_hint":
+    "A square image for the browser tab, PNG or ICO from 48×48",
+  "admin.appearance.brand.choose": "Upload",
+  "admin.appearance.brand.replace": "Replace",
+  "admin.appearance.brand.remove": "Remove",
+  "admin.appearance.blocks.title": "Home page blocks",
+  "admin.appearance.blocks.hint":
+    "A hidden block disappears from the page, and links to it disappear from the menu and footer",
+  "admin.appearance.block.hero": "Hero",
+  "admin.appearance.block.games": "Games",
+  "admin.appearance.block.steps": "How it works",
+  "admin.appearance.block.hardware": "Hardware",
+  "admin.appearance.block.panel": "Control panel",
+  "admin.appearance.block.locations": "Locations",
+  "admin.appearance.block.faq": "FAQ",
+  "admin.appearance.block.pricing": "Pricing",
+  "admin.appearance.block.cta": "Call to action",
+  "admin.appearance.hero.title": "Hero",
+  "admin.appearance.hero.hint":
+    "An empty field keeps the default text. Custom text is shown in every language",
+  "admin.appearance.hero.badge": "Badge above the title",
+  "admin.appearance.hero.title_field": "Title",
+  "admin.appearance.hero.subtitle": "Subtitle",
+  "admin.appearance.hero.cta_primary": "Primary button",
+  "admin.appearance.hero.cta_secondary": "Secondary button",
+  "admin.appearance.links.title": "Contacts and documents",
+  "admin.appearance.links.hint":
+    "Shown in the landing footer, empty fields are hidden. Links start with https:// or /",
+  "admin.appearance.links.support": "Support",
+  "admin.appearance.links.email": "Email",
+  "admin.appearance.links.offer": "Terms of service",
+  "admin.appearance.links.privacy": "Privacy policy",
+  "admin.appearance.css.title": "Custom CSS",
+  "admin.appearance.css.hint":
+    "Panel — .font-panel, landing — .font-landing, dark theme — html.dark",
+  "admin.appearance.css.warning":
+    "Styles apply to every page right after saving. A panel update may change the markup and break these rules",
 
   "admin.language.title": "Interface language",
   "admin.language.subtitle":

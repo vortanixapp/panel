@@ -13,6 +13,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/mailtpl"
 )
 
 type Config struct {
@@ -21,6 +23,7 @@ type Config struct {
 	SMTPUser string
 	SMTPPass string
 	MailFrom string
+	Brand    mailtpl.Brand
 
 	TelegramBotToken string
 
@@ -78,9 +81,14 @@ func sendEmail(ctx context.Context, cfg Config, d Delivery) error {
 	msg.WriteString("To: " + d.Target + "\r\n")
 	msg.WriteString("Subject: " + mime.QEncoding.Encode("utf-8", d.Subject) + "\r\n")
 	msg.WriteString("MIME-Version: 1.0\r\n")
-	msg.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
+	msg.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
 	msg.WriteString("\r\n")
-	msg.WriteString(d.Body)
+	msg.WriteString(mailtpl.Render(cfg.Brand, mailtpl.Message{
+		Title:       d.Subject,
+		Body:        mailtpl.Paragraphs(d.Body),
+		ActionLabel: d.ActionLabel,
+		ActionURL:   d.ActionHref,
+	}))
 
 	var auth smtp.Auth
 	if u := strings.TrimSpace(cfg.SMTPUser); u != "" {

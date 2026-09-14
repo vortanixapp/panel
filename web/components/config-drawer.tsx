@@ -180,7 +180,7 @@ function ThemeConfig() {
   const t = useT()
   const { defaultTheme, theme, setTheme } = useTheme()
   return (
-    <div>
+    <div className='vx-theme-switch'>
       <SectionTitle
         title={t('layout.appearance.theme')}
         showReset={theme !== defaultTheme}

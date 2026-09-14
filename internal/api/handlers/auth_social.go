@@ -440,7 +440,7 @@ func (h *Handler) SendEmailVerification(w http.ResponseWriter, r *http.Request) 
 	verifyURL := h.buildSignedVerifyURL(claims.UserID, claims.Email)
 	resp := map[string]any{"ok": true, "status": "verification-link-sent", "message": "Письмо для подтверждения отправлено."}
 	if h.mail.Enabled() {
-		_ = h.mail.Send(claims.Email, "Подтверждение email", mail.VerificationBody(verifyURL))
+		_ = h.mail.Send(claims.Email, "Подтверждение email", mail.VerificationBody(h.mailBrand(r.Context(), r), verifyURL))
 	} else if h.mail.DevExpose {
 		resp["verification_url"] = verifyURL
 	}
@@ -488,7 +488,7 @@ func (h *Handler) maybeSendVerificationEmail(userID, email string) {
 	}
 	verifyURL := h.buildSignedVerifyURL(userID, email)
 	if h.mail.Enabled() {
-		_ = h.mail.Send(email, "Подтверждение email", mail.VerificationBody(verifyURL))
+		_ = h.mail.Send(email, "Подтверждение email", mail.VerificationBody(h.mailBrand(context.Background(), nil), verifyURL))
 	}
 }
 

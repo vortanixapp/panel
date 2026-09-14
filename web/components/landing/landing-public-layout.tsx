@@ -7,7 +7,39 @@ import { BrandLogo } from "@/components/brand-logo";
 import { useBrand } from "@/context/brand-provider";
 import { getAccessToken } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
+import type { TranslateFn } from "@/lib/i18n";
 import { landingFooterCols, landingNav } from "@/components/landing/landing-content";
+
+const ANCHOR_BLOCKS: Record<string, string> = {
+  "#pricing": "pricing",
+  "#faq": "faq",
+  "#games": "games",
+};
+
+function anchorVisible(blocks: Record<string, boolean>, href: string) {
+  const block = ANCHOR_BLOCKS[href];
+  return !block || blocks[block] !== false;
+}
+
+function footerContacts(t: TranslateFn, links: Record<string, string>) {
+  return [
+    { key: "telegram", icon: "ri-telegram-line", label: "Telegram", href: links.telegram },
+    { key: "discord", icon: "ri-discord-line", label: "Discord", href: links.discord },
+    { key: "vk", icon: "", label: "VK", href: links.vk },
+    {
+      key: "support",
+      icon: "ri-customer-service-2-line",
+      label: t("landing.footer.support"),
+      href: links.support,
+    },
+    {
+      key: "email",
+      icon: "ri-mail-line",
+      label: links.email ?? "",
+      href: links.email ? `mailto:${links.email}` : "",
+    },
+  ].filter((contact) => Boolean(contact.href));
+}
 
 function navLinkClass(active: boolean) {
   return `px-3.5 py-2 text-[13.5px] font-medium rounded-lg transition-colors whitespace-nowrap ${
@@ -30,10 +62,16 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const pathname = usePathname();
-  const { name: appName } = useBrand();
+  const { name: appName, templateBlocks: blocks, links } = useBrand();
 
-  const navItems = landingNav(t);
-  const footerCols = landingFooterCols(t);
+  const navItems = landingNav(t).filter((item) => anchorVisible(blocks, item.href));
+  const footerCols = landingFooterCols(t)
+    .map((col) => ({
+      ...col,
+      links: col.links.filter((link) => anchorVisible(blocks, link.href)),
+    }))
+    .filter((col) => col.links.length > 0);
+  const contacts = footerContacts(t, links);
 
   useEffect(() => {
     setLoggedIn(!!getAccessToken());
@@ -187,6 +225,27 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto grid max-w-[1180px] gap-12 lg:grid-cols-[280px_1fr]">
           <div>
             <BrandLogo size="sm" className="h-7 max-w-[160px]" />
+            {contacts.length > 0 && (
+              <div className="mt-5 flex flex-wrap gap-2">
+                {contacts.map((contact) => (
+                  <a
+                    key={contact.key}
+                    href={contact.href}
+                    target={contact.key === "email" ? undefined : "_blank"}
+                    rel="noopener noreferrer"
+                    aria-label={contact.label}
+                    title={contact.label}
+                    className="flex size-9 items-center justify-center rounded-lg border border-border text-[var(--vx-ink-dim)] transition-colors hover:text-primary"
+                  >
+                    {contact.icon ? (
+                      <i className={`${contact.icon} text-lg`} />
+                    ) : (
+                      <span className="text-[11px] font-bold">{contact.label}</span>
+                    )}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
             {footerCols.map((col) => (
@@ -220,8 +279,24 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
             ))}
           </div>
         </div>
-        <div className="mx-auto mt-10 max-w-[1180px] border-t border-border pt-6 text-xs text-muted-foreground/70">
-          © {new Date().getFullYear()} {appName}. {t("landing.footer.rights")}
+        <div className="mx-auto mt-10 flex max-w-[1180px] flex-wrap items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground/70">
+          <span>
+            © {new Date().getFullYear()} {appName}. {t("landing.footer.rights")}
+          </span>
+          {(links.offer || links.privacy) && (
+            <div className="flex flex-wrap gap-4">
+              {links.offer && (
+                <a href={links.offer} className="transition-colors hover:text-primary">
+                  {t("landing.footer.offer")}
+                </a>
+              )}
+              {links.privacy && (
+                <a href={links.privacy} className="transition-colors hover:text-primary">
+                  {t("landing.footer.privacy")}
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </footer>
     </div>

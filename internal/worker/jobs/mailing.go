@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/vortanixapp/panel/internal/worker/mail"
+	"github.com/vortanixapp/panel/pkg/mailtpl"
 )
 
 func (r *Runner) MailingLoop(ctx context.Context, wake <-chan struct{}) {
@@ -110,9 +112,10 @@ func (r *Runner) processMailingOne(ctx context.Context) bool {
 	}
 	rows.Close()
 
+	brand := r.mailBrand(ctx)
 	sent := 0
 	for _, rec := range recipients {
-		sendErr := cfg.Send(rec.email, subject, mailingBody(body, isHTML))
+		sendErr := cfg.Send(rec.email, subject, mailingBody(brand, body, isHTML))
 		if sendErr == nil {
 			sent++
 			_, _ = r.db.Exec(ctx, `
@@ -187,9 +190,12 @@ func (r *Runner) tenantSettingString(ctx context.Context, key string) string {
 	return ""
 }
 
-func mailingBody(body string, isHTML bool) string {
+func mailingBody(brand mailtpl.Brand, body string, isHTML bool) string {
 	if isHTML {
-		return body
+		if strings.Contains(strings.ToLower(body), "<html") {
+			return body
+		}
+		return mailtpl.Render(brand, mailtpl.Message{Body: body})
 	}
-	return "<pre style=\"font-family:inherit;white-space:pre-wrap\">" + body + "</pre>"
+	return mailtpl.Render(brand, mailtpl.Message{Body: mailtpl.Paragraphs(body)})
 }

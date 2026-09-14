@@ -20,9 +20,11 @@ export function BrandLogo({
   size?: "sm" | "md" | "lg";
   priority?: boolean;
 }) {
-  const { name, logoUrl } = useBrand();
+  const { name, logoUrl, logoDarkUrl } = useBrand();
+  const lightUrl = logoUrl || logoDarkUrl;
+  const darkUrl = logoDarkUrl || logoUrl;
   const resolvedLogoUrl =
-    logoUrl || (name === DEFAULT_BRAND ? DEFAULT_BRAND_LOGO_URL : "");
+    lightUrl || (name === DEFAULT_BRAND ? DEFAULT_BRAND_LOGO_URL : "");
   const textSize =
     size === "sm"
       ? "text-base tracking-[0.2em]"
@@ -38,16 +40,41 @@ export function BrandLogo({
         : { width: 264, height: 55, className: "h-10" };
 
   const isDefaultBrandLogo =
-    resolvedLogoUrl === DEFAULT_BRAND_LOGO_URL && !logoUrl;
+    resolvedLogoUrl === DEFAULT_BRAND_LOGO_URL && !lightUrl;
 
   if (resolvedLogoUrl && !isDefaultBrandLogo) {
+    const imageClass = cn(imageSize.className, "w-auto object-contain", className);
+    if (darkUrl && darkUrl !== resolvedLogoUrl) {
+      return (
+        <>
+          <Image
+            src={resolvedLogoUrl}
+            alt={name}
+            width={imageSize.width}
+            height={imageSize.height}
+            className={cn(imageClass, "dark:hidden")}
+            priority={priority}
+            unoptimized
+          />
+          <Image
+            src={darkUrl}
+            alt={name}
+            width={imageSize.width}
+            height={imageSize.height}
+            className={cn(imageClass, "hidden dark:block")}
+            priority={priority}
+            unoptimized
+          />
+        </>
+      );
+    }
     return (
       <Image
         src={resolvedLogoUrl}
         alt={name}
         width={imageSize.width}
         height={imageSize.height}
-        className={cn(imageSize.className, "w-auto object-contain", className)}
+        className={imageClass}
         priority={priority}
         unoptimized
       />
@@ -107,9 +134,9 @@ export function BrandMark({
   className?: string;
   priority?: boolean;
 }) {
-  const { name, logoUrl } = useBrand();
+  const { name, logoUrl, iconUrl } = useBrand();
   const resolvedMarkUrl =
-    logoUrl || (name === DEFAULT_BRAND ? DEFAULT_BRAND_MARK_URL : "");
+    iconUrl || logoUrl || (name === DEFAULT_BRAND ? DEFAULT_BRAND_MARK_URL : "");
 
   if (!resolvedMarkUrl) {
     return (

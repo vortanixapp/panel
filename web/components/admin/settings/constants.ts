@@ -32,19 +32,12 @@ export const FILES_STORAGE_DRIVERS = [
 ] as const;
 
 export const SETTINGS_KEY_MAP: Record<string, string> = {
-  "app.branding.logo": "app_branding_logo",
-  "app.branding.icon": "app_branding_icon",
-  "app.name": "app_name",
   "app.site.description": "site_description",
   "app.site.domain": "site_domain",
-  "app.site.default_template": "default_template",
   "app.site.ip": "site_ip",
   "app.site.subnet": "site_subnet",
   "dockerhub.username": "dockerhub_username",
   "dockerhub.token": "dockerhub_token",
-  "app.links.telegram": "telegram_url",
-  "app.links.discord": "discord_url",
-  "app.links.support": "support_url",
   "services.recaptcha.site_key": "recaptcha_site_key",
   "services.recaptcha.secret_key": "recaptcha_secret_key",
   "auth.require_verified_email": "require_verified_email",

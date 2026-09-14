@@ -2,88 +2,60 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import type { Branding } from "@/lib/api";
+import { setFavicon } from "@/lib/appearance";
 import {
   BRAND_LOGO_URL,
   BRAND_NAME,
-  getRuntimeBrandName,
-  getRuntimeLogoUrl,
-  getRuntimePrimaryColor,
-  getRuntimeTemplateBlocks,
-  getRuntimeTemplateColors,
-  getRuntimeUserMenuVariant,
   loadRuntimeBranding,
+  normalizeBrandName,
+  reloadRuntimeBranding,
 } from "@/lib/brand";
 
 type BrandState = {
   name: string;
   logoUrl: string;
-  primaryColor: string;
-  templateColors: Record<string, string>;
+  logoDarkUrl: string;
+  iconUrl: string;
   templateBlocks: Record<string, boolean>;
   userMenuVariant: "default" | "screenshot";
+  hero: Record<string, string>;
+  links: Record<string, string>;
   ready: boolean;
+  refresh: () => Promise<void>;
 };
+
+const EMPTY: Record<string, never> = {};
 
 const BrandContext = createContext<BrandState>({
   name: BRAND_NAME,
   logoUrl: BRAND_LOGO_URL,
-  primaryColor: "#6366f1",
-  templateColors: {},
-  templateBlocks: {},
+  logoDarkUrl: "",
+  iconUrl: "",
+  templateBlocks: EMPTY,
   userMenuVariant: "default",
+  hero: EMPTY,
+  links: EMPTY,
   ready: false,
+  refresh: async () => undefined,
 });
 
-function applyPrimaryColor(color: string) {
-  const root = document.documentElement;
-  root.style.setProperty("--brand-primary", color);
-  root.style.setProperty("--primary", color);
-  root.style.setProperty("--primary-foreground", readableTextOn(color));
-  root.style.setProperty("--ring", color);
-}
-
-function readableTextOn(color: string): string {
-  const rgb = hexToRgb(color);
-  if (!rgb) return "#ffffff";
-  const [r, g, b] = rgb.map((v) => {
-    const c = v / 255;
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  });
-  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return luminance > 0.45 ? "#0a0b0d" : "#ffffff";
-}
-
-function hexToRgb(color: string): [number, number, number] | null {
-  const m = /^#?([\da-f]{3}|[\da-f]{6})$/i.exec(color.trim());
-  if (!m) return null;
-  let hex = m[1];
-  if (hex.length === 3) {
-    hex = hex
-      .split("")
-      .map((c) => c + c)
-      .join("");
-  }
-  return [
-    parseInt(hex.slice(0, 2), 16),
-    parseInt(hex.slice(2, 4), 16),
-    parseInt(hex.slice(4, 6), 16),
-  ];
-}
-
 export function BrandProvider({ children }: { children: ReactNode }) {
+  const [branding, setBranding] = useState<Branding | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void loadRuntimeBranding().then(() => {
+    void loadRuntimeBranding().then((loaded) => {
       if (cancelled) return;
-      applyPrimaryColor(getRuntimePrimaryColor());
+      setBranding(loaded);
       setReady(true);
     });
     return () => {
@@ -91,17 +63,30 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (branding?.icon_url) setFavicon(branding.icon_url);
+  }, [branding?.icon_url]);
+
+  const refresh = useCallback(async () => {
+    const fresh = await reloadRuntimeBranding();
+    if (fresh) setBranding(fresh);
+  }, []);
+
   const value = useMemo<BrandState>(
     () => ({
-      name: ready ? getRuntimeBrandName() : BRAND_NAME,
-      logoUrl: ready ? getRuntimeLogoUrl() : BRAND_LOGO_URL,
-      primaryColor: ready ? getRuntimePrimaryColor() : "#6366f1",
-      templateColors: ready ? getRuntimeTemplateColors() : {},
-      templateBlocks: ready ? getRuntimeTemplateBlocks() : {},
-      userMenuVariant: ready ? getRuntimeUserMenuVariant() : "default",
+      name: branding ? normalizeBrandName(branding.brand_name) : BRAND_NAME,
+      logoUrl: branding?.logo_url || BRAND_LOGO_URL,
+      logoDarkUrl: branding?.logo_dark_url || "",
+      iconUrl: branding?.icon_url || "",
+      templateBlocks: branding?.blocks ?? EMPTY,
+      userMenuVariant:
+        branding?.user_menu_variant === "screenshot" ? "screenshot" : "default",
+      hero: branding?.appearance?.hero ?? EMPTY,
+      links: branding?.appearance?.links ?? EMPTY,
       ready,
+      refresh,
     }),
-    [ready]
+    [branding, ready, refresh]
   );
 
   return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;

@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { DM_Mono, Inter, Outfit, Sora, Space_Mono } from "next/font/google";
+import {
+  DM_Mono,
+  IBM_Plex_Sans,
+  Inter,
+  Manrope,
+  Montserrat,
+  Outfit,
+  Rubik,
+  Sora,
+  Space_Mono,
+} from "next/font/google";
 import { LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n";
 import { BRAND_NAME, DEFAULT_BRAND_MARK_URL } from "@/lib/brand";
 import { serverRuntimeConfig } from "@/lib/runtime-config";
@@ -49,6 +59,35 @@ const dmMono = DM_Mono({
   adjustFontFallback: false,
 });
 
+const manrope = Manrope({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-manrope",
+  display: "swap",
+  preload: false,
+});
+
+const rubik = Rubik({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-rubik",
+  display: "swap",
+  preload: false,
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-montserrat",
+  display: "swap",
+  preload: false,
+});
+
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-ibm-plex-sans",
+  display: "swap",
+  preload: false,
+});
+
 export function generateMetadata(): Metadata {
   const brand = serverRuntimeConfig().brand_name || BRAND_NAME;
   return {
@@ -84,7 +123,9 @@ export default async function RootLayout({
           href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
         />
       </head>
-      <body className={`${inter.variable} ${sora.variable} ${spaceMono.variable} ${outfit.variable} ${dmMono.variable} font-sans`}>
+      <body
+        className={`${inter.variable} ${sora.variable} ${spaceMono.variable} ${outfit.variable} ${dmMono.variable} ${manrope.variable} ${rubik.variable} ${montserrat.variable} ${ibmPlexSans.variable} font-sans`}
+      >
         <Providers
           initialLocale={locale}
           hasLocaleCookie={Boolean(cookieLocale)}

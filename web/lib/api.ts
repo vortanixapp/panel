@@ -7,6 +7,13 @@ import type {
 import { decodeAccess, forgetAccount, markNeedsSignIn, rememberTokens } from "@/lib/accounts";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { t } from "@/lib/i18n";
+import type {
+  AppearanceAccent,
+  AppearanceFont,
+  AppearanceRadius,
+  AppearanceTheme,
+  BrandingPayload,
+} from "@/lib/appearance";
 
 export const API_URL = runtimeConfig().api_url;
 export const CONSOLE_URL = runtimeConfig().console_url;
@@ -3245,14 +3252,7 @@ export async function deleteAdminGameVersion(gameId: string, versionId: string) 
   );
 }
 
-export type Branding = {
-  brand_name: string;
-  logo_url: string;
-  primary_color: string;
-  colors?: Record<string, string>;
-  blocks?: Record<string, boolean>;
-  user_menu_variant?: "default" | "screenshot";
-};
+export type Branding = BrandingPayload;
 
 export async function fetchBranding() {
   const res = await fetch(`${API_URL}/v1/branding`);
@@ -3840,27 +3840,71 @@ export async function testAdminSettingsFilesStorage(
   );
 }
 
-export type AdminAppearanceData = {
-  values?: Record<string, string>;
+export type AdminAppearance = {
+  name: string;
+  logo: string;
+  logo_dark: string;
+  icon: string;
+  accent: AppearanceAccent;
+  theme: AppearanceTheme;
+  theme_locked: boolean;
+  user_menu: "default" | "screenshot";
+  radius: AppearanceRadius;
+  font_panel: AppearanceFont;
+  font_landing: AppearanceFont;
+  custom_css: string;
+  blocks: Record<string, boolean>;
+  hero: Record<string, string>;
+  links: Record<string, string>;
 };
 
+export type AppearanceAssetKind = "logo" | "logo_dark" | "icon";
+
 export async function fetchAdminAppearance() {
-  return apiFetch<AdminAppearanceData>("/v1/admin/settings/appearance");
+  return apiFetch<{ appearance: AdminAppearance }>(
+    "/v1/admin/settings/appearance"
+  );
 }
 
-export async function saveAdminAppearance(payload: {
-  default_template: string;
-  template_colors: string;
-  template_blocks: string;
-  template_user_menu_variant: string;
-}) {
-  return apiFetch<{ ok?: boolean; message?: string }>(
+export async function saveAdminAppearance(appearance: AdminAppearance) {
+  return apiFetch<{ appearance: AdminAppearance }>(
     "/v1/admin/settings/appearance",
     {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(appearance),
     }
   );
+}
+
+export async function deleteAdminAppearanceAsset(kind: AppearanceAssetKind) {
+  return apiFetch<{ appearance: AdminAppearance }>(
+    `/v1/admin/settings/appearance/assets/${kind}`,
+    { method: "DELETE" }
+  );
+}
+
+export async function uploadAdminAppearanceAsset(
+  kind: AppearanceAssetKind,
+  file: File
+) {
+  const form = new FormData();
+  form.append("file", file);
+  const headers: Record<string, string> = {};
+  const token = getAccessToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(
+    `${API_URL}/v1/admin/settings/appearance/assets/${kind}`,
+    { method: "POST", headers, body: form }
+  );
+  const data = (await res.json().catch(() => ({}))) as {
+    appearance?: AdminAppearance;
+    error?: string;
+    message?: string;
+  };
+  if (!res.ok || !data.appearance) {
+    throw new Error(data.error ?? data.message ?? "Request failed");
+  }
+  return { appearance: data.appearance };
 }
 
 export function brandingUploadUrl(path: string): string {

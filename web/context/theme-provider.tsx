@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useMemo } from 'react'
 import { getCookie, setCookie, removeCookie } from '@/lib/cookies'
+import { injectedAppearance } from '@/lib/appearance'
 
 type Theme = 'dark' | 'light' | 'system'
 type ResolvedTheme = Exclude<Theme, 'system'>
@@ -40,8 +41,13 @@ export function ThemeProvider({
   storageKey = THEME_COOKIE_NAME,
   ...props
 }: ThemeProviderProps) {
-  const [theme, _setTheme] = useState<Theme>(
-    () => (getCookie(storageKey) as Theme) || defaultTheme
+  const [appearance] = useState(() => injectedAppearance())
+  const effectiveDefault: Theme = appearance?.theme ?? defaultTheme
+  const locked = Boolean(appearance?.theme_locked)
+  const [theme, _setTheme] = useState<Theme>(() =>
+    locked
+      ? effectiveDefault
+      : (getCookie(storageKey) as Theme) || effectiveDefault
   )
 
   const resolvedTheme = useMemo((): ResolvedTheme => {
@@ -77,6 +83,7 @@ export function ThemeProvider({
   }, [theme, resolvedTheme])
 
   const setTheme = (theme: Theme, origin?: { x: number; y: number }) => {
+    if (locked) return
     setCookie(storageKey, theme, THEME_COOKIE_MAX_AGE)
 
     const root = document.documentElement
@@ -127,11 +134,11 @@ export function ThemeProvider({
 
   const resetTheme = () => {
     removeCookie(storageKey)
-    _setTheme(DEFAULT_THEME)
+    _setTheme(effectiveDefault)
   }
 
   const contextValue = {
-    defaultTheme,
+    defaultTheme: effectiveDefault,
     resolvedTheme,
     resetTheme,
     theme,

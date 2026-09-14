@@ -277,15 +277,19 @@
 }
 
 .font-landing .vx-btn {
-  background: var(--vx-panel-fill);
+  background: var(--vx-landing-accent, var(--vx-panel-fill));
   border-color: transparent;
-  color: var(--vx-panel-on-fill);
+  color: var(--vx-landing-on-accent, var(--vx-panel-on-fill));
 }
 
 .font-landing .vx-btn:hover {
-  background: var(--vx-panel-fill);
+  background: var(--vx-landing-accent, var(--vx-panel-fill));
   border-color: transparent;
   opacity: 0.88;
+}
+
+html[data-theme-locked] .vx-theme-switch {
+  display: none !important;
 }
 
 .vx-cover {

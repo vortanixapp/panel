@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/smtp"
 	"strings"
+
+	"github.com/vortanixapp/panel/pkg/mailtpl"
 )
 
 type Config struct {
@@ -34,15 +36,30 @@ func (c Config) Send(to, subject, body string) error {
 	return smtp.SendMail(addr, auth, from, []string{to}, msg)
 }
 
-func VerificationBody(verifyURL string) string {
-	return fmt.Sprintf(`<p>Подтвердите email, перейдя по ссылке:</p><p><a href="%s">Подтвердить email</a></p>`, verifyURL)
+func VerificationBody(brand mailtpl.Brand, verifyURL string) string {
+	return mailtpl.Render(brand, mailtpl.Message{
+		Title:       "Подтвердите email",
+		Body:        mailtpl.Paragraphs("Чтобы завершить регистрацию, подтвердите адрес электронной почты."),
+		ActionLabel: "Подтвердить email",
+		ActionURL:   verifyURL,
+	})
 }
 
-func PasswordResetBody(resetURL string) string {
-	return fmt.Sprintf(
-		`<p>Вы запросили восстановление пароля в панели Vortanix.</p>`+
-			`<p><a href="%s">Задать новый пароль</a></p>`+
-			`<p>Ссылка действует два часа. Если вы не запрашивали восстановление, `+
-			`просто удалите это письмо — пароль останется прежним.</p>`,
-		resetURL)
+func PasswordResetBody(brand mailtpl.Brand, resetURL string) string {
+	return mailtpl.Render(brand, mailtpl.Message{
+		Title: "Восстановление пароля",
+		Body: mailtpl.Paragraphs("Вы запросили восстановление пароля.\n\n" +
+			"Ссылка действует два часа. Если вы не запрашивали восстановление, " +
+			"просто удалите это письмо — пароль останется прежним."),
+		ActionLabel: "Задать новый пароль",
+		ActionURL:   resetURL,
+	})
+}
+
+func TestBody(brand mailtpl.Brand, to string) string {
+	return mailtpl.Render(brand, mailtpl.Message{
+		Title: "Тестовое письмо",
+		Body: mailtpl.Paragraphs("Письмо отправлено на " + to + ".\n\n" +
+			"Так выглядят письма панели: логотип и акцентный цвет берутся из раздела «Оформление»."),
+	})
 }

@@ -1,5 +1,5 @@
-import { AppearancePageContent } from "@/components/admin/settings/appearance-page-content";
+import { AppearanceSettingsContent } from "@/components/admin/settings/appearance-settings-content";
 
 export default function AdminSettingsAppearancePage() {
-  return <AppearancePageContent />;
+  return <AppearanceSettingsContent />;
 }

@@ -40,28 +40,6 @@ function LandingBlock({
   return <>{children}</>;
 }
 
-const LANDING_COLOR_TOKENS: Record<string, string> = {
-  primary: "--primary",
-  secondary: "--secondary",
-  accent: "--accent",
-  background: "--background",
-  foreground: "--foreground",
-  card: "--card",
-  muted: "--muted",
-  border: "--border",
-};
-
-function landingColorStyle(colors: Record<string, string>): React.CSSProperties {
-  const style: Record<string, string> = {};
-  for (const [key, token] of Object.entries(LANDING_COLOR_TOKENS)) {
-    const value = colors[key];
-    if (typeof value === "string" && /^#([\da-f]{3}|[\da-f]{6})$/i.test(value.trim())) {
-      style[token] = value.trim();
-    }
-  }
-  return style as React.CSSProperties;
-}
-
 function SectionKicker({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="mb-8 text-[15px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
@@ -74,7 +52,7 @@ export function LandingBody() {
   const t = useT();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const rootRef = useLandingReveal<HTMLDivElement>();
-  const { templateBlocks: blocks, templateColors } = useBrand();
+  const { templateBlocks: blocks, hero } = useBrand();
 
   const heroGauges = landingHeroGauges(t);
   const heroStats = landingHeroStats(t);
@@ -87,7 +65,7 @@ export function LandingBody() {
   const pricing = landingPricing(t);
 
   return (
-    <div ref={rootRef} style={landingColorStyle(templateColors)}>
+    <div ref={rootRef}>
       <noscript>
         <style>{".vx-reveal{opacity:1;transform:none}"}</style>
       </noscript>
@@ -103,7 +81,7 @@ export function LandingBody() {
               className="vx-reveal inline-flex items-center gap-2.5 rounded-full border border-[var(--vx-hairline)] bg-[var(--vx-surface-2)] px-3 py-1.5 font-mono text-[11.5px] tracking-[0.08em] text-primary uppercase"
             >
               <span className="vx-pulse size-1.5 rounded-full bg-primary" />
-              {landingHeroBadge(t)}
+              {hero.badge || landingHeroBadge(t)}
             </div>
 
             <h1
@@ -111,14 +89,14 @@ export function LandingBody() {
               style={{ transitionDelay: "60ms" }}
               className="vx-reveal mt-6 text-[2.6rem] leading-[0.97] font-bold tracking-[-0.042em] text-balance sm:text-[3.2rem] lg:text-[4.25rem]"
             >
-              {t("landing.hero.title")}
+              {hero.title || t("landing.hero.title")}
             </h1>
             <p
               data-reveal
               style={{ transitionDelay: "120ms" }}
               className="vx-reveal mt-5 max-w-[520px] text-[17.5px] leading-[1.62] text-muted-foreground"
             >
-              {t("landing.hero.subtitle")}
+              {hero.subtitle || t("landing.hero.subtitle")}
             </p>
 
             <div
@@ -130,19 +108,23 @@ export function LandingBody() {
                 href="/register"
                 className="vx-btn vx-sheen relative overflow-hidden rounded-[10px] px-[26px] py-[15px] text-[15px] font-semibold shadow-[0_0_44px_var(--vx-glow)]"
               >
-                <span className="relative">{t("landing.hero.cta_primary")}</span>
+                <span className="relative">
+                  {hero.cta_primary || t("landing.hero.cta_primary")}
+                </span>
               </Link>
-              <button
-                type="button"
-                onClick={() =>
-                  document
-                    .getElementById("pricing")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-                className="vx-btn-ghost rounded-[10px] px-[26px] py-[15px] text-[15px] font-medium"
-              >
-                {t("landing.hero.cta_secondary")}
-              </button>
+              {blocks.pricing !== false && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    document
+                      .getElementById("pricing")
+                      ?.scrollIntoView({ behavior: "smooth" })
+                  }
+                  className="vx-btn-ghost rounded-[10px] px-[26px] py-[15px] text-[15px] font-medium"
+                >
+                  {hero.cta_secondary || t("landing.hero.cta_secondary")}
+                </button>
+              )}
             </div>
 
             <div

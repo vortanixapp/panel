@@ -34,6 +34,8 @@ export const landing = {
   "landing.footer.sign_in": "Sign in",
   "landing.footer.register": "Sign up",
   "landing.footer.rights": "All rights reserved.",
+  "landing.footer.offer": "Terms of service",
+  "landing.footer.privacy": "Privacy policy",
 
   "landing.hero.badge": "Ryzen 9 9950X · NVMe Gen4 · 7 locations",
   "landing.hero.gauge_tps_label": "TPS",

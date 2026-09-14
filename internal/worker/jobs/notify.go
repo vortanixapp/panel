@@ -8,13 +8,14 @@ import (
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
-func (r *Runner) notifyConfig() notify.Config {
+func (r *Runner) notifyConfig(ctx context.Context) notify.Config {
 	return notify.Config{
 		SMTPHost:         r.mail.Host,
 		SMTPPort:         r.mail.Port,
 		SMTPUser:         r.mail.User,
 		SMTPPass:         r.mail.Pass,
 		MailFrom:         r.mail.From,
+		Brand:            r.mailBrand(ctx),
 		TelegramBotToken: r.telegramBotToken,
 	}
 }
@@ -53,7 +54,7 @@ func (r *Runner) NotifyDeliveryLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			r.heartbeat.Beat(LoopNotifyDelivery)
-			sent, failed, err := notify.Drain(ctx, r.db, r.notifyConfig(), 50)
+			sent, failed, err := notify.Drain(ctx, r.db, r.notifyConfig(ctx), 50)
 			if err != nil {
 				log.Printf("доставка оповещений: %v", err)
 			}

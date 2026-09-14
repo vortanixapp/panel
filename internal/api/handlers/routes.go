@@ -335,6 +335,8 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Get("/settings/readiness", h.AdminCutoverReadiness)
 			r.Get("/settings/appearance", h.GetAdminAppearance)
 			r.Post("/settings/appearance", h.UpdateAdminAppearance)
+			r.Post("/settings/appearance/assets/{kind}", h.UploadAdminAppearanceAsset)
+			r.Delete("/settings/appearance/assets/{kind}", h.DeleteAdminAppearanceAsset)
 			r.Get("/groups", h.GetGroups)
 			r.Patch("/groups", h.UpdateGroups)
 			r.Post("/groups", h.UpdateGroups)
