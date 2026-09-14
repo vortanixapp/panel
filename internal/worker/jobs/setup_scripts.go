@@ -24,7 +24,7 @@ func setupCommands(component string, meta map[string]any, agentToken, nodeID, re
 	case "mysql":
 		return mysqlDockerCommands(meta), nil
 	case "phpmyadmin":
-		return phpMyAdminCommands(), nil
+		return phpMyAdminCommands(meta), nil
 	case "ftp":
 		return sftpCommands(), nil
 	case "quota":
@@ -38,23 +38,55 @@ func setupCommands(component string, meta map[string]any, agentToken, nodeID, re
 	}
 }
 
-func mysqlDockerCommands(meta map[string]any) []string {
-	instances := defaultMySQLInstances()
-	if raw, ok := meta["mysql_instances"]; ok {
-		if arr, ok := raw.([]any); ok && len(arr) > 0 {
-			instances = arr
+const mysqlNetwork = "vortanix-mysql"
+
+func mysqlInstanceList(meta map[string]any) []map[string]any {
+	raw := defaultMySQLInstances()
+	if arr, ok := meta["mysql_instances"].([]any); ok && len(arr) > 0 {
+		raw = arr
+	}
+	out := make([]map[string]any, 0, len(raw))
+	for _, it := range raw {
+		if m, ok := it.(map[string]any); ok && mysqlInstanceText(m["container"]) != "" {
+			out = append(out, m)
 		}
 	}
+	return out
+}
+
+func mysqlNetworkCommands(instances []map[string]any) []string {
+	cmds := []string{
+		fmt.Sprintf(`sudo docker network inspect %[1]s >/dev/null 2>&1 || sudo docker network create %[1]s >/dev/null || echo "ВНИМАНИЕ: сеть %[1]s не создана"`, mysqlNetwork),
+		fmt.Sprintf(`VTX_NET_CIDR="$(sudo docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}' %s 2>/dev/null | tr ' ' '\n' | grep -m1 '\.' || true)"`, mysqlNetwork),
+		`VTX_NET_HOST=""
+if [ -n "$VTX_NET_CIDR" ]; then
+  VTX_NET_BITS="${VTX_NET_CIDR#*/}"
+  VTX_NET_MASK=$(( 0xFFFFFFFF ^ ((1 << (32 - VTX_NET_BITS)) - 1) ))
+  VTX_NET_HOST="${VTX_NET_CIDR%/*}/$(( (VTX_NET_MASK >> 24) & 255 )).$(( (VTX_NET_MASK >> 16) & 255 )).$(( (VTX_NET_MASK >> 8) & 255 )).$(( VTX_NET_MASK & 255 ))"
+fi`,
+	}
+	for _, m := range instances {
+		container := mysqlInstanceText(m["container"])
+		pwFile := "/opt/vortanix/" + container + ".rootpw"
+		cmds = append(cmds, fmt.Sprintf(`if sudo docker ps --format '{{.Names}}' | grep -qx %[1]q; then
+  sudo docker network connect %[2]s %[1]s >/dev/null 2>&1 || true
+  if [ -n "$VTX_NET_HOST" ] && sudo test -s %[3]s; then
+    VTX_ROOT_PW="$(sudo cat %[3]s)"
+    sudo docker exec -e MYSQL_PWD="$VTX_ROOT_PW" %[1]s mysql -uroot -e "CREATE USER IF NOT EXISTS 'root'@'$VTX_NET_HOST' IDENTIFIED BY '$VTX_ROOT_PW'; ALTER USER 'root'@'$VTX_NET_HOST' IDENTIFIED BY '$VTX_ROOT_PW'; GRANT ALL PRIVILEGES ON *.* TO 'root'@'$VTX_NET_HOST' WITH GRANT OPTION; FLUSH PRIVILEGES;" >/dev/null 2>&1 && echo "phpMyAdmin: root допущен к %[1]s" || echo "ВНИМАНИЕ: phpMyAdmin не получил доступ root к %[1]s"
+  fi
+fi`, container, mysqlNetwork, pwFile))
+	}
+	return cmds
+}
+
+func mysqlDockerCommands(meta map[string]any) []string {
+	instances := mysqlInstanceList(meta)
 	cmds := []string{
 		"sudo systemctl start docker || true",
 		"sudo mkdir -p /opt/vortanix",
 		`VTX_MYSQL_JSON=""`,
 	}
-	for _, it := range instances {
-		m, ok := it.(map[string]any)
-		if !ok {
-			continue
-		}
+	for _, m := range instances {
 		container := mysqlInstanceText(m["container"])
 		port := intFromJSONNumber(m["port"])
 		engine := strings.ToLower(mysqlInstanceText(m["engine"]))
@@ -103,7 +135,7 @@ fi`, container, oldPW, container, oldPW, container, container),
 		`printf '{"instances":[%s]}' "$VTX_MYSQL_JSON" | sudo tee /opt/vortanix/mysql-instances.json >/dev/null`,
 		"sudo chmod 600 /opt/vortanix/mysql-instances.json",
 	)
-	return cmds
+	return append(cmds, mysqlNetworkCommands(instances)...)
 }
 
 func defaultMySQLInstances() []any {
@@ -113,16 +145,39 @@ func defaultMySQLInstances() []any {
 	}
 }
 
-func phpMyAdminCommands() []string {
+func phpMyAdminCommands(meta map[string]any) []string {
 	image := mirrored("phpmyadmin/phpmyadmin:latest")
-	return []string{
-		"sudo systemctl start docker || true",
+	instances := mysqlInstanceList(meta)
+	var hosts, ports, names []string
+	for _, m := range instances {
+		name := mysqlInstanceText(m["name"])
+		if name == "" {
+			name = mysqlInstanceName(
+				strings.ToLower(mysqlInstanceText(m["engine"])),
+				mysqlInstanceText(m["version"]),
+				intFromJSONNumber(m["port"]),
+			)
+		}
+		hosts = append(hosts, mysqlInstanceText(m["container"]))
+		ports = append(ports, "3306")
+		names = append(names, strings.ReplaceAll(name, ",", " "))
+	}
+	run := "sudo docker run -d --name vortanix-phpmyadmin --restart unless-stopped --network " + mysqlNetwork + " -e UPLOAD_LIMIT=256M"
+	if len(hosts) > 0 {
+		run += " -e PMA_HOSTS=" + shellQuote(strings.Join(hosts, ",")) +
+			" -e PMA_PORTS=" + shellQuote(strings.Join(ports, ",")) +
+			" -e PMA_VERBOSES=" + shellQuote(strings.Join(names, ","))
+	}
+	run += " -p 8081:80 " + image
+
+	cmds := append([]string{"sudo systemctl start docker || true"}, mysqlNetworkCommands(instances)...)
+	return append(cmds,
 		"sudo docker rm -f vortanix-phpmyadmin 2>/dev/null || true",
 		"sudo mkdir -p /opt/vortanix/phpmyadmin",
 		fmt.Sprintf("sudo docker pull %s", image),
-		fmt.Sprintf("sudo docker run -d --name vortanix-phpmyadmin --restart unless-stopped --add-host=host.docker.internal:host-gateway -e UPLOAD_LIMIT=256M -p 8081:80 %s", image),
+		run,
 		"sudo ufw allow 8081/tcp || true",
-	}
+	)
 }
 
 func daemonAgentCommands(agentToken, nodeID, relayURL, version string) []string {
