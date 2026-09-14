@@ -350,22 +350,23 @@ func resolveAgentStatus(isOnline, containerKnown, containerRunning bool, daemonS
 }
 
 func (h *Handler) loadAgentChartMetrics(r *http.Request, nodeID string) ([]map[string]any, []map[string]any) {
-	cpu := h.loadMetricSeries(r, nodeID, "agent_cpu_usage")
-	if len(cpu) == 0 {
-		cpu = h.loadMetricSeries(r, nodeID, "cpu_usage")
-	}
-	ram := h.loadMetricSeries(r, nodeID, "agent_ram_usage")
-	if len(ram) == 0 {
-		ram = h.loadMetricSeries(r, nodeID, "ram_usage")
-	}
-	return cpu, ram
+	return h.loadMetricSeries(r, nodeID, "agent_cpu_usage"), h.loadMetricSeries(r, nodeID, "agent_ram_usage")
 }
 
 func (h *Handler) loadMetricSeries(r *http.Request, nodeID, metricType string) []map[string]any {
 	rows, err := h.readerOf(r.Context()).Query(r.Context(), `
-		SELECT value, measured_at FROM core.node_metrics
-		WHERE node_id = $1 AND metric_type = $2
-		ORDER BY measured_at DESC LIMIT 50
+		WITH bounds AS (
+			SELECT min(measured_at) AS since FROM core.node_metrics
+			WHERE node_id = $1 AND metric_type = $2 AND measured_at > now() - interval '48 hours'
+		), step AS (
+			SELECT since, GREATEST(interval '30 seconds', (now() - since) / 120) AS width
+			FROM bounds WHERE since IS NOT NULL
+		)
+		SELECT avg(m.value)::float8, date_bin(step.width, m.measured_at, step.since) AS bucket
+		FROM core.node_metrics m, step
+		WHERE m.node_id = $1 AND m.metric_type = $2 AND m.measured_at >= step.since
+		GROUP BY bucket
+		ORDER BY bucket
 	`, nodeID, metricType)
 	if err != nil {
 		return nil
@@ -381,9 +382,6 @@ func (h *Handler) loadMetricSeries(r *http.Request, nodeID, metricType string) [
 				"measured_at": ts, "value": value, "t": ts, "v": value,
 			})
 		}
-	}
-	for i, j := 0, len(points)-1; i < j; i, j = i+1, j-1 {
-		points[i], points[j] = points[j], points[i]
 	}
 	return points
 }

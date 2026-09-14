@@ -713,7 +713,28 @@ func (h *Handler) saveDaemonState(ctx context.Context, c *hub.AgentConn, env map
 			updated_at   = now()
 	`, c.NodeID, version)
 
+	h.saveAgentStats(ctx, c, env)
 	h.saveHostStats(ctx, c, env)
+}
+
+func (h *Handler) saveAgentStats(ctx context.Context, c *hub.AgentConn, env map[string]any) {
+	raw, ok := env["agent"].(map[string]any)
+	if !ok {
+		return
+	}
+	for field, metricType := range map[string]string{
+		"cpu_percent": "agent_cpu_usage",
+		"ram_percent": "agent_ram_usage",
+	} {
+		v, ok := raw[field].(float64)
+		if !ok {
+			continue
+		}
+		execLogged(ctx, c.DB, `
+			INSERT INTO core.node_metrics (node_id, metric_type, value, measured_at)
+			VALUES ($1, $2, $3, now())
+		`, c.NodeID, metricType, v)
+	}
 }
 
 func (h *Handler) saveHostStats(ctx context.Context, c *hub.AgentConn, env map[string]any) {

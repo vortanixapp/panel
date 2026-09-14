@@ -55,11 +55,11 @@ func mysqlDockerCommands(meta map[string]any) []string {
 		if !ok {
 			continue
 		}
-		container := fmt.Sprint(m["container"])
+		container := mysqlInstanceText(m["container"])
 		port := intFromJSONNumber(m["port"])
-		engine := strings.ToLower(fmt.Sprint(m["engine"]))
-		version := fmt.Sprint(m["version"])
-		key := fmt.Sprint(m["key"])
+		engine := strings.ToLower(mysqlInstanceText(m["engine"]))
+		version := mysqlInstanceText(m["version"])
+		key := mysqlInstanceText(m["key"])
 		if container == "" || port <= 0 {
 			continue
 		}

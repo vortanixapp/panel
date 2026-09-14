@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -23,7 +23,7 @@ import {
 } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
-import type { TranslateFn } from "@/lib/i18n";
+import { localeTag, type TranslateFn } from "@/lib/i18n";
 
 function readMetricValue(metric: unknown): string {
   if (metric == null) return "—";
@@ -95,14 +95,49 @@ const LOCATION_SERVICES = [
 ] as const;
 
 const SERVER_INFO_ROWS = [
-  ["admin.location.info.os", "os_info"],
-  ["admin.location.info.cpu", "cpu_model"],
-  ["admin.location.info.ram", "ram_total"],
-  ["admin.location.info.disk_total", "disk_total"],
-  ["admin.location.info.disk_used", "disk_used"],
-  ["admin.location.info.disk_free", "disk_available"],
-  ["admin.location.info.uptime", "uptime"],
+  ["admin.location.info.os", "os_info", "text"],
+  ["admin.location.info.cpu", "cpu_model", "text"],
+  ["admin.location.info.ram", "ram_total", "bytes"],
+  ["admin.location.info.disk_total", "disk_total", "bytes"],
+  ["admin.location.info.disk_used", "disk_used", "bytes"],
+  ["admin.location.info.disk_free", "disk_available", "bytes"],
+  ["admin.location.info.uptime", "uptime", "uptime"],
 ] as const;
+
+function formatMetric(
+  t: TranslateFn,
+  kind: "text" | "bytes" | "uptime",
+  raw: string
+): string {
+  if (raw === "—" || kind === "text") return raw;
+  const n = Number.parseFloat(raw);
+  if (!Number.isFinite(n) || n < 0) return raw;
+  if (kind === "bytes") {
+    const gb = n / 1024 ** 3;
+    if (gb >= 1) {
+      const value = gb.toLocaleString(localeTag(), {
+        maximumFractionDigits: gb >= 100 ? 0 : 1,
+      });
+      return `${value} ${t("admin.infra.unit_gb")}`;
+    }
+    return `${Math.round(n / 1024 ** 2)} ${t("admin.infra.unit_mb")}`;
+  }
+  const total = Math.floor(n);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  if (d > 0) return t("admin.location.uptime.days", { d, h });
+  if (h > 0) return t("admin.location.uptime.hours", { h, m });
+  return t("admin.location.uptime.minutes", { m });
+}
+
+type MysqlInstance = {
+  key?: string;
+  name?: string;
+  container?: string;
+  port?: number | string;
+  root_password?: string;
+};
 
 export function LocationDetailContent() {
   const t = useT();
@@ -187,6 +222,13 @@ export function LocationDetailContent() {
   const ramMetrics = (data?.metrics?.ram_usage ??
     (data as { ramMetrics?: MetricPoint[] })?.ramMetrics ??
     []) as MetricPoint[];
+
+  const mysqlInstances = (
+    Array.isArray(location.mysql_instances) ? location.mysql_instances : []
+  ) as MysqlInstance[];
+  const mysqlHost = String(
+    location.mysql_host || location.ip_address || sshHost || "—"
+  );
 
   const ipPool = Array.isArray(location.ip_pool)
     ? (location.ip_pool as string[])
@@ -351,14 +393,14 @@ export function LocationDetailContent() {
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
           <Card title={t("admin.location.server_info")}>
             <div className="flex flex-col">
-              {SERVER_INFO_ROWS.map(([labelKey, key]) => (
+              {SERVER_INFO_ROWS.map(([labelKey, key, kind]) => (
                 <div
                   key={key}
                   className="flex items-baseline justify-between gap-4 border-b py-2.5 text-[13px] last:border-0"
                 >
                   <span className="text-muted-foreground">{t(labelKey)}</span>
                   <span className="text-right font-mono">
-                    {readMetricValue(serverMetrics[key])}
+                    {formatMetric(t, kind, readMetricValue(serverMetrics[key]))}
                   </span>
                 </div>
               ))}
@@ -419,16 +461,19 @@ export function LocationDetailContent() {
                 ) : null
               }
             >
-              <Row label="Host">
-                {String(location.mysql_host || location.ip_address || "—")}
-              </Row>
-              <Row label="Port / User">
-                {Number(location.mysql_port || 3306)} /{" "}
-                {String(location.mysql_root_username || "—")}
-              </Row>
-              <Row label="Password">
-                {String(location.mysql_root_password_decrypted || "••••••••")}
-              </Row>
+              {mysqlInstances.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {t("admin.location.mysql_empty")}
+                </p>
+              ) : (
+                mysqlInstances.map((inst, index) => (
+                  <MysqlInstanceRow
+                    key={inst.key || inst.container || index}
+                    instance={inst}
+                    host={mysqlHost}
+                  />
+                ))
+              )}
             </Card>
           </div>
         </div>
@@ -511,6 +556,65 @@ function Card({
       </div>
       {children}
     </section>
+  );
+}
+
+function MysqlInstanceRow({
+  instance,
+  host,
+}: {
+  instance: MysqlInstance;
+  host: string;
+}) {
+  const t = useT();
+  const [shown, setShown] = useState(false);
+  const password = String(instance.root_password ?? "");
+  const title = instance.name || instance.container || instance.key || "MySQL";
+
+  async function copyPassword() {
+    try {
+      await navigator.clipboard.writeText(password);
+      toast.success(t("admin.location.mysql_copied"));
+    } catch {
+      toast.error(t("common.copy_failed"));
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-b pb-3 last:border-0 last:pb-0">
+      <div className="text-[13px] font-medium">{title}</div>
+      <Row label="Host">{host}</Row>
+      <Row label="Port / User">
+        {Number(instance.port || 3306)} / root
+      </Row>
+      <Row label={t("common.password")}>
+        {password
+          ? shown
+            ? password
+            : "••••••••"
+          : t("admin.location.not_set")}
+      </Row>
+      {password && (
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setShown((v) => !v)}
+          >
+            {shown ? t("admin.location.mysql_hide") : t("admin.location.mysql_show")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => void copyPassword()}
+          >
+            {t("admin.location.mysql_copy")}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

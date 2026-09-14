@@ -146,6 +146,19 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 		r.markImagesResult(ctx, pl.NodeID, images, "")
 	}
 
+	if pl.Component == "mysql" {
+		out, readErr := sshclient.RunCapture(cfg, mysqlInstancesReadCmd)
+		count, syncErr := r.syncMySQLInstances(ctx, r.db, pl.NodeID, out)
+		switch {
+		case readErr != nil && strings.TrimSpace(out) == "":
+			fmt.Fprintf(progress, "\n⚠ инстансы MySQL не прочитаны с ноды: %v\n", readErr)
+		case syncErr != nil:
+			fmt.Fprintf(progress, "\n⚠ инстансы MySQL не записаны в панель: %v\n", syncErr)
+		default:
+			fmt.Fprintf(progress, "\nИнстансы MySQL записаны в панель: %d\n", count)
+		}
+	}
+
 	fmt.Fprintf(progress, "\n✅ %s installed\n", pl.Component)
 	fullLog := progress.finish()
 	r.markSetupInstalled(ctx, r.db, pl.NodeID, pl.Component)

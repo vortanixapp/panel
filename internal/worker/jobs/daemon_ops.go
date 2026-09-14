@@ -252,6 +252,7 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx vortanix-agent; then
   docker inspect vortanix-agent --format 'AGENT_STARTED:{{.State.StartedAt}}' 2>/dev/null | head -1
   docker inspect vortanix-agent --format 'AGENT_PID:{{.State.Pid}}' 2>/dev/null | head -1
 fi
+printf 'MYSQL_INSTANCES:%s\n' "$( (cat /opt/vortanix/mysql-instances.json 2>/dev/null || sudo -n cat /opt/vortanix/mysql-instances.json 2>/dev/null) | tr -d '\n')"
 `
 	out, err := sshclient.RunCapture(cfg, script)
 	if err != nil && strings.TrimSpace(out) == "" {
@@ -360,6 +361,11 @@ fi
 		SET meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object('service_statuses', $2::jsonb)
 		WHERE id = $1
 	`, nodeID, b)
+	if raw := textMetrics["MYSQL_INSTANCES"]; raw != "" {
+		if _, err := r.syncMySQLInstances(ctx, tx, nodeID, raw); err != nil {
+			log.Printf("синхронизация ноды %s: инстансы MySQL не записаны: %v", nodeID, err)
+		}
+	}
 
 	var pidVal *int
 	if agentPID != "" {

@@ -199,13 +199,16 @@ func (a *Agent) heartbeat(done <-chan struct{}) {
 			return
 		case <-ticker.C:
 		}
-		stats := docker.CollectHostStats()
-		msg, _ := json.Marshal(map[string]any{
+		payload := map[string]any{
 			"type":    protocol.MsgHeartbeat,
 			"node_id": a.nodeID,
 			"version": a.version,
-			"host":    stats,
-		})
+			"host":    docker.CollectHostStats(),
+		}
+		if self, ok := docker.CollectAgentStats(); ok {
+			payload["agent"] = self
+		}
+		msg, _ := json.Marshal(payload)
 		if err := a.send(msg); err != nil {
 			return
 		}
