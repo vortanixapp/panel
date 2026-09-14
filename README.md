@@ -21,11 +21,10 @@ licence keys and activation are not part of it.
 - **Billing.** Tariffs, account balance, promotions, payment gateways,
   documents.
 - **Backups.** Local, and off-site to any S3-compatible storage.
-- **Update checks.** The Updates section queries GitHub for new releases and
-  displays the changes. Installation is performed manually by the
-  administrator: the panel has no access to Docker on the host. The request is
-  made only when the section is opened. An empty `UPDATE_REPO` disables the
-  check.
+- **Updates.** The panel and the game node agents update with one button or
+  automatically when a new release comes out. A database backup is taken
+  before a panel update; an agent that fails to reconnect after an update
+  returns to its previous version. An empty `UPDATE_REPO` disables the check.
 
 ## Requirements
 

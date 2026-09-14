@@ -1,0 +1,2 @@
+ALTER TABLE core.nodes ADD COLUMN IF NOT EXISTS agent_auto_update BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE core.nodes ADD COLUMN IF NOT EXISTS agent_update JSONB NOT NULL DEFAULT '{}'::jsonb;

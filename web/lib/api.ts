@@ -4394,11 +4394,124 @@ export type AdminUpdates = {
   repo?: string;
   checks_disabled?: boolean;
   error?: string;
+  auto: PanelAutoUpdate;
+  updater: UpdaterStatus;
+};
+
+export type UpdaterJob = {
+  id: string;
+  target: string;
+  from: string;
+  state: "running" | "succeeded" | "failed";
+  started_at?: string;
+  finished_at?: string;
+  exit_code: number;
+  error?: string;
+  log: string[];
+};
+
+export type UpdaterStatus = {
+  available: boolean;
+  mode: "images" | "source" | "unknown";
+  reason?: string;
+  project?: string;
+  job?: UpdaterJob | null;
+};
+
+export type PanelAutoUpdate = {
+  enabled: boolean;
+  window_start: number;
+  window_end: number;
+  skipped_version?: string;
+};
+
+export type PanelUpdateStatus = {
+  current_version: string;
+  updater: UpdaterStatus;
 };
 
 export async function fetchAdminUpdates(refresh = false) {
   const q = refresh ? "?refresh=1" : "";
   return apiFetch<AdminUpdates>(`/v1/admin/updates${q}`);
+}
+
+export async function fetchAdminPanelUpdateStatus() {
+  return apiFetch<PanelUpdateStatus>("/v1/admin/updates/panel");
+}
+
+export async function startAdminPanelUpdate(version?: string) {
+  return apiFetch<{ job: UpdaterJob }>("/v1/admin/updates/panel", {
+    method: "POST",
+    body: JSON.stringify({ version: version ?? "" }),
+  });
+}
+
+export async function updateAdminUpdateSettings(
+  data: Partial<{
+    auto_enabled: boolean;
+    agents_auto_enabled: boolean;
+    window_start: number;
+    window_end: number;
+  }>
+) {
+  return apiFetch<PanelAutoUpdate>("/v1/admin/updates/settings", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export type AgentUpdateState = {
+  status: "pending" | "pulling" | "restarting" | "done" | "failed";
+  target?: string;
+  error?: string | null;
+  source?: string;
+  method?: "relay" | "ssh";
+  from?: string;
+  started_at?: string;
+  finished_at?: string;
+  updated_at?: string;
+};
+
+export type AdminAgentUpdateNode = {
+  id: string;
+  name: string;
+  code: string;
+  country: string;
+  online: boolean;
+  version: string;
+  outdated: boolean;
+  auto_update: boolean;
+  ssh: boolean;
+  last_seen?: string;
+  update?: AgentUpdateState;
+};
+
+export type AdminAgentUpdates = {
+  target_version: string;
+  image: string;
+  auto_enabled: boolean;
+  nodes: AdminAgentUpdateNode[];
+};
+
+export async function fetchAdminAgentUpdates() {
+  return apiFetch<AdminAgentUpdates>("/v1/admin/updates/agents");
+}
+
+export async function startAdminAgentUpdates(nodeIds: string[]) {
+  return apiFetch<{
+    started: number;
+    results: { id: string; ok: boolean; method: string; error?: string }[];
+  }>("/v1/admin/updates/agents", {
+    method: "POST",
+    body: JSON.stringify({ node_ids: nodeIds }),
+  });
+}
+
+export async function setAdminAgentAutoUpdate(nodeIds: string[], autoUpdate: boolean) {
+  return apiFetch<{ ok: boolean }>("/v1/admin/updates/agents", {
+    method: "PATCH",
+    body: JSON.stringify({ node_ids: nodeIds, auto_update: autoUpdate }),
+  });
 }
 
 export async function fetchPanelVersion(): Promise<string> {

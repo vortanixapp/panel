@@ -826,7 +826,9 @@ export const adminContent = {
 
   "admin.updates.title": "Обновления",
   "admin.updates.subtitle":
-    "Панель спрашивает у GitHub, вышел ли новый выпуск. Запрос уходит только когда вы открываете эту страницу или нажимаете «Проверить снова».",
+    "Панель и агенты на локациях обновляются по кнопке или сами, когда выходит новый выпуск.",
+  "admin.updates.tab.panel": "Панель",
+  "admin.updates.tab.agents": "Агенты",
   "admin.updates.recheck": "Проверить снова",
   "admin.updates.installed": "Установлено",
   "admin.updates.latest": "Доступно",
@@ -838,11 +840,80 @@ export const adminContent = {
   "admin.updates.published_at": "Выпущено: {when}",
   "admin.updates.open_release": "Открыть на GitHub",
   "admin.updates.notes": "Что изменилось",
-  "admin.updates.how": "Как обновить",
+  "admin.updates.install": "Обновить до {version}",
+  "admin.updates.install_confirm":
+    "Обновить панель до {version}? Сначала снимется копия базы, затем службы перезапустятся — около минуты панель будет недоступна. Игровые серверы продолжат работать.",
+  "admin.updates.started": "Обновление запущено",
+  "admin.updates.action_failed": "Не получилось: {error}",
+  "admin.updates.job.title": "Установка {version}",
+  "admin.updates.job.running": "Идёт установка",
+  "admin.updates.job.succeeded": "Установлено",
+  "admin.updates.job.failed": "Не удалось",
+  "admin.updates.job.started": "Начато: {when}",
+  "admin.updates.job.finished": "Завершено: {when}",
+  "admin.updates.job.restarting":
+    "Службы перезапускаются. Страница переподключится сама.",
+  "admin.updates.job.reload_hint":
+    "Панель обновлена до {version}. Обновите страницу, чтобы загрузить новый интерфейс.",
+  "admin.updates.job.reload": "Обновить страницу",
+  "admin.updates.job.log": "Журнал установки",
+  "admin.updates.unavailable": "Обновление по кнопке недоступно",
+  "admin.updates.auto.title": "Автообновление панели",
+  "admin.updates.auto.description":
+    "Панель раз в полчаса проверяет GitHub и сама ставит новый стабильный выпуск. Перед установкой снимается копия базы.",
+  "admin.updates.auto.toggle": "Устанавливать новые выпуски автоматически",
+  "admin.updates.auto.toggle_hint":
+    "Предварительные выпуски не ставятся. Если установка не удалась, эту версию панель больше не трогает — поставьте её кнопкой.",
+  "admin.updates.auto.window": "Когда устанавливать",
+  "admin.updates.auto.anytime": "В любое время",
+  "admin.updates.auto.hours": "В заданные часы",
+  "admin.updates.auto.from": "С",
+  "admin.updates.auto.to": "До",
+  "admin.updates.auto.window_hint": "Часы по времени сервера панели.",
+  "admin.updates.auto.skipped":
+    "Автоустановка {version} не удалась и больше не повторяется",
+  "admin.updates.auto.saved": "Настройки сохранены",
+  "admin.updates.auto.needs_updater":
+    "Автообновление заработает, когда появится служба обновления.",
+  "admin.updates.how": "Обновление вручную",
   "admin.updates.how_hint":
-    "Панель не обновляет себя сама: для этого ей понадобился бы доступ к docker на вашей машине, а это слишком много прав ради одной кнопки. Выполните команды на сервере — той парой, которой ставили.",
+    "Если служба обновления не подключена или панель собрана из исходников, выполните команды на сервере — той парой, которой ставили.",
+  "admin.updates.enable_updater":
+    "Служба обновления входит в стек панели. Если её нет, один раз обновите панель вручную: после этого кнопка и автообновление заработают.",
   "admin.updates.from_source": "Если собирали из исходников",
   "admin.updates.from_images": "Если тянули готовые образы",
   "admin.updates.backup_first":
-    "Перед обновлением снимите копию базы: миграции идут только вперёд, отката нет.",
+    "Перед обновлением вручную снимите копию базы: миграции идут только вперёд, отката нет.",
+  "admin.updates.agents.title": "Агенты на локациях",
+  "admin.updates.agents.description":
+    "Агенты обновляются до версии панели {version}. Игровые серверы при перезапуске агента не останавливаются.",
+  "admin.updates.agents.description_dev":
+    "Панель собрана без номера версии: агенты берут образ {image}, автообновление не работает.",
+  "admin.updates.agents.auto_hint":
+    "На локациях с включённым автообновлением агент получает новую версию сам, когда он в сети и отстаёт от панели. Проверка — раз в 5 минут.",
+  "admin.updates.agents.old_hint":
+    "Агенты прошлых версий обновляться сами не умеют: один раз переустановите их командой из раздела «Локации» или настройте для локации SSH.",
+  "admin.updates.agents.update_outdated": "Обновить устаревшие ({count})",
+  "admin.updates.agents.auto_toggle": "Обновлять агентов автоматически",
+  "admin.updates.agents.auto_toggle_hint":
+    "Отметьте ниже локации, на которых агент получает новую версию сам. Выключенный переключатель останавливает автообновление везде, отметки сохраняются.",
+  "admin.updates.agents.auto_all_on": "Отметить все локации",
+  "admin.updates.agents.auto_all_off": "Снять все отметки",
+  "admin.updates.agents.empty": "Локаций пока нет",
+  "admin.updates.agents.col.location": "Локация",
+  "admin.updates.agents.col.version": "Версия агента",
+  "admin.updates.agents.col.state": "Состояние",
+  "admin.updates.agents.col.auto": "Автообновление",
+  "admin.updates.agents.offline": "Не в сети",
+  "admin.updates.agents.never": "Не подключался",
+  "admin.updates.agents.current": "Актуален",
+  "admin.updates.agents.outdated": "Устарел",
+  "admin.updates.agents.status.pending": "Ожидает",
+  "admin.updates.agents.status.pulling": "Загружает образ",
+  "admin.updates.agents.status.restarting": "Перезапускается",
+  "admin.updates.agents.status.done": "Обновлён",
+  "admin.updates.agents.status.failed": "Ошибка",
+  "admin.updates.agents.update": "Обновить",
+  "admin.updates.agents.via_ssh": "через SSH",
+  "admin.updates.agents.started": "Запущено обновлений: {count}",
 };

@@ -8,6 +8,7 @@ const (
 	MsgMetrics         = "metrics"
 	MsgConsoleOutput   = "console_output"
 	MsgInstallProgress = "install_progress"
+	MsgAgentUpdate     = "agent_update_status"
 )
 
 const (
@@ -18,7 +19,15 @@ const (
 	ActionFirewallSync     = "firewall_sync"
 	ActionPortsSync        = "ports_sync"
 	ActionFilesWriteBinary = "files_write_binary"
+	ActionAgentUpdate      = "agent_update"
 )
+
+type AgentUpdateMessage struct {
+	Type   string `json:"type"`
+	Stage  string `json:"stage"`
+	Target string `json:"target"`
+	Error  string `json:"error,omitempty"`
+}
 
 type HelloMessage struct {
 	Type   string `json:"type"`

@@ -220,6 +220,33 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 			log.Printf("agent hello node_id mismatch: connection=%s hello=%s", c.NodeID, helloNode)
 		}
 		h.saveDaemonState(ctx, c, env)
+		if version, _ := env["version"].(string); version != "" {
+			execLogged(ctx, c.DB, `
+				UPDATE core.nodes
+				SET agent_update = agent_update || jsonb_build_object(
+					'status', 'done', 'error', NULL, 'finished_at', now(), 'updated_at', now())
+				WHERE id = $1
+				  AND agent_update->>'status' IN ('pending', 'pulling', 'restarting')
+				  AND ltrim(agent_update->>'target', 'v') = ltrim($2, 'v')
+			`, c.NodeID, version)
+		}
+	case protocol.MsgAgentUpdate:
+		stage, _ := env["stage"].(string)
+		target, _ := env["target"].(string)
+		errMsg, _ := env["error"].(string)
+		switch stage {
+		case "pulling", "restarting", "done", "failed":
+		default:
+			return
+		}
+		execLogged(ctx, c.DB, `
+			UPDATE core.nodes
+			SET agent_update = agent_update
+				|| jsonb_build_object('status', $2::text, 'updated_at', now(), 'error', NULLIF($4::text, ''))
+				|| CASE WHEN $3::text <> '' THEN jsonb_build_object('target', $3::text) ELSE '{}'::jsonb END
+				|| CASE WHEN $2::text IN ('done', 'failed') THEN jsonb_build_object('finished_at', now()) ELSE '{}'::jsonb END
+			WHERE id = $1
+		`, c.NodeID, stage, target, errMsg)
 	case protocol.MsgHeartbeat:
 		tag, err := c.DB.Exec(ctx,
 			`UPDATE core.nodes SET last_seen_at = now(), status = 'online' WHERE id = $1`, c.NodeID)

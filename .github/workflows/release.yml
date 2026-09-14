@@ -29,6 +29,7 @@ jobs:
           - vortanix-metrics
           - vortanix-status
           - vortanix-agent
+          - vortanix-updater
     steps:
       - uses: actions/checkout@v4
 

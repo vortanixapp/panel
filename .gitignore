@@ -37,6 +37,7 @@ keys/
 *.rdb
 *.zip
 docker-data/
+deploy/backups/
 
 # IDE
 .idea/

@@ -15,7 +15,7 @@ COPY internal ./internal
 COPY pkg ./pkg
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
-    -ldflags "-s -w -X main.version=${VORTANIX_VERSION}" \
+    -ldflags "-s -w -X main.version=${VORTANIX_VERSION} -X github.com/vortanixapp/panel/pkg/buildinfo.Version=${VORTANIX_VERSION}" \
     -o /out/vortanix ./cmd/${COMPONENT}
 
 FROM alpine:3.21
@@ -26,6 +26,9 @@ RUN apk add --no-cache ca-certificates tzdata \
  && adduser -D -u 10001 vortanix \
  && if [ "$COMPONENT" = "vortanix-agent" ]; then \
       apk add --no-cache docker-cli curl e2fsprogs-extra quota-tools; \
+    fi \
+ && if [ "$COMPONENT" = "vortanix-updater" ]; then \
+      apk add --no-cache docker-cli docker-cli-compose git; \
     fi
 
 WORKDIR /app

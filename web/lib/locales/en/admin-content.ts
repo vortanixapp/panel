@@ -831,7 +831,9 @@ export const adminContent = {
 
   "admin.updates.title": "Updates",
   "admin.updates.subtitle":
-    "The panel asks GitHub whether a newer release exists. The request goes out only when you open this page or press Check again.",
+    "The panel and the agents on your locations update with one button, or on their own when a new release comes out.",
+  "admin.updates.tab.panel": "Panel",
+  "admin.updates.tab.agents": "Agents",
   "admin.updates.recheck": "Check again",
   "admin.updates.installed": "Installed",
   "admin.updates.latest": "Available",
@@ -842,11 +844,80 @@ export const adminContent = {
   "admin.updates.published_at": "Released: {when}",
   "admin.updates.open_release": "Open on GitHub",
   "admin.updates.notes": "What changed",
-  "admin.updates.how": "How to upgrade",
+  "admin.updates.install": "Update to {version}",
+  "admin.updates.install_confirm":
+    "Update the panel to {version}? A database backup is taken first, then the services restart — the panel is unavailable for about a minute. Game servers keep running.",
+  "admin.updates.started": "Update started",
+  "admin.updates.action_failed": "Failed: {error}",
+  "admin.updates.job.title": "Installing {version}",
+  "admin.updates.job.running": "Installing",
+  "admin.updates.job.succeeded": "Installed",
+  "admin.updates.job.failed": "Failed",
+  "admin.updates.job.started": "Started: {when}",
+  "admin.updates.job.finished": "Finished: {when}",
+  "admin.updates.job.restarting":
+    "Services are restarting. The page reconnects on its own.",
+  "admin.updates.job.reload_hint":
+    "The panel is now on {version}. Reload the page to load the new interface.",
+  "admin.updates.job.reload": "Reload page",
+  "admin.updates.job.log": "Install log",
+  "admin.updates.unavailable": "One-click update is unavailable",
+  "admin.updates.auto.title": "Automatic panel updates",
+  "admin.updates.auto.description":
+    "Every half hour the panel checks GitHub and installs a new stable release on its own. A database backup is taken before installing.",
+  "admin.updates.auto.toggle": "Install new releases automatically",
+  "admin.updates.auto.toggle_hint":
+    "Pre-releases are skipped. If an install fails, the panel leaves that version alone — install it with the button.",
+  "admin.updates.auto.window": "When to install",
+  "admin.updates.auto.anytime": "Any time",
+  "admin.updates.auto.hours": "During set hours",
+  "admin.updates.auto.from": "From",
+  "admin.updates.auto.to": "To",
+  "admin.updates.auto.window_hint": "Hours in the panel server's time zone.",
+  "admin.updates.auto.skipped":
+    "Automatic install of {version} failed and will not be retried",
+  "admin.updates.auto.saved": "Settings saved",
+  "admin.updates.auto.needs_updater":
+    "Automatic updates start working once the update service is present.",
+  "admin.updates.how": "Manual update",
   "admin.updates.how_hint":
-    "The panel does not update itself: doing so would need access to docker on your machine, which is far too much power for one button. Run the commands on the server — the same pair you installed with.",
+    "If the update service is not connected or the panel was built from source, run the commands on the server — the same pair you installed with.",
+  "admin.updates.enable_updater":
+    "The update service is part of the panel stack. If it is missing, update the panel manually once: after that the button and automatic updates work.",
   "admin.updates.from_source": "If you built from source",
   "admin.updates.from_images": "If you pulled published images",
   "admin.updates.backup_first":
-    "Take a database backup first: migrations only move forward, and there is no way back.",
+    "Take a database backup before a manual update: migrations only move forward, and there is no way back.",
+  "admin.updates.agents.title": "Agents on locations",
+  "admin.updates.agents.description":
+    "Agents update to the panel version {version}. Game servers keep running while an agent restarts.",
+  "admin.updates.agents.description_dev":
+    "The panel was built without a version number: agents use image {image}, automatic updates are off.",
+  "admin.updates.agents.auto_hint":
+    "On locations with automatic updates, the agent gets the new version by itself when it is online and behind the panel. Checked every 5 minutes.",
+  "admin.updates.agents.old_hint":
+    "Agents from earlier versions cannot update themselves: reinstall them once with the command from Locations, or set up SSH for the location.",
+  "admin.updates.agents.update_outdated": "Update outdated ({count})",
+  "admin.updates.agents.auto_toggle": "Update agents automatically",
+  "admin.updates.agents.auto_toggle_hint":
+    "Tick the locations below where the agent gets the new version on its own. Turning this off stops automatic updates everywhere; the ticks are kept.",
+  "admin.updates.agents.auto_all_on": "Tick all locations",
+  "admin.updates.agents.auto_all_off": "Clear all ticks",
+  "admin.updates.agents.empty": "No locations yet",
+  "admin.updates.agents.col.location": "Location",
+  "admin.updates.agents.col.version": "Agent version",
+  "admin.updates.agents.col.state": "State",
+  "admin.updates.agents.col.auto": "Auto-update",
+  "admin.updates.agents.offline": "Offline",
+  "admin.updates.agents.never": "Never connected",
+  "admin.updates.agents.current": "Up to date",
+  "admin.updates.agents.outdated": "Outdated",
+  "admin.updates.agents.status.pending": "Waiting",
+  "admin.updates.agents.status.pulling": "Pulling image",
+  "admin.updates.agents.status.restarting": "Restarting",
+  "admin.updates.agents.status.done": "Updated",
+  "admin.updates.agents.status.failed": "Error",
+  "admin.updates.agents.update": "Update",
+  "admin.updates.agents.via_ssh": "via SSH",
+  "admin.updates.agents.started": "Updates started: {count}",
 };

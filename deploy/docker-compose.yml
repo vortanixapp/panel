@@ -10,6 +10,7 @@ x-panel: &panel
     DATABASE_URL: postgres://vortanix:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}@postgres:5432/vortanix?sslmode=disable
     REDIS_URL: redis://redis:6379/0
     RELAY_URL: http://relay:8082
+    UPDATER_URL: http://updater:8090
   depends_on:
     postgres:
       condition: service_healthy
@@ -86,6 +87,24 @@ services:
       dockerfile: Dockerfile
       args:
         COMPONENT: vortanix-console
+
+  updater:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        COMPONENT: vortanix-updater
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET in deploy/.env}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   web:
     build:

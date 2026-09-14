@@ -104,8 +104,9 @@ sh scripts/init-env.sh
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.images.yml up -d
 ```
 
-Eight containers are started: PostgreSQL, Redis, the API, the job worker, the
-relay, the console, the web interface and Caddy. Only Caddy publishes ports.
+Nine containers are started: PostgreSQL, Redis, the API, the job worker, the
+relay, the console, the update service, the web interface and Caddy. Only
+Caddy publishes ports.
 
 The database schema is created on the first start of the API. A separate
 migration step is not required.
@@ -310,11 +311,45 @@ On machines in production use, the version should be pinned explicitly.
 Image tags carry no `v` prefix: repository tag `v0.1.1` corresponds to
 `VORTANIX_VERSION=0.1.1`.
 
-The Updates section of the administration area reports the availability of a
-new release and its changes. It does not install updates; the procedure is
-given below.
+Installing from the Updates section pins the installed release in
+`VORTANIX_VERSION`.
 
 ## Upgrading
+
+### One-click and automatic
+
+The **Administration → Updates → Panel** tab shows a new release and installs
+it with the Update button. The same tab enables automatic updates: every
+30 minutes the panel checks GitHub and installs a new stable release on its
+own — at any time or during set hours. Pre-releases are not installed
+automatically.
+
+Installation is carried out by the `updater` service of the stack. Only this
+service has access to the Docker socket; the API and the other services do
+not. The procedure:
+
+1. a database backup is written to `deploy/backups/`, the five most recent
+   are kept;
+2. the working copy is moved to the release tag, provided it has no local
+   changes;
+3. `VORTANIX_VERSION` is pinned in `deploy/.env`;
+4. images are pulled and the services restarted;
+5. installation completes once the API passes its readiness check.
+
+If the images fail to pull, `deploy/.env` and the working copy are restored
+and the panel keeps running the previous version. A failure after the services
+restart is not rolled back automatically, since migrations have already been
+applied; the procedure is given under [Rollback](#rollback). The install log
+is shown on the same tab.
+
+A release whose automatic installation failed is not installed automatically
+again; it can be installed with the button.
+
+The button is available for installations from published images. When the
+panel is built from source, or the installation does not yet include the
+`updater` service, the upgrade is performed manually.
+
+### Manually
 
 Create a database backup before upgrading. Migrations are applied in the
 forward direction only; no schema downgrade procedure exists, and reversion is
@@ -348,10 +383,22 @@ mounted file changed:
 docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.images.yml up -d --force-recreate caddy
 ```
 
-Game nodes are upgraded separately and not necessarily at the same time as the
-panel: agents remain operational across versions. Re-running the command from
-**Administration → Locations** on a node pulls the current agent image and
-replaces the container.
+### Game node agents
+
+Agents are upgraded to the panel version on the **Administration → Updates →
+Agents** tab: with a button for a single location, for all outdated agents at
+once, or automatically. Automatic updates are enabled with a global switch and
+apply to the ticked locations; the check runs every 5 minutes.
+
+The agent pulls the new image and starts a helper container that recreates the
+agent container with its previous parameters. If the new agent does not
+connect to the panel within 90 seconds, the previous container is restored.
+Game servers are not stopped.
+
+An online agent is upgraded over its connection to the panel, an offline agent
+over SSH when access is configured for the location. Agents from releases
+without self-update are reinstalled once with the command from
+**Administration → Locations**.
 
 ## Rollback
 

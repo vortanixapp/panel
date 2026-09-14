@@ -21,6 +21,7 @@ const (
 	LoopNodeBulk       LoopName = "node_bulk"
 	LoopWebhook        LoopName = "webhook"
 	LoopNotifyDelivery LoopName = "notify_delivery"
+	LoopUpdates        LoopName = "updates"
 )
 
 var loopPeriods = map[LoopName]time.Duration{
@@ -37,6 +38,7 @@ var loopPeriods = map[LoopName]time.Duration{
 	LoopNodeBulk:       2 * time.Minute,
 	LoopWebhook:        time.Minute,
 	LoopNotifyDelivery: time.Minute,
+	LoopUpdates:        updatesInterval,
 }
 
 const staleFactor = 3

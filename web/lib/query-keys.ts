@@ -75,4 +75,6 @@ export const queryKeys = {
   adminAgentServers: (id: string) => ["admin-agent", id, "servers"] as const,
   adminImages: ["admin-images"] as const,
   adminUpdates: ["admin-updates"] as const,
+  adminPanelUpdateStatus: ["admin-panel-update-status"] as const,
+  adminAgentUpdates: ["admin-agent-updates"] as const,
 };

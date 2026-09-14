@@ -13,11 +13,14 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
 
 	"github.com/vortanixapp/panel/internal/agent/docker"
+	"github.com/vortanixapp/panel/internal/agent/selfupdate"
+	"github.com/vortanixapp/panel/pkg/buildinfo"
 	"github.com/vortanixapp/panel/pkg/protocol"
 )
 
@@ -29,6 +32,8 @@ type Agent struct {
 	conn                *websocket.Conn
 	writeMu             sync.Mutex
 	pendingBinaryWrites map[string]binaryWritePending
+	updating            atomic.Bool
+	reportOnce          sync.Once
 }
 
 const (
@@ -68,7 +73,7 @@ func New() *Agent {
 		relayURL:            os.Getenv("RELAY_URL"),
 		token:               os.Getenv("AGENT_TOKEN"),
 		nodeID:              os.Getenv("NODE_ID"),
-		version:             envOr("VORTANIX_VERSION", "dev"),
+		version:             buildinfo.Current(),
 		pendingBinaryWrites: map[string]binaryWritePending{},
 	}
 }
@@ -88,6 +93,7 @@ func (a *Agent) Run() {
 			continue
 		}
 		backoff = reconnectMin
+		a.reportOnce.Do(func() { go a.reportUpgradeResult() })
 		a.loop()
 		time.Sleep(reconnectMin)
 	}
@@ -317,6 +323,23 @@ func (a *Agent) handleCommand(data []byte) {
 		a.sendStatus(cmd.ServerID, "updating", "")
 		go a.updateAndStart(cmd.ServerID, name, gameID, limits, dockerImage, primaryPort, bindIP, spec)
 		a.sendAck(cmd.ID, true, nil, map[string]any{"status": "updating"})
+		return
+	case protocol.ActionAgentUpdate:
+		image, _ := cmd.Payload["image"].(string)
+		target, _ := cmd.Payload["version"].(string)
+		if strings.TrimSpace(image) == "" {
+			a.sendAck(cmd.ID, false, fmt.Errorf("не указан образ агента"), nil)
+			return
+		}
+		if !a.updating.CompareAndSwap(false, true) {
+			a.sendAck(cmd.ID, false, fmt.Errorf("обновление агента уже идёт"), nil)
+			return
+		}
+		a.sendAck(cmd.ID, true, nil, map[string]any{"accepted": true, "version": a.version})
+		go func() {
+			defer a.updating.Store(false)
+			selfupdate.Start(context.Background(), strings.TrimSpace(image), target, a.sendUpdateStatus)
+		}()
 		return
 	case "destroy":
 		execErr = docker.Destroy(ctx, cmd.ServerID)
@@ -620,6 +643,24 @@ func (a *Agent) sendAck(cmdID string, ok bool, err error, result map[string]any)
 	_ = a.send(msg)
 }
 
+func (a *Agent) sendUpdateStatus(stage, target, errMsg string) {
+	if errMsg != "" {
+		log.Printf("обновление агента: %s", errMsg)
+	}
+	msg, _ := json.Marshal(protocol.AgentUpdateMessage{
+		Type: protocol.MsgAgentUpdate, Stage: stage, Target: target, Error: errMsg,
+	})
+	_ = a.send(msg)
+}
+
+func (a *Agent) reportUpgradeResult() {
+	res, ok := selfupdate.CollectResult(context.Background())
+	if !ok {
+		return
+	}
+	a.sendUpdateStatus(res.State, res.Target, res.Error)
+}
+
 func (a *Agent) installAndStart(serverID, name, gameID string, limits map[string]any, dockerImage string, primaryPort int, bindIP string, spec docker.InstallSpec) {
 	ctx := context.Background()
 	report := func(stage string, percent int, message, line string) {
@@ -680,11 +721,4 @@ func (a *Agent) updateAndStart(serverID, name, gameID string, limits map[string]
 		errMsg = docker.ContainerError(ctx, serverID)
 	}
 	a.sendStatus(serverID, status, errMsg)
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

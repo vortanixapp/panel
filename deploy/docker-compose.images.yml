@@ -17,6 +17,10 @@ services:
     build: !reset null
     image: ghcr.io/vortanixapp/vortanix-console:${VORTANIX_VERSION:-latest}
 
+  updater:
+    build: !reset null
+    image: ghcr.io/vortanixapp/vortanix-updater:${VORTANIX_VERSION:-latest}
+
   web:
     build: !reset null
     image: ghcr.io/vortanixapp/vortanix-web:${VORTANIX_VERSION:-latest}
