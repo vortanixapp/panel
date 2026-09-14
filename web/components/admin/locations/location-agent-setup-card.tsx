@@ -166,13 +166,47 @@ export function LocationAgentSetupCard({
         )}
       </div>
 
+      {!compact && showSecrets && install?.script && (
+        <div className="flex flex-col gap-2.5 border-t pt-4.5">
+          <div className="flex items-center justify-between gap-3.5">
+            <span className="text-xs text-muted-foreground">
+              {t("admin.agent_setup.command_title")}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-[30px] rounded-md text-xs"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(install.script);
+                  toast.success(t("admin.agent_setup.command_copied"));
+                } catch {
+                  toast.error(t("common.copy_failed"));
+                }
+              }}
+            >
+              {t("admin.agent_setup.copy_command")}
+            </Button>
+          </div>
+          <pre className="max-h-80 overflow-auto rounded-xl border bg-muted/30 px-4 py-4 font-mono text-xs leading-relaxed">
+            {install.script}
+          </pre>
+          <span className="text-xs text-muted-foreground">
+            {t("admin.agent_setup.command_hint")}
+          </span>
+        </div>
+      )}
+
       {!compact && showSecrets && envPreview && (
         <div className="flex flex-col gap-2.5 border-t pt-4.5">
           <div className="flex items-center justify-between gap-3.5">
             <span className="text-xs text-muted-foreground">
-              {t("admin.agent_setup.env_before")}{" "}
+              {t("admin.agent_setup.manual")}{" "}
               <span className="font-mono">deploy/agent/.env</span>{" "}
-              {t("admin.agent_setup.env_after")}
+              {t("admin.agent_setup.manual_after")}{" "}
+              <span className="font-mono text-foreground">
+                sh deploy/agent/agent-up.sh
+              </span>
             </span>
             <Button
               variant="outline"
@@ -186,12 +220,6 @@ export function LocationAgentSetupCard({
           <pre className="max-h-40 overflow-auto rounded-xl border bg-muted/30 px-4 py-4 font-mono text-xs leading-relaxed text-muted-foreground">
             {envPreview}
           </pre>
-          <span className="text-xs text-muted-foreground">
-            {t("admin.agent_setup.on_node")}{" "}
-            <span className="font-mono text-foreground">
-              cd ~/vortanix/deploy/agent && nano .env && sh agent-up.sh
-            </span>
-          </span>
         </div>
       )}
     </section>

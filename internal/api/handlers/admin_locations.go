@@ -681,18 +681,27 @@ func (h *Handler) GetAdminLocationInstallScript(w http.ResponseWriter, r *http.R
 	}
 	connectURL := relayURL + "/v1/agent/connect"
 	envFile := "RELAY_URL=" + connectURL + "\nAGENT_TOKEN=" + token + "\nNODE_ID=" + id + "\n"
-	script := `#!/bin/sh
+	script := `sh <<'VORTANIX'
 set -eu
-mkdir -p /var/lib/vortanix/servers
+IMAGE=` + agentImageRef() + `
+mkdir -p /var/lib/vortanix/servers /opt/vortanix/plugin-cache
 cat > /root/vortanix-agent.env <<'EOF'
 ` + envFile + `EOF
+chmod 600 /root/vortanix-agent.env
+docker pull "$IMAGE"
+docker rm -f vortanix-agent >/dev/null 2>&1 || true
 docker run -d --name vortanix-agent --restart unless-stopped \
+  --user 0:0 --cap-add SYS_ADMIN \
   --env-file /root/vortanix-agent.env \
   -e VORTANIX_DATA_DIR=/var/lib/vortanix/servers \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /dev:/dev \
   -v /var/lib/vortanix/servers:/var/lib/vortanix/servers \
-  ` + agentImageRef() + `
-docker logs vortanix-agent --tail 20`
+  -v /opt/vortanix:/opt/vortanix \
+  "$IMAGE"
+sleep 5
+docker logs vortanix-agent --tail 20
+VORTANIX`
 	writeJSON(w, http.StatusOK, map[string]string{
 		"node_id":     id,
 		"location_id": id,

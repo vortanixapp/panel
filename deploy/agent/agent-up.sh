@@ -58,7 +58,7 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-mkdir -p /var/lib/vortanix/servers
+mkdir -p /var/lib/vortanix/servers /opt/vortanix/plugin-cache
 
 if [ "$BUILD" -eq 1 ]; then
   AGENT_IMAGE="vortanix/agent:local"
@@ -78,12 +78,15 @@ echo "=== запуск агента ==="
 docker run -d \
   --name "$CONTAINER" \
   --restart unless-stopped \
+  --user 0:0 --cap-add SYS_ADMIN \
   -e "RELAY_URL=$RELAY_URL" \
   -e "AGENT_TOKEN=$AGENT_TOKEN" \
   -e "NODE_ID=$NODE_ID" \
   -e "VORTANIX_DATA_DIR=/var/lib/vortanix/servers" \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /dev:/dev \
   -v /var/lib/vortanix/servers:/var/lib/vortanix/servers \
+  -v /opt/vortanix:/opt/vortanix \
   "$AGENT_IMAGE"
 
 echo "=== журнал, последние 20 строк ==="

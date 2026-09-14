@@ -264,10 +264,10 @@ export const adminInfra = {
 
   "admin.agent_setup.title": "Vortanix Agent connection",
   "admin.agent_setup.description":
-    "The values go into deploy/agent/.env on the game node",
+    "A ready command for the game node: installs the agent or reinstalls it",
   "admin.agent_setup.copied": "{label} copied",
   "admin.agent_setup.token_regenerated":
-    "The agent token was regenerated — update .env on the game node",
+    "The agent token was regenerated — run the install command on the game node again",
   "admin.agent_setup.show": "Show credentials",
   "admin.agent_setup.hide": "Hide credentials",
   "admin.agent_setup.regen_confirm":
@@ -275,9 +275,14 @@ export const adminInfra = {
   "admin.agent_setup.generating": "Generating…",
   "admin.agent_setup.new_token": "New token",
   "admin.agent_setup.press_show": "Press “Show credentials”",
-  "admin.agent_setup.env_before": "The file",
-  "admin.agent_setup.env_after": "on the game node",
-  "admin.agent_setup.on_node": "On the game node:",
+  "admin.agent_setup.command_title":
+    "Run on the game node as root. Running it again reinstalls the agent",
+  "admin.agent_setup.copy_command": "Copy command",
+  "admin.agent_setup.command_copied": "Command copied",
+  "admin.agent_setup.command_hint":
+    "Docker must be installed. Game servers and their files in /var/lib/vortanix/servers are left untouched.",
+  "admin.agent_setup.manual": "Or from a repository copy on the node: fill in",
+  "admin.agent_setup.manual_after": "and run",
   "admin.agent_setup.copy": "copy",
 
   "admin.setup.title": "Setup: {name}",

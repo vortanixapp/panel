@@ -265,10 +265,10 @@ export const adminInfra = {
 
   "admin.agent_setup.title": "Подключение Vortanix Agent",
   "admin.agent_setup.description":
-    "Значения подставляются в deploy/agent/.env на игровой ноде",
+    "Готовая команда для игровой ноды: ставит агента или переустанавливает его",
   "admin.agent_setup.copied": "{label} скопировано",
   "admin.agent_setup.token_regenerated":
-    "Токен агента обновлён — обновите .env на игровой ноде",
+    "Токен агента обновлён — выполните команду установки на игровой ноде заново",
   "admin.agent_setup.show": "Показать credentials",
   "admin.agent_setup.hide": "Скрыть credentials",
   "admin.agent_setup.regen_confirm":
@@ -276,9 +276,14 @@ export const adminInfra = {
   "admin.agent_setup.generating": "Генерация…",
   "admin.agent_setup.new_token": "Новый токен",
   "admin.agent_setup.press_show": "Нажмите «Показать credentials»",
-  "admin.agent_setup.env_before": "Файл",
-  "admin.agent_setup.env_after": "на игровой ноде",
-  "admin.agent_setup.on_node": "На игровой ноде:",
+  "admin.agent_setup.command_title":
+    "Выполните на игровой ноде от root. Повторный запуск переустанавливает агента",
+  "admin.agent_setup.copy_command": "Копировать команду",
+  "admin.agent_setup.command_copied": "Команда скопирована",
+  "admin.agent_setup.command_hint":
+    "Нужен установленный Docker. Игровые серверы и их файлы в /var/lib/vortanix/servers не затрагиваются.",
+  "admin.agent_setup.manual": "Или из копии репозитория на ноде: заполните",
+  "admin.agent_setup.manual_after": "и выполните",
   "admin.agent_setup.copy": "копировать",
 
   "admin.setup.title": "Установка: {name}",
