@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -79,11 +78,12 @@ func (h *Handler) AdminRefundPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg, cfgErr := h.tenantProviderConfig(ctx, provider)
-	if cfgErr != nil {
-		writeError(w, http.StatusConflict, cfgErr.Error())
+	providerRow, rowErr := h.loadPaymentProvider(ctx, provider)
+	if rowErr != nil || !providerRow.Exists || providerRow.Unreadable {
+		writeError(w, http.StatusConflict, "настройки шлюза "+provider+" недоступны")
 		return
 	}
+	cfg := providerRow.Config
 	reference, refErr := payments.Refund(ctx, provider, cfg, strPtr(providerPaymentID),
 		refundAmount, currency, strings.TrimSpace(body.Reason))
 	if refErr != nil {
@@ -164,7 +164,7 @@ func (h *Handler) AdminRefundSupport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := map[string]bool{}
-	for _, code := range payments.Supported() {
+	for _, code := range payments.Codes() {
 		out[code] = payments.RefundSupported(code)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"providers": out})
@@ -188,27 +188,6 @@ func reasonSuffix(reason string) string {
 
 func formatMoney(v float64) string {
 	return strconv.FormatFloat(v, 'f', 2, 64)
-}
-
-func (h *Handler) tenantProviderConfig(ctx context.Context, provider string) (map[string]any, error) {
-	var raw []byte
-	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT config FROM core.payment_providers
-		WHERE provider = $1 AND enabled = true
-		LIMIT 1
-	`, provider).Scan(&raw)
-	if err != nil {
-		return nil, fmt.Errorf("шлюз %s не подключён у этого тенанта", provider)
-	}
-	plain, decErr := h.secrets.DecryptJSON(raw)
-	if decErr != nil || len(plain) == 0 {
-		plain = raw
-	}
-	cfg := map[string]any{}
-	if err := json.Unmarshal(plain, &cfg); err != nil {
-		return nil, fmt.Errorf("настройки шлюза %s нечитаемы", provider)
-	}
-	return cfg, nil
 }
 
 func (h *Handler) walletForUser(ctx context.Context, userID, currency string) (string, float64, bool) {

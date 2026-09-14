@@ -11,20 +11,16 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/vortanixapp/panel/internal/api/mail"
-	"github.com/vortanixapp/panel/internal/api/payments"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 	"golang.org/x/crypto/ssh"
 )
 
 const maskedFTPPassword = "__VTX_MASKED_FTP_PASSWORD__"
-
-var paymentProviderFormKey = regexp.MustCompile(`^payment_providers\[([^\]]+)\]\[([^\]]+)\]$`)
 
 func (h *Handler) GetAdminSettings(w http.ResponseWriter, r *http.Request) {
 	_, ok := tenantClaims(r.Context())
@@ -38,13 +34,10 @@ func (h *Handler) GetAdminSettings(w http.ResponseWriter, r *http.Request) {
 		values["files.storage.ftp.password"] = maskedFTPPassword
 	}
 
-	providers := h.buildAdminPaymentProviders(ctx)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"values":            values,
-		"paymentProviders":  providers,
-		"payment_providers": providers,
-		"panelVersion":      h.currentPanelVersion(values),
-		"panel_version":     h.currentPanelVersion(values),
+		"values":        values,
+		"panelVersion":  h.currentPanelVersion(values),
+		"panel_version": h.currentPanelVersion(values),
 	})
 }
 
@@ -114,8 +107,6 @@ func (h *Handler) UpdateAdminSettings(w http.ResponseWriter, r *http.Request) {
 			h.setTenantSettingString(ctx, "app.branding.icon", path)
 		}
 	}
-
-	h.savePaymentProvidersFromForm(ctx, form)
 
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Настройки сохранены"})
 }
@@ -248,26 +239,7 @@ func (h *Handler) AdminCutoverReadiness(w http.ResponseWriter, r *http.Request) 
 		mailer = "smtp"
 	}
 	smtpConfigured := h.mailConfigFromTenant(ctx).Enabled()
-	providers := h.buildAdminPaymentProviders(ctx)
-	enabledProviders := 0
-	providersWithWebhook := 0
-	for _, raw := range providers {
-		p, ok := raw.(map[string]any)
-		if !ok || !boolFromAny(p["enabled"]) {
-			continue
-		}
-		enabledProviders++
-		code := strings.TrimSpace(fmt.Sprint(p["code"]))
-		switch code {
-		case "stripe":
-			cfg, _ := p["config"].(map[string]any)
-			if strings.TrimSpace(fmt.Sprint(cfg["webhook_secret"])) != "" {
-				providersWithWebhook++
-			}
-		case "freekassa", "robokassa", "yookassa":
-			providersWithWebhook++
-		}
-	}
+	enabledProviders, providersWithWebhook := h.paymentReadinessCounts(ctx)
 	oauthProviders := map[string]bool{
 		"google":  strings.TrimSpace(envOr("SOCIAL_GOOGLE_CLIENT_ID", "")) != "",
 		"discord": strings.TrimSpace(envOr("SOCIAL_DISCORD_CLIENT_ID", "")) != "",
@@ -450,150 +422,6 @@ func (h *Handler) currentPanelVersion(values map[string]string) string {
 	return "0.0.0"
 }
 
-func (h *Handler) buildAdminPaymentProviders(ctx context.Context) map[string]any {
-	stored := map[string]struct {
-		enabled bool
-		config  map[string]any
-	}{}
-	rows, _ := h.dbOf(ctx).Query(ctx, `SELECT provider, enabled, config FROM core.payment_providers`)
-	if rows != nil {
-		defer rows.Close()
-		for rows.Next() {
-			var provider string
-			var enabled bool
-			var cfg []byte
-			if rows.Scan(&provider, &enabled, &cfg) == nil {
-				m := map[string]any{}
-				if plain, err := h.secrets.DecryptJSON(cfg); err == nil {
-					_ = json.Unmarshal(plain, &m)
-				}
-				stored[provider] = struct {
-					enabled bool
-					config  map[string]any
-				}{enabled: enabled, config: m}
-			}
-		}
-	}
-
-	out := map[string]any{}
-	for _, def := range payments.AdminCatalog() {
-		row := stored[def.Key]
-		cfg := map[string]string{}
-		for fk, field := range def.Fields {
-			if v, ok := row.config[fk]; ok {
-				cfg[fk] = fmt.Sprint(v)
-			} else if field.Default != "" {
-				cfg[fk] = field.Default
-			} else {
-				cfg[fk] = ""
-			}
-		}
-		fields := map[string]any{}
-		for fk, field := range def.Fields {
-			entry := map[string]any{"label": field.Label}
-			if field.Type != "" {
-				entry["type"] = field.Type
-			}
-			if field.Default != "" {
-				entry["default"] = field.Default
-			}
-			if len(field.Options) > 0 {
-				entry["options"] = field.Options
-			}
-			fields[fk] = entry
-		}
-		out[def.Key] = map[string]any{
-			"key":       def.Key,
-			"name":      def.Name,
-			"fields":    fields,
-			"enabled":   row.enabled,
-			"config":    cfg,
-			"supported": payments.IsSupported(def.Key),
-		}
-	}
-	return out
-}
-
-func (h *Handler) unreadableProviderConfigs(ctx context.Context) map[string]bool {
-	out := map[string]bool{}
-	rows, err := h.dbOf(ctx).Query(ctx, `SELECT provider, config FROM core.payment_providers`)
-	if err != nil {
-		return out
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var provider string
-		var cfg []byte
-		if rows.Scan(&provider, &cfg) != nil {
-			continue
-		}
-		if _, err := h.secrets.DecryptJSON(cfg); err != nil {
-			out[provider] = true
-		}
-	}
-	return out
-}
-
-func (h *Handler) savePaymentProvidersFromForm(ctx context.Context, form map[string][]string) {
-	input := map[string]map[string]string{}
-	enabled := map[string]bool{}
-	for key, vals := range form {
-		if m := paymentProviderFormKey.FindStringSubmatch(key); len(m) == 3 {
-			prov, field := m[1], m[2]
-			if input[prov] == nil {
-				input[prov] = map[string]string{}
-			}
-			if len(vals) > 0 {
-				if field == "enabled" {
-					enabled[prov] = formTruthy(vals[0])
-				} else {
-					input[prov][field] = vals[0]
-				}
-			}
-		}
-	}
-	unreadable := h.unreadableProviderConfigs(ctx)
-
-	catalog := payments.AdminCatalogMap()
-	for provKey, provDef := range catalog {
-		if unreadable[provKey] {
-			continue
-		}
-		provInput := input[provKey]
-		cfg := map[string]any{}
-		for fieldKey, fieldDef := range provDef.Fields {
-			val := strings.TrimSpace(provInput[fieldKey])
-			if fieldDef.Type == "checkbox" {
-				if formTruthy(val) {
-					cfg[fieldKey] = "1"
-				} else {
-					cfg[fieldKey] = "0"
-				}
-				continue
-			}
-			if val == "" {
-				if fieldDef.Default != "" {
-					cfg[fieldKey] = fieldDef.Default
-				}
-				continue
-			}
-			cfg[fieldKey] = val
-		}
-		en := enabled[provKey]
-		raw, _ := json.Marshal(cfg)
-		sealed, err := h.secrets.EncryptJSON(raw)
-		if err != nil {
-			continue
-		}
-		raw = sealed
-		_, _ = h.dbOf(ctx).Exec(ctx, `
-			INSERT INTO core.payment_providers (provider, enabled, config)
-			VALUES ($1, $2, $3::jsonb)
-			ON CONFLICT (provider) DO UPDATE SET enabled = EXCLUDED.enabled, config = EXCLUDED.config
-		`, provKey, en, raw)
-	}
-}
-
 func (h *Handler) saveBrandingFile(file io.Reader, filename, base string) (string, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
@@ -719,7 +547,6 @@ func adminSettingsFormToDotKey() map[string]string {
 	return map[string]string{
 		"app_name": "app.name", "site_description": "app.site.description", "site_domain": "app.site.domain",
 		"site_ip": "app.site.ip", "site_subnet": "app.site.subnet", "default_template": "app.site.default_template",
-		"default_currency":   "billing.default_currency",
 		"recaptcha_site_key": "services.recaptcha.site_key", "recaptcha_secret_key": "services.recaptcha.secret_key",
 		"google_client_id": "services.google.client_id", "google_client_secret": "services.google.client_secret",
 		"google_redirect_uri": "services.google.redirect", "discord_client_id": "services.discord.client_id",
@@ -730,12 +557,6 @@ func adminSettingsFormToDotKey() map[string]string {
 		"mail_mailer": "mail.default", "mail_host": "mail.mailers.smtp.host", "mail_port": "mail.mailers.smtp.port",
 		"mail_username": "mail.mailers.smtp.username", "mail_password": "mail.mailers.smtp.password",
 		"mail_from_address": "mail.from.address", "mail_from_name": "mail.from.name",
-		"payment_fee_freekassa": "payments.providers.freekassa.fee_percent", "payment_fee_nowpayments": "payments.providers.nowpayments.fee_percent",
-		"payment_fee_stripe": "payments.providers.stripe.fee_percent", "payment_fee_paypal": "payments.providers.paypal.fee_percent",
-		"payment_fee_yookassa": "payments.providers.yookassa.fee_percent", "payment_fee_yoomoney": "payments.providers.yoomoney.fee_percent",
-		"payment_fee_cloudpayments": "payments.providers.cloudpayments.fee_percent", "payment_fee_unitpay": "payments.providers.unitpay.fee_percent",
-		"payment_fee_robokassa": "payments.providers.robokassa.fee_percent", "payment_fee_cryptocloud": "payments.providers.cryptocloud.fee_percent",
-		"payment_fee_coinbase": "payments.providers.coinbase.fee_percent", "fx_fee_percent": "payments.fx.fee_percent",
 		"dockerhub_username": "dockerhub.username", "dockerhub_token": "dockerhub.token",
 		"telegram_bot_token": "telegram.notifications.bot_token", "telegram_bot_username": "telegram.notifications.bot_username",
 		"telegram_admin_chat_id": "telegram.notifications.admin_chat_id",

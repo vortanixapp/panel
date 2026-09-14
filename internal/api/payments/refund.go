@@ -1,11 +1,8 @@
 package payments
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -44,62 +41,48 @@ func Refund(ctx context.Context, code string, cfg map[string]any, providerPaymen
 }
 
 func (YooKassa) Refund(ctx context.Context, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string) (string, error) {
-	shopID := strCfg(cfg, "shop_id")
-	secret := strCfg(cfg, "secret_key")
+	shopID, secret := strCfg(cfg, "shop_id"), strCfg(cfg, "secret_key")
 	if shopID == "" || secret == "" {
-		return "", fmt.Errorf("yookassa not configured")
+		return "", notConfigured("yookassa")
 	}
 	body := map[string]any{
 		"payment_id": providerPaymentID,
 		"amount": map[string]string{
-			"value":    fmt.Sprintf("%.2f", amount),
-			"currency": strings.ToUpper(currency),
+			"value":    money(amount),
+			"currency": upper(currency),
 		},
 	}
 	if strings.TrimSpace(reason) != "" {
 		body["description"] = reason
 	}
-	raw, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.yookassa.ru/v3/refunds", bytes.NewReader(raw))
-	if err != nil {
-		return "", err
-	}
-	req.SetBasicAuth(shopID, secret)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Idempotence-Key", fmt.Sprintf("refund-%s-%.2f", providerPaymentID, amount))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode >= 300 {
-		return "", fmt.Errorf("yookassa refund %d: %s", resp.StatusCode, string(respBody))
-	}
-	var parsed struct {
+	var out struct {
 		ID     string `json:"id"`
 		Status string `json:"status"`
 	}
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
-		return "", err
+	err := sendJSON(ctx, http.MethodPost, "https://api.yookassa.ru/v3/refunds", body, &out,
+		withBasicAuth(shopID, secret),
+		withHeader("Idempotence-Key", fmt.Sprintf("refund-%s-%.2f", providerPaymentID, amount)))
+	if err != nil {
+		return "", fmt.Errorf("yookassa refund: %w", err)
 	}
-	if parsed.Status == "canceled" {
-		return parsed.ID, fmt.Errorf("yookassa отменила возврат")
+	if out.Status == "canceled" {
+		return out.ID, fmt.Errorf("yookassa отменила возврат")
 	}
-	return parsed.ID, nil
+	return out.ID, nil
 }
 
 func (Stripe) Refund(ctx context.Context, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string) (string, error) {
-	secret := strCfg(cfg, "secret_key")
+	secret := stripeSecret(cfg)
 	if secret == "" {
-		return "", fmt.Errorf("stripe not configured")
+		return "", notConfigured("stripe")
 	}
-	stripe.Key = secret
+	backend := stripe.GetBackend(stripe.APIBackend)
 
 	intentID := providerPaymentID
 	if strings.HasPrefix(providerPaymentID, "cs_") {
-		sess, err := session.Get(providerPaymentID, nil)
+		params := &stripe.CheckoutSessionParams{}
+		params.Context = ctx
+		sess, err := session.Client{B: backend, Key: secret}.Get(providerPaymentID, params)
 		if err != nil {
 			return "", err
 		}
@@ -111,13 +94,13 @@ func (Stripe) Refund(ctx context.Context, cfg map[string]any, providerPaymentID 
 
 	params := &stripe.RefundParams{
 		PaymentIntent: stripe.String(intentID),
-		Amount:        stripe.Int64(int64(amount*100 + 0.5)),
+		Amount:        stripe.Int64(minorUnits(amount, currency)),
 	}
 	params.Context = ctx
 	if strings.TrimSpace(reason) != "" {
 		params.AddMetadata("reason", reason)
 	}
-	created, err := refund.New(params)
+	created, err := refund.Client{B: backend, Key: secret}.New(params)
 	if err != nil {
 		return "", err
 	}

@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/vortanixapp/panel/pkg/secretbox"
 )
 
 const (
@@ -319,25 +317,4 @@ func idInList(id string, list []any) bool {
 		}
 	}
 	return false
-}
-
-func LoadProviderConfig(ctx context.Context, db *pgxpool.Pool, box *secretbox.Box, provider string) (map[string]any, error) {
-	var raw []byte
-	err := db.QueryRow(ctx, `
-		SELECT config FROM core.payment_providers
-		WHERE provider = $1 AND enabled = true
-		LIMIT 1
-	`, provider).Scan(&raw)
-	if err != nil {
-		return nil, err
-	}
-	plain, err := box.DecryptJSON(raw)
-	if err != nil {
-		return nil, err
-	}
-	cfg := map[string]any{}
-	if len(plain) > 0 {
-		_ = json.Unmarshal(plain, &cfg)
-	}
-	return cfg, nil
 }

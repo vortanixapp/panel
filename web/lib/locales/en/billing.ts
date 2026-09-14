@@ -105,6 +105,13 @@ export const billing = {
   "billing.topup.go_to_payment": "Proceed to payment",
   "billing.topup.promo_note":
     "A promo code adds a bonus to the credited sum (it does not change what you pay).",
+  "billing.topup.fee": "Fee {fee}%",
+  "billing.topup.conversion": "Converted to {currency}",
+  "billing.topup.to_pay": "To pay",
+  "billing.topup.credited": "Credited to balance",
+  "billing.topup.rate_note": "At the current rate; the exact amount is fixed when the payment is created",
+  "billing.topup.rate_pending": "The amount in {currency} is calculated when you proceed to payment",
+  "billing.topup.bank_submit": "Get bank details",
 
   "billing.payment.success_title": "Payment successful!",
   "billing.payment.success_text": "The funds have been credited to your balance.",
@@ -117,6 +124,17 @@ export const billing = {
   "billing.payment.not_found_text": "Could not find any information about this payment.",
   "billing.payment.to_billing": "Go to billing",
   "billing.payment.to_dashboard": "Go to dashboard",
+  "billing.payment.via": "via {provider}",
+  "billing.payment.to_pay": "To pay: {amount} {currency}",
+  "billing.payment.continue": "Continue to payment",
+  "billing.payment.bank_title": "Bank transfer details",
+  "billing.payment.bank_name": "Bank",
+  "billing.payment.bank_holder": "Recipient",
+  "billing.payment.bank_account": "Account",
+  "billing.payment.bank_swift": "SWIFT / BIC",
+  "billing.payment.bank_reference": "Payment reference",
+  "billing.payment.bank_reference_value": "Balance top-up {reference}",
+  "billing.payment.bank_hint": "The balance is credited once the administrator confirms the transfer has arrived.",
 
   "billing.bonus.title": "Daily bonus",
   "billing.bonus.subtitle":

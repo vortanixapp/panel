@@ -1300,12 +1300,19 @@ export type TopupPaymentRecord = {
   currency: string;
   credited_amount?: number | null;
   created_at: string;
+  provider?: string;
+  provider_name?: string;
+  charge_amount?: number;
+  charge_currency?: string;
 };
 
 export type TopupProvider = {
   id: string;
   code: string;
   name: string;
+  fee_percent?: number;
+  currency?: string;
+  manual?: boolean;
 };
 
 export type FreekassaMethod = {
@@ -1320,6 +1327,7 @@ export type TopupFormData = {
   providers: TopupProvider[];
   enabled_providers: string[];
   freekassa_methods?: FreekassaMethod[];
+  fx?: { fee_percent: number; rates: Record<string, number> | null };
 };
 
 export type CreateTopupParams = {
@@ -1335,6 +1343,8 @@ export type CreateTopupResult = {
   payment_id: string;
   status: string;
   redirect_url?: string;
+  charge_amount?: number;
+  charge_currency?: string;
 };
 
 export type PaymentDetail = {
@@ -1342,6 +1352,16 @@ export type PaymentDetail = {
   amount: number;
   status: string;
   currency: string;
+  provider?: string;
+  provider_name?: string;
+  invoice_no?: number;
+  created_at?: string;
+  charge_amount?: number | null;
+  charge_currency?: string | null;
+  fee_percent?: number | null;
+  credited_amount?: number | null;
+  checkout_url?: string;
+  instructions?: Record<string, string>;
 };
 
 export async function fetchBilling(walletId?: string | null) {
@@ -4296,18 +4316,69 @@ export async function fetchAdminMailings() {
   return apiFetch<{ mailings: unknown[] }>("/v1/admin/mailings");
 }
 
+export type AdminPaymentProviderField = {
+  key: string;
+  label: string;
+  type: string;
+  default?: string;
+  options?: { value: string; label: string }[];
+  required?: boolean;
+};
+
+export type AdminPaymentProvider = {
+  key: string;
+  name: string;
+  enabled: boolean;
+  configured: boolean;
+  missing: string[];
+  unreadable: boolean;
+  fee_percent: number;
+  fields: AdminPaymentProviderField[];
+  config: Record<string, string>;
+  secrets: Record<string, boolean>;
+  manual: boolean;
+  currency_mode: "fixed" | "account" | "setting" | "wallet";
+  currency: string;
+  webhook_url?: string;
+};
+
+export type AdminPaymentSettings = {
+  default_currency: string;
+  currencies: string[];
+  fx_fee_percent: number;
+};
+
+export type AdminPaymentProvidersData = {
+  providers: AdminPaymentProvider[];
+  settings: AdminPaymentSettings;
+};
+
 export async function fetchAdminPaymentProviders() {
-  return apiFetch<{ providers: unknown[] }>("/v1/admin/payment-providers");
+  return apiFetch<AdminPaymentProvidersData>("/v1/admin/payment-providers");
 }
 
 export async function updateAdminPaymentProvider(
-  id: string,
-  data: { enabled?: boolean; config?: Record<string, unknown> }
+  code: string,
+  data: {
+    enabled?: boolean;
+    fee_percent?: number | string;
+    config?: Record<string, string>;
+  }
 ) {
-  return apiFetch<{ status: string }>(`/v1/admin/payment-providers/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
+  return apiFetch<{ provider: AdminPaymentProvider }>(
+    `/v1/admin/payment-providers/${code}`,
+    { method: "PATCH", body: JSON.stringify(data) }
+  );
+}
+
+export async function updateAdminPaymentSettings(data: {
+  default_currency?: string;
+  fx_fee_percent?: number | string;
+}) {
+  return apiFetch<{ settings: AdminPaymentSettings }>(
+    "/v1/admin/payment-providers/settings",
+    { method: "PATCH", body: JSON.stringify(data) }
+  );
 }
 
 export type AdminUpdates = {
@@ -4710,6 +4781,20 @@ export async function refundAdminPayment(
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+export async function completeAdminPayment(paymentId: string) {
+  return apiFetch<{ status: string }>(
+    `/v1/admin/billing/payments/${paymentId}/complete`,
+    { method: "POST" }
+  );
+}
+
+export async function cancelAdminPayment(paymentId: string) {
+  return apiFetch<{ status: string }>(
+    `/v1/admin/billing/payments/${paymentId}/cancel`,
+    { method: "POST" }
+  );
 }
 
 export async function setServerAutoRenew(serverId: string, enabled: boolean) {

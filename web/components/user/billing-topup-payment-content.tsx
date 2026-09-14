@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { toast } from "sonner";
-import { fetchPayment, openPaymentReceipt } from "@/lib/api";
+import { fetchPayment, openPaymentReceipt, type PaymentDetail } from "@/lib/api";
 import { formatAmount } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
@@ -18,13 +18,61 @@ function isFailureStatus(status?: string) {
   return status === "failed" || status === "cancelled";
 }
 
+function isPendingStatus(status?: string) {
+  return status === "pending" || status === "processing";
+}
+
+function BankDetails({ payment }: { payment: PaymentDetail }) {
+  const t = useT();
+  const info = payment.instructions ?? {};
+  const rows = [
+    { label: t("billing.payment.bank_name"), value: info.bank_name },
+    { label: t("billing.payment.bank_holder"), value: info.account_holder },
+    { label: t("billing.payment.bank_account"), value: info.account_number },
+    { label: t("billing.payment.bank_swift"), value: info.swift_bic },
+    {
+      label: t("billing.payment.bank_reference"),
+      value: info.reference
+        ? t("billing.payment.bank_reference_value", { reference: info.reference })
+        : undefined,
+    },
+  ].filter((row) => row.value);
+
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-muted/30 p-4 text-left">
+      <div className="text-sm font-semibold text-foreground">
+        {t("billing.payment.bank_title")}
+      </div>
+      <dl className="space-y-2">
+        {rows.map((row) => (
+          <div key={row.label} className="flex flex-col gap-0.5">
+            <dt className="text-[11px] text-muted-foreground">{row.label}</dt>
+            <dd className="font-mono text-sm break-all text-foreground select-all">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {info.instructions && (
+        <p className="text-xs whitespace-pre-line text-muted-foreground">{info.instructions}</p>
+      )}
+      <p className="text-xs text-muted-foreground">{t("billing.payment.bank_hint")}</p>
+    </div>
+  );
+}
+
 export function BillingTopupPaymentContent({ id }: { id: string }) {
   const t = useT();
   const { data: payment, isLoading } = useQuery({
     queryKey: queryKeys.billingPayment(id),
     queryFn: () => fetchPayment(id),
     enabled: Boolean(id),
+    refetchInterval: (query) =>
+      isPendingStatus(query.state.data?.status) ? 5000 : false,
   });
+
+  const chargeDiffers =
+    payment?.charge_amount != null &&
+    (Number(payment.charge_amount) !== Number(payment.amount) ||
+      (payment.charge_currency || "").toUpperCase() !== (payment.currency || "").toUpperCase());
 
   return (
     <PageShell variant="user">
@@ -50,7 +98,7 @@ export function BillingTopupPaymentContent({ id }: { id: string }) {
                   </p>
                   {payment?.amount != null && (
                     <p className="text-lg font-semibold text-foreground">
-                      +{formatAmount(payment.amount)}{" "}
+                      +{formatAmount(payment.credited_amount ?? payment.amount)}{" "}
                       {(payment.currency || "RUB").toUpperCase()}
                     </p>
                   )}
@@ -87,11 +135,33 @@ export function BillingTopupPaymentContent({ id }: { id: string }) {
                   <p className="text-sm text-muted-foreground">
                     {t("billing.payment.pending_text", { status: payment.status })}
                   </p>
-                  {payment.amount != null && (
+                  <div className="space-y-1">
                     <p className="text-sm font-medium text-foreground">
-                      {formatAmount(payment.amount)}{" "}
-                      {(payment.currency || "RUB").toUpperCase()}
+                      {formatAmount(payment.amount)} {(payment.currency || "RUB").toUpperCase()}
+                      {payment.provider_name && (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          {t("billing.payment.via", { provider: payment.provider_name })}
+                        </span>
+                      )}
                     </p>
+                    {chargeDiffers && (
+                      <p className="text-xs text-muted-foreground">
+                        {t("billing.payment.to_pay", {
+                          amount: formatAmount(payment.charge_amount),
+                          currency: (payment.charge_currency || "").toUpperCase(),
+                        })}
+                      </p>
+                    )}
+                  </div>
+                  {payment.instructions && <BankDetails payment={payment} />}
+                  {payment.checkout_url && (
+                    <a
+                      href={payment.checkout_url}
+                      className="inline-flex w-full items-center justify-center rounded-xl border border-primary/40 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5"
+                    >
+                      {t("billing.payment.continue")}
+                    </a>
                   )}
                 </>
               ) : (

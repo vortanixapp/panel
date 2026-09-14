@@ -85,7 +85,6 @@ export const adminInfra = {
   "admin.settings.clean": "Раздел «{tab}» — изменений нет",
 
   "admin.settings.tab.main": "Основное",
-  "admin.settings.tab.payments": "Платёжные системы",
   "admin.settings.tab.mail": "Почта",
   "admin.settings.tab.social": "Соц сети",
   "admin.settings.tab.dockerhub": "Docker Hub",
@@ -135,19 +134,6 @@ export const adminInfra = {
   "admin.settings.security.status_mail": "Уведомления о статусе сервера",
   "admin.settings.security.status_mail_hint":
     "Отправлять email при изменениях статуса установки и запуска",
-
-  "admin.settings.currency.title": "Валюта",
-  "admin.settings.currency.description": "В этой валюте заводится кошелёк новому пользователю",
-  "admin.settings.currency.default": "Валюта по умолчанию",
-  "admin.settings.fees.title": "Комиссии платёжных систем",
-  "admin.settings.fees.description": "Процент, который удерживает провайдер",
-  "admin.settings.fees.fx": "FX комиссия",
-  "admin.settings.providers.title": "Провайдеры",
-  "admin.settings.providers.description":
-    "Ключи и режим работы. Раскройте провайдера, чтобы настроить поля",
-  "admin.settings.providers.empty": "Провайдеры не настроены",
-  "admin.settings.providers.enabled": "Включён",
-  "admin.settings.providers.disabled": "Выключен",
 
   "admin.settings.mail.description":
     "Транспорт для писем панели: подтверждения, счета, уведомления",

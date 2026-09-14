@@ -91,7 +91,7 @@ func (h *Handler) completeTopupPayment(ctx context.Context, paymentID, providerP
 
 	tag, err := tx.Exec(ctx, `
 		UPDATE core.payments
-		SET status = 'completed', wallet_id = $2::uuid, provider_payment_id = $3,
+		SET status = 'completed', wallet_id = $2::uuid, provider_payment_id = COALESCE(NULLIF($3, ''), provider_payment_id),
 		    promotion_id = COALESCE($4::uuid, promotion_id),
 		    credited_at = now(), updated_at = now()
 		WHERE id = $1::uuid AND status <> 'completed'

@@ -19,12 +19,15 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   adjustAdminUserBalance,
+  cancelAdminPayment,
+  completeAdminPayment,
   fetchAdminBilling,
   fetchRefundSupport,
   openPaymentReceipt,
   refundAdminPayment,
   type AdminPayment,
 } from "@/lib/api";
+import { providerDisplayName } from "@/lib/billing-providers";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
 
@@ -46,10 +49,15 @@ const PERIOD_OPTIONS = [
 ];
 
 const PAID = new Set(["completed", "success", "succeeded", "paid"]);
+const OPEN = new Set(["pending", "processing"]);
 
 function fmtDateTime(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(localeTag());
+}
+
+function amountText(p: AdminPayment): string {
+  return `${p.amount.toFixed(2)} ${p.currency || "RUB"}`;
 }
 
 export function BillingPageContent() {
@@ -107,6 +115,26 @@ export function BillingPageContent() {
     },
     onError: (e: Error) =>
       toast.error(e.message || t("admin.billing.refund_failed")),
+  });
+
+  const completeMut = useMutation({
+    mutationFn: (p: AdminPayment) => completeAdminPayment(p.id),
+    onSuccess: () => {
+      toast.success(t("admin.billing.payment_confirmed"));
+      qc.invalidateQueries({ queryKey: ["admin-billing"] });
+    },
+    onError: (e: Error) =>
+      toast.error(e.message || t("admin.billing.action_failed")),
+  });
+
+  const cancelMut = useMutation({
+    mutationFn: (p: AdminPayment) => cancelAdminPayment(p.id),
+    onSuccess: () => {
+      toast.success(t("admin.billing.payment_cancelled"));
+      qc.invalidateQueries({ queryKey: ["admin-billing"] });
+    },
+    onError: (e: Error) =>
+      toast.error(e.message || t("admin.billing.action_failed")),
   });
 
   const [adjustFor, setAdjustFor] = useState<{
@@ -315,20 +343,18 @@ export function BillingPageContent() {
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">
-                      {p.amount.toFixed(2)} {p.currency || "RUB"}
-                    </span>
+                    <span className="font-medium">{amountText(p)}</span>
                     <span className="text-sm text-muted-foreground">
                       {p.user_email || p.user_id}
                     </span>
                   </div>
                   <div className="mt-1 font-mono text-xs text-muted-foreground">
-                    {p.provider || "—"} ·{" "}
+                    {p.provider ? providerDisplayName(p.provider) : "—"} ·{" "}
                     {p.provider_payment_id || t("admin.billing.no_id")} ·{" "}
                     {fmtDateTime(p.created_at)}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {PAID.has(p.status) ? (
                     <Badge className="bg-emerald-500/10 text-emerald-600 ring-1 ring-inset ring-emerald-500/20">
                       {p.status}
@@ -336,6 +362,45 @@ export function BillingPageContent() {
                   ) : (
                     <Badge variant="outline">{p.status}</Badge>
                   )}
+                  {OPEN.has(p.status) && p.provider === "bank" ? (
+                    <Button
+                      size="sm"
+                      disabled={completeMut.isPending}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            t("admin.billing.confirm_payment_prompt", {
+                              amount: amountText(p),
+                            })
+                          )
+                        ) {
+                          completeMut.mutate(p);
+                        }
+                      }}
+                    >
+                      {t("admin.billing.confirm_payment")}
+                    </Button>
+                  ) : null}
+                  {OPEN.has(p.status) ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={cancelMut.isPending}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            t("admin.billing.cancel_payment_prompt", {
+                              amount: amountText(p),
+                            })
+                          )
+                        ) {
+                          cancelMut.mutate(p);
+                        }
+                      }}
+                    >
+                      {t("admin.billing.cancel_payment")}
+                    </Button>
+                  ) : null}
                   {PAID.has(p.status) ? (
                     <Button
                       variant="ghost"

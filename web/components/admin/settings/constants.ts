@@ -2,27 +2,12 @@ import type { SettingsTab } from "./types";
 
 export const SETTINGS_TABS: { id: SettingsTab; labelKey: string }[] = [
   { id: "main", labelKey: "admin.settings.tab.main" },
-  { id: "payments", labelKey: "admin.settings.tab.payments" },
   { id: "mail", labelKey: "admin.settings.tab.mail" },
   { id: "social", labelKey: "admin.settings.tab.social" },
   { id: "dockerhub", labelKey: "admin.settings.tab.dockerhub" },
   { id: "telegram", labelKey: "admin.settings.tab.telegram" },
   { id: "files", labelKey: "admin.settings.tab.files" },
 ];
-
-export const PAYMENT_FEE_PROVIDERS = [
-  { key: "freekassa", label: "FreeKassa" },
-  { key: "nowpayments", label: "NOWPayments" },
-  { key: "stripe", label: "Stripe" },
-  { key: "paypal", label: "PayPal" },
-  { key: "yookassa", label: "ЮKassa" },
-  { key: "yoomoney", label: "ЮMoney" },
-  { key: "cloudpayments", label: "CloudPayments" },
-  { key: "unitpay", label: "UnitPay" },
-  { key: "robokassa", label: "Robokassa" },
-  { key: "cryptocloud", label: "CryptoCloud" },
-  { key: "coinbase", label: "Coinbase" },
-] as const;
 
 export const MAIL_MAILERS = [
   "smtp",
@@ -53,7 +38,6 @@ export const SETTINGS_KEY_MAP: Record<string, string> = {
   "app.site.description": "site_description",
   "app.site.domain": "site_domain",
   "app.site.default_template": "default_template",
-  "billing.default_currency": "default_currency",
   "app.site.ip": "site_ip",
   "app.site.subnet": "site_subnet",
   "dockerhub.username": "dockerhub_username",
@@ -113,22 +97,8 @@ export const SETTINGS_KEY_MAP: Record<string, string> = {
   "files.storage.path.plugins": "files_storage_path_plugins",
   "files.storage.path.maps": "files_storage_path_maps",
   "files.storage.path.support": "files_storage_path_support",
-  "payments.providers.freekassa.fee_percent": "payment_fee_freekassa",
-  "payments.providers.nowpayments.fee_percent": "payment_fee_nowpayments",
-  "payments.providers.stripe.fee_percent": "payment_fee_stripe",
-  "payments.providers.paypal.fee_percent": "payment_fee_paypal",
-  "payments.providers.yookassa.fee_percent": "payment_fee_yookassa",
-  "payments.providers.yoomoney.fee_percent": "payment_fee_yoomoney",
-  "payments.providers.cloudpayments.fee_percent": "payment_fee_cloudpayments",
-  "payments.providers.unitpay.fee_percent": "payment_fee_unitpay",
-  "payments.providers.robokassa.fee_percent": "payment_fee_robokassa",
-  "payments.providers.cryptocloud.fee_percent": "payment_fee_cryptocloud",
-  "payments.providers.coinbase.fee_percent": "payment_fee_coinbase",
-  "payments.fx.fee_percent": "fx_fee_percent",
 };
 
 export function isSettingsTab(value: string | null): value is SettingsTab {
   return !!value && SETTINGS_TABS.some((tab) => tab.id === value);
 }
-
-export const WALLET_CURRENCIES = ["RUB", "USD", "EUR", "UAH"];

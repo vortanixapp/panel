@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, ImageIcon, Upload } from "lucide-react";
+import { ImageIcon, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
@@ -27,8 +27,6 @@ import {
   isSettingsTab,
   MAIL_MAILERS,
   OAUTH_PROVIDERS,
-  PAYMENT_FEE_PROVIDERS,
-  WALLET_CURRENCIES,
   SETTINGS_KEY_MAP,
   SETTINGS_TABS,
 } from "./constants";
@@ -41,7 +39,7 @@ import {
   TextField,
   ToggleRow,
 } from "./settings-ui";
-import type { PaymentProvider, SettingsTab } from "./types";
+import type { SettingsTab } from "./types";
 
 type SettingsPageContentProps = {
   initialTab?: SettingsTab;
@@ -65,18 +63,11 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
   });
 
   const [values, setValues] = useState<Record<string, string>>({});
-  const [paymentProviders, setPaymentProviders] = useState<PaymentProvider[]>(
-    []
-  );
-  const [openProviders, setOpenProviders] = useState<Record<string, boolean>>(
-    {}
-  );
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [iconFile, setIconFile] = useState<File | null>(null);
   const [baseline, setBaseline] = useState<{
     values: Record<string, string>;
-    providers: PaymentProvider[];
-  }>({ values: {}, providers: [] });
+  }>({ values: {} });
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const iconInputRef = useRef<HTMLInputElement>(null);
@@ -90,13 +81,8 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
   useEffect(() => {
     if (!data) return;
     const nextValues = data.values || {};
-    const rawProviders = data.payment_providers ?? data.paymentProviders ?? [];
-    const providers = Array.isArray(rawProviders)
-      ? rawProviders
-      : Object.values(rawProviders || {});
     setValues(nextValues);
-    setPaymentProviders(providers);
-    setBaseline({ values: nextValues, providers });
+    setBaseline({ values: nextValues });
     setLogoFile(null);
     setIconFile(null);
   }, [data]);
@@ -195,14 +181,11 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
     for (const key of keys) {
       if ((baseline.values[key] ?? "") !== (values[key] ?? "")) return true;
     }
-    return (
-      JSON.stringify(baseline.providers) !== JSON.stringify(paymentProviders)
-    );
-  }, [baseline, values, paymentProviders, logoFile, iconFile]);
+    return false;
+  }, [baseline, values, logoFile, iconFile]);
 
   const reset = () => {
     setValues(baseline.values);
-    setPaymentProviders(baseline.providers);
     setLogoFile(null);
     setIconFile(null);
     if (logoInputRef.current) logoInputRef.current.value = "";
@@ -220,12 +203,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
     });
     if (logoFile) fd.append("logo", logoFile);
     if (iconFile) fd.append("icon", iconFile);
-    paymentProviders.forEach((pp) => {
-      fd.append(`payment_providers[${pp.key}][enabled]`, pp.enabled ? "1" : "0");
-      Object.entries(pp.config).forEach(([fk, fv]) =>
-        fd.append(`payment_providers[${pp.key}][${fk}]`, fv)
-      );
-    });
     saveMutation.mutate(fd);
   };
 
@@ -257,18 +234,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
       ),
     });
   };
-
-  const updateProviderField = (provKey: string, field: string, next: string) =>
-    setPaymentProviders((prev) =>
-      prev.map((p) =>
-        p.key === provKey ? { ...p, config: { ...p.config, [field]: next } } : p
-      )
-    );
-
-  const toggleProvider = (provKey: string) =>
-    setPaymentProviders((prev) =>
-      prev.map((p) => (p.key === provKey ? { ...p, enabled: !p.enabled } : p))
-    );
 
   const tabTitleKey = SETTINGS_TABS.find((item) => item.id === tab)?.labelKey;
   const tabTitle = tabTitleKey ? t(tabTitleKey) : t("admin.settings.title");
@@ -487,206 +452,6 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
                     "vtx_mail.server_status_notifications"
                   )}
                 />
-              </div>
-            </SettingsCard>
-          </div>
-        )}
-
-        {tab === "payments" && (
-          <div className="space-y-4">
-            <SettingsCard
-              title={t("admin.settings.currency.title")}
-              description={t("admin.settings.currency.description")}
-            >
-              <FieldGrid cols={4} className="gap-y-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">
-                    {t("admin.settings.currency.default")}
-                  </Label>
-                  <select
-                    value={values["billing.default_currency"] || "RUB"}
-                    onChange={(e) =>
-                      updateValue("billing.default_currency", e.target.value)
-                    }
-                    className="h-9 w-full rounded-md border bg-background px-3 text-sm"
-                  >
-                    {WALLET_CURRENCIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </FieldGrid>
-            </SettingsCard>
-
-            <SettingsCard
-              title={t("admin.settings.fees.title")}
-              description={t("admin.settings.fees.description")}
-              action={
-                <span className="font-mono text-[11px] text-muted-foreground">
-                  %
-                </span>
-              }
-            >
-              <FieldGrid cols={4} className="gap-y-4">
-                {PAYMENT_FEE_PROVIDERS.map((p) => (
-                  <TextField
-                    key={p.key}
-                    mono
-                    label={p.label}
-                    value={values[`payments.providers.${p.key}.fee_percent`] ?? "0"}
-                    onChange={(v) =>
-                      updateValue(`payments.providers.${p.key}.fee_percent`, v)
-                    }
-                    placeholder="0"
-                  />
-                ))}
-                <TextField
-                  mono
-                  accent
-                  label={t("admin.settings.fees.fx")}
-                  value={values["payments.fx.fee_percent"] ?? "0"}
-                  onChange={(v) => updateValue("payments.fx.fee_percent", v)}
-                  placeholder="0"
-                />
-              </FieldGrid>
-            </SettingsCard>
-
-            <SettingsCard
-              title={t("admin.settings.providers.title")}
-              description={t("admin.settings.providers.description")}
-            >
-              <div className="space-y-2.5">
-                {paymentProviders.length === 0 && (
-                  <div className="rounded-xl border border-dashed px-4 py-6 text-center text-[13px] text-muted-foreground">
-                    {t("admin.settings.providers.empty")}
-                  </div>
-                )}
-                {paymentProviders.map((pp) => {
-                  const open = !!openProviders[pp.key];
-                  return (
-                    <div
-                      key={pp.key}
-                      className="rounded-xl border bg-muted/30 px-5 py-4"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-4">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenProviders((prev) => ({
-                              ...prev,
-                              [pp.key]: !prev[pp.key],
-                            }))
-                          }
-                          className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                        >
-                          <ChevronDown
-                            className={cn(
-                              "size-4 shrink-0 text-muted-foreground transition-transform",
-                              open && "rotate-180"
-                            )}
-                          />
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold">
-                              {pp.name}
-                            </span>
-                            <span className="block truncate font-mono text-[11px] text-muted-foreground">
-                              {pp.key}
-                            </span>
-                          </span>
-                        </button>
-                        <label className="flex items-center gap-3.5">
-                          <span className="text-xs text-muted-foreground">
-                            {pp.enabled
-                              ? t("admin.settings.providers.enabled")
-                              : t("admin.settings.providers.disabled")}
-                          </span>
-                          <Switch
-                            checked={pp.enabled}
-                            onCheckedChange={() => toggleProvider(pp.key)}
-                          />
-                        </label>
-                      </div>
-                      {open && (
-                        <FieldGrid cols={3} className="mt-4 border-t pt-4">
-                          {Object.entries(pp.fields).map(
-                            ([fieldKey, field]) => {
-                              if (field.type === "checkbox") {
-                                return (
-                                  <div
-                                    key={fieldKey}
-                                    className="sm:col-span-2 lg:col-span-3"
-                                  >
-                                    <ToggleRow
-                                      label={field.label}
-                                      checked={
-                                        (pp.config[fieldKey] || "0") === "1"
-                                      }
-                                      onCheckedChange={(checked) =>
-                                        updateProviderField(
-                                          pp.key,
-                                          fieldKey,
-                                          checked ? "1" : "0"
-                                        )
-                                      }
-                                    />
-                                  </div>
-                                );
-                              }
-                              if (field.type === "select" && field.options) {
-                                return (
-                                  <SelectField
-                                    key={fieldKey}
-                                    label={field.label}
-                                    value={
-                                      pp.config[fieldKey] || field.default || ""
-                                    }
-                                    onChange={(v) =>
-                                      updateProviderField(pp.key, fieldKey, v)
-                                    }
-                                    options={Object.entries(field.options).map(
-                                      ([value, label]) => ({ value, label })
-                                    )}
-                                  />
-                                );
-                              }
-                              if (field.type === "textarea") {
-                                return (
-                                  <TextAreaField
-                                    key={fieldKey}
-                                    span={3}
-                                    label={field.label}
-                                    value={pp.config[fieldKey] || ""}
-                                    onChange={(v) =>
-                                      updateProviderField(pp.key, fieldKey, v)
-                                    }
-                                  />
-                                );
-                              }
-                              return (
-                                <TextField
-                                  key={fieldKey}
-                                  mono
-                                  type={
-                                    field.type === "password"
-                                      ? "password"
-                                      : "text"
-                                  }
-                                  label={field.label}
-                                  value={pp.config[fieldKey] || ""}
-                                  onChange={(v) =>
-                                    updateProviderField(pp.key, fieldKey, v)
-                                  }
-                                />
-                              );
-                            }
-                          )}
-                        </FieldGrid>
-                      )}
-                    </div>
-                  );
-                })}
               </div>
             </SettingsCard>
           </div>

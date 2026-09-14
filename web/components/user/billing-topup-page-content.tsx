@@ -6,13 +6,12 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
-import { createTopup, fetchTopupForm } from "@/lib/api";
+import { createTopup, fetchTopupForm, type TopupProvider } from "@/lib/api";
 import {
   BILLING_PROVIDERS,
   formatBillingDate,
   paymentStatusBadgeCls,
-  providerDisplayName,
+  providerDescription,
 } from "@/lib/billing-providers";
 import { formatAmount } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -25,6 +24,47 @@ function resolveApiError(err: unknown): string {
   }
   return t("billing.topup.create_error");
 }
+
+function roundUpCents(value: number): number {
+  return Math.ceil(value * 100 - 1e-6) / 100;
+}
+
+type Quote = {
+  chargeAmount: number | null;
+  chargeCurrency: string;
+  feePercent: number;
+  converted: boolean;
+};
+
+function buildQuote(
+  amount: number,
+  walletCurrency: string,
+  provider: TopupProvider | undefined,
+  fxFeePercent: number,
+  rates: Record<string, number> | null | undefined
+): Quote {
+  const chargeCurrency = (provider?.currency || walletCurrency).toUpperCase();
+  const feePercent = provider?.fee_percent ?? 0;
+  const converted = chargeCurrency !== walletCurrency;
+  let value = amount;
+  if (converted) {
+    const from = rates?.[walletCurrency];
+    const to = rates?.[chargeCurrency];
+    if (!from || !to) {
+      return { chargeAmount: null, chargeCurrency, feePercent, converted };
+    }
+    value = value * (to / from) * (1 + fxFeePercent / 100);
+  }
+  value = value * (1 + feePercent / 100);
+  return { chargeAmount: roundUpCents(value), chargeCurrency, feePercent, converted };
+}
+
+type ProviderCard = {
+  key: string;
+  name: string;
+  enabled: boolean;
+  fee: number;
+};
 
 export function BillingTopupPageContent() {
   const t = useT();
@@ -47,7 +87,7 @@ export function BillingTopupPageContent() {
   const enabledProviders = data?.enabled_providers ?? [];
   const freekassaMethods = data?.freekassa_methods ?? [];
   const providersByCode = useMemo(() => {
-    const map = new Map<string, { id: string; code: string; name: string }>();
+    const map = new Map<string, TopupProvider>();
     for (const p of data?.providers ?? []) {
       map.set(p.code, p);
     }
@@ -62,13 +102,32 @@ export function BillingTopupPageContent() {
 
   const provider =
     enabledProviders.includes(providerCode) ? providerCode : enabledProviders[0] ?? "";
+  const providerRow = providersByCode.get(provider);
 
   const selectedWallet = wallets.find((w) => w.id === activeWalletId);
   const currency = (selectedWallet?.currency || "RUB").toUpperCase();
+  const amountValue = Number(amount);
+  const quote =
+    providerRow && amountValue > 0
+      ? buildQuote(amountValue, currency, providerRow, data?.fx?.fee_percent ?? 0, data?.fx?.rates)
+      : null;
+
+  const cards: ProviderCard[] = (data?.providers ?? []).map((p) => ({
+    key: p.code,
+    name: p.name,
+    enabled: true,
+    fee: p.fee_percent ?? 0,
+  }));
+  if (showAll) {
+    for (const def of BILLING_PROVIDERS) {
+      if (!enabledProviders.includes(def.key)) {
+        cards.push({ key: def.key, name: def.name, enabled: false, fee: 0 });
+      }
+    }
+  }
 
   const topupMutation = useMutation({
     mutationFn: async () => {
-      const providerRow = providersByCode.get(provider);
       if (!providerRow) {
         throw new Error(t("billing.topup.select_provider"));
       }
@@ -83,7 +142,7 @@ export function BillingTopupPageContent() {
       });
     },
     onSuccess: (res) => {
-      if (res.redirect_url) {
+      if (res.redirect_url && /^https?:\/\//.test(res.redirect_url)) {
         window.location.href = res.redirect_url;
         return;
       }
@@ -193,6 +252,9 @@ export function BillingTopupPageContent() {
                         >
                           #{String(p.id).slice(0, 8)}
                         </Link>
+                        {p.provider_name && (
+                          <div className="text-xs text-muted-foreground">{p.provider_name}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -312,24 +374,21 @@ export function BillingTopupPageContent() {
                     </button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {BILLING_PROVIDERS.filter(
-                      (p) => showAll || enabledProviders.includes(p.key)
-                    ).map((p) => {
-                      const isEnabled = enabledProviders.includes(p.key);
-                      const isSelected = provider === p.key;
+                    {cards.map((card) => {
+                      const isSelected = provider === card.key;
                       return (
-                        <label key={p.key} className="group relative cursor-pointer">
+                        <label key={card.key} className="group relative cursor-pointer">
                           <input
                             type="radio"
                             name="provider"
-                            value={p.key}
+                            value={card.key}
                             checked={isSelected}
-                            onChange={() => setProviderCode(p.key)}
-                            disabled={!isEnabled}
+                            onChange={() => setProviderCode(card.key)}
+                            disabled={!card.enabled}
                             className="peer sr-only"
                           />
                           <div
-                            className={`flex h-full flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/30 hover:bg-muted/30 ${isSelected ? "border-primary bg-primary/5" : ""} ${!isEnabled ? "opacity-50 grayscale" : ""}`}
+                            className={`flex h-full flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/30 hover:bg-muted/30 ${isSelected ? "border-primary bg-primary/5" : ""} ${!card.enabled ? "opacity-50 grayscale" : ""}`}
                           >
                             <div className="mb-3 flex items-start justify-between">
                               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 text-xl">
@@ -351,12 +410,17 @@ export function BillingTopupPageContent() {
                             </div>
                             <div>
                               <div className="text-sm font-semibold text-foreground">
-                                {p.name}
+                                {card.name}
                               </div>
                               <div className="mt-1 text-xs text-muted-foreground">
-                                {t(p.descKey)}
+                                {providerDescription(card.key)}
                               </div>
-                              {!isEnabled && (
+                              {card.enabled && card.fee > 0 && (
+                                <div className="mt-2 inline-flex rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                  {t("billing.topup.fee", { fee: card.fee })}
+                                </div>
+                              )}
+                              {!card.enabled && (
                                 <div className="mt-2 inline-flex rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                                   {t("billing.topup.provider_disabled")}
                                 </div>
@@ -381,7 +445,6 @@ export function BillingTopupPageContent() {
                         <select
                           value={paymentMethodId}
                           onChange={(e) => setPaymentMethodId(e.target.value)}
-                          required
                           className="block w-full rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-foreground shadow-sm transition outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
                         >
                           <option value="">{t("billing.topup.freekassa_select")}</option>
@@ -415,20 +478,34 @@ export function BillingTopupPageContent() {
                         {t("billing.topup.info")}
                       </div>
                       <div className="text-[11px] text-muted-foreground">
-                        {providerDisplayName(provider)}
+                        {providerRow?.name ?? "—"}
                       </div>
                     </div>
                   </div>
                   <div className="space-y-4 p-6">
                     <div className="rounded-xl border border-border bg-muted/40 p-4">
                       <div className="text-xs text-muted-foreground">
-                        {t("common.amount")}
+                        {t("billing.topup.credited")}
                       </div>
                       <div className="mt-1 text-xl font-bold text-foreground">
                         {amount || "—"} {currency}
                       </div>
                     </div>
                     <div className="grid gap-3">
+                      {quote && quote.feePercent > 0 && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            {t("billing.topup.fee", { fee: quote.feePercent })}
+                          </span>
+                        </div>
+                      )}
+                      {quote?.converted && (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            {t("billing.topup.conversion", { currency: quote.chargeCurrency })}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">
                           {t("billing.topup.promo")}
@@ -448,6 +525,27 @@ export function BillingTopupPageContent() {
                         </div>
                       )}
                     </div>
+                    {quote && (
+                      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                        <div className="text-xs text-muted-foreground">
+                          {t("billing.topup.to_pay")}
+                        </div>
+                        {quote.chargeAmount != null ? (
+                          <div className="mt-1 text-xl font-bold text-foreground">
+                            {formatAmount(quote.chargeAmount)} {quote.chargeCurrency}
+                          </div>
+                        ) : (
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {t("billing.topup.rate_pending", { currency: quote.chargeCurrency })}
+                          </div>
+                        )}
+                        {quote.converted && quote.chargeAmount != null && (
+                          <div className="mt-1 text-[11px] text-muted-foreground">
+                            {t("billing.topup.rate_note")}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="rounded-xl border border-border bg-muted/40 p-4 text-xs text-muted-foreground">
                       {t("billing.topup.auto_credit")}
                     </div>
@@ -460,14 +558,16 @@ export function BillingTopupPageContent() {
                       disabled={
                         topupMutation.isPending ||
                         enabledProviders.length === 0 ||
-                        (provider === "freekassa" && freekassaMethods.length === 0)
+                        (provider === "freekassa" && freekassaMethods.length > 0 && !paymentMethodId)
                       }
                       className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <i className="ri-arrow-right-line" />
                       {topupMutation.isPending
                         ? t("billing.topup.processing")
-                        : t("billing.topup.go_to_payment")}
+                        : providerRow?.manual
+                          ? t("billing.topup.bank_submit")
+                          : t("billing.topup.go_to_payment")}
                     </button>
                     <div className="mt-3 text-[11px] text-muted-foreground">
                       {t("billing.topup.promo_note")}

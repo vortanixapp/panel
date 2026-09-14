@@ -86,7 +86,6 @@ export const adminInfra = {
   "admin.settings.clean": "“{tab}” — no changes",
 
   "admin.settings.tab.main": "General",
-  "admin.settings.tab.payments": "Payment systems",
   "admin.settings.tab.mail": "Mail",
   "admin.settings.tab.social": "Social login",
   "admin.settings.tab.dockerhub": "Docker Hub",
@@ -135,19 +134,6 @@ export const adminInfra = {
   "admin.settings.security.status_mail": "Server status notifications",
   "admin.settings.security.status_mail_hint":
     "Send an email when install and start status changes",
-
-  "admin.settings.currency.title": "Currency",
-  "admin.settings.currency.description": "A new user gets a wallet in this currency",
-  "admin.settings.currency.default": "Default currency",
-  "admin.settings.fees.title": "Payment system fees",
-  "admin.settings.fees.description": "The percentage the provider keeps",
-  "admin.settings.fees.fx": "FX fee",
-  "admin.settings.providers.title": "Providers",
-  "admin.settings.providers.description":
-    "Keys and mode. Expand a provider to configure its fields",
-  "admin.settings.providers.empty": "No providers configured",
-  "admin.settings.providers.enabled": "Enabled",
-  "admin.settings.providers.disabled": "Disabled",
 
   "admin.settings.mail.description":
     "Transport for panel email: confirmations, invoices, notifications",
