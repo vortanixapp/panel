@@ -62,7 +62,28 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const pathname = usePathname();
-  const { name: appName, templateBlocks: blocks, links } = useBrand();
+  const { name: appName, templateBlocks: blocks, links, legal } = useBrand();
+  const publishedDocs = new Set((legal?.documents ?? []).map((doc) => doc.kind));
+  const legalLinks = [
+    { key: "offer", label: t("landing.footer.offer"), href: links.offer || (publishedDocs.has("offer") ? "/legal/offer" : "") },
+    { key: "privacy", label: t("landing.footer.privacy"), href: links.privacy || (publishedDocs.has("privacy") ? "/legal/privacy" : "") },
+    { key: "cookies", label: t("landing.footer.cookies"), href: publishedDocs.has("cookies") ? "/legal/cookies" : "" },
+  ].filter((link) => link.href);
+  const company = legal?.company;
+  const requisites = company?.inn
+    ? [
+        company.full_name || company.name,
+        `${t("landing.footer.inn")} ${company.inn}`,
+        company.ogrn
+          ? `${company.ogrn.length === 15 ? t("landing.footer.ogrnip") : t("landing.footer.ogrn")} ${company.ogrn}`
+          : "",
+        company.address,
+        company.email,
+        company.phone,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : "";
 
   const navItems = landingNav(t).filter((item) => anchorVisible(blocks, item.href));
   const footerCols = landingFooterCols(t)
@@ -283,20 +304,16 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
           <span>
             © {new Date().getFullYear()} {appName}. {t("landing.footer.rights")}
           </span>
-          {(links.offer || links.privacy) && (
+          {legalLinks.length > 0 && (
             <div className="flex flex-wrap gap-4">
-              {links.offer && (
-                <a href={links.offer} className="transition-colors hover:text-primary">
-                  {t("landing.footer.offer")}
+              {legalLinks.map((link) => (
+                <a key={link.key} href={link.href} className="transition-colors hover:text-primary">
+                  {link.label}
                 </a>
-              )}
-              {links.privacy && (
-                <a href={links.privacy} className="transition-colors hover:text-primary">
-                  {t("landing.footer.privacy")}
-                </a>
-              )}
+              ))}
             </div>
           )}
+          {requisites && <p className="w-full leading-relaxed">{requisites}</p>}
         </div>
       </footer>
     </div>

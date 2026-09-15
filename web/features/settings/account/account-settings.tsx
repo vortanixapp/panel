@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { AppearanceForm } from "@/features/settings/appearance/appearance-form";
 import { DisplayForm } from "@/features/settings/display/display-form";
 import { NotificationsForm } from "@/features/settings/notifications/notifications-form";
+import { AccountData } from "@/features/settings/account/account-data";
 import {
   changeAccountEmail,
   destroyAccountSession,
@@ -56,6 +57,7 @@ const ACCOUNT_TABS = [
     labelKey: "settings.account.tab_notifications",
     icon: "ri-notification-3-line",
   },
+  { id: "data", labelKey: "settings.account.tab_data", icon: "ri-shield-user-line" },
 ] as const;
 
 type AccountTab = (typeof ACCOUNT_TABS)[number]["id"];
@@ -764,6 +766,8 @@ export function AccountSettings() {
         )}
 
         {tab === "notifications" && <NotificationsForm />}
+
+        {tab === "data" && <AccountData />}
         </div>
       </div>
     </div>

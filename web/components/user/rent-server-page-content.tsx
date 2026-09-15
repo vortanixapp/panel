@@ -7,6 +7,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { IdentificationNotice } from "@/components/user/identification-notice";
 import {
   Btn,
   EmptyState,
@@ -386,6 +387,7 @@ export function RentServerPageContent() {
   return (
     <PageShell variant="user">
       <div className="font-panel flex flex-col gap-5 pb-24 lg:pb-0">
+        <IdentificationNotice />
         <div className="flex flex-wrap items-center gap-6">
           <div className="min-w-0">
             <h1 className="m-0 text-[22px] font-bold">{t("billing.rent.title")}</h1>

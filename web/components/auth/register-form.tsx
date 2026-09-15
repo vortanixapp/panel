@@ -18,6 +18,7 @@ import {
 } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
 import { TelegramLoginButton } from "@/components/auth/telegram-login-button";
+import { useBrand } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 
@@ -53,6 +54,12 @@ export function RegisterForm() {
   const [configured, setConfigured] = useState<string[]>([]);
   const [telegramBot, setTelegramBot] = useState("");
   const [loading, setLoading] = useState(false);
+  const { legal } = useBrand();
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPersonalData, setAcceptPersonalData] = useState(false);
+  const needTerms = Boolean(legal?.registration.terms);
+  const needPersonalData = Boolean(legal?.registration.personal_data);
+  const publishedDocs = new Set((legal?.documents ?? []).map((doc) => doc.kind));
 
   const {
     register,
@@ -71,12 +78,19 @@ export function RegisterForm() {
 
   const onSubmit = handleSubmit(async (values) => {
     setError("");
+    if ((needTerms && !acceptTerms) || (needPersonalData && !acceptPersonalData)) {
+      setError(t("auth.register.consents_required"));
+      return;
+    }
     setLoading(true);
     try {
-      const res = await registerUser(values.email, values.password, tenantSlug(), {
-        name: values.name,
-        lastName: values.lastName,
-      });
+      const res = await registerUser(
+        values.email,
+        values.password,
+        tenantSlug(),
+        { name: values.name, lastName: values.lastName },
+        { terms: acceptTerms, personalData: acceptPersonalData }
+      );
       setTokens(res.access_token, res.refresh_token);
       router.push(postLoginPath(res.user?.role ?? "user"));
     } catch (err) {
@@ -352,24 +366,67 @@ export function RegisterForm() {
                     </div>
                   </div>
 
-                  <div className="p-4 bg-muted/30 border border-border rounded-2xl">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 flex items-center justify-center bg-emerald-500/10 text-emerald-500 rounded-lg flex-shrink-0 mt-0.5">
-                        <i className="ri-shield-check-line text-sm" />
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {t("auth.register.terms_prefix")}{" "}
-                        <a href="#" className="text-primary hover:underline">
-                          {t("auth.register.terms_link")}
-                        </a>{" "}
-                        {t("auth.register.terms_and")}{" "}
-                        <a href="#" className="text-primary hover:underline">
-                          {t("auth.register.privacy_link")}
-                        </a>{" "}
-                        {t("auth.register.terms_suffix")}
-                      </p>
+                  {(needTerms || needPersonalData) && (
+                    <div className="space-y-3 p-4 bg-muted/30 border border-border rounded-2xl text-xs text-muted-foreground leading-relaxed">
+                      {needTerms && (
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={acceptTerms}
+                            onChange={(e) => setAcceptTerms(e.target.checked)}
+                            className="mt-0.5 size-4 flex-shrink-0 accent-emerald-500"
+                          />
+                          <span>
+                            {t("auth.register.accept_terms")}{" "}
+                            {publishedDocs.has("offer") && (
+                              <a
+                                href="/legal/offer"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {t("auth.register.terms_link")}
+                              </a>
+                            )}
+                            {publishedDocs.has("offer") && publishedDocs.has("privacy")
+                              ? ` ${t("auth.register.terms_and")} `
+                              : null}
+                            {publishedDocs.has("privacy") && (
+                              <a
+                                href="/legal/privacy"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {t("auth.register.privacy_link")}
+                              </a>
+                            )}
+                          </span>
+                        </label>
+                      )}
+                      {needPersonalData && (
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={acceptPersonalData}
+                            onChange={(e) => setAcceptPersonalData(e.target.checked)}
+                            className="mt-0.5 size-4 flex-shrink-0 accent-emerald-500"
+                          />
+                          <span>
+                            {t("auth.register.accept_personal_data")}{" "}
+                            <a
+                              href="/legal/consent"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline"
+                            >
+                              {t("auth.register.consent_link")}
+                            </a>
+                          </span>
+                        </label>
+                      )}
                     </div>
-                  </div>
+                  )}
 
                   <button
                     type="submit"

@@ -36,6 +36,8 @@ export const nav = {
   "nav.admin.appearance": "Branding",
   "nav.admin.billing": "Billing",
   "nav.admin.accounting": "Accounting",
+  "nav.admin.legal": "Legal documents",
+  "nav.admin.abuse": "Abuse cases",
   "nav.admin.payment_providers": "Payment providers",
   "nav.admin.groups": "Groups",
   "nav.admin.language": "Languages",

@@ -150,6 +150,15 @@ var catalogRU = map[string]string{
 	"notify.audit.action.location.agent_token_regenerate": "перевыпущен токен агента ноды",
 	"notify.audit.action.license.bind":                    "привязана лицензия",
 	"notify.audit.action.settings.update":                 "изменены настройки панели",
+	"notify.audit.action.user.delete":                     "удалён пользователь, его данные обезличены",
+	"notify.audit.action.refund.request":                  "клиент подал заявку на возврат остатка баланса",
+
+	"notify.abuse.title":                   "Обращение № {number} по вашей услуге",
+	"notify.abuse.body":                    "{message}",
+	"notify.refund_request_done.title":     "Остаток баланса возвращён",
+	"notify.refund_request_done.body":      "Заявка № {number}: возвращено {amount} {currency}.",
+	"notify.refund_request_rejected.title": "Заявка на возврат отклонена",
+	"notify.refund_request_rejected.body":  "Заявка № {number} отклонена. Причина: {reason}.",
 
 	"notify.telegram_test.title": "Тестовое сообщение",
 	"notify.telegram_test.body":  "Уведомления {app} работают!",

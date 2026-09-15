@@ -106,6 +106,7 @@ func (h *Handler) completeTopupPayment(ctx context.Context, paymentID, providerP
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
+	h.identifyByPayment(ctx, paymentID)
 	h.emitWebhook(ctx, "payment.completed", map[string]any{
 		"payment_id": paymentID, "user_id": userID,
 		"amount": creditAmount, "currency": currency, "provider": providerLabel,

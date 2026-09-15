@@ -32,7 +32,7 @@ import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-const REPORTS: AccountingReportKind[] = ["kudir", "payments", "refunds", "services", "balances", "acts"];
+const REPORTS: AccountingReportKind[] = ["kudir", "payments", "refunds", "services", "balances", "acts", "offsets"];
 
 function taxLine(t: TranslateFn, s: AccountingSummary): string {
   const currency = s.currency;

@@ -7,6 +7,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { BillingDocuments } from "@/components/user/billing-documents";
+import { BillingRefunds } from "@/components/user/billing-refunds";
+import { IdentificationNotice } from "@/components/user/identification-notice";
 import {
   createTopup,
   createWallet,
@@ -308,6 +310,8 @@ export function BillingPageContent() {
             {t("billing.balance.load_failed")}
           </p>
         )}
+
+        <IdentificationNotice className="mb-3.5" />
 
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((c) => (
@@ -721,6 +725,7 @@ export function BillingPageContent() {
         </div>
 
         <BillingDocuments currency={currency} />
+        <BillingRefunds currency={currency} />
       </div>
     </PageShell>
   );

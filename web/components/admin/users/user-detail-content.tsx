@@ -3,12 +3,19 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { getAccessToken, setTokens } from "@/lib/api";
+import {
+  deletePanelUser,
+  downloadAdminUserData,
+  getAccessToken,
+  setAdminUserIdentification,
+  setTokens,
+} from "@/lib/api";
 import { decodeAccess, markEnteredVia } from "@/lib/accounts";
 import { isOwnerRole, roleLabel } from "@/lib/rbac";
 import {
@@ -65,6 +72,7 @@ export function UserDetailContent() {
   const params = useParams();
   const id = String(params?.id ?? "");
   const [newWalletCurrency, setNewWalletCurrency] = useState("RUB");
+  const qc = useQueryClient();
 
   const userQuery = useAdminUser(id);
   const toggleBlock = useToggleAdminUserBlock(id);
@@ -144,6 +152,46 @@ export function UserDetailContent() {
       toast.error(
         e instanceof Error ? e.message : t("admin.users.wallet_failed")
       );
+    }
+  };
+
+  const onIdentification = async (identified: boolean) => {
+    const note = window.prompt(
+      identified ? t("admin.users.identify_prompt") : t("admin.users.unidentify_prompt")
+    );
+    if (note === null) return;
+    if (!note.trim()) {
+      toast.error(t("admin.users.identify_note_required"));
+      return;
+    }
+    try {
+      await setAdminUserIdentification(id, identified, note.trim());
+      toast.success(t("admin.users.identification_saved"));
+      void qc.invalidateQueries({
+        predicate: (query) => JSON.stringify(query.queryKey).includes(id),
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("common.error"));
+    }
+  };
+
+  const onExport = async () => {
+    try {
+      await downloadAdminUserData(id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("admin.users.export_failed"));
+    }
+  };
+
+  const onDelete = async () => {
+    if (!user) return;
+    if (!window.confirm(t("admin.users.delete_confirm", { email: user.email }))) return;
+    try {
+      await deletePanelUser(id);
+      toast.success(t("admin.users.deleted"));
+      window.location.href = "/admin/users";
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("admin.users.delete_failed"));
     }
   };
 
@@ -229,8 +277,48 @@ export function UserDetailContent() {
                   : t("admin.users.block")}
               </Button>
             )}
+            {!isOwnerRole(role) && (
+              <Button
+                variant="outline"
+                className="h-[38px] text-[13px] text-rose-500"
+                onClick={() => void onDelete()}
+              >
+                {t("common.delete")}
+              </Button>
+            )}
             <Button asChild className="h-[38px] text-[13px]">
               <Link href={`/admin/users/${id}/edit`}>{t("common.edit")}</Link>
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card p-4">
+          <div>
+            <div className="text-sm font-medium">{t("admin.users.identification")}</div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {user.identified_at
+                ? t("admin.users.identified_at", {
+                    date: formatDateTime(user.identified_at),
+                    method: t(
+                      `admin.users.identification_method.${user.identification_method || "manual"}`
+                    ),
+                  })
+                : t("admin.users.not_identified")}
+              {user.identification_note ? ` · ${user.identification_note}` : ""}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {user.identified_at ? (
+              <Button variant="outline" size="sm" onClick={() => void onIdentification(false)}>
+                {t("admin.users.unidentify")}
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => void onIdentification(true)}>
+                {t("admin.users.identify")}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => void onExport()}>
+              {t("admin.users.export_data")}
             </Button>
           </div>
         </div>

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,6 +21,8 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/health", h.Health)
 	r.Get("/v1/branding", h.GetBranding)
 	r.Get("/v1/i18n", h.PublicI18n)
+	r.Get("/v1/legal", h.PublicLegal)
+	r.Get("/v1/legal/{kind}", h.PublicLegalDocument)
 	r.Get("/v1/home", h.Home)
 	r.Get("/v1/uploads/avatars/{filename}", h.ServeAvatar)
 	r.Get("/v1/plugins/images/{id}", h.ServePluginImage)
@@ -259,11 +262,13 @@ func (h *Handler) TenantStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 type registerRequest struct {
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	TenantSlug string `json:"tenant_slug"`
-	Name       string `json:"name"`
-	LastName   string `json:"last_name"`
+	Email              string `json:"email"`
+	Password           string `json:"password"`
+	TenantSlug         string `json:"tenant_slug"`
+	Name               string `json:"name"`
+	LastName           string `json:"last_name"`
+	AcceptTerms        bool   `json:"accept_terms"`
+	AcceptPersonalData bool   `json:"accept_personal_data"`
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -283,6 +288,15 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	consentKinds := h.legalRegistrationKinds(ctx)
+	if (slices.Contains(consentKinds, "offer") || slices.Contains(consentKinds, "privacy")) && !req.AcceptTerms {
+		writeCodedError(w, http.StatusBadRequest, "terms_required", "примите условия оферты и политику обработки персональных данных")
+		return
+	}
+	if slices.Contains(consentKinds, "consent") && !req.AcceptPersonalData {
+		writeCodedError(w, http.StatusBadRequest, "consent_required", "дайте согласие на обработку персональных данных")
+		return
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to hash password")
@@ -317,6 +331,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.ensureDefaultWallet(ctx, userID)
+	h.recordRegistrationConsents(ctx, r, userID, consentKinds)
 
 	firstName := strings.TrimSpace(req.Name)
 	lastName := strings.TrimSpace(req.LastName)

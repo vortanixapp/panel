@@ -43,6 +43,31 @@ export const settings = {
   "settings.account.tab_sessions": "Sessions",
   "settings.account.tab_appearance": "Appearance",
   "settings.account.tab_notifications": "Notifications",
+  "settings.account.tab_data": "My data",
+
+  "settings.data.consents_title": "Consents",
+  "settings.data.consents_hint": "Documents you accepted, their revision and date",
+  "settings.data.consents_empty": "No consents yet",
+  "settings.data.consent_accepted": "accepted, revision {version}, {date}",
+  "settings.data.consent_withdrawn": "withdrawn, revision {version}, {date}",
+  "settings.data.identification_title": "Identification",
+  "settings.data.identified": "You were identified on {date}",
+  "settings.data.not_identified": "Not identified",
+  "settings.data.not_identified_methods":
+    "Not identified. You can get identified by topping up your balance via: {methods}",
+  "settings.data.export_title": "Data export",
+  "settings.data.export_hint":
+    "A JSON file with everything the panel stores about you: profile, consents, payments, servers, support requests and sign-in history",
+  "settings.data.export": "Download my data",
+  "settings.data.export_failed": "Could not export your data",
+  "settings.data.delete_title": "Delete account",
+  "settings.data.delete_hint":
+    "Your personal data will be anonymized, you will no longer be able to sign in, and your processing consent is withdrawn. Payment records and closing documents are kept for five years as required by law. Delete your servers and request a balance refund first.",
+  "settings.data.delete_confirm_label": "Enter your account email to confirm",
+  "settings.data.delete": "Delete account",
+  "settings.data.delete_confirm": "Delete your account permanently?",
+  "settings.data.deleted": "Account deleted",
+  "settings.data.delete_failed": "Could not delete the account",
 
   "settings.account.subtitle": "Manage your account and panel preferences",
   "settings.account.save_hint": "Changes are saved with the button in each section",

@@ -532,6 +532,8 @@ func reconciliationTitle(source, desc string, invoice int64, provider, server, t
 		return "Возврат оплаты, счёт № " + strconv.FormatInt(invoice, 10)
 	case slices.Contains(accountingServiceSources, source):
 		return "Оказаны услуги: " + accountingServiceTitle(source, server, tariff)
+	case source == "balance_refund":
+		return firstNonEmpty(desc, "Возврат остатка аванса")
 	case source == "daily_bonus":
 		return "Бонусное зачисление"
 	case source == "admin_adjustment" || source == "admin_user":

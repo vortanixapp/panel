@@ -36,6 +36,28 @@ export const landing = {
   "landing.footer.rights": "Все права защищены.",
   "landing.footer.offer": "Публичная оферта",
   "landing.footer.privacy": "Политика конфиденциальности",
+  "landing.footer.cookies": "Файлы cookie",
+  "landing.footer.inn": "ИНН",
+  "landing.footer.ogrn": "ОГРН",
+  "landing.footer.ogrnip": "ОГРНИП",
+
+  "legal.not_published": "Документ ещё не опубликован",
+  "legal.to_home": "На главную",
+  "legal.revision": "Редакция {version} от {date}",
+  "legal.cookie.text":
+    "Сайт использует файлы cookie и локальное хранилище браузера, необходимые для входа и сохранения настроек.",
+  "legal.cookie.more": "Подробнее",
+  "legal.cookie.accept": "Понятно",
+  "legal.gate.title": "Ознакомьтесь с документами",
+  "legal.gate.text":
+    "Опубликованы новые редакции документов. Чтобы продолжить работу в панели, примите их.",
+  "legal.gate.accept_offer": "Принимаю условия документа",
+  "legal.gate.accept_privacy": "Ознакомлен и согласен с документом",
+  "legal.gate.accept_consent": "Даю согласие на обработку персональных данных:",
+  "legal.gate.version": "редакция {version}",
+  "legal.gate.accept": "Принять и продолжить",
+  "legal.gate.logout": "Выйти",
+  "legal.gate.failed": "Не удалось сохранить согласие",
 
   "landing.hero.badge": "Ryzen 9 9950X · NVMe Gen4 · 7 локаций",
   "landing.hero.gauge_tps_label": "TPS",

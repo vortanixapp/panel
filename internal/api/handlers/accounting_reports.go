@@ -58,7 +58,7 @@ func (h *Handler) AdminAccountingSummary(w http.ResponseWriter, r *http.Request)
 	currency := accountingQueryCurrency(r, settings)
 	toEx := to.AddDate(0, 0, 1)
 	db := h.dbOf(ctx)
-	otherSources := append(append([]string{}, accountingServiceSources...), "payment", "refund")
+	otherSources := append(append([]string{}, accountingServiceSources...), "payment", "refund", "balance_refund")
 
 	var err error
 	scan := func(query string, args []any, dest ...any) {
@@ -80,7 +80,7 @@ func (h *Handler) AdminAccountingSummary(w http.ResponseWriter, r *http.Request)
 		SELECT COUNT(*), COALESCE(SUM(ABS(t.amount)), 0)::float8
 		FROM core.transactions t
 		JOIN core.wallets w ON w.id = t.wallet_id
-		WHERE t.type = 'debit' AND t.source_type = 'refund'
+		WHERE t.type = 'debit' AND t.source_type IN ('refund', 'balance_refund')
 		  AND t.created_at >= $1 AND t.created_at < $2 AND UPPER(w.currency) = $3
 	`, period, &refunds.Count, &refunds.Amount)
 	scan(`
@@ -249,7 +249,7 @@ func (h *Handler) accountingMonths(ctx context.Context, db *pgxpool.Pool, from, 
 
 	rows, err = db.Query(ctx, `
 		SELECT to_char(t.created_at AT TIME ZONE $4, 'YYYY-MM'),
-		       COALESCE(SUM(ABS(t.amount)) FILTER (WHERE t.source_type = 'refund'), 0)::float8,
+		       COALESCE(SUM(ABS(t.amount)) FILTER (WHERE t.source_type IN ('refund', 'balance_refund')), 0)::float8,
 		       COALESCE(SUM(ABS(t.amount)) FILTER (WHERE t.source_type = ANY($5::text[])), 0)::float8
 		FROM core.transactions t
 		JOIN core.wallets w ON w.id = t.wallet_id
@@ -324,6 +324,8 @@ func (h *Handler) AdminAccountingReport(w http.ResponseWriter, r *http.Request) 
 		rows, err = rep.balances()
 	case "acts":
 		rows, err = rep.acts()
+	case "offsets":
+		rows, err = rep.offsets()
 	default:
 		writeError(w, http.StatusNotFound, "неизвестный отчёт")
 		return
@@ -355,6 +357,13 @@ func (rep accountingReport) kudir() ([][]string, error) {
 		JOIN core.users u ON u.id = p.user_id`+payerJoinsSQL+`
 		WHERE t.type = 'debit' AND t.source_type = 'refund'
 		  AND t.created_at >= $1 AND t.created_at < $2 AND UPPER(p.currency) = $3
+		UNION ALL
+		SELECT 'balance_refund', t.created_at, rr.number, ABS(t.amount)::float8, '', `+payerNameSQL+`
+		FROM core.transactions t
+		JOIN core.balance_refund_requests rr ON rr.id = t.source_id
+		JOIN core.users u ON u.id = rr.user_id`+payerJoinsSQL+`
+		WHERE t.type = 'debit' AND t.source_type = 'balance_refund'
+		  AND t.created_at >= $1 AND t.created_at < $2 AND UPPER(rr.currency) = $3
 		ORDER BY 2, 3
 	`, rep.from, rep.to, rep.currency)
 	if err != nil {
@@ -392,10 +401,15 @@ func (rep accountingReport) kudir() ([][]string, error) {
 		date := local.Format("02.01.2006")
 		doc := date + ", счёт № " + strconv.FormatInt(invoice, 10)
 		content := "Оплата услуг от " + payer + " через " + payments.Name(provider)
-		if kind == "refund" {
+		switch kind {
+		case "refund":
 			amount = -amount
 			doc = date + ", возврат по счёту № " + strconv.FormatInt(invoice, 10)
 			content = "Возврат оплаты покупателю " + payer + " через " + payments.Name(provider)
+		case "balance_refund":
+			amount = -amount
+			doc = date + ", заявка на возврат № " + strconv.FormatInt(invoice, 10)
+			content = "Возврат остатка аванса покупателю " + payer + " на банковский счёт"
 		}
 		quarterSum += amount
 		total += amount
@@ -473,14 +487,22 @@ func (rep accountingReport) payments() ([][]string, error) {
 
 func (rep accountingReport) refunds() ([][]string, error) {
 	rows, err := rep.db.Query(rep.ctx, `
-		SELECT t.created_at, p.invoice_no, `+payerNameSQL+`, u.email, COALESCE(bp.inn, ''), p.provider,
+		SELECT t.created_at, 'счёт № ' || p.invoice_no, `+payerNameSQL+`, u.email, COALESCE(bp.inn, ''), p.provider,
 		       ABS(t.amount)::float8, UPPER(p.currency), COALESCE(t.description, ''), COALESCE(p.refund_reference, '')
 		FROM core.transactions t
 		JOIN core.payments p ON p.id = t.source_id
 		JOIN core.users u ON u.id = p.user_id`+payerJoinsSQL+`
 		WHERE t.type = 'debit' AND t.source_type = 'refund'
 		  AND t.created_at >= $1 AND t.created_at < $2 AND UPPER(p.currency) = $3
-		ORDER BY t.created_at
+		UNION ALL
+		SELECT t.created_at, 'заявка № ' || rr.number, `+payerNameSQL+`, u.email, COALESCE(bp.inn, ''), '',
+		       ABS(t.amount)::float8, rr.currency, COALESCE(t.description, ''), rr.reference
+		FROM core.transactions t
+		JOIN core.balance_refund_requests rr ON rr.id = t.source_id
+		JOIN core.users u ON u.id = rr.user_id`+payerJoinsSQL+`
+		WHERE t.type = 'debit' AND t.source_type = 'balance_refund'
+		  AND t.created_at >= $1 AND t.created_at < $2 AND UPPER(rr.currency) = $3
+		ORDER BY 1
 	`, rep.from, rep.to, rep.currency)
 	if err != nil {
 		return nil, err
@@ -488,22 +510,25 @@ func (rep accountingReport) refunds() ([][]string, error) {
 	defer rows.Close()
 
 	out := [][]string{{
-		"Дата возврата", "№ счёта", "Плательщик", "ИНН", "Email", "Способ оплаты",
+		"Дата возврата", "Документ", "Плательщик", "ИНН", "Email", "Способ возврата",
 		"Сумма возврата", "Валюта", "Основание", "Номер возврата в платёжной системе",
 	}}
 	var total float64
 	for rows.Next() {
 		var at time.Time
-		var invoice int64
-		var payer, email, inn, provider, currency, desc, reference string
+		var document, payer, email, inn, provider, currency, desc, reference string
 		var amount float64
-		if err := rows.Scan(&at, &invoice, &payer, &email, &inn, &provider, &amount, &currency, &desc, &reference); err != nil {
+		if err := rows.Scan(&at, &document, &payer, &email, &inn, &provider, &amount, &currency, &desc, &reference); err != nil {
 			return nil, err
+		}
+		method := "Перевод на банковский счёт"
+		if provider != "" {
+			method = payments.Name(provider)
 		}
 		total += amount
 		out = append(out, []string{
-			rep.local(at).Format("02.01.2006"), strconv.FormatInt(invoice, 10), payer, inn, email,
-			payments.Name(provider), csvMoney(amount), currency, desc, reference,
+			rep.local(at).Format("02.01.2006"), document, payer, inn, email,
+			method, csvMoney(amount), currency, desc, reference,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -680,6 +705,59 @@ func (rep accountingReport) acts() ([][]string, error) {
 		return nil, err
 	}
 	out = append(out, []string{"Итого", "", "", "", "", "", "", "", csvMoney(total), csvMoney(totalVAT), ""})
+	return out, nil
+}
+
+var receiptOffsetStatusLabels = map[string]string{
+	"pending": "в очереди",
+	"sent":    "отправлен",
+	"failed":  "ошибка",
+	"manual":  "оформить вручную",
+}
+
+func (rep accountingReport) offsets() ([][]string, error) {
+	rows, err := rep.db.Query(rep.ctx, `
+		SELECT t.created_at, p.invoice_no, `+payerNameSQL+`, u.email, o.provider, o.amount::float8, o.status,
+		       o.reference, o.error, COALESCE(t.source_type, ''), COALESCE(s.name, ''), COALESCE(tr.name, '')
+		FROM core.receipt_offsets o
+		JOIN core.payments p ON p.id = o.payment_id
+		JOIN core.transactions t ON t.id = o.transaction_id
+		JOIN core.users u ON u.id = p.user_id`+payerJoinsSQL+`
+		LEFT JOIN core.servers s ON s.id = t.source_id
+		LEFT JOIN core.tariffs tr ON tr.id = s.tariff_id
+		WHERE t.created_at >= $1 AND t.created_at < $2 AND UPPER(p.currency) = $3
+		ORDER BY t.created_at
+	`, rep.from, rep.to, rep.currency)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := [][]string{{
+		"Дата услуги", "Счёт предоплаты", "Покупатель", "Email", "Касса", "Услуга",
+		"Сумма зачёта", "Статус", "Номер чека", "Ошибка",
+	}}
+	var total float64
+	for rows.Next() {
+		var at time.Time
+		var invoice int64
+		var payer, email, provider, status, reference, errText, source, server, tariff string
+		var amount float64
+		if err := rows.Scan(&at, &invoice, &payer, &email, &provider, &amount, &status, &reference, &errText,
+			&source, &server, &tariff); err != nil {
+			return nil, err
+		}
+		total += amount
+		out = append(out, []string{
+			rep.local(at).Format("02.01.2006"), strconv.FormatInt(invoice, 10), payer, email, payments.Name(provider),
+			accountingServiceTitle(source, server, tariff), csvMoney(amount),
+			firstNonEmpty(receiptOffsetStatusLabels[status], status), reference, errText,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out = append(out, []string{"Итого", "", "", "", "", "", csvMoney(total), "", "", ""})
 	return out, nil
 }
 

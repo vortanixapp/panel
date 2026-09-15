@@ -27,6 +27,7 @@ func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
 
 	payload := map[string]any{
 		"whmcs":             whmcsPublicInfo(settings),
+		"legal":             h.publicLegalInfo(r.Context(), settings),
 		"brand_name":        name,
 		"logo_url":          logo,
 		"logo_dark_url":     h.brandingPublicURL(r, a.LogoDark),

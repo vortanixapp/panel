@@ -10,6 +10,7 @@ import { LocaleProvider } from "@/context/locale-provider";
 import type { I18nPayload } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthSessionProvider } from "@/components/auth/auth-session-provider";
+import { CookieBanner } from "@/components/legal/cookie-banner";
 import { VxRouteProgress } from "@/components/vx/loader";
 
 export function Providers({
@@ -44,6 +45,7 @@ export function Providers({
                 <VxRouteProgress />
                 <AuthSessionProvider>{children}</AuthSessionProvider>
                 <Toaster richColors closeButton />
+                <CookieBanner />
               </BrandProvider>
             </DirectionProvider>
           </FontProvider>

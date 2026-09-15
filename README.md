@@ -24,6 +24,11 @@ licence keys and activation are not part of it.
   payment providers, monthly service acts and reconciliation statements for
   clients, an income ledger, registers of payments, refunds, services and
   acts, and a turnover balance sheet. See [docs/accounting.md](docs/accounting.md).
+- **Legal and hosting obligations.** Versioned terms, privacy policy and
+  consent with a consent log, client identification, abuse cases and
+  authority requests, balance refunds, prepayment offset receipts, invoices
+  with bank statement import, and personal data export and anonymization. See
+  [docs/compliance.md](docs/compliance.md).
 - **WHMCS.** A provisioning module creates, suspends, changes and deletes
   servers on billing events and signs clients in without a password. See
   [docs/whmcs.md](docs/whmcs.md).

@@ -127,6 +127,9 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	if h.refuseUnidentified(ctx, w, claims.UserID, claims.Role) {
+		return
+	}
 	cfg := h.trialSettings(ctx)
 	if !cfg.Enabled {
 		writeError(w, http.StatusConflict, "пробный сервер сейчас не выдаётся")

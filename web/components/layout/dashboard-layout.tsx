@@ -7,6 +7,7 @@ import { getAccessToken, getRefreshToken, clearAuth, ensureValidSession } from "
 import { useMe } from "@/hooks/use-queries";
 import { queryKeys } from "@/lib/query-keys";
 import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
+import { LegalAcceptanceGate } from "@/components/legal/legal-acceptance-gate";
 import { useLiveSync } from "@/hooks/use-live-sync";
 import type { PanelVariant } from "@/lib/panel-paths";
 import { VxPageLoader } from "@/components/vx/loader";
@@ -59,8 +60,11 @@ export function DashboardLayout({
   }
 
   return (
-    <AuthenticatedLayout email={me.email} role={me.role} variant={variant}>
-      {children}
-    </AuthenticatedLayout>
+    <>
+      <AuthenticatedLayout email={me.email} role={me.role} variant={variant}>
+        {children}
+      </AuthenticatedLayout>
+      <LegalAcceptanceGate />
+    </>
   );
 }

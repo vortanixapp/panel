@@ -36,6 +36,28 @@ export const landing = {
   "landing.footer.rights": "All rights reserved.",
   "landing.footer.offer": "Terms of service",
   "landing.footer.privacy": "Privacy policy",
+  "landing.footer.cookies": "Cookies",
+  "landing.footer.inn": "Tax ID",
+  "landing.footer.ogrn": "OGRN",
+  "landing.footer.ogrnip": "OGRNIP",
+
+  "legal.not_published": "This document has not been published yet",
+  "legal.to_home": "Back to home",
+  "legal.revision": "Revision {version} of {date}",
+  "legal.cookie.text":
+    "This site uses cookies and browser storage required to sign in and keep your settings.",
+  "legal.cookie.more": "Learn more",
+  "legal.cookie.accept": "Got it",
+  "legal.gate.title": "Review the documents",
+  "legal.gate.text":
+    "New revisions of our documents have been published. Accept them to keep using the panel.",
+  "legal.gate.accept_offer": "I accept the terms of",
+  "legal.gate.accept_privacy": "I have read and agree to",
+  "legal.gate.accept_consent": "I consent to personal data processing:",
+  "legal.gate.version": "revision {version}",
+  "legal.gate.accept": "Accept and continue",
+  "legal.gate.logout": "Sign out",
+  "legal.gate.failed": "Could not save your consent",
 
   "landing.hero.badge": "Ryzen 9 9950X · NVMe Gen4 · 7 locations",
   "landing.hero.gauge_tps_label": "TPS",

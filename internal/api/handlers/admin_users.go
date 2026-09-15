@@ -111,7 +111,7 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	usePagination := r.URL.Query().Has("page") || q != "" || roleFilter != ""
 
 	ctx := r.Context()
-	where := []string{"true"}
+	where := []string{"u.deleted_at IS NULL"}
 	args := []any{}
 	argN := 1
 
@@ -218,16 +218,18 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) adminUserDetail(ctx context.Context, userID string) (map[string]any, error) {
-	var email, role, status, staffGroupID, staffGroup, created string
-	var emailVerified *string
+	var email, role, status, staffGroupID, staffGroup, created, identMethod, identNote string
+	var emailVerified, identifiedAt, deletedAt *string
 	var twoFA bool
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT u.email, u.role, u.status, COALESCE(u.staff_group_id::text, ''), COALESCE(sg.name, ''),
-		       u.email_verified_at::text, u.two_factor_enabled, u.created_at::text
+		       u.email_verified_at::text, u.two_factor_enabled, u.created_at::text,
+		       u.identified_at::text, u.identification_method, u.identification_note, u.deleted_at::text
 		FROM core.users u
 		LEFT JOIN core.staff_groups sg ON sg.id = u.staff_group_id
 		WHERE u.id = $1
-	`, userID).Scan(&email, &role, &status, &staffGroupID, &staffGroup, &emailVerified, &twoFA, &created)
+	`, userID).Scan(&email, &role, &status, &staffGroupID, &staffGroup, &emailVerified, &twoFA, &created,
+		&identifiedAt, &identMethod, &identNote, &deletedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -257,23 +259,27 @@ func (h *Handler) adminUserDetail(ctx context.Context, userID string) (map[strin
 	}
 
 	user := map[string]any{
-		"id":                 userID,
-		"name":               name,
-		"last_name":          lastNameStr,
-		"public_id":          contactString(contacts, "public_id"),
-		"email":              email,
-		"phone":              phoneStr,
-		"telegram_id":        contactString(contacts, "telegram_id"),
-		"discord_id":         contactString(contacts, "discord_id"),
-		"vk_id":              contactString(contacts, "vk_id"),
-		"role":               role,
-		"staff_group_id":     nilIfEmpty(staffGroupID),
-		"staff_group":        nilIfEmpty(staffGroup),
-		"status":             status,
-		"is_blocked":         status == "disabled",
-		"two_factor_enabled": twoFA,
-		"email_verified_at":  emailVerified,
-		"created_at":         created,
+		"id":                    userID,
+		"name":                  name,
+		"last_name":             lastNameStr,
+		"public_id":             contactString(contacts, "public_id"),
+		"email":                 email,
+		"phone":                 phoneStr,
+		"telegram_id":           contactString(contacts, "telegram_id"),
+		"discord_id":            contactString(contacts, "discord_id"),
+		"vk_id":                 contactString(contacts, "vk_id"),
+		"role":                  role,
+		"staff_group_id":        nilIfEmpty(staffGroupID),
+		"staff_group":           nilIfEmpty(staffGroup),
+		"status":                status,
+		"is_blocked":            status == "disabled",
+		"two_factor_enabled":    twoFA,
+		"email_verified_at":     emailVerified,
+		"created_at":            created,
+		"identified_at":         identifiedAt,
+		"identification_method": identMethod,
+		"identification_note":   identNote,
+		"deleted_at":            deletedAt,
 	}
 
 	wallets := []map[string]any{}

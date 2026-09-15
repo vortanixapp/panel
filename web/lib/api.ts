@@ -251,7 +251,8 @@ export async function register(
   email: string,
   password: string,
   tenantSlug: string,
-  profile?: { name?: string; lastName?: string }
+  profile?: { name?: string; lastName?: string },
+  consents?: { terms: boolean; personalData: boolean }
 ) {
   return apiFetch<{
     access_token: string;
@@ -265,6 +266,8 @@ export async function register(
       tenant_slug: tenantSlug,
       ...(profile?.name ? { name: profile.name } : {}),
       ...(profile?.lastName ? { last_name: profile.lastName } : {}),
+      accept_terms: Boolean(consents?.terms),
+      accept_personal_data: Boolean(consents?.personalData),
     }),
   });
 }
@@ -484,6 +487,10 @@ export type AdminUserDetail = {
     two_factor_enabled?: boolean;
     email_verified_at: string | null;
     created_at: string;
+    identified_at?: string | null;
+    identification_method?: string;
+    identification_note?: string;
+    deleted_at?: string | null;
   };
   servers: AdminUserServer[];
   wallets: AdminUserWallet[];
@@ -5298,7 +5305,8 @@ export type AccountingReportKind =
   | "refunds"
   | "services"
   | "balances"
-  | "acts";
+  | "acts"
+  | "offsets";
 
 export async function fetchAccountingSummary(params: AccountingPeriodParams) {
   return apiFetch<AccountingSummary>(`/v1/admin/accounting/summary?${documentQuery(params)}`);
@@ -5343,6 +5351,377 @@ export function openAccountingClientReconciliation(id: string, from: string, to:
     `/v1/admin/accounting/clients/${id}/reconciliation?${documentQuery({ from, to, currency })}`,
     t("admin.accounting.open_failed")
   );
+}
+
+export type LegalKind = "offer" | "privacy" | "consent" | "cookies";
+
+export type LegalDocument = {
+  kind: LegalKind;
+  version: number;
+  title: string;
+  body?: string;
+  requires_acceptance: boolean;
+  published_at: string;
+  published_by?: string;
+};
+
+export async function fetchPublicLegalDocument(kind: string) {
+  const res = await fetch(`${API_URL}/v1/legal/${encodeURIComponent(kind)}`);
+  const data = (await res.json().catch(() => ({}))) as Partial<LegalDocument> & { error?: string };
+  if (!res.ok) {
+    throw new Error(data.error || t("legal.not_published"));
+  }
+  return data as LegalDocument;
+}
+
+export type LegalConsentItem = {
+  kind: LegalKind;
+  version: number;
+  title: string;
+  action: "accepted" | "withdrawn";
+  at: string;
+};
+
+export type AccountLegal = { pending: LegalDocument[]; consents: LegalConsentItem[] };
+
+export async function fetchAccountLegal() {
+  return apiFetch<AccountLegal>("/v1/account/legal");
+}
+
+export async function acceptAccountLegal(kinds: string[]) {
+  return apiFetch<AccountLegal>("/v1/account/legal/accept", {
+    method: "POST",
+    body: JSON.stringify({ kinds }),
+  });
+}
+
+export type AccountIdentification = {
+  required: boolean;
+  identified: boolean;
+  identified_at: string | null;
+  method: string;
+  methods: string[];
+};
+
+export async function fetchAccountIdentification() {
+  return apiFetch<AccountIdentification>("/v1/account/identification");
+}
+
+export function downloadAccountData() {
+  return downloadAuthorizedFile("/v1/account/export", "personal-data.json", t("settings.data.export_failed"));
+}
+
+export async function deleteOwnAccount(confirmEmail: string) {
+  return apiFetch<{ status: string }>("/v1/account/delete", {
+    method: "POST",
+    body: JSON.stringify({ confirm_email: confirmEmail }),
+  });
+}
+
+export function openPaymentInvoice(paymentId: string) {
+  return openAuthorizedDocument(
+    `/v1/billing/payments/${paymentId}/invoice`,
+    t("billing.payment.invoice_failed")
+  );
+}
+
+export type BalanceRefundRequest = {
+  id: string;
+  number: number;
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  currency: string;
+  amount: number;
+  refunded: number;
+  method: "original" | "bank";
+  recipient: string;
+  bank_account: string;
+  bank_bik: string;
+  bank_name: string;
+  reason: string;
+  status: "pending" | "completed" | "rejected" | "cancelled";
+  admin_note: string;
+  reference: string;
+  created_at: string;
+  processed_at: string | null;
+  balance: number;
+  gateway_refundable: number;
+};
+
+export type RefundRequestsData = {
+  requests: BalanceRefundRequest[];
+  wallets: { id: string; currency: string; balance: number }[];
+};
+
+export type RefundRequestInput = {
+  currency: string;
+  amount: number;
+  method: "original" | "bank";
+  recipient: string;
+  bank_account: string;
+  bank_bik: string;
+  bank_name: string;
+  reason: string;
+};
+
+export async function fetchRefundRequests() {
+  return apiFetch<RefundRequestsData>("/v1/billing/refund-requests");
+}
+
+export async function createRefundRequest(data: RefundRequestInput) {
+  return apiFetch<RefundRequestsData>("/v1/billing/refund-requests", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function cancelRefundRequest(id: string) {
+  return apiFetch<RefundRequestsData>(`/v1/billing/refund-requests/${id}/cancel`, { method: "POST" });
+}
+
+export async function fetchAdminRefundRequests(status: string) {
+  return apiFetch<{ requests: BalanceRefundRequest[]; pending: number }>(
+    `/v1/admin/accounting/refund-requests?${documentQuery({ status })}`
+  );
+}
+
+export async function completeAdminRefundRequest(
+  id: string,
+  data: { mode: "gateway" | "manual"; reference?: string; note?: string }
+) {
+  return apiFetch<{ status: string; refunded: number; message?: string }>(
+    `/v1/admin/accounting/refund-requests/${id}/complete`,
+    { method: "POST", body: JSON.stringify(data) }
+  );
+}
+
+export async function rejectAdminRefundRequest(id: string, note: string) {
+  return apiFetch<{ status: string }>(`/v1/admin/accounting/refund-requests/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+}
+
+export type ReceiptOffset = {
+  id: string;
+  status: "pending" | "sent" | "failed" | "manual" | "skipped";
+  amount: number;
+  provider: string;
+  provider_name: string;
+  attempts: number;
+  error: string;
+  reference: string;
+  created_at: string;
+  sent_at: string | null;
+  invoice_no: number;
+  user_email: string;
+  service: string;
+  charged_at: string | null;
+};
+
+export async function fetchReceiptOffsets(status: string) {
+  return apiFetch<{ offsets: ReceiptOffset[]; counts: Record<string, number> }>(
+    `/v1/admin/accounting/offsets?${documentQuery({ status })}`
+  );
+}
+
+export async function retryReceiptOffset(id: string) {
+  return apiFetch<{ status: string }>(`/v1/admin/accounting/offsets/${id}/retry`, { method: "POST" });
+}
+
+export async function markReceiptOffsetSent(id: string, reference: string) {
+  return apiFetch<{ status: string }>(`/v1/admin/accounting/offsets/${id}/mark-sent`, {
+    method: "POST",
+    body: JSON.stringify({ reference }),
+  });
+}
+
+export type BankStatementLine = {
+  fingerprint: string;
+  number: string;
+  date: string;
+  amount: number;
+  payer_name: string;
+  payer_inn: string;
+  payer_account: string;
+  purpose: string;
+  status: "match" | "paid" | "imported" | "unmatched";
+  payment_id?: string;
+  invoice_no?: number;
+  user_email?: string;
+  note?: string;
+};
+
+export async function previewBankStatement(file: File) {
+  await ensureValidSession();
+  const token = getAccessToken();
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/v1/admin/accounting/bank-statement/preview`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    lines?: BankStatementLine[];
+    outgoing?: number;
+    documents?: number;
+    error?: string;
+  };
+  if (!res.ok) {
+    throw new Error(data.error || t("admin.accounting.statement.preview_failed"));
+  }
+  return { lines: data.lines ?? [], outgoing: data.outgoing ?? 0, documents: data.documents ?? 0 };
+}
+
+export async function applyBankStatement(lines: BankStatementLine[]) {
+  return apiFetch<{ applied: number; skipped: number; failures: string[] }>(
+    "/v1/admin/accounting/bank-statement/apply",
+    { method: "POST", body: JSON.stringify({ lines }) }
+  );
+}
+
+export type AdminLegalDocumentsItem = {
+  kind: LegalKind;
+  default_title: string;
+  acceptance: boolean;
+  current: LegalDocument | null;
+  versions: LegalDocument[];
+};
+
+export async function fetchAdminLegalDocuments() {
+  return apiFetch<{ documents: AdminLegalDocumentsItem[] }>("/v1/admin/legal/documents");
+}
+
+export async function fetchAdminLegalDocumentVersion(kind: string, version: number) {
+  return apiFetch<LegalDocument>(`/v1/admin/legal/documents/${kind}/${version}`);
+}
+
+export async function publishAdminLegalDocument(
+  kind: string,
+  data: { title: string; body: string; requires_acceptance: boolean }
+) {
+  return apiFetch<LegalDocument>(`/v1/admin/legal/documents/${kind}`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchAdminLegalTemplate(kind: string) {
+  return apiFetch<{ title: string; body: string }>(`/v1/admin/legal/templates/${kind}`);
+}
+
+export type AdminLegalConsent = {
+  id: string;
+  kind: LegalKind;
+  version: number;
+  action: "accepted" | "withdrawn";
+  source: string;
+  ip: string;
+  user_agent: string;
+  created_at: string;
+  user_id: string;
+  email: string;
+};
+
+export async function fetchAdminLegalConsents(params: { q: string; kind: string; page: number }) {
+  return apiFetch<{ consents: AdminLegalConsent[]; total: number; page: number; per_page: number }>(
+    `/v1/admin/legal/consents?${documentQuery({ q: params.q, kind: params.kind, page: String(params.page) })}`
+  );
+}
+
+export type AdminLegalSettings = {
+  identification_required: boolean;
+  identification_providers: string[];
+  cookie_banner: boolean;
+  providers: { code: string; name: string; enabled: boolean }[];
+};
+
+export async function fetchAdminLegalSettings() {
+  return apiFetch<AdminLegalSettings>("/v1/admin/legal/settings");
+}
+
+export async function saveAdminLegalSettings(data: Omit<AdminLegalSettings, "providers">) {
+  return apiFetch<AdminLegalSettings>("/v1/admin/legal/settings", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export type AbuseSource = "rkn" | "court" | "police" | "copyright" | "abuse" | "other";
+
+export type AbuseCase = {
+  id: string;
+  number: number;
+  source: AbuseSource;
+  reference: string;
+  subject: string;
+  description: string;
+  target: string;
+  status: "new" | "notified" | "restricted" | "resolved" | "rejected";
+  resolution: string;
+  received_at: string;
+  deadline_at: string | null;
+  closed_at: string | null;
+  server_id: string;
+  server_name: string;
+  user_id: string;
+  user_email: string;
+  created_at: string;
+  overdue: boolean;
+};
+
+export type AbuseEvent = { action: string; note: string; actor: string; at: string };
+
+export type AbuseCaseDetail = { case: AbuseCase; events: AbuseEvent[] };
+
+export type AbuseCaseInput = {
+  source: AbuseSource;
+  reference: string;
+  subject: string;
+  description: string;
+  target: string;
+  server_id: string;
+  user_email: string;
+  received_at: string;
+  deadline_hours: number;
+};
+
+export async function fetchAbuseCases(status: string, q: string) {
+  return apiFetch<{ cases: AbuseCase[]; open: number; overdue: number }>(
+    `/v1/admin/abuse?${documentQuery({ status, q })}`
+  );
+}
+
+export async function createAbuseCase(data: AbuseCaseInput) {
+  return apiFetch<AbuseCaseDetail>("/v1/admin/abuse", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function fetchAbuseCase(id: string) {
+  return apiFetch<AbuseCaseDetail>(`/v1/admin/abuse/${id}`);
+}
+
+export async function abuseCaseAction(id: string, action: string, message: string) {
+  return apiFetch<AbuseCaseDetail>(`/v1/admin/abuse/${id}/action`, {
+    method: "POST",
+    body: JSON.stringify({ action, message }),
+  });
+}
+
+export function downloadAdminUserData(id: string) {
+  return downloadAuthorizedFile(
+    `/v1/users/${id}/export`,
+    `personal-data-${id.slice(0, 8)}.json`,
+    t("admin.users.export_failed")
+  );
+}
+
+export async function setAdminUserIdentification(id: string, identified: boolean, note: string) {
+  return apiFetch<{ identified: boolean }>(`/v1/users/${id}/identification`, {
+    method: "POST",
+    body: JSON.stringify({ identified, note }),
+  });
 }
 
 export type NodeIPAddress = {

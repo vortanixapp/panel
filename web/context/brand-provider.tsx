@@ -35,6 +35,7 @@ type BrandState = {
   hero: Record<string, string>;
   links: Record<string, string>;
   whmcs: WhmcsLinks | null;
+  legal: NonNullable<Branding["legal"]> | null;
   ready: boolean;
   refresh: () => Promise<void>;
 };
@@ -51,6 +52,7 @@ const BrandContext = createContext<BrandState>({
   hero: EMPTY,
   links: EMPTY,
   whmcs: null,
+  legal: null,
   ready: false,
   refresh: async () => undefined,
 });
@@ -98,6 +100,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
             ordersOnly: Boolean(branding.whmcs.orders_only),
           }
         : null,
+      legal: branding?.legal ?? null,
       ready,
       refresh,
     }),

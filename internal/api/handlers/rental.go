@@ -334,6 +334,9 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		writeCodedError(w, http.StatusConflict, "orders_in_whmcs", "серверы заказываются через биллинг WHMCS")
 		return
 	}
+	if h.refuseUnidentified(r.Context(), w, claims.UserID, claims.Role) {
+		return
+	}
 	var body struct {
 		NodeID        string `json:"node_id"`
 		LocationID    string `json:"location_id"`

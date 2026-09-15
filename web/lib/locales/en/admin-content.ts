@@ -833,7 +833,8 @@ export const adminContent = {
   "admin.users.email_verified": "Email verified",
   "admin.users.status_updated": "User status updated",
   "admin.users.action_failed": "Could not perform the action",
-  "admin.users.delete_confirm": "Delete user {email}?",
+  "admin.users.delete_confirm":
+    "Delete user {email}? Personal data will be anonymized; payments and closing documents are kept for five years.",
   "admin.users.create.subtitle": "Create an account",
   "admin.users.name": "First name",
   "admin.users.last_name": "Last name",

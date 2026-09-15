@@ -150,6 +150,15 @@ var catalogEN = map[string]string{
 	"notify.audit.action.location.agent_token_regenerate": "node agent token reissued",
 	"notify.audit.action.license.bind":                    "license bound",
 	"notify.audit.action.settings.update":                 "panel settings changed",
+	"notify.audit.action.user.delete":                     "user deleted and their data anonymized",
+	"notify.audit.action.refund.request":                  "a client requested a balance refund",
+
+	"notify.abuse.title":                   "Case No. {number} about your service",
+	"notify.abuse.body":                    "{message}",
+	"notify.refund_request_done.title":     "Balance refunded",
+	"notify.refund_request_done.body":      "Request No. {number}: {amount} {currency} refunded.",
+	"notify.refund_request_rejected.title": "Refund request rejected",
+	"notify.refund_request_rejected.body":  "Request No. {number} was rejected. Reason: {reason}.",
 
 	"notify.telegram_test.title": "Test message",
 	"notify.telegram_test.body":  "{app} notifications work!",

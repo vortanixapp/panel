@@ -640,6 +640,10 @@ func rbacResolveAdminPermission(path, method string) (permission string, bypass 
 		return "admin.billing.read", false
 	case "accounting":
 		return readWrite("admin.billing.read", "admin.billing.write")
+	case "legal":
+		return "admin.settings.write", false
+	case "abuse":
+		return readWrite("admin.servers.read", "admin.servers.write")
 	case "payment-providers":
 		return "admin.payment_providers.write", false
 	case "settings":

@@ -13,6 +13,8 @@ var auditAlertActions = map[string]bool{
 	"groups.update":                   true,
 	"groups.create":                   true,
 	"groups.delete":                   true,
+	"user.delete":                     true,
+	"refund.request":                  true,
 	"user.impersonate":                true,
 	"api_key.create":                  true,
 	"webhook.create":                  true,

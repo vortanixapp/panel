@@ -171,28 +171,27 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	tag, err := h.dbOf(r.Context()).Exec(r.Context(), `
-
-		DELETE FROM core.users
-
-		WHERE id = $1 AND role != 'owner'
-
-	`, userID)
-
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-
-		return
-
-	}
-
-	if tag.RowsAffected() == 0 {
+	ctx := r.Context()
+	var role string
+	if err := h.dbOf(ctx).QueryRow(ctx, `
+		SELECT role FROM core.users WHERE id = $1 AND deleted_at IS NULL
+	`, userID).Scan(&role); err != nil {
 		writeError(w, http.StatusNotFound, "user not found")
-
 		return
-
 	}
-
+	if role == "owner" {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "error": "Нельзя удалить владельца панели."})
+		return
+	}
+	if msg := h.userDeletionBlocker(ctx, userID, truthySetting(r.URL.Query().Get("force"))); msg != "" {
+		writeError(w, http.StatusConflict, msg)
+		return
+	}
+	if err := h.anonymizeUser(ctx, userID, claims.UserID, "admin"); err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	h.auditAlert(ctx, claims.UserID, claims.Email, "user.delete", "пользователь "+userID)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": "deleted"})
 
 }

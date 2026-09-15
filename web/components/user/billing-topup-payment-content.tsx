@@ -5,7 +5,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { toast } from "sonner";
-import { fetchPayment, openPaymentReceipt, type PaymentDetail } from "@/lib/api";
+import {
+  fetchPayment,
+  openPaymentInvoice,
+  openPaymentReceipt,
+  type PaymentDetail,
+} from "@/lib/api";
 import { formatAmount } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
@@ -155,6 +160,17 @@ export function BillingTopupPaymentContent({ id }: { id: string }) {
                     )}
                   </div>
                   {payment.instructions && <BankDetails payment={payment} />}
+                  {payment.provider === "bank" && (
+                    <button
+                      type="button"
+                      className="inline-flex w-full items-center justify-center rounded-xl border border-border py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                      onClick={() =>
+                        openPaymentInvoice(id).catch((e: Error) => toast.error(e.message))
+                      }
+                    >
+                      {t("billing.payment.invoice")}
+                    </button>
+                  )}
                   {payment.checkout_url && (
                     <a
                       href={payment.checkout_url}

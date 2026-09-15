@@ -828,7 +828,8 @@ export const adminContent = {
   "admin.users.email_verified": "Email подтверждён",
   "admin.users.status_updated": "Статус пользователя обновлён",
   "admin.users.action_failed": "Не удалось выполнить действие",
-  "admin.users.delete_confirm": "Удалить пользователя {email}?",
+  "admin.users.delete_confirm":
+    "Удалить пользователя {email}? Личные данные будут обезличены, платежи и закрывающие документы сохранятся на пять лет.",
   "admin.users.create.subtitle": "Создайте учётную запись",
   "admin.users.name": "Имя",
   "admin.users.last_name": "Фамилия",

@@ -45,6 +45,31 @@ export const settings = {
   "settings.account.tab_sessions": "Сессии",
   "settings.account.tab_appearance": "Внешний вид",
   "settings.account.tab_notifications": "Уведомления",
+  "settings.account.tab_data": "Мои данные",
+
+  "settings.data.consents_title": "Согласия",
+  "settings.data.consents_hint": "Документы, которые вы приняли, редакция и дата",
+  "settings.data.consents_empty": "Согласий пока нет",
+  "settings.data.consent_accepted": "принято, редакция {version}, {date}",
+  "settings.data.consent_withdrawn": "отозвано, редакция {version}, {date}",
+  "settings.data.identification_title": "Идентификация",
+  "settings.data.identified": "Вы прошли идентификацию {date}",
+  "settings.data.not_identified": "Идентификация не пройдена",
+  "settings.data.not_identified_methods":
+    "Идентификация не пройдена. Её можно пройти, пополнив баланс через: {methods}",
+  "settings.data.export_title": "Выгрузка данных",
+  "settings.data.export_hint":
+    "Файл JSON со всеми данными, которые панель хранит о вас: профиль, согласия, платежи, серверы, обращения в поддержку и журнал входов",
+  "settings.data.export": "Скачать мои данные",
+  "settings.data.export_failed": "Не удалось выгрузить данные",
+  "settings.data.delete_title": "Удаление аккаунта",
+  "settings.data.delete_hint":
+    "Личные данные будут обезличены, вход станет невозможен, согласие на обработку отзывается. Сведения о платежах и закрывающие документы хранятся пять лет, как требует закон. Перед удалением удалите серверы и верните остаток баланса.",
+  "settings.data.delete_confirm_label": "Введите email аккаунта для подтверждения",
+  "settings.data.delete": "Удалить аккаунт",
+  "settings.data.delete_confirm": "Удалить аккаунт без возможности восстановления?",
+  "settings.data.deleted": "Аккаунт удалён",
+  "settings.data.delete_failed": "Не удалось удалить аккаунт",
 
   "settings.account.subtitle": "Управление аккаунтом и параметрами панели",
   "settings.account.save_hint": "Изменения сохраняются по кнопке в разделе",

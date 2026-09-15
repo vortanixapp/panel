@@ -41,6 +41,20 @@ export type BrandingPayload = {
     client_area_url: string;
     orders_only: boolean;
   } | null;
+  legal?: {
+    documents: { kind: string; version: number; title: string; published_at: string }[];
+    company: {
+      name: string;
+      full_name: string;
+      inn: string;
+      ogrn: string;
+      address: string;
+      email: string;
+      phone: string;
+    };
+    cookie_banner: boolean;
+    registration: { terms: boolean; personal_data: boolean };
+  } | null;
 };
 
 export const DEFAULT_PANEL_ACCENT = "#6366f1";
