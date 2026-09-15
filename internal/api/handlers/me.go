@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -86,9 +87,9 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		map[string]any{"sessions_closed": closed})
 	h.notifyUser(ctx, claims.UserID, notify.Event{
 		Kind:   notify.KindPasswordChange,
-		Title:  "Пароль изменён",
-		Body:   "Пароль вашей учётной записи только что изменён, остальные сеансы завершены. Если это были не вы, восстановите доступ через сброс пароля.",
-		Action: h.panelAction("Проверить сеансы", "/settings"),
+		Title:  i18n.Key("notify.password_changed.title"),
+		Body:   i18n.Key("notify.password_changed.body"),
+		Action: h.panelAction("notify.action.sessions", "/settings"),
 	})
 
 	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "sessions_closed": closed})

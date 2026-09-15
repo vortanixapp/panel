@@ -11,6 +11,7 @@ import (
 
 	"github.com/vortanixapp/panel/internal/worker/relay"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -133,15 +134,15 @@ func (r *Runner) notifyBackup(ctx context.Context, serverID string, ok bool, msg
 	}
 	e := notify.Event{
 		Kind:   notify.KindBackupReady,
-		Title:  "Резервная копия готова",
-		Body:   "Копия сервера «" + name + "» создана.",
-		Action: r.serverAction("К копиям", serverID, "/copies"),
+		Title:  i18n.Key("notify.backup_ready.title"),
+		Body:   i18n.Key("notify.backup_ready.body", i18n.Params{"name": name}),
+		Action: r.serverAction("notify.action.backups", serverID, "/copies"),
 		Meta:   map[string]any{"server_id": serverID},
 	}
 	if !ok {
 		e.Kind = notify.KindBackupFailed
-		e.Title = "Копию создать не удалось"
-		e.Body = "Резервную копию сервера «" + name + "» создать не удалось. Причина: " + msg
+		e.Title = i18n.Key("notify.backup_failed.title")
+		e.Body = i18n.Key("notify.backup_failed.body", i18n.Params{"name": name, "reason": msg})
 	}
 	if _, err := notify.Dispatch(ctx, r.db, rec, e); err != nil {
 		log.Printf("оповещение о копии сервера %s: %v", serverID, err)

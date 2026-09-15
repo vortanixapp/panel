@@ -2,9 +2,11 @@ package mail
 
 import (
 	"fmt"
+	"mime"
 	"net/smtp"
 	"strings"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/mailtpl"
 )
 
@@ -31,35 +33,32 @@ func (c Config) Send(to, subject, body string) error {
 		from = c.User
 	}
 	msg := []byte(fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		from, to, subject, body))
+		from, to, mime.QEncoding.Encode("utf-8", subject), body))
 	auth := smtp.PlainAuth("", c.User, c.Pass, c.Host)
 	return smtp.SendMail(addr, auth, from, []string{to}, msg)
 }
 
-func VerificationBody(brand mailtpl.Brand, verifyURL string) string {
-	return mailtpl.Render(brand, mailtpl.Message{
-		Title:       "Подтвердите email",
-		Body:        mailtpl.Paragraphs("Чтобы завершить регистрацию, подтвердите адрес электронной почты."),
-		ActionLabel: "Подтвердить email",
+func VerificationEmail(l i18n.Localizer, brand mailtpl.Brand, verifyURL string) (subject, body string) {
+	return l.T("mail.verify.subject"), mailtpl.Render(brand, mailtpl.Message{
+		Title:       l.T("mail.verify.title"),
+		Body:        mailtpl.Paragraphs(l.T("mail.verify.body")),
+		ActionLabel: l.T("mail.verify.action"),
 		ActionURL:   verifyURL,
 	})
 }
 
-func PasswordResetBody(brand mailtpl.Brand, resetURL string) string {
-	return mailtpl.Render(brand, mailtpl.Message{
-		Title: "Восстановление пароля",
-		Body: mailtpl.Paragraphs("Вы запросили восстановление пароля.\n\n" +
-			"Ссылка действует два часа. Если вы не запрашивали восстановление, " +
-			"просто удалите это письмо — пароль останется прежним."),
-		ActionLabel: "Задать новый пароль",
+func PasswordResetEmail(l i18n.Localizer, brand mailtpl.Brand, resetURL string) (subject, body string) {
+	return l.T("mail.reset.subject"), mailtpl.Render(brand, mailtpl.Message{
+		Title:       l.T("mail.reset.title"),
+		Body:        mailtpl.Paragraphs(l.T("mail.reset.body")),
+		ActionLabel: l.T("mail.reset.action"),
 		ActionURL:   resetURL,
 	})
 }
 
-func TestBody(brand mailtpl.Brand, to string) string {
-	return mailtpl.Render(brand, mailtpl.Message{
-		Title: "Тестовое письмо",
-		Body: mailtpl.Paragraphs("Письмо отправлено на " + to + ".\n\n" +
-			"Так выглядят письма панели: логотип и акцентный цвет берутся из раздела «Оформление»."),
+func TestEmail(l i18n.Localizer, brand mailtpl.Brand, to string) (subject, body string) {
+	return l.T("mail.test.subject"), mailtpl.Render(brand, mailtpl.Message{
+		Title: l.T("mail.test.title"),
+		Body:  mailtpl.Paragraphs(l.T("mail.test.body", i18n.Params{"email": to})),
 	})
 }

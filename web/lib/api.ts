@@ -4194,6 +4194,16 @@ export async function saveAdminLanguageMessages(
   );
 }
 
+export type ServerPhraseCatalog = Partial<
+  Record<BaseLocale, Record<string, string>>
+>;
+
+export async function fetchAdminLanguageCatalog() {
+  return apiFetch<{ catalog: ServerPhraseCatalog }>(
+    "/v1/admin/language/catalog"
+  );
+}
+
 export type AdminMysqlInstance = {
   node_id: string;
   node_name: string;

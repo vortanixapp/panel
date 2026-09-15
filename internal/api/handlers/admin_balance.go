@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -99,9 +100,9 @@ func (h *Handler) AdminAdjustUserBalance(w http.ResponseWriter, r *http.Request)
 		map[string]any{"amount": amount, "currency": currency, "comment": comment})
 	h.notifyUser(r.Context(), userID, notify.Event{
 		Kind:   notify.KindPaymentReceived,
-		Title:  "Баланс изменён администратором",
-		Body:   comment,
-		Action: h.panelAction("К биллингу", "/billing"),
+		Title:  i18n.Key("notify.balance_adjusted.title"),
+		Body:   i18n.Raw(comment),
+		Action: h.panelAction("notify.action.billing", "/billing"),
 		Meta:   map[string]any{"amount": amount, "currency": currency},
 	})
 

@@ -366,6 +366,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Patch("/mysql/instance/update", h.AdminMysqlInstanceUpdate)
 			r.Post("/mysql/instance/delete", h.AdminMysqlInstanceDelete)
 			r.Get("/language", h.AdminLanguages)
+			r.Get("/language/catalog", h.AdminLanguageCatalog)
 			r.Post("/language", h.AdminLanguageCreate)
 			r.Patch("/language/{code}", h.AdminLanguageUpdate)
 			r.Delete("/language/{code}", h.AdminLanguageDelete)

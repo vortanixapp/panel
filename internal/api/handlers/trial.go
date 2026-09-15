@@ -11,6 +11,7 @@ import (
 
 	"github.com/vortanixapp/panel/internal/api/jobwake"
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/portalloc"
 )
@@ -217,11 +218,10 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 	jobwake.Notify("provision_server")
 
 	h.notifyUser(ctx, claims.UserID, notify.Event{
-		Kind:  notify.KindServerReady,
-		Title: "Пробный сервер запускается",
-		Body: fmt.Sprintf("Сервер «%s» работает %d ч. После этого он остановится — продлите аренду, чтобы оставить его себе.",
-			name, cfg.Hours),
-		Action: h.serverAction("Открыть сервер", serverID, ""),
+		Kind:   notify.KindServerReady,
+		Title:  i18n.Key("notify.trial_started.title"),
+		Body:   i18n.Key("notify.trial_started.body", i18n.Params{"name": name, "hours": cfg.Hours}),
+		Action: h.serverAction("notify.action.open_server", serverID, ""),
 		Meta:   map[string]any{"server_id": serverID},
 	})
 	audit(ctx, h.dbOf(ctx), claims.UserID, "server.trial", "server:"+serverID,

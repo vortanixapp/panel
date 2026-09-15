@@ -10,6 +10,7 @@ import (
 
 	"github.com/vortanixapp/panel/internal/worker/relay"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -99,9 +100,9 @@ func (r *Runner) suspendServer(ctx context.Context, s expiredServer) {
 	if s.userID != "" {
 		r.notifyUser(ctx, s.userID, notify.Event{
 			Kind:      notify.KindServerSuspended,
-			Title:     "Сервер приостановлен",
-			Body:      "Оплаченный период сервера «" + s.name + "» закончился, сервер остановлен. Продлите аренду, чтобы запустить его снова.",
-			Action:    r.serverAction("Продлить", s.id, "/tariff"),
+			Title:     i18n.Key("notify.server_expired.title"),
+			Body:      i18n.Key("notify.server_expired.body", i18n.Params{"name": s.name}),
+			Action:    r.serverAction("notify.action.renew", s.id, "/tariff"),
 			Meta:      map[string]any{"server_id": s.id},
 			DedupeKey: "server.suspended:" + s.id + ":" + s.expiresAt.Format(time.RFC3339),
 		})
@@ -162,8 +163,8 @@ func (r *Runner) cleanupTrialServers(ctx context.Context) {
 		if d.userID != "" {
 			r.notifyUser(ctx, d.userID, notify.Event{
 				Kind:  notify.KindServerDeleted,
-				Title: "Пробный сервер удалён",
-				Body:  "Пробный сервер «" + d.name + "» удалён вместе с файлами: аренда не продлевалась. Новый сервер можно арендовать в любой момент.",
+				Title: i18n.Key("notify.trial_deleted.title"),
+				Body:  i18n.Key("notify.trial_deleted.body", i18n.Params{"name": d.name}),
 				Meta:  map[string]any{"server_name": d.name},
 			})
 		}

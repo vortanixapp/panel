@@ -2,41 +2,47 @@ package handlers
 
 import (
 	"context"
-	"fmt"
-	"github.com/vortanixapp/panel/pkg/notify"
+	"html"
 	"strings"
+
+	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/notify"
 )
 
-var auditAlertActions = map[string]string{
-	"groups.update":                   "изменены права ролей",
-	"user.impersonate":                "вход под другим пользователем",
-	"api_key.create":                  "выпущен ключ API",
-	"webhook.create":                  "добавлен исходящий вебхук",
-	"payment.refund":                  "возврат платежа",
-	"billing.adjust":                  "ручная корректировка баланса",
-	"ip.block":                        "блокировка IP",
-	"server.migrate":                  "перенос сервера между нодами",
-	"server.delete":                   "удалён сервер",
-	"node.bulk.stop":                  "массовая остановка серверов локации",
-	"node.bulk.extend":                "массовое продление аренды",
-	"location.delete":                 "удалена локация",
-	"location.agent_token_regenerate": "перевыпущен токен агента ноды",
-	"license.bind":                    "привязана лицензия",
-	"settings.update":                 "изменены настройки панели",
+var auditAlertActions = map[string]bool{
+	"groups.update":                   true,
+	"user.impersonate":                true,
+	"api_key.create":                  true,
+	"webhook.create":                  true,
+	"payment.refund":                  true,
+	"billing.adjust":                  true,
+	"ip.block":                        true,
+	"server.migrate":                  true,
+	"server.delete":                   true,
+	"node.bulk.stop":                  true,
+	"node.bulk.extend":                true,
+	"location.delete":                 true,
+	"location.agent_token_regenerate": true,
+	"license.bind":                    true,
+	"settings.update":                 true,
 }
 
 func (h *Handler) auditAlert(ctx context.Context, actorID, actorEmail, action, resource string) {
-	label, watched := auditAlertActions[action]
-	if !watched {
+	if !auditAlertActions[action] {
 		return
 	}
 
-	who := strings.TrimSpace(actorEmail)
-	if who == "" {
-		who = "сотрудник"
+	who := i18n.Raw(strings.TrimSpace(actorEmail))
+	if who.Raw == "" {
+		who = i18n.Key("notify.audit.staff")
 	}
-	title := "Действие в панели: " + label
-	body := fmt.Sprintf("%s — %s (%s)", who, label, resource)
+	params := i18n.Params{
+		"action":   i18n.Key("notify.audit.action." + action),
+		"who":      who,
+		"resource": resource,
+	}
+	title := i18n.Key("notify.audit.title", params)
+	body := i18n.Key("notify.audit.body", params)
 
 	rows, err := h.dbOf(ctx).Query(ctx, `
 		SELECT id::text FROM core.users
@@ -58,7 +64,8 @@ func (h *Handler) auditAlert(ctx context.Context, actorID, actorEmail, action, r
 		}
 	}
 
-	h.telegramAdminAlert(ctx, "<b>"+title+"</b>\n"+body)
+	l := i18n.For(ctx, h.dbOf(ctx), "")
+	h.telegramAdminAlert(ctx, "<b>"+html.EscapeString(l.Text(title))+"</b>\n"+html.EscapeString(l.Text(body)))
 }
 
 func (h *Handler) telegramAdminAlert(ctx context.Context, message string) {

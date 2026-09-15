@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/vortanixapp/panel/internal/api/mail"
+	"github.com/vortanixapp/panel/pkg/i18n"
 )
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +121,8 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	resetURL := strings.TrimRight(envOr("FRONTEND_URL", "http://localhost:3000"), "/") +
 		"/reset-password?token=" + url.QueryEscape(token)
 	if h.mail.Enabled() {
-		if err := h.mail.Send(req.Email, "Восстановление пароля", mail.PasswordResetBody(h.mailBrand(ctx, r), resetURL)); err != nil {
+		subject, body := mail.PasswordResetEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, r), resetURL)
+		if err := h.mail.Send(req.Email, subject, body); err != nil {
 			log.Printf("forgot-password: письмо на %s не отправлено: %v", req.Email, err)
 		}
 	} else {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -19,11 +20,11 @@ func (h *Handler) notifyServerOwner(ctx context.Context, db *pgxpool.Pool, serve
 	}
 }
 
-func (h *Handler) serverAction(label, serverID, suffix string) *notify.Action {
+func (h *Handler) serverAction(labelKey, serverID, suffix string) *notify.Action {
 	if h.panelURL == "" {
 		return nil
 	}
-	return &notify.Action{Label: label, Href: h.panelURL + "/servers/" + serverID + suffix}
+	return &notify.Action{Label: i18n.Key(labelKey), Href: h.panelURL + "/servers/" + serverID + suffix}
 }
 
 func (h *Handler) notifyNodeOwners(ctx context.Context, db *pgxpool.Pool, nodeID, nodeName string) {
@@ -49,9 +50,9 @@ func (h *Handler) notifyNodeOwners(ctx context.Context, db *pgxpool.Pool, nodeID
 		return
 	}
 
-	name := nodeName
-	if name == "" {
-		name = "локация"
+	name := i18n.Raw(nodeName)
+	if nodeName == "" {
+		name = i18n.Key("notify.node_offline.unnamed")
 	}
 	for _, userID := range owners {
 		r, err := notify.LoadRecipient(ctx, db, userID)
@@ -59,11 +60,10 @@ func (h *Handler) notifyNodeOwners(ctx context.Context, db *pgxpool.Pool, nodeID
 			continue
 		}
 		_, _ = notify.Dispatch(ctx, db, r, notify.Event{
-			Kind:  notify.KindNodeOffline,
-			Title: "Локация недоступна",
-			Body: "Связь с локацией «" + name + "» потеряна. Серверы на ней могут быть недоступны. " +
-				"Мы уже разбираемся — отдельных действий от вас не требуется.",
-			Meta:      map[string]any{"node_id": nodeID, "node_name": name},
+			Kind:      notify.KindNodeOffline,
+			Title:     i18n.Key("notify.node_offline.title"),
+			Body:      i18n.Key("notify.node_offline.body", i18n.Params{"node": name}),
+			Meta:      map[string]any{"node_id": nodeID, "node_name": nodeName},
 			DedupeKey: "node.offline:" + nodeID,
 		})
 	}

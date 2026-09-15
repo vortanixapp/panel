@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/vortanixapp/panel/internal/api/mail"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/oauth"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -440,7 +441,8 @@ func (h *Handler) SendEmailVerification(w http.ResponseWriter, r *http.Request) 
 	verifyURL := h.buildSignedVerifyURL(claims.UserID, claims.Email)
 	resp := map[string]any{"ok": true, "status": "verification-link-sent", "message": "Письмо для подтверждения отправлено."}
 	if h.mail.Enabled() {
-		_ = h.mail.Send(claims.Email, "Подтверждение email", mail.VerificationBody(h.mailBrand(r.Context(), r), verifyURL))
+		subject, body := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID), h.mailBrand(ctx, r), verifyURL)
+		_ = h.mail.Send(claims.Email, subject, body)
 	} else if h.mail.DevExpose {
 		resp["verification_url"] = verifyURL
 	}
@@ -488,7 +490,9 @@ func (h *Handler) maybeSendVerificationEmail(userID, email string) {
 	}
 	verifyURL := h.buildSignedVerifyURL(userID, email)
 	if h.mail.Enabled() {
-		_ = h.mail.Send(email, "Подтверждение email", mail.VerificationBody(h.mailBrand(context.Background(), nil), verifyURL))
+		ctx := context.Background()
+		subject, body := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, nil), verifyURL)
+		_ = h.mail.Send(email, subject, body)
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -536,15 +537,16 @@ func (h *Handler) DailyBonusSpin(w http.ResponseWriter, r *http.Request) {
 		map[string]any{"prize": prize.Label, "type": prize.Type, "value": prize.Value,
 			"promo_code": promoCode})
 
-	body := fmt.Sprintf("Ваш приз: %s.", prize.Label)
+	var bonusExtra []i18n.Msg
 	if promoCode != "" {
-		body += fmt.Sprintf("\n\nПромокод: %s", promoCode)
+		bonusExtra = append(bonusExtra, i18n.Key("notify.bonus_granted.promo", i18n.Params{"code": promoCode}))
 	}
 	h.notifyUser(ctx, claims.UserID, notify.Event{
 		Kind:   notify.KindBonusGranted,
-		Title:  "Ежедневный бонус получен",
-		Body:   body,
-		Action: h.panelAction("К биллингу", "/billing"),
+		Title:  i18n.Key("notify.bonus_granted.title"),
+		Body:   i18n.Key("notify.bonus_granted.body", i18n.Params{"prize": prize.Label}),
+		Extra:  bonusExtra,
+		Action: h.panelAction("notify.action.billing", "/billing"),
 	})
 
 	streak, _ := h.bonusStreak(ctx, claims.UserID)

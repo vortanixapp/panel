@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -98,18 +99,19 @@ func (h *Handler) notifyNodeOwners(ctx context.Context, nodeID, nodeName, reason
 		}
 	}
 
-	body := "На локации «" + nodeName + "» проводятся технические работы."
-	if strings.TrimSpace(reason) != "" {
-		body += " Причина: " + strings.TrimSpace(reason) + "."
+	var extra []i18n.Msg
+	if reason = strings.TrimSpace(reason); reason != "" {
+		extra = append(extra, i18n.Key("notify.node_maintenance.reason", i18n.Params{"reason": reason}))
 	}
 	if t, ok := until.(time.Time); ok {
-		body += " Ожидаемое окончание: " + t.Format("02.01.2006 15:04") + "."
+		extra = append(extra, i18n.Key("notify.node_maintenance.until", i18n.Params{"until": t.Format("02.01.2006 15:04")}))
 	}
 	for _, userID := range owners {
 		h.notifyUser(ctx, userID, notify.Event{
 			Kind:      notify.KindNodeMaintenance,
-			Title:     "Технические работы",
-			Body:      body,
+			Title:     i18n.Key("notify.node_maintenance.title"),
+			Body:      i18n.Key("notify.node_maintenance.body", i18n.Params{"node": nodeName}),
+			Extra:     extra,
 			Meta:      map[string]any{"node_id": nodeID, "node_name": nodeName},
 			DedupeKey: "node.maintenance:" + nodeID,
 		})

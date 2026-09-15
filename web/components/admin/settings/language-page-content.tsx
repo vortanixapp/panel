@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -48,6 +48,7 @@ import { useT } from "@/hooks/use-translations";
 import {
   createAdminLanguage,
   deleteAdminLanguage,
+  fetchAdminLanguageCatalog,
   fetchAdminLanguages,
   updateAdminLanguage,
   type AdminLanguage,
@@ -57,13 +58,12 @@ import {
 import {
   BASE_LOCALES,
   builtinLanguageName,
-  CATALOG_KEYS,
   isLocaleCode,
   normalizeLocaleCode,
   type BaseLocale,
 } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { LanguageEditor } from "./language-editor";
+import { buildPhraseCatalog, LanguageEditor } from "./language-editor";
 
 const ADMIN_LANGUAGES_KEY = ["admin-languages"] as const;
 
@@ -89,6 +89,16 @@ export function LanguagePageContent() {
     queryKey: ADMIN_LANGUAGES_KEY,
     queryFn: fetchAdminLanguages,
   });
+  const catalogQuery = useQuery({
+    queryKey: ["admin-language-catalog"],
+    queryFn: fetchAdminLanguageCatalog,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+  const phrases = useMemo(
+    () => buildPhraseCatalog(catalogQuery.data?.catalog),
+    [catalogQuery.data]
+  );
   const languages = query.data?.languages;
   const defaultLocale = query.data?.default_locale ?? "";
 
@@ -185,6 +195,7 @@ export function LanguagePageContent() {
               <LanguageCard
                 key={language.code}
                 language={language}
+                total={phrases.keys.length}
                 active={language.code === selected}
                 isDefault={language.code === defaultLocale}
                 busy={update.isPending}
@@ -205,10 +216,11 @@ export function LanguagePageContent() {
           </div>
         )}
 
-        {current && (
+        {current && !catalogQuery.isLoading && (
           <LanguageEditor
             key={current.code}
             language={current}
+            phrases={phrases}
             onDirtyChange={setEditorDirty}
             onSaved={onMessagesSaved}
           />
@@ -259,6 +271,7 @@ export function LanguagePageContent() {
 
 function LanguageCard({
   language,
+  total,
   active,
   isDefault,
   busy,
@@ -269,6 +282,7 @@ function LanguageCard({
   onDelete,
 }: {
   language: AdminLanguage;
+  total: number;
   active: boolean;
   isDefault: boolean;
   busy: boolean;
@@ -279,7 +293,6 @@ function LanguageCard({
   onDelete: () => void;
 }) {
   const t = useT();
-  const total = CATALOG_KEYS.length;
   const translated = Math.min(language.translated, total);
   const percent = total ? Math.round((translated / total) * 100) : 0;
 

@@ -19,6 +19,7 @@ import (
 	"github.com/vortanixapp/panel/internal/relay/events"
 	"github.com/vortanixapp/panel/internal/relay/hub"
 	"github.com/vortanixapp/panel/internal/relay/metricsclient"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/protocol"
 	"github.com/vortanixapp/panel/pkg/secretbox"
@@ -298,9 +299,9 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 			if err == nil && prevProv != "ready" {
 				h.notifyServerOwner(ctx, c.DB, serverID, notify.Event{
 					Kind:   notify.KindServerReady,
-					Title:  "Сервер готов",
-					Body:   "Сервер «" + name + "» установлен и запущен — можно подключаться.",
-					Action: h.serverAction("Открыть сервер", serverID, ""),
+					Title:  i18n.Key("notify.server_ready.title"),
+					Body:   i18n.Key("notify.server_ready.body", i18n.Params{"name": name}),
+					Action: h.serverAction("notify.action.open_server", serverID, ""),
 					Meta:   map[string]any{"server_id": serverID},
 				})
 			}
@@ -321,18 +322,18 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 				RETURNING prev.provisioning_status, s.name
 			`, status, runtimeStatus, provStatus, errMsg, serverID).Scan(&prevProv, &name)
 			if err == nil && prevProv != "failed" {
+				params := i18n.Params{"name": name, "reason": errMsg}
 				e := notify.Event{
 					Kind:   notify.KindServerDown,
-					Title:  "Сервер остановился с ошибкой",
-					Body:   "Сервер «" + name + "» перестал работать. Причина: " + errMsg,
-					Action: h.serverAction("Открыть сервер", serverID, ""),
+					Title:  i18n.Key("notify.server_down.title"),
+					Body:   i18n.Key("notify.server_down.body", params),
+					Action: h.serverAction("notify.action.open_server", serverID, ""),
 					Meta:   map[string]any{"server_id": serverID, "error": errMsg},
 				}
 				if prevProv == "provisioning" || prevProv == "pending" {
 					e.Kind = notify.KindServerFailed
-					e.Title = "Установка не удалась"
-					e.Body = "Сервер «" + name + "» не удалось установить. Причина: " + errMsg +
-						". Попробуйте переустановить его или напишите в поддержку."
+					e.Title = i18n.Key("notify.server_failed.title")
+					e.Body = i18n.Key("notify.server_failed.body", params)
 				}
 				h.notifyServerOwner(ctx, c.DB, serverID, e)
 			}

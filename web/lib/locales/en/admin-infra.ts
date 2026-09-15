@@ -688,7 +688,7 @@ export const adminInfra = {
 
   "admin.language.title": "Languages and translations",
   "admin.language.subtitle":
-    "Add languages and change any phrase of the panel and the landing page. An empty field keeps the default text",
+    "Add languages and change any phrase of the panel, landing page, emails and notifications. An empty field keeps the default text",
   "admin.language.add": "Add language",
   "admin.language.default": "Default",
   "admin.language.disabled": "Disabled",
@@ -752,6 +752,8 @@ export const adminInfra = {
   "admin.language.section.news": "News",
   "admin.language.section.settings": "Account settings",
   "admin.language.section.errors": "Errors",
+  "admin.language.section.mail": "Emails",
+  "admin.language.section.notify": "Notifications",
   "admin.language.section.admin": "Admin",
   "admin.language.filter.all": "All phrases",
   "admin.language.filter.translated": "Translated",

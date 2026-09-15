@@ -11,6 +11,7 @@ import (
 
 	"github.com/vortanixapp/panel/internal/worker/relay"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -105,7 +106,7 @@ func (r *Runner) processNodeBulkOne(ctx context.Context) bool {
 func (r *Runner) runNodeBulk(ctx context.Context, pl nodeBulkPayload) (int, int, error) {
 	switch pl.Action {
 	case "notify":
-		return r.bulkNotify(ctx, pl)
+		return r.bulkNotify(ctx, pl, i18n.Raw(pl.Message))
 	case "extend":
 		return r.bulkExtend(ctx, pl)
 	case "start", "stop", "restart":
@@ -200,16 +201,13 @@ func (r *Runner) bulkExtend(ctx context.Context, pl nodeBulkPayload) (int, int, 
 	}
 	count := int(tag.RowsAffected())
 
-	message := fmt.Sprintf(
-		"Аренда ваших серверов на локации «%s» продлена на %d дн. — компенсация за технические работы.",
-		pl.NodeName, pl.Days)
-	_, _, _ = r.bulkNotify(ctx, nodeBulkPayload{
-		NodeID: pl.NodeID, NodeName: pl.NodeName, Message: message,
-	})
+	_, _, _ = r.bulkNotify(ctx, pl, i18n.Key("notify.node_bulk.extended", i18n.Params{
+		"node": pl.NodeName, "days": pl.Days,
+	}))
 	return count, 0, nil
 }
 
-func (r *Runner) bulkNotify(ctx context.Context, pl nodeBulkPayload) (int, int, error) {
+func (r *Runner) bulkNotify(ctx context.Context, pl nodeBulkPayload, body i18n.Msg) (int, int, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT DISTINCT user_id::text FROM core.servers
 		WHERE node_id = $1 AND user_id IS NOT NULL
@@ -226,12 +224,11 @@ func (r *Runner) bulkNotify(ctx context.Context, pl nodeBulkPayload) (int, int, 
 	}
 	rows.Close()
 
-	title := "Локация " + pl.NodeName
 	for _, userID := range owners {
 		r.notifyUser(ctx, userID, notify.Event{
 			Kind:  notify.KindNodeMaintenance,
-			Title: title,
-			Body:  pl.Message,
+			Title: i18n.Key("notify.node_bulk.title", i18n.Params{"node": pl.NodeName}),
+			Body:  body,
 			Meta:  map[string]any{"node_id": pl.NodeID, "node_name": pl.NodeName},
 		})
 	}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -84,12 +85,14 @@ func (r *Runner) checkLowBalances(ctx context.Context) {
 		}
 		r.notifyUser(ctx, lb.userID, notify.Event{
 			Kind:  notify.KindBalanceLow,
-			Title: "На счету не хватает средств",
-			Body: fmt.Sprintf(
-				"До %s нужно продлить серверы на %.2f %s, а на счету %.2f %s. "+
-					"Пополните баланс, иначе серверы будут остановлены.",
-				lb.soonest.Format("02.01.2006"), lb.due, lb.currency, lb.balance, lb.currency),
-			Action: r.panelAction("Пополнить баланс", "/billing/topup"),
+			Title: i18n.Key("notify.balance_low.title"),
+			Body: i18n.Key("notify.balance_low.body", i18n.Params{
+				"date":     lb.soonest.Format("02.01.2006"),
+				"due":      fmt.Sprintf("%.2f", lb.due),
+				"balance":  fmt.Sprintf("%.2f", lb.balance),
+				"currency": lb.currency,
+			}),
+			Action: r.panelAction("notify.action.topup", "/billing/topup"),
 			Meta: map[string]any{
 				"due": lb.due, "balance": lb.balance, "currency": lb.currency,
 			},
@@ -143,9 +146,9 @@ func (r *Runner) checkNodeDiskSpace(ctx context.Context) {
 	}
 
 	for _, ld := range list {
-		name := ld.name
-		if name == "" {
-			name = "нода"
+		name := i18n.Raw(ld.name)
+		if ld.name == "" {
+			name = i18n.Key("notify.disk_low.unnamed")
 		}
 		percent := 0.0
 		if ld.total > 0 {
@@ -153,12 +156,14 @@ func (r *Runner) checkNodeDiskSpace(ctx context.Context) {
 		}
 		r.notifyStaff(ctx, notify.Event{
 			Kind:  notify.KindDiskLow,
-			Title: "Мало места на ноде",
-			Body: fmt.Sprintf(
-				"На ноде «%s» осталось %.1f%% свободного места (%s из %s). "+
-					"Новые серверы на неё встать не смогут.",
-				name, percent, humanBytes(ld.avail), humanBytes(ld.total)),
-			Action: r.panelAction("Открыть локации", "/admin/locations"),
+			Title: i18n.Key("notify.disk_low.title"),
+			Body: i18n.Key("notify.disk_low.body", i18n.Params{
+				"node":    name,
+				"percent": fmt.Sprintf("%.1f", percent),
+				"free":    sizeMsg(ld.avail),
+				"total":   sizeMsg(ld.total),
+			}),
+			Action: r.panelAction("notify.action.locations", "/admin/locations"),
 			Meta: map[string]any{
 				"node_id": ld.nodeID, "free_bytes": ld.avail, "total_bytes": ld.total,
 			},
@@ -224,16 +229,17 @@ func parseSizeBytes(s string) (float64, bool) {
 	return v * mult, true
 }
 
-func humanBytes(v float64) string {
+func sizeMsg(v float64) i18n.Msg {
 	const unit = 1024.0
-	units := []string{"Б", "КБ", "МБ", "ГБ", "ТБ", "ПБ"}
+	units := []string{"b", "kb", "mb", "gb", "tb", "pb"}
 	i := 0
 	for v >= unit && i < len(units)-1 {
 		v /= unit
 		i++
 	}
+	value := fmt.Sprintf("%.1f", v)
 	if i == 0 {
-		return fmt.Sprintf("%.0f %s", v, units[i])
+		value = fmt.Sprintf("%.0f", v)
 	}
-	return fmt.Sprintf("%.1f %s", v, units[i])
+	return i18n.Key("notify.size."+units[i], i18n.Params{"value": value})
 }

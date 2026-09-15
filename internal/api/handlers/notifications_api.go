@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -48,6 +49,7 @@ func (h *Handler) ListNotifications(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	q := r.URL.Query()
+	l := i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID)
 
 	limit := notificationsPageSize
 	if v, err := strconv.Atoi(q.Get("limit")); err == nil && v > 0 && v <= 100 {
@@ -102,7 +104,7 @@ func (h *Handler) ListNotifications(w http.ResponseWriter, r *http.Request) {
 		}
 		def := notify.DefFor(notify.Kind(n.Type))
 		n.Group = string(def.Group)
-		n.Category = notify.GroupTitle(def.Group)
+		n.Category = l.Text(notify.GroupLabel(def.Group))
 		n.Icon = def.Icon
 		n.Tone = toneOf(def.Severity)
 		n.CreatedAt = created.UTC().Format(time.RFC3339)
@@ -121,13 +123,13 @@ func (h *Handler) ListNotifications(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"notifications": list,
 		"unread":        h.notificationsUnread(ctx, claims.UserID),
-		"groups":        h.notificationGroups(ctx, claims.UserID),
+		"groups":        h.notificationGroups(ctx, claims.UserID, l),
 		"has_more":      hasMore,
 		"channels":      h.loadNotificationChannels(ctx, claims.UserID),
 	})
 }
 
-func (h *Handler) notificationGroups(ctx context.Context, userID string) []map[string]any {
+func (h *Handler) notificationGroups(ctx context.Context, userID string, l i18n.Localizer) []map[string]any {
 	rows, err := h.readerOf(ctx).Query(ctx, `
 		SELECT type, COUNT(*), COUNT(*) FILTER (WHERE read_at IS NULL)
 		FROM core.notifications
@@ -158,7 +160,7 @@ func (h *Handler) notificationGroups(ctx context.Context, userID string) []map[s
 			continue
 		}
 		out = append(out, map[string]any{
-			"id": string(g), "label": notify.GroupTitle(g),
+			"id": string(g), "label": l.Text(notify.GroupLabel(g)),
 			"count": total[g], "unread": unread[g],
 		})
 	}

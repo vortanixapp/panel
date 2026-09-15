@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -504,9 +505,9 @@ func (h *Handler) AdminCancelPayment(w http.ResponseWriter, r *http.Request) {
 	audit(ctx, h.dbOf(ctx), claims.UserID, "payment.cancel", "payment:"+id, map[string]any{"provider": provider})
 	h.notifyUser(ctx, userID, notify.Event{
 		Kind:      notify.KindPaymentReceived,
-		Title:     "Платёж отменён",
-		Body:      "Заявка на пополнение через " + payments.Name(provider) + " отменена администратором.",
-		Action:    h.panelAction("К балансу", "/billing"),
+		Title:     i18n.Key("notify.payment_cancelled.title"),
+		Body:      i18n.Key("notify.payment_cancelled.body", i18n.Params{"provider": payments.Name(provider)}),
+		Action:    h.panelAction("notify.action.balance", "/billing"),
 		Meta:      map[string]any{"payment_id": id},
 		DedupeKey: "payment.cancelled:" + id,
 	})

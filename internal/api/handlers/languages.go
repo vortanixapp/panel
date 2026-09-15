@@ -10,6 +10,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/vortanixapp/panel/pkg/i18n"
 )
 
 const (
@@ -123,12 +125,13 @@ func (h *Handler) loadLanguages(ctx context.Context, withCounts bool) []language
 	return list
 }
 
-func (h *Handler) loadTranslations(ctx context.Context, code string) map[string]string {
+func (h *Handler) loadTranslations(ctx context.Context, code string, withServer bool) map[string]string {
 	out := map[string]string{}
 	rows, err := h.dbOf(ctx).Query(ctx, `
 		SELECT key, value FROM core.translation_keys
 		WHERE locale = $1 AND btrim(value) <> ''
-	`, code)
+		  AND ($2 OR (key NOT LIKE 'mail.%' AND key NOT LIKE 'notify.%'))
+	`, code, withServer)
 	if err != nil {
 		return out
 	}
@@ -167,7 +170,7 @@ func (h *Handler) PublicI18n(w http.ResponseWriter, r *http.Request) {
 		"languages":      enabled,
 		"locale":         current,
 		"base":           base,
-		"messages":       h.loadTranslations(ctx, current),
+		"messages":       h.loadTranslations(ctx, current, false),
 	})
 }
 
@@ -184,6 +187,13 @@ func (h *Handler) AdminLanguages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.writeAdminLanguages(r.Context(), w, http.StatusOK)
+}
+
+func (h *Handler) AdminLanguageCatalog(w http.ResponseWriter, r *http.Request) {
+	if _, ok := tenantClaims(r.Context()); !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"catalog": i18n.Catalog()})
 }
 
 func (h *Handler) AdminLanguageCreate(w http.ResponseWriter, r *http.Request) {
@@ -235,6 +245,7 @@ func (h *Handler) AdminLanguageCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "язык с таким кодом уже есть")
 		return
 	}
+	i18n.Invalidate()
 	audit(ctx, h.dbOf(ctx), claims.UserID, "language.create", "language:"+code, map[string]any{
 		"name": name,
 		"base": base,
@@ -297,6 +308,7 @@ func (h *Handler) AdminLanguageUpdate(w http.ResponseWriter, r *http.Request) {
 	if body.Default {
 		h.setTenantSettingString(ctx, defaultLocaleSetting, code)
 	}
+	i18n.Invalidate()
 	audit(ctx, h.dbOf(ctx), claims.UserID, "language.update", "language:"+code, map[string]any{
 		"name":    lang.Name,
 		"base":    lang.Base,
@@ -351,6 +363,7 @@ func (h *Handler) AdminLanguageDelete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "не удалось удалить язык")
 		return
 	}
+	i18n.Invalidate()
 	audit(ctx, h.dbOf(ctx), claims.UserID, "language.delete", "language:"+code, nil)
 	h.writeAdminLanguages(ctx, w, http.StatusOK)
 }
@@ -367,7 +380,7 @@ func (h *Handler) AdminLanguageMessages(w http.ResponseWriter, r *http.Request) 
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code":     code,
-		"messages": h.loadTranslations(ctx, code),
+		"messages": h.loadTranslations(ctx, code, true),
 	})
 }
 
@@ -451,6 +464,7 @@ func (h *Handler) AdminLanguageMessagesSave(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	i18n.Invalidate()
 	audit(ctx, h.dbOf(ctx), claims.UserID, "language.messages", "language:"+code, map[string]any{
 		"saved":   len(keys),
 		"cleared": len(cleared),
@@ -458,6 +472,6 @@ func (h *Handler) AdminLanguageMessagesSave(w http.ResponseWriter, r *http.Reque
 	})
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code":     code,
-		"messages": h.loadTranslations(ctx, code),
+		"messages": h.loadTranslations(ctx, code, true),
 	})
 }

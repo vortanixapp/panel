@@ -1,6 +1,10 @@
 package notify
 
-import "sort"
+import (
+	"sort"
+
+	"github.com/vortanixapp/panel/pkg/i18n"
+)
 
 type Kind string
 
@@ -56,14 +60,6 @@ const (
 	GroupSecurity Group = "security"
 	GroupSystem   Group = "system"
 )
-
-var groupTitles = map[Group]string{
-	GroupServers:  "Серверы",
-	GroupBilling:  "Биллинг",
-	GroupSupport:  "Поддержка",
-	GroupSecurity: "Безопасность",
-	GroupSystem:   "Система",
-}
 
 type Def struct {
 	Kind     Kind
@@ -165,11 +161,13 @@ func Kinds() []Kind {
 	return out
 }
 
-func GroupTitle(g Group) string {
-	if t, ok := groupTitles[g]; ok {
-		return t
+func GroupLabel(g Group) i18n.Msg {
+	for _, known := range Groups() {
+		if known == g {
+			return i18n.Key("notify.group." + string(g))
+		}
 	}
-	return groupTitles[GroupSystem]
+	return i18n.Key("notify.group." + string(GroupSystem))
 }
 
 func Groups() []Group {

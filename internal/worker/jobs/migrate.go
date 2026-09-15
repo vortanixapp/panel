@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/portalloc"
 
@@ -197,16 +198,17 @@ func (r *Runner) notifyServerMigrated(ctx context.Context, serverID, serverName,
 		WHERE s.id = $1
 	`, serverID, toNodeID).Scan(&nodeName, &ip)
 
+	name := i18n.Raw(serverName)
 	if serverName == "" {
-		serverName = "сервер"
+		name = i18n.Key("notify.server_migrated.unnamed")
 	}
-	body := "Сервер «" + serverName + "» перенесён на другую ноду"
+	body := i18n.Key("notify.server_migrated.body", i18n.Params{"name": name})
 	if nodeName != "" {
-		body += " (" + nodeName + ")"
+		body = i18n.Key("notify.server_migrated.body_node", i18n.Params{"name": name, "node": nodeName})
 	}
-	body += "."
+	var extra []i18n.Msg
 	if ip != "" {
-		body += " Новый адрес подключения: " + ip + "."
+		extra = append(extra, i18n.Key("notify.server_migrated.address", i18n.Params{"ip": ip}))
 	}
 
 	rec, err := notify.LoadServerOwner(ctx, r.db, serverID)
@@ -216,9 +218,10 @@ func (r *Runner) notifyServerMigrated(ctx context.Context, serverID, serverName,
 	}
 	if _, err := notify.Dispatch(ctx, r.db, rec, notify.Event{
 		Kind:   notify.KindServerMigrated,
-		Title:  "Сервер переехал",
+		Title:  i18n.Key("notify.server_migrated.title"),
 		Body:   body,
-		Action: r.serverAction("Открыть сервер", serverID, ""),
+		Extra:  extra,
+		Action: r.serverAction("notify.action.open_server", serverID, ""),
 		Meta:   map[string]any{"server_id": serverID, "node_id": toNodeID},
 	}); err != nil {
 		log.Printf("оповещение о переносе сервера %s: %v", serverID, err)

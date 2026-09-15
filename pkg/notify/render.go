@@ -2,18 +2,18 @@ package notify
 
 import "strings"
 
-func render(e Event) (subject, body string) {
-	subject = strings.TrimSpace(e.Title)
+func render(title, body, label, href string) (subject, text string) {
+	subject = strings.TrimSpace(title)
 
 	var b strings.Builder
-	if t := strings.TrimSpace(e.Body); t != "" {
+	if t := strings.TrimSpace(body); t != "" {
 		b.WriteString(t)
 	}
-	if e.Action.valid() {
+	if label != "" && href != "" {
 		if b.Len() > 0 {
 			b.WriteString("\n\n")
 		}
-		b.WriteString(e.Action.Label + ": " + e.Action.Href)
+		b.WriteString(label + ": " + href)
 	}
 	return subject, b.String()
 }

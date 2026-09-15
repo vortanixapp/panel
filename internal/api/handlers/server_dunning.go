@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -87,17 +88,21 @@ func (h *Handler) remindStage(ctx context.Context, stage int) {
 
 	for _, d := range list {
 		price, currency, _, _, _, err := h.serverRenewBaseCostCtx(ctx, d.id, d.period)
-		body := fmt.Sprintf("Аренда сервера «%s» заканчивается %s.",
-			d.name, d.expiresAt.Format("02.01.2006 15:04"))
+		bodyKey := "notify.server_expiring.body"
 		if err == nil && price > 0 {
-			body += fmt.Sprintf(" Продление на %d дн. стоит %.2f %s.", d.period, price, currency)
+			bodyKey = "notify.server_expiring.body_price"
 		}
-		body += " После окончания сервер будет остановлен, файлы сохранятся."
 		h.notifyServerOwner(ctx, d.id, notify.Event{
-			Kind:      notify.KindServerExpiring,
-			Title:     fmt.Sprintf("Осталось %d дн. аренды", stage),
-			Body:      body,
-			Action:    h.serverAction("Продлить", d.id, "/tariff"),
+			Kind:  notify.KindServerExpiring,
+			Title: i18n.Key("notify.server_expiring.title", i18n.Params{"days": stage}),
+			Body: i18n.Key(bodyKey, i18n.Params{
+				"name":     d.name,
+				"date":     d.expiresAt.Format("02.01.2006 15:04"),
+				"period":   d.period,
+				"amount":   fmt.Sprintf("%.2f", price),
+				"currency": currency,
+			}),
+			Action:    h.serverAction("notify.action.renew", d.id, "/tariff"),
 			Meta:      map[string]any{"server_id": d.id, "days": stage},
 			DedupeKey: fmt.Sprintf("server.expiring:%s:%d", d.id, stage),
 		})
@@ -132,14 +137,13 @@ func (h *Handler) notifySuspended(ctx context.Context) {
 	rows.Close()
 
 	for _, d := range list {
-		body := fmt.Sprintf(
-			"Сервер «%s» остановлен: срок аренды закончился %s. Файлы сохранены — продлите аренду, и сервер запустится снова.",
-			d.name, d.expiresAt.Format("02.01.2006"))
 		h.notifyServerOwner(ctx, d.id, notify.Event{
-			Kind:      notify.KindServerSuspended,
-			Title:     "Сервер остановлен",
-			Body:      body,
-			Action:    h.serverAction("Продлить", d.id, "/tariff"),
+			Kind:  notify.KindServerSuspended,
+			Title: i18n.Key("notify.server_suspended.title"),
+			Body: i18n.Key("notify.server_suspended.body", i18n.Params{
+				"name": d.name, "date": d.expiresAt.Format("02.01.2006"),
+			}),
+			Action:    h.serverAction("notify.action.renew", d.id, "/tariff"),
 			Meta:      map[string]any{"server_id": d.id},
 			DedupeKey: "server.suspended:" + d.id + ":" + d.expiresAt.Format(time.RFC3339),
 		})
@@ -199,12 +203,13 @@ func (h *Handler) renewOneAuto(ctx context.Context, d dunningServer) {
 		WHERE user_id = $1::uuid AND UPPER(currency) = UPPER($2)
 		FOR UPDATE
 	`, d.userID, currency).Scan(&walletID, &balance); err != nil {
-		h.notifyAutoRenewFailed(ctx, d, "нет кошелька в валюте тарифа")
+		h.notifyAutoRenewFailed(ctx, d, i18n.Key("notify.renew_failed.no_wallet"))
 		return
 	}
 	if balance < price {
-		h.notifyAutoRenewFailed(ctx, d,
-			fmt.Sprintf("на балансе %.2f %s, нужно %.2f", balance, currency, price))
+		h.notifyAutoRenewFailed(ctx, d, i18n.Key("notify.renew_failed.low_balance", i18n.Params{
+			"balance": fmt.Sprintf("%.2f", balance), "currency": currency, "amount": fmt.Sprintf("%.2f", price),
+		}))
 		return
 	}
 
@@ -231,13 +236,13 @@ func (h *Handler) renewOneAuto(ctx context.Context, d dunningServer) {
 		return
 	}
 
-	body := fmt.Sprintf("Аренда сервера «%s» продлена на %d дн., списано %.2f %s.",
-		d.name, d.period, price, currency)
 	h.notifyServerOwner(ctx, d.id, notify.Event{
-		Kind:   notify.KindServerRenewed,
-		Title:  "Аренда продлена",
-		Body:   body,
-		Action: h.serverAction("Открыть сервер", d.id, ""),
+		Kind:  notify.KindServerRenewed,
+		Title: i18n.Key("notify.server_renewed.title"),
+		Body: i18n.Key("notify.server_renewed.body", i18n.Params{
+			"name": d.name, "period": d.period, "amount": fmt.Sprintf("%.2f", price), "currency": currency,
+		}),
+		Action: h.serverAction("notify.action.open_server", d.id, ""),
 		Meta:   map[string]any{"server_id": d.id, "amount": price},
 	})
 	h.emitWebhook(ctx, "server.renewed", map[string]any{
@@ -247,15 +252,14 @@ func (h *Handler) renewOneAuto(ctx context.Context, d dunningServer) {
 	log.Printf("автопродление: сервер %s продлён на %d дн. за %.2f %s", d.id, d.period, price, currency)
 }
 
-func (h *Handler) notifyAutoRenewFailed(ctx context.Context, d dunningServer, reason string) {
-	body := fmt.Sprintf(
-		"Не удалось продлить аренду сервера «%s» автоматически: %s. Пополните баланс, иначе сервер будет остановлен %s.",
-		d.name, reason, d.expiresAt.Format("02.01.2006 15:04"))
+func (h *Handler) notifyAutoRenewFailed(ctx context.Context, d dunningServer, reason i18n.Msg) {
 	h.notifyServerOwner(ctx, d.id, notify.Event{
-		Kind:   notify.KindPaymentFailed,
-		Title:  "Автопродление не прошло",
-		Body:   body,
-		Action: h.panelAction("Пополнить баланс", "/billing"),
+		Kind:  notify.KindPaymentFailed,
+		Title: i18n.Key("notify.renew_failed.title"),
+		Body: i18n.Key("notify.renew_failed.body", i18n.Params{
+			"name": d.name, "reason": reason, "date": d.expiresAt.Format("02.01.2006 15:04"),
+		}),
+		Action: h.panelAction("notify.action.topup", "/billing"),
 		Meta:   map[string]any{"server_id": d.id},
 		DedupeKey: fmt.Sprintf("server.renew_failed:%s:%s", d.id,
 			d.expiresAt.Format("2006-01-02")),

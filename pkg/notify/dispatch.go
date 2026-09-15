@@ -8,6 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/vortanixapp/panel/pkg/i18n"
 )
 
 type DB interface {
@@ -23,21 +25,28 @@ type Result struct {
 }
 
 func Dispatch(ctx context.Context, db DB, r Recipient, e Event) (Result, error) {
-	if strings.TrimSpace(e.Title) == "" {
-		return Result{}, errors.New("notify: у события пустой заголовок")
-	}
 	if r.UserID == "" {
 		return Result{}, errors.New("notify: не указан получатель")
+	}
+
+	l := i18n.For(ctx, db, r.Locale)
+	title := strings.TrimSpace(l.Text(e.Title))
+	if title == "" {
+		return Result{}, errors.New("notify: у события пустой заголовок")
+	}
+	body := l.Paragraphs(append([]i18n.Msg{e.Body}, e.Extra...)...)
+	label, href := "", ""
+	if e.Action != nil {
+		label = strings.TrimSpace(l.Text(e.Action.Label))
+		href = strings.TrimSpace(e.Action.Href)
+	}
+	if label == "" || href == "" {
+		label, href = "", ""
 	}
 
 	metaJSON, err := json.Marshal(orEmpty(e.Meta))
 	if err != nil {
 		return Result{}, err
-	}
-
-	action := e.Action
-	if !action.valid() {
-		action = &Action{}
 	}
 
 	var id string
@@ -47,8 +56,8 @@ func Dispatch(ctx context.Context, db DB, r Recipient, e Event) (Result, error) 
 		VALUES ( $1, $2, $3, $4, $5::jsonb, $6, $7, $8)
 		ON CONFLICT DO NOTHING
 		RETURNING id::text
-	`, r.UserID, string(e.Kind), e.Title, e.Body, metaJSON,
-		e.DedupeKey, action.Label, action.Href).Scan(&id)
+	`, r.UserID, string(e.Kind), title, body, metaJSON,
+		e.DedupeKey, label, href).Scan(&id)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Result{Duplicate: true}, nil
@@ -62,7 +71,7 @@ func Dispatch(ctx context.Context, db DB, r Recipient, e Event) (Result, error) 
 		return Result{NotificationID: id}, nil
 	}
 
-	subject, body := render(e)
+	subject, text := render(title, body, label, href)
 	for _, c := range channels {
 		target, ok := r.Target(c)
 		if !ok {
@@ -74,7 +83,7 @@ func Dispatch(ctx context.Context, db DB, r Recipient, e Event) (Result, error) 
 				 subject, body, action_label, action_href)
 			VALUES ( $1, $2::uuid, $3, $4, $5, $6, $7, $8, $9)
 		`, r.UserID, id, string(e.Kind), string(c), target,
-			subject, body, action.Label, action.Href); err != nil {
+			subject, text, label, href); err != nil {
 			return Result{NotificationID: id}, err
 		}
 	}
@@ -103,16 +112,19 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 	r := Recipient{UserID: userID, Prefs: Prefs{Email: true}}
 	err := db.QueryRow(ctx, `
 		SELECT u.email,
+		       COALESCE(p.locale, ''),
 		       COALESCE(c.email_enabled, true),
 		       COALESCE(c.telegram_enabled, false),
 		       COALESCE(c.discord_enabled, false),
 		       COALESCE(c.telegram_chat_id, ''),
 		       COALESCE(c.discord_webhook, '')
 		FROM core.users u
+		LEFT JOIN core.user_profiles p
+		       ON p.user_id = u.id
 		LEFT JOIN core.user_notification_channels c
 		       ON c.user_id = u.id
 		WHERE u.id = $1
-	`, userID).Scan(&r.Email, &r.Prefs.Email, &r.Prefs.Telegram,
+	`, userID).Scan(&r.Email, &r.Locale, &r.Prefs.Email, &r.Prefs.Telegram,
 		&r.Prefs.Discord, &r.Prefs.TelegramChatID, &r.Prefs.DiscordWebhook)
 	if err != nil {
 		return Recipient{}, err

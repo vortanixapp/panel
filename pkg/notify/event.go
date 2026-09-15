@@ -1,6 +1,10 @@
 package notify
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/vortanixapp/panel/pkg/i18n"
+)
 
 type Channel string
 
@@ -16,19 +20,16 @@ func ExternalChannels() []Channel {
 }
 
 type Action struct {
-	Label string `json:"label"`
-	Href  string `json:"href"`
-}
-
-func (a *Action) valid() bool {
-	return a != nil && strings.TrimSpace(a.Label) != "" && strings.TrimSpace(a.Href) != ""
+	Label i18n.Msg
+	Href  string
 }
 
 type Event struct {
 	Kind Kind
 
-	Title string
-	Body  string
+	Title i18n.Msg
+	Body  i18n.Msg
+	Extra []i18n.Msg
 
 	Action *Action
 
@@ -49,6 +50,7 @@ func (e Event) severity() Severity {
 type Recipient struct {
 	UserID string
 	Email  string
+	Locale string
 
 	Prefs Prefs
 }

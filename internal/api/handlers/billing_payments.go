@@ -7,6 +7,7 @@ import (
 
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -110,10 +111,12 @@ func (h *Handler) completeTopupPayment(ctx context.Context, paymentID, providerP
 		"amount": creditAmount, "currency": currency, "provider": providerLabel,
 	})
 	h.notifyUser(ctx, userID, notify.Event{
-		Kind:      notify.KindPaymentReceived,
-		Title:     "Платёж зачислен",
-		Body:      fmt.Sprintf("Баланс пополнен на %.2f %s (%s).", creditAmount, currency, providerLabel),
-		Action:    h.panelAction("К балансу", "/billing"),
+		Kind:  notify.KindPaymentReceived,
+		Title: i18n.Key("notify.payment_received.title"),
+		Body: i18n.Key("notify.payment_received.body", i18n.Params{
+			"amount": fmt.Sprintf("%.2f", creditAmount), "currency": currency, "provider": providerLabel,
+		}),
+		Action:    h.panelAction("notify.action.balance", "/billing"),
 		Meta:      map[string]any{"payment_id": paymentID, "amount": creditAmount, "currency": currency},
 		DedupeKey: "payment.received:" + paymentID,
 	})

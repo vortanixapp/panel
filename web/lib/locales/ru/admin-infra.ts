@@ -687,7 +687,7 @@ export const adminInfra = {
 
   "admin.language.title": "Языки и переводы",
   "admin.language.subtitle":
-    "Добавляйте языки и меняйте любую фразу панели и лендинга. Пустое поле — текст по умолчанию",
+    "Добавляйте языки и меняйте любую фразу панели, лендинга, писем и уведомлений. Пустое поле — текст по умолчанию",
   "admin.language.add": "Добавить язык",
   "admin.language.default": "По умолчанию",
   "admin.language.disabled": "Выключен",
@@ -751,6 +751,8 @@ export const adminInfra = {
   "admin.language.section.news": "Новости",
   "admin.language.section.settings": "Настройки аккаунта",
   "admin.language.section.errors": "Ошибки",
+  "admin.language.section.mail": "Письма",
+  "admin.language.section.notify": "Уведомления",
   "admin.language.section.admin": "Админка",
   "admin.language.filter.all": "Все фразы",
   "admin.language.filter.translated": "Переведённые",

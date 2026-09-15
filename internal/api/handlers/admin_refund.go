@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -135,12 +136,17 @@ func (h *Handler) AdminRefundPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	refundKey := "notify.payment_refunded.body"
+	if strings.TrimSpace(body.Reason) != "" {
+		refundKey = "notify.payment_refunded.body_reason"
+	}
 	h.notifyUser(ctx, userID, notify.Event{
 		Kind:  notify.KindPaymentRefunded,
-		Title: "Возврат платежа",
-		Body: "Возвращено " + formatMoney(refundAmount) + " " + currency + reasonSuffix(body.Reason) +
-			". Деньги вернутся тем же способом, которым были внесены.",
-		Action: h.panelAction("К платежам", "/billing"),
+		Title: i18n.Key("notify.payment_refunded.title"),
+		Body: i18n.Key(refundKey, i18n.Params{
+			"amount": formatMoney(refundAmount), "currency": currency, "reason": strings.TrimSpace(body.Reason),
+		}),
+		Action: h.panelAction("notify.action.payments", "/billing"),
 		Meta:   map[string]any{"payment_id": paymentID, "amount": refundAmount},
 	})
 	audit(ctx, h.dbOf(ctx), claims.UserID, "payment.refund", "payment:"+paymentID,

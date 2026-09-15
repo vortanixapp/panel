@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/internal/api/hosting"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -76,9 +77,9 @@ func (h *Handler) suspendExpiredHosting(ctx context.Context) {
 		if a.userID != "" {
 			h.notifyUser(ctx, a.userID, notify.Event{
 				Kind:      notify.KindServerSuspended,
-				Title:     "Хостинг приостановлен",
-				Body:      "Оплаченный период аккаунта «" + a.username + "» закончился. Продлите его, чтобы сайт снова открывался.",
-				Action:    h.panelAction("Продлить", "/hosting/"+a.id),
+				Title:     i18n.Key("notify.hosting_suspended.title"),
+				Body:      i18n.Key("notify.hosting_suspended.body", i18n.Params{"account": a.username}),
+				Action:    h.panelAction("notify.action.renew", "/hosting/"+a.id),
 				Meta:      map[string]any{"hosting_id": a.id},
 				DedupeKey: "hosting.suspended:" + a.id,
 			})

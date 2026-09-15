@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -42,17 +43,17 @@ func (h *Handler) notifyServerOwner(ctx context.Context, serverID string, e noti
 	}
 }
 
-func (h *Handler) serverAction(label, serverID, suffix string) *notify.Action {
+func (h *Handler) serverAction(labelKey, serverID, suffix string) *notify.Action {
 	base := h.frontendURL
 	if base == "" {
 		return nil
 	}
-	return &notify.Action{Label: label, Href: base + "/servers/" + serverID + suffix}
+	return &notify.Action{Label: i18n.Key(labelKey), Href: base + "/servers/" + serverID + suffix}
 }
 
-func (h *Handler) panelAction(label, path string) *notify.Action {
+func (h *Handler) panelAction(labelKey, path string) *notify.Action {
 	if h.frontendURL == "" {
 		return nil
 	}
-	return &notify.Action{Label: label, Href: h.frontendURL + path}
+	return &notify.Action{Label: i18n.Key(labelKey), Href: h.frontendURL + path}
 }

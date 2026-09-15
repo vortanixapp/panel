@@ -37,11 +37,13 @@ import {
   fetchAdminLanguageMessages,
   saveAdminLanguageMessages,
   type AdminLanguage,
+  type ServerPhraseCatalog,
 } from "@/lib/api";
 import {
   builtinLanguageName,
   CATALOG_KEYS,
   catalogText,
+  type BaseLocale,
   type TranslateFn,
 } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -63,9 +65,29 @@ const SECTION_ORDER = [
   "news",
   "settings",
   "errors",
+  "mail",
+  "notify",
 ];
 
 type Filter = "all" | "translated" | "empty" | "issues" | "unsaved";
+
+export type PhraseCatalog = {
+  keys: string[];
+  text: (base: BaseLocale, key: string) => string | undefined;
+};
+
+export function buildPhraseCatalog(server?: ServerPhraseCatalog): PhraseCatalog {
+  const serverKeys = [
+    ...Object.keys(server?.ru ?? {}),
+    ...Object.keys(server?.en ?? {}),
+  ];
+  const keys = Array.from(new Set([...CATALOG_KEYS, ...serverKeys])).sort();
+  return {
+    keys,
+    text: (base, key) =>
+      catalogText(base, key) ?? server?.[base]?.[key] ?? server?.ru?.[key],
+  };
+}
 
 function filled(value: string | undefined): string {
   return value !== undefined && value.trim() !== "" ? value : "";
@@ -104,9 +126,9 @@ function flatten(
   return out;
 }
 
-const SECTIONS = (() => {
+function buildSections(keys: string[]) {
   const counts = new Map<string, number>();
-  for (const key of CATALOG_KEYS) {
+  for (const key of keys) {
     const id = sectionOf(key);
     counts.set(id, (counts.get(id) ?? 0) + 1);
   }
@@ -118,7 +140,7 @@ const SECTIONS = (() => {
   return Array.from(counts, ([id, count]) => ({ id, count })).sort(
     (a, b) => rank(a.id) - rank(b.id) || a.id.localeCompare(b.id)
   );
-})();
+}
 
 function sectionLabel(t: TranslateFn, id: string): string {
   if (id.startsWith("admin.")) {
@@ -131,10 +153,12 @@ function sectionLabel(t: TranslateFn, id: string): string {
 
 export function LanguageEditor({
   language,
+  phrases,
   onDirtyChange,
   onSaved,
 }: {
   language: AdminLanguage;
+  phrases: PhraseCatalog;
   onDirtyChange: (dirty: boolean) => void;
   onSaved: () => void;
 }) {
@@ -148,6 +172,8 @@ export function LanguageEditor({
   const [section, setSection] = useState("all");
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(0);
+
+  const sections = useMemo(() => buildSections(phrases.keys), [phrases.keys]);
 
   const queryKey = useMemo(
     () => ["admin-language-messages", language.code] as const,
@@ -171,12 +197,12 @@ export function LanguageEditor({
   const changes = useMemo(() => {
     const out: Record<string, string> = {};
     if (!saved) return out;
-    for (const key of CATALOG_KEYS) {
+    for (const key of phrases.keys) {
       const next = filled(draft[key]);
       if (next !== filled(saved[key])) out[key] = next;
     }
     return out;
-  }, [draft, saved]);
+  }, [draft, saved, phrases.keys]);
   const changeCount = Object.keys(changes).length;
 
   useEffect(() => {
@@ -196,19 +222,19 @@ export function LanguageEditor({
   }, [changeCount]);
 
   const translatedCount = useMemo(
-    () => CATALOG_KEYS.reduce((n, key) => (filled(draft[key]) ? n + 1 : n), 0),
-    [draft]
+    () => phrases.keys.reduce((n, key) => (filled(draft[key]) ? n + 1 : n), 0),
+    [draft, phrases.keys]
   );
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return CATALOG_KEYS.filter((key) => {
+    return phrases.keys.filter((key) => {
       if (section !== "all" && sectionOf(key) !== section) return false;
       const value = filled(view[key]);
       if (filter === "translated" && !value) return false;
       if (filter === "empty" && value) return false;
       if (filter === "unsaved" && value === filled(saved?.[key])) return false;
-      const source = catalogText(language.base, key) ?? "";
+      const source = phrases.text(language.base, key) ?? "";
       if (filter === "issues" && missingPlaceholders(source, value).length === 0) {
         return false;
       }
@@ -219,7 +245,7 @@ export function LanguageEditor({
         value.toLowerCase().includes(q)
       );
     });
-  }, [view, saved, search, section, filter, language.base]);
+  }, [view, saved, search, section, filter, language.base, phrases]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
@@ -288,7 +314,7 @@ export function LanguageEditor({
       toast.error(t("admin.language.import_invalid"));
       return;
     }
-    const known = new Set(CATALOG_KEYS);
+    const known = new Set(phrases.keys);
     const next = { ...draft };
     let applied = 0;
     let skipped = 0;
@@ -299,7 +325,7 @@ export function LanguageEditor({
         skipped += 1;
         continue;
       }
-      next[key] = value === catalogText(language.base, key) ? "" : value;
+      next[key] = value === phrases.text(language.base, key) ? "" : value;
       applied += 1;
     }
     replaceDraft(next);
@@ -312,8 +338,8 @@ export function LanguageEditor({
 
   function exportFile() {
     const out: Record<string, string> = {};
-    for (const key of CATALOG_KEYS) {
-      out[key] = filled(draft[key]) || (catalogText(language.base, key) ?? "");
+    for (const key of phrases.keys) {
+      out[key] = filled(draft[key]) || (phrases.text(language.base, key) ?? "");
     }
     const blob = new Blob([`${JSON.stringify(out, null, 2)}\n`], {
       type: "application/json",
@@ -334,7 +360,7 @@ export function LanguageEditor({
   }
 
   const baseName = builtinLanguageName(language.base);
-  const total = CATALOG_KEYS.length;
+  const total = phrases.keys.length;
   const filters: Filter[] = language.builtin
     ? ["all", "translated", "issues", "unsaved"]
     : ["all", "empty", "translated", "issues", "unsaved"];
@@ -423,7 +449,7 @@ export function LanguageEditor({
               <SelectItem value="all">
                 {t("admin.language.section_all", { count: total })}
               </SelectItem>
-              {SECTIONS.map((item) => (
+              {sections.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
                   {sectionLabel(t, item.id)} · {item.count}
                 </SelectItem>
@@ -482,7 +508,7 @@ export function LanguageEditor({
               <PhraseRow
                 key={key}
                 phraseKey={key}
-                source={catalogText(language.base, key) ?? ""}
+                source={phrases.text(language.base, key) ?? ""}
                 value={draft[key] ?? ""}
                 unsaved={filled(draft[key]) !== filled(saved[key])}
                 readOnly={save.isPending}

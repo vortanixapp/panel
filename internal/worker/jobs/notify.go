@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -31,18 +32,18 @@ func (r *Runner) notifyUser(ctx context.Context, userID string, e notify.Event) 
 	}
 }
 
-func (r *Runner) serverAction(label, serverID, suffix string) *notify.Action {
+func (r *Runner) serverAction(labelKey, serverID, suffix string) *notify.Action {
 	if r.panelURL == "" {
 		return nil
 	}
-	return &notify.Action{Label: label, Href: r.panelURL + "/servers/" + serverID + suffix}
+	return &notify.Action{Label: i18n.Key(labelKey), Href: r.panelURL + "/servers/" + serverID + suffix}
 }
 
-func (r *Runner) panelAction(label, path string) *notify.Action {
+func (r *Runner) panelAction(labelKey, path string) *notify.Action {
 	if r.panelURL == "" {
 		return nil
 	}
-	return &notify.Action{Label: label, Href: r.panelURL + path}
+	return &notify.Action{Label: i18n.Key(labelKey), Href: r.panelURL + path}
 }
 
 func (r *Runner) NotifyDeliveryLoop(ctx context.Context) {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -30,18 +31,22 @@ func (h *Handler) notifyNewLogin(ctx context.Context, r *http.Request, userID, e
 		return
 	}
 
-	where := ip
-	if where == "" {
-		where = "неизвестный адрес"
+	where := i18n.Raw(ip)
+	if ip == "" {
+		where = i18n.Key("notify.new_login.unknown_ip")
 	}
-	device := deviceFromUserAgent(agent)
+	device := i18n.Raw(deviceFromUserAgent(agent))
+	if device.Raw == "" {
+		device = i18n.Key("notify.new_login.unknown_device")
+	}
 
 	h.notifyUser(ctx, userID, notify.Event{
 		Kind:  notify.KindNewLogin,
-		Title: "Вход с нового устройства",
-		Body: "В аккаунт " + email + " вошли с адреса " + where + " (" + device + "). " +
-			"Если это были не вы — смените пароль и включите двухфакторную аутентификацию.",
-		Action: h.panelAction("Проверить сеансы", "/settings?tab=sessions"),
+		Title: i18n.Key("notify.new_login.title"),
+		Body: i18n.Key("notify.new_login.body", i18n.Params{
+			"email": email, "ip": where, "device": device,
+		}),
+		Action: h.panelAction("notify.action.sessions", "/settings?tab=sessions"),
 		Meta:   map[string]any{"ip": ip, "user_agent": agent},
 	})
 }
@@ -49,7 +54,7 @@ func (h *Handler) notifyNewLogin(ctx context.Context, r *http.Request, userID, e
 func deviceFromUserAgent(agent string) string {
 	low := strings.ToLower(agent)
 	if low == "" {
-		return "неизвестное устройство"
+		return ""
 	}
 	var os string
 	switch {
@@ -71,7 +76,7 @@ func deviceFromUserAgent(agent string) string {
 	case strings.Contains(low, "opr/"), strings.Contains(low, "opera"):
 		browser = "Opera"
 	case strings.Contains(low, "yabrowser"):
-		browser = "Яндекс.Браузер"
+		browser = "Yandex Browser"
 	case strings.Contains(low, "firefox"):
 		browser = "Firefox"
 	case strings.Contains(low, "chrome"):
@@ -84,9 +89,7 @@ func deviceFromUserAgent(agent string) string {
 		return browser + ", " + os
 	case browser != "":
 		return browser
-	case os != "":
-		return os
 	default:
-		return "неизвестное устройство"
+		return os
 	}
 }

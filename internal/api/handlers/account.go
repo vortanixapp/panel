@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 	"github.com/pquerna/otp/totp"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -429,8 +430,8 @@ func (h *Handler) Enable2FA(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `UPDATE core.users SET two_factor_enabled = true WHERE id = $1`, claims.UserID)
 	h.notifyUser(r.Context(), claims.UserID, notify.Event{
 		Kind:  notify.KindTwoFactor,
-		Title: "Двухфакторная защита включена",
-		Body:  "Для входа в учётную запись теперь требуется код из приложения.",
+		Title: i18n.Key("notify.twofactor_enabled.title"),
+		Body:  i18n.Key("notify.twofactor_enabled.body"),
 	})
 	writeJSON(w, http.StatusOK, map[string]string{"status": "enabled"})
 }
@@ -470,9 +471,9 @@ func (h *Handler) Disable2FA(w http.ResponseWriter, r *http.Request) {
 	h.notifyUser(r.Context(), claims.UserID, notify.Event{
 		Kind:     notify.KindTwoFactor,
 		Severity: notify.SeverityCritical,
-		Title:    "Двухфакторная защита отключена",
-		Body:     "Второй фактор для входа отключён. Если это были не вы, включите его снова и смените пароль.",
-		Action:   h.panelAction("Настройки безопасности", "/settings"),
+		Title:    i18n.Key("notify.twofactor_disabled.title"),
+		Body:     i18n.Key("notify.twofactor_disabled.body"),
+		Action:   h.panelAction("notify.action.security", "/settings"),
 	})
 	writeJSON(w, http.StatusOK, map[string]string{"status": "disabled"})
 }

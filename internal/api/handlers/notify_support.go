@@ -4,8 +4,16 @@ import (
 	"context"
 	"strings"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
+
+func supportSubject(subject string) i18n.Msg {
+	if strings.TrimSpace(subject) == "" {
+		return i18n.Key("notify.support.untitled")
+	}
+	return i18n.Raw(subject)
+}
 
 func (h *Handler) notifySupportReply(ctx context.Context, ticketID, message string) {
 	var userID, subject string
@@ -18,15 +26,13 @@ func (h *Handler) notifySupportReply(ctx context.Context, ticketID, message stri
 	if err != nil || userID == "" || !wants {
 		return
 	}
-	if subject == "" {
-		subject = "обращение"
-	}
 
 	h.notifyUser(ctx, userID, notify.Event{
 		Kind:   notify.KindSupportReply,
-		Title:  "Ответ по обращению",
-		Body:   "По обращению «" + subject + "» пришёл ответ.\n\n" + excerpt(message, 300),
-		Action: h.panelAction("Открыть обращение", "/support/"+ticketID),
+		Title:  i18n.Key("notify.support_reply.title"),
+		Body:   i18n.Key("notify.support_reply.body", i18n.Params{"subject": supportSubject(subject)}),
+		Extra:  []i18n.Msg{i18n.Raw(excerpt(message, 300))},
+		Action: h.panelAction("notify.action.ticket", "/support/"+ticketID),
 		Meta:   map[string]any{"ticket_id": ticketID},
 	})
 }
@@ -42,25 +48,19 @@ func (h *Handler) notifySupportStatus(ctx context.Context, ticketID, status stri
 	if err != nil || userID == "" || !wants {
 		return
 	}
-	if subject == "" {
-		subject = "обращение"
-	}
-	title := "Обращение закрыто"
-	body := "Обращение «" + subject + "» закрыто."
+	key := "notify.support_closed"
 	switch status {
 	case "open":
-		title = "Обращение открыто заново"
-		body = "Обращение «" + subject + "» снова открыто."
+		key = "notify.support_reopened"
 	case "pending", "in_progress":
-		title = "Обращение в работе"
-		body = "Обращение «" + subject + "» взято в работу."
+		key = "notify.support_in_progress"
 	}
 
 	h.notifyUser(ctx, userID, notify.Event{
 		Kind:   notify.KindSupportStatus,
-		Title:  title,
-		Body:   body,
-		Action: h.panelAction("Открыть обращение", "/support/"+ticketID),
+		Title:  i18n.Key(key + ".title"),
+		Body:   i18n.Key(key+".body", i18n.Params{"subject": supportSubject(subject)}),
+		Action: h.panelAction("notify.action.ticket", "/support/"+ticketID),
 		Meta:   map[string]any{"ticket_id": ticketID, "status": status},
 	})
 }

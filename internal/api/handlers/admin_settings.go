@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"net"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/internal/api/mail"
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 	"golang.org/x/crypto/ssh"
 )
@@ -99,7 +101,7 @@ func (h *Handler) UpdateAdminSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) AdminSettingsTestMail(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
+	claims, ok := tenantClaims(r.Context())
 	if !ok {
 		return
 	}
@@ -126,8 +128,7 @@ func (h *Handler) AdminSettingsTestMail(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "message": "SMTP не настроен"})
 		return
 	}
-	subject := "Тестовое письмо"
-	bodyHTML := mail.TestBody(h.mailBrand(r.Context(), r), to)
+	subject, bodyHTML := mail.TestEmail(i18n.ForUser(r.Context(), h.dbOf(r.Context()), claims.UserID), h.mailBrand(r.Context(), r), to)
 	if err := cfg.Send(to, subject, bodyHTML); err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
 			"ok": false, "message": fmt.Sprintf("Не удалось отправить тестовое письмо (mailer: %s): %s", mailer, err.Error()),
@@ -140,7 +141,7 @@ func (h *Handler) AdminSettingsTestMail(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) AdminSettingsTestTelegram(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
+	claims, ok := tenantClaims(r.Context())
 	if !ok {
 		return
 	}
@@ -167,7 +168,9 @@ func (h *Handler) AdminSettingsTestTelegram(w http.ResponseWriter, r *http.Reque
 	if appName == "" {
 		appName = "Vortanix"
 	}
-	msg := fmt.Sprintf("✅ <b>Тестовое сообщение</b>\nУведомления %s работают!", appName)
+	l := i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID)
+	msg := "✅ <b>" + html.EscapeString(l.T("notify.telegram_test.title")) + "</b>\n" +
+		html.EscapeString(l.T("notify.telegram_test.body", i18n.Params{"app": appName}))
 	if err := h.telegramSendMessage(token, chatID, msg); err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
 			"ok": false, "message": "Не удалось отправить сообщение. Проверьте Chat ID и убедитесь что бот добавлен в чат.",

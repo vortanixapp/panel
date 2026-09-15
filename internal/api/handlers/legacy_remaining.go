@@ -22,6 +22,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/pricing"
 	"github.com/vortanixapp/panel/internal/api/relay"
 
+	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
@@ -550,22 +551,22 @@ func (h *Handler) AdminToggleServerBlock(w http.ResponseWriter, r *http.Request)
 	_ = h.cache.InvalidateTenantServers(ctx)
 
 	if ownerID != "" {
-		reason := body.Reason
-		if reason == "" {
-			reason = "обратитесь в поддержку"
+		reason := i18n.Raw(body.Reason)
+		if body.Reason == "" {
+			reason = i18n.Key("notify.server_blocked.no_reason")
 		}
 		event := notify.Event{
 			Kind:      notify.KindServerBlocked,
-			Title:     "Сервер заблокирован",
-			Body:      "Сервер «" + name + "» заблокирован администратором и остановлен. Причина: " + reason + ".",
+			Title:     i18n.Key("notify.server_blocked.title"),
+			Body:      i18n.Key("notify.server_blocked.body", i18n.Params{"name": name, "reason": reason}),
 			Meta:      map[string]any{"server_id": id},
 			DedupeKey: "server.blocked:" + id,
 		}
 		if !body.Blocked {
 			event = notify.Event{
 				Kind:      notify.KindServerUnblocked,
-				Title:     "Блокировка снята",
-				Body:      "Сервер «" + name + "» разблокирован. Его можно запускать.",
+				Title:     i18n.Key("notify.server_unblocked.title"),
+				Body:      i18n.Key("notify.server_unblocked.body", i18n.Params{"name": name}),
 				Meta:      map[string]any{"server_id": id},
 				DedupeKey: "server.unblocked:" + id,
 			}
