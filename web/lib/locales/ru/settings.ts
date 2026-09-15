@@ -63,15 +63,13 @@ export const settings = {
   "settings.account.display_name": "Отображаемое имя",
   "settings.account.phone": "Телефон",
   "settings.account.language": "Язык",
-  "settings.account.language_ru": "Русский",
-  "settings.account.language_en": "English",
   "settings.account.save_profile": "Сохранить профиль",
   "settings.account.profile_saved": "Профиль сохранён",
 
   "settings.account.language_label": "Язык интерфейса",
   "settings.account.language_select": "Выберите язык",
   "settings.account.language_hint":
-    "Сохраняется локально в браузере до появления i18n на сервере.",
+    "Список языков настраивает администратор панели.",
 
   "settings.account.contacts_hint": "Обновление почты и персональных контактных данных.",
   "settings.account.new_email": "Новый email",

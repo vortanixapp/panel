@@ -57,7 +57,7 @@ import {
   type MetricPoint,
 } from "@/lib/api";
 import { formatAmount } from "@/lib/format";
-import { getLocale, t as translate } from "@/lib/i18n";
+import { dateLocaleTag, t as translate } from "@/lib/i18n";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useMe, useServerDetail, useServerMetrics } from "@/hooks/use-queries";
@@ -90,7 +90,7 @@ function formatDateTime(value: string | null | undefined): string {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   return d
-    .toLocaleString(getLocale() === "en" ? "en-GB" : "ru", {
+    .toLocaleString(dateLocaleTag(), {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

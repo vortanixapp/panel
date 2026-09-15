@@ -19,6 +19,7 @@ func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/health", h.Health)
 	r.Get("/v1/branding", h.GetBranding)
+	r.Get("/v1/i18n", h.PublicI18n)
 	r.Get("/v1/home", h.Home)
 	r.Get("/v1/uploads/avatars/{filename}", h.ServeAvatar)
 	r.Get("/v1/plugins/images/{id}", h.ServePluginImage)

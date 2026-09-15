@@ -609,58 +609,6 @@ func (h *Handler) AdminTariffDuplicate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]string{"id": newID})
 }
 
-func (h *Handler) AdminLanguageList(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	locale := r.URL.Query().Get("locale")
-	if locale == "" {
-		locale = "ru"
-	}
-	rows, _ := h.dbOf(r.Context()).Query(r.Context(), `
-		SELECT key, value FROM core.translation_keys WHERE locale = $1 ORDER BY key
-	`, locale)
-	defer func() {
-		if rows != nil {
-			rows.Close()
-		}
-	}()
-	list := []map[string]string{}
-	if rows != nil {
-		for rows.Next() {
-			var k, v string
-			if rows.Scan(&k, &v) == nil {
-				list = append(list, map[string]string{"key": k, "value": v})
-			}
-		}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"locale": locale, "messages": list})
-}
-
-func (h *Handler) AdminLanguageUpdate(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	var body struct {
-		Locale   string            `json:"locale"`
-		Messages map[string]string `json:"messages"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	if body.Locale == "" {
-		body.Locale = "ru"
-	}
-	for k, v := range body.Messages {
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-			INSERT INTO core.translation_keys (locale, key, value)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (locale, key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
-		`, body.Locale, k, v)
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
-}
-
 func (h *Handler) LocationPullDaemon(w http.ResponseWriter, r *http.Request) {
 	_, ok := tenantClaims(r.Context())
 	if !ok {

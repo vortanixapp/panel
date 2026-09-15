@@ -817,13 +817,6 @@ export const adminContent = {
   "admin.logs.col_action": "Действие",
   "admin.logs.col_resource": "Ресурс",
 
-  "admin.language.group.user_menu": "Меню пользователя",
-  "admin.language.group.admin_menu": "Меню админа",
-  "admin.language.group.settings_menu": "Меню настроек",
-  "admin.language.group.menu_sections": "Разделы меню",
-  "admin.language.group.server_tabs": "Вкладки сервера",
-  "admin.language.group.other": "Прочие ключи",
-
   "admin.updates.title": "Обновления",
   "admin.updates.subtitle":
     "Панель и агенты на локациях обновляются по кнопке или сами, когда выходит новый выпуск.",

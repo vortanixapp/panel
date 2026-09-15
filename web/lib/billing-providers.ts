@@ -1,4 +1,4 @@
-import { getLocale, t } from "@/lib/i18n";
+import { dateLocaleTag, t } from "@/lib/i18n";
 
 export type BillingProviderDef = {
   key: string;
@@ -65,7 +65,7 @@ export function formatBillingDate(value: string | null | undefined): string {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   return d
-    .toLocaleString(getLocale() === "en" ? "en-GB" : "ru", {
+    .toLocaleString(dateLocaleTag(), {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

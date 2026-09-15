@@ -1,153 +1,152 @@
 import { EN } from "@/lib/locales/en";
 import { RU } from "@/lib/locales/ru";
 
-export type Locale = "ru" | "en";
+export type Locale = string;
+export type BaseLocale = "ru" | "en";
 
-export const DEFAULT_LOCALE: Locale = "ru";
+export type LanguageInfo = {
+  code: string;
+  name: string;
+  base: BaseLocale;
+};
+
+export type I18nPayload = {
+  default_locale: string;
+  languages: LanguageInfo[];
+  locale: string;
+  base: BaseLocale;
+  messages: Record<string, string>;
+};
+
+export type I18nState = {
+  locale: string;
+  base: BaseLocale;
+  messages: Record<string, string>;
+  languages: LanguageInfo[];
+  defaultLocale: string;
+};
+
+export const DEFAULT_LOCALE: BaseLocale = "ru";
+export const BASE_LOCALES: BaseLocale[] = ["ru", "en"];
 export const LOCALE_COOKIE_NAME = "vortanix-locale";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-export const SUPPORTED_LOCALES: Locale[] = ["en", "ru"];
+export const BUILTIN_LANGUAGES: LanguageInfo[] = [
+  { code: "ru", name: "Русский", base: "ru" },
+  { code: "en", name: "English", base: "en" },
+];
 
-const CATALOGS: Record<Locale, Record<string, string>> = { ru: RU, en: EN };
+export const CATALOGS: Record<BaseLocale, Record<string, string>> = {
+  ru: RU,
+  en: EN,
+};
+export const CATALOG_KEYS: string[] = Object.keys(RU).sort();
 
 const EN_COVERS_RU: Record<keyof typeof RU, string> = EN;
 const RU_COVERS_EN: Record<keyof typeof EN, string> = RU;
 void EN_COVERS_RU;
 void RU_COVERS_EN;
 
-export type OverridableString = {
-  key: string;
-  default: string;
-  groupKey: string;
-};
+const LOCALE_CODE = /^[a-z]{2,3}(-[a-z0-9]{2,8})?$/;
 
-const OVERRIDABLE_KEYS: { key: string; groupKey: string }[] = [
-  { key: "nav.dashboard", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.servers", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.monitoring", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.news", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.rent_server", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.hosting_my", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.hosting_rent", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.billing", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.support", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.notifications", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.activity", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.daily_bonus", groupKey: "admin.language.group.user_menu" },
-  { key: "nav.kb", groupKey: "admin.language.group.user_menu" },
+export function isBaseLocale(value: unknown): value is BaseLocale {
+  return value === "ru" || value === "en";
+}
 
-  { key: "nav.admin.dashboard", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.analytics", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.users", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.servers", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.support", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.kb", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.locations", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.images", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.games", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.tariffs", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.jobs", groupKey: "admin.language.group.admin_menu" },
-  {
-    key: "nav.admin.hosting_servers",
-    groupKey: "admin.language.group.admin_menu",
-  },
-  {
-    key: "nav.admin.hosting_plans",
-    groupKey: "admin.language.group.admin_menu",
-  },
-  {
-    key: "nav.admin.hosting_accounts",
-    groupKey: "admin.language.group.admin_menu",
-  },
-  { key: "nav.admin.plugins", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.maps", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.news", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.promo", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.mailings", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.settings", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.appearance", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.billing", groupKey: "admin.language.group.admin_menu" },
-  {
-    key: "nav.admin.payment_providers",
-    groupKey: "admin.language.group.admin_menu",
-  },
-  { key: "nav.admin.groups", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.language", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.activity", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.logs", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.security", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.integrations", groupKey: "admin.language.group.admin_menu" },
-  { key: "nav.admin.bug_report", groupKey: "admin.language.group.admin_menu" },
+export function normalizeLocaleCode(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase().replace(/_/g, "-");
+}
 
-  { key: "nav.settings", groupKey: "admin.language.group.settings_menu" },
-  {
-    key: "nav.settings.profile",
-    groupKey: "admin.language.group.settings_menu",
-  },
-  {
-    key: "nav.settings.account",
-    groupKey: "admin.language.group.settings_menu",
-  },
-  {
-    key: "nav.settings.appearance",
-    groupKey: "admin.language.group.settings_menu",
-  },
-  {
-    key: "nav.settings.notifications",
-    groupKey: "admin.language.group.settings_menu",
-  },
+export function isLocaleCode(value: string): boolean {
+  return LOCALE_CODE.test(value);
+}
 
-  { key: "nav.group.panel", groupKey: "admin.language.group.menu_sections" },
-  { key: "nav.group.general", groupKey: "admin.language.group.menu_sections" },
-  {
-    key: "nav.group.infrastructure",
-    groupKey: "admin.language.group.menu_sections",
-  },
-  { key: "nav.group.hosting", groupKey: "admin.language.group.menu_sections" },
-  { key: "nav.group.catalog", groupKey: "admin.language.group.menu_sections" },
-  { key: "nav.group.content", groupKey: "admin.language.group.menu_sections" },
-  { key: "nav.group.account", groupKey: "admin.language.group.menu_sections" },
-  { key: "nav.group.settings", groupKey: "admin.language.group.menu_sections" },
+export function catalogText(base: BaseLocale, key: string): string | undefined {
+  return CATALOGS[base][key] ?? CATALOGS[DEFAULT_LOCALE][key];
+}
 
-  { key: "server.tab.main", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.console", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.logs", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.metrics", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.ftp", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.mysql", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.cron", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.firewall", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.ports", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.settings", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.tariff", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.plugins", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.maps", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.copies", groupKey: "admin.language.group.server_tabs" },
-  { key: "server.tab.friends", groupKey: "admin.language.group.server_tabs" },
-];
+export function resolveLocale(
+  value: string | null | undefined,
+  languages: LanguageInfo[],
+  fallback: string
+): string {
+  const code = normalizeLocaleCode(value);
+  if (languages.some((l) => l.code === code)) return code;
+  if (languages.some((l) => l.code === fallback)) return fallback;
+  return languages[0]?.code ?? DEFAULT_LOCALE;
+}
 
-export const OVERRIDABLE_STRINGS: OverridableString[] = OVERRIDABLE_KEYS.map(
-  ({ key, groupKey }) => ({
-    key,
-    groupKey,
-    default: EN[key as keyof typeof EN] ?? key,
-  })
-);
+export function fallbackI18n(requested?: string | null): I18nPayload {
+  const code = normalizeLocaleCode(requested);
+  const locale = isBaseLocale(code) ? code : DEFAULT_LOCALE;
+  return {
+    default_locale: DEFAULT_LOCALE,
+    languages: BUILTIN_LANGUAGES,
+    locale,
+    base: locale,
+    messages: {},
+  };
+}
 
-let overrides: Record<string, string> = {};
-let locale: Locale = DEFAULT_LOCALE;
+export function parseI18nPayload(
+  raw: unknown,
+  requested?: string | null
+): I18nPayload {
+  const fallback = fallbackI18n(requested);
+  if (!raw || typeof raw !== "object") return fallback;
+  const data = raw as Record<string, unknown>;
 
+  const languages = Array.isArray(data.languages)
+    ? data.languages.flatMap((item): LanguageInfo[] => {
+        if (!item || typeof item !== "object") return [];
+        const { code, name, base } = item as Record<string, unknown>;
+        if (typeof code !== "string" || !isLocaleCode(code)) return [];
+        if (!isBaseLocale(base)) return [];
+        const label = typeof name === "string" && name.trim() ? name : code;
+        return [{ code, name: label, base }];
+      })
+    : [];
+  if (languages.length === 0) return fallback;
+
+  const messages: Record<string, string> = {};
+  if (data.messages && typeof data.messages === "object") {
+    for (const [key, value] of Object.entries(
+      data.messages as Record<string, unknown>
+    )) {
+      if (typeof value === "string" && value.trim() !== "") {
+        messages[key] = value;
+      }
+    }
+  }
+
+  const defaultLocale = resolveLocale(
+    String(data.default_locale ?? ""),
+    languages,
+    languages[0].code
+  );
+  const locale = resolveLocale(String(data.locale ?? ""), languages, defaultLocale);
+  const base = languages.find((l) => l.code === locale)?.base ?? DEFAULT_LOCALE;
+  return { default_locale: defaultLocale, languages, locale, base, messages };
+}
+
+export function i18nState(payload: I18nPayload): I18nState {
+  return {
+    locale: payload.locale,
+    base: payload.base,
+    messages: payload.messages,
+    languages: payload.languages,
+    defaultLocale: payload.default_locale,
+  };
+}
+
+let state: I18nState = i18nState(fallbackI18n());
 let version = 0;
 const listeners = new Set<() => void>();
 
-function notify() {
+export function setI18nState(next: I18nState) {
+  if (typeof window === "undefined" || next === state) return;
+  state = next;
   version += 1;
   listeners.forEach((fn) => fn());
-}
-
-export function setTranslationOverrides(next: Record<string, string>) {
-  overrides = next ?? {};
-  notify();
 }
 
 export function subscribeToTranslations(fn: () => void): () => void {
@@ -157,50 +156,67 @@ export function subscribeToTranslations(fn: () => void): () => void {
   };
 }
 
-export function getTranslationOverrides(): Record<string, string> {
-  return overrides;
-}
-
 export function getTranslationsVersion(): number {
   return version;
 }
 
-export function normalizeLocale(value: string | null | undefined): Locale {
-  return SUPPORTED_LOCALES.includes(value as Locale)
-    ? (value as Locale)
-    : DEFAULT_LOCALE;
+export function getTranslationMessages(): Record<string, string> {
+  return state.messages;
 }
 
-export function browserLocale(): Locale {
-  if (typeof navigator === "undefined") return DEFAULT_LOCALE;
+export function getLocale(): string {
+  return state.locale;
+}
+
+export function getBaseLocale(): BaseLocale {
+  return state.base;
+}
+
+export function browserLocale(
+  languages: LanguageInfo[] = state.languages,
+  fallback: string = state.defaultLocale
+): string {
+  if (typeof navigator === "undefined") return fallback;
+  const codes = new Set(languages.map((l) => l.code));
   for (const candidate of navigator.languages ?? [navigator.language]) {
-    const base = candidate?.split("-")[0];
-    if (SUPPORTED_LOCALES.includes(base as Locale)) return base as Locale;
+    const tag = normalizeLocaleCode(candidate);
+    if (codes.has(tag)) return tag;
+    const primary = tag.split("-")[0];
+    if (codes.has(primary)) return primary;
   }
-  return DEFAULT_LOCALE;
+  return fallback;
 }
 
-export function getLocale(): Locale {
-  return locale;
-}
-
-export function setLocale(next: string | null | undefined) {
-  const normalized = normalizeLocale(next);
-  if (normalized === locale) return;
-  locale = normalized;
-  notify();
-}
-
-const LOCALE_TAGS: Record<Locale, string> = {
+const LOCALE_TAGS: Record<string, string> = {
   ru: "ru-RU",
   en: "en-US",
 };
 
+export function localeTagOf(code: string, base: BaseLocale = DEFAULT_LOCALE): string {
+  if (LOCALE_TAGS[code]) return LOCALE_TAGS[code];
+  try {
+    return Intl.getCanonicalLocales(code)[0] ?? LOCALE_TAGS[base];
+  } catch {
+    return LOCALE_TAGS[base];
+  }
+}
+
 export function localeTag(): string {
-  return LOCALE_TAGS[locale] ?? LOCALE_TAGS[DEFAULT_LOCALE];
+  return localeTagOf(state.locale, state.base);
+}
+
+export function dateLocaleTag(): string {
+  if (state.locale === "en") return "en-GB";
+  if (state.locale === "ru") return "ru";
+  return localeTag();
+}
+
+export function builtinLanguageName(base: BaseLocale): string {
+  return BUILTIN_LANGUAGES.find((l) => l.code === base)?.name ?? base;
 }
 
 export type TranslateParams = Record<string, string | number>;
+export type TranslateFn = (key: string, params?: TranslateParams) => string;
 
 function interpolate(template: string, params: TranslateParams): string {
   return template.replace(/\{(\w+)\}/g, (match, name: string) => {
@@ -209,26 +225,21 @@ function interpolate(template: string, params: TranslateParams): string {
   });
 }
 
-export function translateWith(target: Locale): TranslateFn {
+export function translator(source: {
+  base: BaseLocale;
+  messages: Record<string, string>;
+}): TranslateFn {
   return (key: string, params?: TranslateParams): string => {
-    const override = overrides[key];
-    let value: string | undefined;
-    if (typeof override === "string" && override.trim() !== "") {
-      value = override;
-    } else {
-      value = CATALOGS[target][key] ?? CATALOGS[DEFAULT_LOCALE][key];
-    }
+    const custom = source.messages[key];
+    const value =
+      typeof custom === "string" && custom.trim() !== ""
+        ? custom
+        : catalogText(source.base, key);
     if (value === undefined) return key;
     return params ? interpolate(value, params) : value;
   };
 }
 
-export function localeTagOf(target: Locale): string {
-  return LOCALE_TAGS[target] ?? LOCALE_TAGS[DEFAULT_LOCALE];
-}
-
 export function t(key: string, params?: TranslateParams): string {
-  return translateWith(locale)(key, params);
+  return translator(state)(key, params);
 }
-
-export type TranslateFn = (key: string, params?: TranslateParams) => string;

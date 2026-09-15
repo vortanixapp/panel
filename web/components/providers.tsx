@@ -6,20 +6,19 @@ import { ThemeProvider } from "@/context/theme-provider";
 import { FontProvider } from "@/context/font-provider";
 import { DirectionProvider } from "@/context/direction-provider";
 import { BrandProvider } from "@/context/brand-provider";
-import { TranslationsProvider } from "@/context/translations-provider";
 import { LocaleProvider } from "@/context/locale-provider";
-import type { Locale } from "@/lib/i18n";
+import type { I18nPayload } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthSessionProvider } from "@/components/auth/auth-session-provider";
 import { VxRouteProgress } from "@/components/vx/loader";
 
 export function Providers({
   children,
-  initialLocale,
+  i18n,
   hasLocaleCookie,
 }: {
   children: React.ReactNode;
-  initialLocale: Locale;
+  i18n: I18nPayload;
   hasLocaleCookie: boolean;
 }) {
   const [queryClient] = useState(
@@ -37,24 +36,19 @@ export function Providers({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark">
-        <FontProvider>
-          <DirectionProvider>
-            <BrandProvider>
-              <VxRouteProgress />
-              <AuthSessionProvider>
-                <LocaleProvider
-                  initialLocale={initialLocale}
-                  hasCookie={hasLocaleCookie}
-                >
-                  <TranslationsProvider>{children}</TranslationsProvider>
-                </LocaleProvider>
-              </AuthSessionProvider>
-              <Toaster richColors closeButton />
-            </BrandProvider>
-          </DirectionProvider>
-        </FontProvider>
-      </ThemeProvider>
+      <LocaleProvider initial={i18n} hasCookie={hasLocaleCookie}>
+        <ThemeProvider defaultTheme="dark">
+          <FontProvider>
+            <DirectionProvider>
+              <BrandProvider>
+                <VxRouteProgress />
+                <AuthSessionProvider>{children}</AuthSessionProvider>
+                <Toaster richColors closeButton />
+              </BrandProvider>
+            </DirectionProvider>
+          </FontProvider>
+        </ThemeProvider>
+      </LocaleProvider>
     </QueryClientProvider>
   );
 }

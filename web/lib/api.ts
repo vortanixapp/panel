@@ -6,7 +6,7 @@ import type {
 } from "@/lib/game-settings/types";
 import { decodeAccess, forgetAccount, markNeedsSignIn, rememberTokens } from "@/lib/accounts";
 import { runtimeConfig } from "@/lib/runtime-config";
-import { t } from "@/lib/i18n";
+import { t, type BaseLocale } from "@/lib/i18n";
 import type {
   AppearanceAccent,
   AppearanceFont,
@@ -4118,28 +4118,80 @@ export async function deleteAdminHostingPlan(id: string) {
   return apiFetch<{ status: string }>(`/v1/admin/hosting/plans/${id}`, { method: "DELETE" });
 }
 
-export type AdminLanguageItem = { key: string; value: string };
+export type AdminLanguage = {
+  code: string;
+  name: string;
+  base: BaseLocale;
+  enabled: boolean;
+  builtin: boolean;
+  translated: number;
+};
 
-export async function fetchTranslations() {
-  return apiFetch<{ locale: string; messages: Record<string, string> }>(
-    "/v1/translations/messages"
-  );
+export type AdminLanguages = {
+  default_locale: string;
+  languages: AdminLanguage[];
+};
+
+export type AdminLanguagePatch = {
+  name?: string;
+  base?: BaseLocale;
+  enabled?: boolean;
+  default?: boolean;
+};
+
+export type AdminLanguageMessages = {
+  code: string;
+  messages: Record<string, string>;
+};
+
+export async function fetchI18n(locale: string) {
+  return apiFetch<unknown>(`/v1/i18n?locale=${encodeURIComponent(locale)}`);
 }
 
-export async function fetchAdminLanguage(locale = "ru") {
-  return apiFetch<{ locale: string; messages: AdminLanguageItem[] }>(
-    `/v1/admin/language?locale=${encodeURIComponent(locale)}`
-  );
+export async function fetchAdminLanguages() {
+  return apiFetch<AdminLanguages>("/v1/admin/language");
 }
 
-export async function updateAdminLanguage(
-  locale: string,
-  messages: Record<string, string>
-) {
-  return apiFetch<{ status: string }>("/v1/admin/language", {
-    method: "PATCH",
-    body: JSON.stringify({ locale, messages }),
+export async function createAdminLanguage(input: {
+  code: string;
+  name: string;
+  base: BaseLocale;
+}) {
+  return apiFetch<AdminLanguages>("/v1/admin/language", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
+}
+
+export async function updateAdminLanguage(code: string, patch: AdminLanguagePatch) {
+  return apiFetch<AdminLanguages>(
+    `/v1/admin/language/${encodeURIComponent(code)}`,
+    { method: "PATCH", body: JSON.stringify(patch) }
+  );
+}
+
+export async function deleteAdminLanguage(code: string) {
+  return apiFetch<AdminLanguages>(
+    `/v1/admin/language/${encodeURIComponent(code)}`,
+    { method: "DELETE" }
+  );
+}
+
+export async function fetchAdminLanguageMessages(code: string) {
+  return apiFetch<AdminLanguageMessages>(
+    `/v1/admin/language/${encodeURIComponent(code)}/messages`
+  );
+}
+
+export async function saveAdminLanguageMessages(
+  code: string,
+  messages: Record<string, string>,
+  replace = false
+) {
+  return apiFetch<AdminLanguageMessages>(
+    `/v1/admin/language/${encodeURIComponent(code)}/messages`,
+    { method: "PUT", body: JSON.stringify({ messages, replace }) }
+  );
 }
 
 export type AdminMysqlInstance = {

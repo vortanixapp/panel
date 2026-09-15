@@ -34,7 +34,8 @@ import {
 import { TelegramLoginButton } from "@/components/auth/telegram-login-button";
 import { useChangePassword } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
-import { browserLocale, DEFAULT_LOCALE, localeTag } from "@/lib/i18n";
+import { browserLocale, localeTag } from "@/lib/i18n";
+import { useLocale } from "@/context/locale-provider";
 import { setAccountPreferences, getAccountPreferences } from "@/lib/user-preferences";
 
 const SOCIAL_PROVIDERS = [
@@ -75,7 +76,8 @@ export function AccountSettings() {
   const [lastName, setLastName] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
-  const [locale, setLocale] = useState(DEFAULT_LOCALE as string);
+  const { languages, defaultLocale } = useLocale();
+  const [locale, setLocale] = useState<string>(defaultLocale);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -469,8 +471,11 @@ export function AccountSettings() {
                   value={locale}
                   onChange={(e) => setLocale(e.target.value)}
                 >
-                  <option value="ru">{t("settings.account.language_ru")}</option>
-                  <option value="en">{t("settings.account.language_en")}</option>
+                  {languages.map((language) => (
+                    <option key={language.code} value={language.code}>
+                      {language.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>

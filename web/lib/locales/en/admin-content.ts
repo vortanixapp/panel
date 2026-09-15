@@ -822,13 +822,6 @@ export const adminContent = {
   "admin.logs.col_action": "Action",
   "admin.logs.col_resource": "Resource",
 
-  "admin.language.group.user_menu": "User menu",
-  "admin.language.group.admin_menu": "Admin menu",
-  "admin.language.group.settings_menu": "Settings menu",
-  "admin.language.group.menu_sections": "Menu sections",
-  "admin.language.group.server_tabs": "Server tabs",
-  "admin.language.group.other": "Other keys",
-
   "admin.updates.title": "Updates",
   "admin.updates.subtitle":
     "The panel and the agents on your locations update with one button, or on their own when a new release comes out.",

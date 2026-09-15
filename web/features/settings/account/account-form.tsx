@@ -32,6 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { PasswordInput } from "@/components/password-input";
+import { useLocale } from "@/context/locale-provider";
 import { useChangePassword } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
@@ -39,11 +40,6 @@ import {
   getAccountPreferences,
   setAccountPreferences,
 } from "@/lib/user-preferences";
-
-const languages = [
-  { labelKey: "settings.account.language_ru", value: "ru" },
-  { labelKey: "settings.account.language_en", value: "en" },
-] as const;
 
 const buildSchema = (t: TranslateFn) =>
   z
@@ -84,11 +80,12 @@ type AccountFormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 export function AccountForm() {
   const t = useT();
+  const { languages, locale } = useLocale();
   const changePassword = useChangePassword();
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(buildSchema(t)),
     defaultValues: {
-      language: "ru",
+      language: locale,
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
@@ -153,12 +150,8 @@ export function AccountForm() {
                         !field.value && "text-muted-foreground"
                       )}
                     >
-                      {field.value
-                        ? t(
-                            languages.find((l) => l.value === field.value)
-                              ?.labelKey ?? "settings.account.language_select"
-                          )
-                        : t("settings.account.language_select")}
+                      {languages.find((l) => l.code === field.value)?.name ??
+                        t("settings.account.language_select")}
                       <CaretSortIcon className="ms-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </FormControl>
@@ -171,19 +164,19 @@ export function AccountForm() {
                       <CommandList>
                         {languages.map((language) => (
                           <CommandItem
-                            value={t(language.labelKey)}
-                            key={language.value}
-                            onSelect={() => form.setValue("language", language.value)}
+                            value={`${language.name} ${language.code}`}
+                            key={language.code}
+                            onSelect={() => form.setValue("language", language.code)}
                           >
                             <CheckIcon
                               className={cn(
                                 "size-4",
-                                language.value === field.value
+                                language.code === field.value
                                   ? "opacity-100"
                                   : "opacity-0"
                               )}
                             />
-                            {t(language.labelKey)}
+                            {language.name}
                           </CommandItem>
                         ))}
                       </CommandList>

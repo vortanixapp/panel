@@ -5,33 +5,41 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
+import { fetchI18n } from "@/lib/api";
 import { setCookie } from "@/lib/cookies";
 import {
   browserLocale,
-  DEFAULT_LOCALE,
+  fallbackI18n,
+  i18nState,
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
-  normalizeLocale,
-  setLocale as setModuleLocale,
-  type Locale,
+  normalizeLocaleCode,
+  parseI18nPayload,
+  resolveLocale,
+  setI18nState,
+  type I18nPayload,
+  type I18nState,
 } from "@/lib/i18n";
 import {
   ACCOUNT_PREFS_EVENT,
   getAccountPreferences,
 } from "@/lib/user-preferences";
 
-type LocaleContextValue = {
-  locale: Locale;
+type LocaleContextValue = I18nState & {
   setLocale: (next: string | null | undefined) => void;
+  reload: () => Promise<void>;
 };
 
 const LocaleContext = createContext<LocaleContextValue>({
-  locale: DEFAULT_LOCALE,
+  ...i18nState(fallbackI18n()),
   setLocale: () => undefined,
+  reload: async () => undefined,
 });
 
 export function useLocale(): LocaleContextValue {
@@ -39,43 +47,99 @@ export function useLocale(): LocaleContextValue {
 }
 
 export function LocaleProvider({
-  initialLocale,
+  initial,
   hasCookie,
   children,
 }: {
-  initialLocale: Locale;
+  initial: I18nPayload;
   hasCookie: boolean;
   children: ReactNode;
 }) {
-  const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const [state, setState] = useState<I18nState>(() => i18nState(initial));
+  const stateRef = useRef(state);
+  const requestRef = useRef(0);
 
   useEffect(() => {
-    setModuleLocale(locale);
-  }, [locale]);
-
-  const setLocale = useCallback((next: string | null | undefined) => {
-    const normalized = normalizeLocale(next);
-    setCookie(LOCALE_COOKIE_NAME, normalized, LOCALE_COOKIE_MAX_AGE);
-    setLocaleState(normalized);
+    setI18nState(stateRef.current);
   }, []);
+
+  const apply = useCallback((next: I18nState) => {
+    stateRef.current = next;
+    setI18nState(next);
+    setState(next);
+    setCookie(LOCALE_COOKIE_NAME, next.locale, LOCALE_COOKIE_MAX_AGE);
+    document.documentElement.lang = next.locale;
+  }, []);
+
+  const load = useCallback(
+    async (requested: string) => {
+      const request = ++requestRef.current;
+      let payload: I18nPayload;
+      try {
+        payload = parseI18nPayload(await fetchI18n(requested), requested);
+      } catch {
+        const current = stateRef.current;
+        const locale = resolveLocale(
+          requested,
+          current.languages,
+          current.defaultLocale
+        );
+        payload = {
+          default_locale: current.defaultLocale,
+          languages: current.languages,
+          locale,
+          base:
+            current.languages.find((l) => l.code === locale)?.base ??
+            current.base,
+          messages: locale === current.locale ? current.messages : {},
+        };
+      }
+      if (request !== requestRef.current) return;
+      apply(i18nState(payload));
+    },
+    [apply]
+  );
+
+  const setLocale = useCallback(
+    (next: string | null | undefined) => {
+      const code = normalizeLocaleCode(next);
+      if (!code) return;
+      if (code === stateRef.current.locale) {
+        requestRef.current += 1;
+        setCookie(LOCALE_COOKIE_NAME, code, LOCALE_COOKIE_MAX_AGE);
+        return;
+      }
+      void load(code);
+    },
+    [load]
+  );
+
+  const reload = useCallback(() => load(stateRef.current.locale), [load]);
 
   useEffect(() => {
     if (hasCookie) return;
-    setLocale(getAccountPreferences().language || browserLocale());
+    const current = stateRef.current;
+    setLocale(
+      getAccountPreferences().language ||
+        browserLocale(current.languages, current.defaultLocale)
+    );
   }, [hasCookie, setLocale]);
 
   useEffect(() => {
-    const apply = () => {
+    const onPrefs = () => {
       const stored = getAccountPreferences().language;
       if (stored) setLocale(stored);
     };
-    window.addEventListener(ACCOUNT_PREFS_EVENT, apply);
-    return () => window.removeEventListener(ACCOUNT_PREFS_EVENT, apply);
+    window.addEventListener(ACCOUNT_PREFS_EVENT, onPrefs);
+    return () => window.removeEventListener(ACCOUNT_PREFS_EVENT, onPrefs);
   }, [setLocale]);
 
+  const value = useMemo(
+    () => ({ ...state, setLocale, reload }),
+    [state, setLocale, reload]
+  );
+
   return (
-    <LocaleContext.Provider value={{ locale, setLocale }}>
-      {children}
-    </LocaleContext.Provider>
+    <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
   );
 }

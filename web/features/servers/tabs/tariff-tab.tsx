@@ -30,7 +30,7 @@ import { formatAmount } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useServerDetail } from "@/hooks/use-queries";
-import { getLocale } from "@/lib/i18n";
+import { dateLocaleTag } from "@/lib/i18n";
 import { useT } from "@/hooks/use-translations";
 
 export function ServerTariffTab() {
@@ -331,7 +331,7 @@ export function ServerTariffTab() {
           {expiresAt && (
             <InfoRow
               k={t("servers.tariff.row_rented_until")}
-              v={expiresAt.toLocaleDateString(getLocale() === "en" ? "en-GB" : "ru")}
+              v={expiresAt.toLocaleDateString(dateLocaleTag())}
             />
           )}
           {daysLeft !== null && (

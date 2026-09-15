@@ -37,7 +37,7 @@ export const nav = {
   "nav.admin.billing": "Billing",
   "nav.admin.payment_providers": "Payment providers",
   "nav.admin.groups": "Groups",
-  "nav.admin.language": "Language",
+  "nav.admin.language": "Languages",
   "nav.admin.activity": "Activity log",
   "nav.admin.logs": "Logs",
   "nav.admin.security": "Security",

@@ -1,4 +1,4 @@
-import { getLocale, t } from "@/lib/i18n";
+import { dateLocaleTag, t } from "@/lib/i18n";
 
 export type HostingStatusColor = "emerald" | "rose" | "amber" | "sky";
 
@@ -68,14 +68,14 @@ export function formatHostingDate(value: string | null | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(getLocale() === "en" ? "en-GB" : "ru");
+  return date.toLocaleDateString(dateLocaleTag());
 }
 
 export function formatHostingDateTime(value: string | null | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(getLocale() === "en" ? "en-GB" : "ru");
+  return date.toLocaleString(dateLocaleTag());
 }
 
 export function isHostingExpired(expiresAt: string | null | undefined): boolean {

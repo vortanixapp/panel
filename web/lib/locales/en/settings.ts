@@ -61,15 +61,13 @@ export const settings = {
   "settings.account.display_name": "Display name",
   "settings.account.phone": "Phone",
   "settings.account.language": "Language",
-  "settings.account.language_ru": "Russian",
-  "settings.account.language_en": "English",
   "settings.account.save_profile": "Save profile",
   "settings.account.profile_saved": "Profile saved",
 
   "settings.account.language_label": "Interface language",
   "settings.account.language_select": "Select a language",
   "settings.account.language_hint":
-    "Stored locally in the browser until server-side i18n is available.",
+    "The panel administrator manages the list of languages.",
 
   "settings.account.contacts_hint": "Update your email and personal contact details.",
   "settings.account.new_email": "New email",

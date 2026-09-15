@@ -11,7 +11,8 @@ import {
   Sora,
   Space_Mono,
 } from "next/font/google";
-import { LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n";
+import { LOCALE_COOKIE_NAME } from "@/lib/i18n";
+import { loadServerI18n } from "@/lib/i18n-server";
 import { BRAND_NAME, DEFAULT_BRAND_MARK_URL } from "@/lib/brand";
 import { serverRuntimeConfig } from "@/lib/runtime-config";
 import { Providers } from "@/components/providers";
@@ -107,10 +108,10 @@ export default async function RootLayout({
 }) {
   const store = await cookies();
   const cookieLocale = store.get(LOCALE_COOKIE_NAME)?.value;
-  const locale = normalizeLocale(cookieLocale);
+  const i18n = await loadServerI18n(cookieLocale);
 
   return (
-    <html lang={locale} className="dark" suppressHydrationWarning>
+    <html lang={i18n.locale} className="dark" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -126,10 +127,7 @@ export default async function RootLayout({
       <body
         className={`${inter.variable} ${sora.variable} ${spaceMono.variable} ${outfit.variable} ${dmMono.variable} ${manrope.variable} ${rubik.variable} ${montserrat.variable} ${ibmPlexSans.variable} font-sans`}
       >
-        <Providers
-          initialLocale={locale}
-          hasLocaleCookie={Boolean(cookieLocale)}
-        >
+        <Providers i18n={i18n} hasLocaleCookie={Boolean(cookieLocale)}>
           <NavigationProgress />
           {children}
         </Providers>

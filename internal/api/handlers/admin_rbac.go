@@ -105,7 +105,7 @@ func rbacPermissionLabels() map[string]string {
 		"admin.mailings.write":          "Рассылка (изменение/запуск)",
 		"admin.settings.write":          "Настройки (изменение)",
 		"admin.payment_providers.write": "Платёжные провайдеры (изменение)",
-		"admin.language.write":          "Язык (изменение)",
+		"admin.language.write":          "Языки и переводы (изменение)",
 		"admin.logs.read":               "Логи (просмотр)",
 		"admin.jobs.read":               "Очередь задач (просмотр)",
 		"admin.jobs.write":              "Очередь задач (перезапуск/отмена)",

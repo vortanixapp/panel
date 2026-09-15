@@ -477,33 +477,6 @@ func (h *Handler) Disable2FA(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "disabled"})
 }
 
-func (h *Handler) Translations(w http.ResponseWriter, r *http.Request) {
-	claims, ok := tenantClaims(r.Context())
-	locale := "ru"
-	if ok {
-		var l string
-		if err := h.dbOf(r.Context()).QueryRow(r.Context(), `SELECT locale FROM core.user_profiles WHERE user_id = $1`, claims.UserID).Scan(&l); err == nil && l != "" {
-			locale = l
-		}
-	}
-	messages := map[string]string{}
-	if ok {
-		rows, err := h.dbOf(r.Context()).Query(r.Context(), `
-			SELECT key, value FROM core.translation_keys WHERE locale = $1
-		`, locale)
-		if err == nil {
-			defer rows.Close()
-			for rows.Next() {
-				var k, v string
-				if rows.Scan(&k, &v) == nil {
-					messages[k] = v
-				}
-			}
-		}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"locale": locale, "messages": messages})
-}
-
 func (h *Handler) SetLocale(w http.ResponseWriter, r *http.Request) {
 	claims, ok := tenantClaims(r.Context())
 	if !ok {

@@ -10,24 +10,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { updateAccount } from "@/lib/api";
-import { SUPPORTED_LOCALES, getLocale, type Locale } from "@/lib/i18n";
+import { useLocale } from "@/context/locale-provider";
+import { getAccessToken, updateAccount } from "@/lib/api";
 import { setAccountPreferences } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
-const LOCALE_NAMES: Record<Locale, string> = {
-  ru: "Русский",
-  en: "English",
-};
-
 export function LanguageSwitch() {
   const t = useT();
-  const locale = getLocale();
+  const { locale, languages } = useLocale();
 
-  function choose(next: Locale) {
+  function choose(next: string) {
     if (next === locale) return;
     setAccountPreferences({ language: next });
+    if (!getAccessToken()) return;
     void updateAccount({ locale: next }).catch((err: unknown) =>
       toast.error(
         t("layout.language_save_failed", {
@@ -36,6 +32,8 @@ export function LanguageSwitch() {
       )
     );
   }
+
+  if (languages.length < 2) return null;
 
   return (
     <DropdownMenu modal={false}>
@@ -46,10 +44,16 @@ export function LanguageSwitch() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {SUPPORTED_LOCALES.map((code) => (
-          <DropdownMenuItem key={code} onClick={() => choose(code)}>
-            {LOCALE_NAMES[code]}
-            <Check size={14} className={cn("ms-auto", locale !== code && "hidden")} />
+        {languages.map((language) => (
+          <DropdownMenuItem
+            key={language.code}
+            onClick={() => choose(language.code)}
+          >
+            {language.name}
+            <Check
+              size={14}
+              className={cn("ms-auto", locale !== language.code && "hidden")}
+            />
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

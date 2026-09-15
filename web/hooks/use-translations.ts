@@ -4,37 +4,33 @@ import { useMemo, useSyncExternalStore } from "react";
 
 import { useLocale } from "@/context/locale-provider";
 import {
-  getTranslationOverrides,
-  getTranslationsVersion,
+  getTranslationMessages,
   localeTagOf,
   subscribeToTranslations,
-  translateWith,
+  translator,
   type TranslateFn,
 } from "@/lib/i18n";
+
+const EMPTY_MESSAGES: Record<string, string> = {};
+
+function serverMessages(): Record<string, string> {
+  return EMPTY_MESSAGES;
+}
 
 export function useTranslations(): Record<string, string> {
   return useSyncExternalStore(
     subscribeToTranslations,
-    getTranslationOverrides,
-    () => ({})
+    getTranslationMessages,
+    serverMessages
   );
-}
-
-function serverVersion(): number {
-  return 0;
 }
 
 export function useT(): TranslateFn {
-  const { locale } = useLocale();
-  const version = useSyncExternalStore(
-    subscribeToTranslations,
-    getTranslationsVersion,
-    serverVersion
-  );
-  return useMemo(() => translateWith(locale), [locale, version]);
+  const { base, messages } = useLocale();
+  return useMemo(() => translator({ base, messages }), [base, messages]);
 }
 
 export function useLocaleTag(): string {
-  const { locale } = useLocale();
-  return localeTagOf(locale);
+  const { locale, base } = useLocale();
+  return localeTagOf(locale, base);
 }
