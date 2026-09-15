@@ -5113,6 +5113,238 @@ export async function openPaymentReceipt(paymentId: string) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+export type BillingPayerType = "person" | "ip" | "company";
+
+export type BillingPayer = {
+  user_id: string;
+  email: string;
+  person_name: string;
+  payer_type: BillingPayerType;
+  legal_name: string;
+  inn: string;
+  kpp: string;
+  ogrn: string;
+  address: string;
+};
+
+export type BillingPayerInput = Pick<
+  BillingPayer,
+  "payer_type" | "legal_name" | "inn" | "kpp" | "ogrn" | "address"
+>;
+
+export type BillingActMonth = {
+  period: string;
+  count: number;
+  amount: number;
+  number: number | null;
+  closed: boolean;
+};
+
+export type BillingDocumentsData = {
+  payer: BillingPayer;
+  currency: string;
+  currencies: string[];
+  months: BillingActMonth[];
+  company: { name: string; inn: string; tax_system: string; ready: boolean };
+};
+
+function documentQuery(params: Record<string, string>) {
+  return new URLSearchParams(params).toString();
+}
+
+async function authorizedResponse(path: string, fallback: string) {
+  await ensureValidSession();
+  const token = getAccessToken();
+  const res = await fetch(API_URL + path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    let message = fallback;
+    try {
+      message = ((await res.json()) as { error?: string }).error ?? message;
+    } catch {}
+    throw new Error(message);
+  }
+  return res;
+}
+
+async function openAuthorizedDocument(path: string, fallback: string) {
+  const pending = window.open("", "_blank");
+  try {
+    const res = await authorizedResponse(path, fallback);
+    const url = URL.createObjectURL(await res.blob());
+    if (pending) {
+      pending.location.href = url;
+    } else {
+      window.open(url, "_blank", "noopener");
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (e) {
+    pending?.close();
+    throw e;
+  }
+}
+
+async function downloadAuthorizedFile(path: string, filename: string, fallback: string) {
+  const res = await authorizedResponse(path, fallback);
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function fetchBillingDocuments(currency?: string) {
+  const tail = currency ? `?${documentQuery({ currency })}` : "";
+  return apiFetch<BillingDocumentsData>(`/v1/billing/documents${tail}`);
+}
+
+export async function saveBillingPayer(data: BillingPayerInput) {
+  return apiFetch<BillingDocumentsData>("/v1/billing/payer", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function openBillingAct(period: string, currency: string) {
+  return openAuthorizedDocument(
+    `/v1/billing/documents/act?${documentQuery({ period, currency })}`,
+    t("billing.documents.open_failed")
+  );
+}
+
+export function openBillingReconciliation(from: string, to: string, currency: string) {
+  return openAuthorizedDocument(
+    `/v1/billing/documents/reconciliation?${documentQuery({ from, to, currency })}`,
+    t("billing.documents.open_failed")
+  );
+}
+
+export type AccountingRequisites = {
+  legal_form: string;
+  name: string;
+  full_name: string;
+  inn: string;
+  kpp: string;
+  ogrn: string;
+  address: string;
+  email: string;
+  phone: string;
+  bank_name: string;
+  bank_bik: string;
+  bank_account: string;
+  bank_corr_account: string;
+  signer_name: string;
+  signer_position: string;
+  tax_system: string;
+  vat: string;
+  receipt_mode: string;
+  receipt_item: string;
+  timezone: string;
+};
+
+export type AccountingRequisitesResponse = {
+  requisites: AccountingRequisites;
+  legal_forms: string[];
+  tax_systems: string[];
+  vat_rates: string[];
+  receipt_modes: string[];
+  ready: boolean;
+};
+
+export async function fetchAccountingRequisites() {
+  return apiFetch<AccountingRequisitesResponse>("/v1/admin/accounting/requisites");
+}
+
+export async function saveAccountingRequisites(data: AccountingRequisites) {
+  return apiFetch<AccountingRequisitesResponse>("/v1/admin/accounting/requisites", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export type AccountingPeriodParams = { from: string; to: string; currency: string };
+
+export type AccountingMoney = { count: number; amount: number };
+
+export type AccountingSummary = {
+  from: string;
+  to: string;
+  currency: string;
+  currencies: string[];
+  income: AccountingMoney;
+  refunds: AccountingMoney;
+  net_income: number;
+  services: AccountingMoney;
+  services_vat: number;
+  bonuses: number;
+  other_debits: number;
+  balance_open: number;
+  balance_close: number;
+  providers: { provider: string; name: string; count: number; amount: number; refunds: number }[];
+  months: { month: string; income: number; refunds: number; services: number }[];
+  tax_system: string;
+  vat: string;
+  timezone: string;
+  requisites_ready: boolean;
+};
+
+export type AccountingReportKind =
+  | "kudir"
+  | "payments"
+  | "refunds"
+  | "services"
+  | "balances"
+  | "acts";
+
+export async function fetchAccountingSummary(params: AccountingPeriodParams) {
+  return apiFetch<AccountingSummary>(`/v1/admin/accounting/summary?${documentQuery(params)}`);
+}
+
+export function downloadAccountingReport(kind: AccountingReportKind, params: AccountingPeriodParams) {
+  return downloadAuthorizedFile(
+    `/v1/admin/accounting/reports/${kind}.csv?${documentQuery(params)}`,
+    `vortanix-${kind}-${params.from}-${params.to}.csv`,
+    t("admin.accounting.download_failed")
+  );
+}
+
+export type AccountingClient = {
+  id: string;
+  email: string;
+  name: string;
+  inn: string;
+  payer_type: BillingPayerType;
+};
+
+export async function searchAccountingClients(q: string) {
+  return apiFetch<{ clients: AccountingClient[] }>(
+    `/v1/admin/accounting/clients?${documentQuery({ q })}`
+  );
+}
+
+export async function fetchAccountingClientDocuments(id: string, currency?: string) {
+  const tail = currency ? `?${documentQuery({ currency })}` : "";
+  return apiFetch<BillingDocumentsData>(`/v1/admin/accounting/clients/${id}/documents${tail}`);
+}
+
+export function openAccountingClientAct(id: string, period: string, currency: string) {
+  return openAuthorizedDocument(
+    `/v1/admin/accounting/clients/${id}/act?${documentQuery({ period, currency })}`,
+    t("admin.accounting.open_failed")
+  );
+}
+
+export function openAccountingClientReconciliation(id: string, from: string, to: string, currency: string) {
+  return openAuthorizedDocument(
+    `/v1/admin/accounting/clients/${id}/reconciliation?${documentQuery({ from, to, currency })}`,
+    t("admin.accounting.open_failed")
+  );
+}
+
 export type NodeIPAddress = {
   id: string;
   address: string;

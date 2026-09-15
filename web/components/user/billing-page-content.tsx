@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
+import { BillingDocuments } from "@/components/user/billing-documents";
 import {
   createTopup,
   createWallet,
@@ -718,6 +719,8 @@ export function BillingPageContent() {
             </>
           )}
         </div>
+
+        <BillingDocuments currency={currency} />
       </div>
     </PageShell>
   );

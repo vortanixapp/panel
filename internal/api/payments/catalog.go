@@ -51,10 +51,7 @@ func required(f AdminField) AdminField {
 	return f
 }
 
-var vatOptions = []Option{
-	{"1", "Без НДС"}, {"2", "НДС 0%"}, {"3", "НДС 10%"}, {"4", "НДС 20%"},
-	{"5", "НДС 10/110"}, {"6", "НДС 20/120"},
-}
+const receiptFieldLabel = "Передавать чек (54-ФЗ): система налогообложения, НДС и признак расчёта — в разделе «Бухгалтерия»"
 
 func buildCatalog() []AdminProviderDef {
 	return []AdminProviderDef{
@@ -64,8 +61,7 @@ func buildCatalog() []AdminProviderDef {
 				required(textField("shop_id", "Shop ID", "")),
 				required(secretField("secret_key", "Secret Key")),
 				textField("currency", "Валюта", "RUB"),
-				checkboxField("receipt", "Передавать чек (54-ФЗ)"),
-				selectField("vat_code", "Ставка НДС в чеке", "1", vatOptions...),
+				checkboxField("receipt", receiptFieldLabel),
 			},
 		},
 		{
@@ -82,6 +78,7 @@ func buildCatalog() []AdminProviderDef {
 				required(textField("terminal_key", "Terminal Key", "")),
 				required(secretField("password", "Пароль терминала")),
 				textField("api_url", "API URL", "https://securepay.tinkoff.ru/v2"),
+				checkboxField("receipt", receiptFieldLabel),
 			},
 		},
 		{
@@ -92,6 +89,7 @@ func buildCatalog() []AdminProviderDef {
 				required(secretField("password2", "Пароль №2")),
 				checkboxField("test", "Тестовый режим (нужны тестовые пароли)"),
 				textField("currency", "Валюта", "RUB"),
+				checkboxField("receipt", receiptFieldLabel),
 			},
 		},
 		{
@@ -111,6 +109,7 @@ func buildCatalog() []AdminProviderDef {
 				required(textField("public_id", "Public ID", "")),
 				required(secretField("api_secret", "API Secret")),
 				textField("currency", "Валюта", "RUB"),
+				checkboxField("receipt", receiptFieldLabel),
 			},
 		},
 		{

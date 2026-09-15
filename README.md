@@ -20,6 +20,10 @@ licence keys and activation are not part of it.
   with individual permissions, resource graphs.
 - **Billing.** Tariffs, account balance, promotions, payment gateways,
   documents.
+- **Accounting.** Company details and taxes, 54-FZ fiscal receipts through
+  payment providers, monthly service acts and reconciliation statements for
+  clients, an income ledger, registers of payments, refunds, services and
+  acts, and a turnover balance sheet. See [docs/accounting.md](docs/accounting.md).
 - **WHMCS.** A provisioning module creates, suspends, changes and deletes
   servers on billing events and signs clients in without a password. See
   [docs/whmcs.md](docs/whmcs.md).

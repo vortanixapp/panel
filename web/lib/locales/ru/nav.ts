@@ -35,6 +35,7 @@ export const nav = {
   "nav.admin.settings": "Настройки",
   "nav.admin.appearance": "Оформление",
   "nav.admin.billing": "Биллинг",
+  "nav.admin.accounting": "Бухгалтерия",
   "nav.admin.payment_providers": "Платёжные провайдеры",
   "nav.admin.groups": "Группы",
   "nav.admin.language": "Языки",

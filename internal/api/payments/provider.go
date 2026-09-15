@@ -23,6 +23,7 @@ type CheckoutInput struct {
 	MethodID    string
 	Email       string
 	UserID      string
+	Receipt     *Receipt
 }
 
 type FormField struct {

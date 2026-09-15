@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Bug,
+  Calculator,
   ChartLine,
   ClipboardList,
   CloudDownload,
@@ -183,6 +184,11 @@ export function adminSidebarNavGroups(t: TranslateFn): NavGroup[] {
         title: t("nav.admin.billing"),
         url: "/admin/billing",
         icon: CreditCard,
+      },
+      {
+        title: t("nav.admin.accounting"),
+        url: "/admin/accounting",
+        icon: Calculator,
       },
       {
         title: t("nav.admin.payment_providers"),

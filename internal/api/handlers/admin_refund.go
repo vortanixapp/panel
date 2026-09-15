@@ -33,12 +33,13 @@ func (h *Handler) AdminRefundPayment(w http.ResponseWriter, r *http.Request) {
 	var provider, currency, status, userID string
 	var providerPaymentID *string
 	var amount, refunded float64
+	var meta []byte
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT provider, currency, status, user_id::text, provider_payment_id,
-		       amount, COALESCE(refunded_amount, 0)
+		       amount, COALESCE(refunded_amount, 0), meta
 		FROM core.payments WHERE id = $1
 	`, paymentID).Scan(
-		&provider, &currency, &status, &userID, &providerPaymentID, &amount, &refunded)
+		&provider, &currency, &status, &userID, &providerPaymentID, &amount, &refunded, &meta)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "payment not found")
 		return
@@ -85,8 +86,12 @@ func (h *Handler) AdminRefundPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cfg := providerRow.Config
+	var stored struct {
+		Receipt *payments.Receipt `json:"receipt"`
+	}
+	_ = json.Unmarshal(meta, &stored)
 	reference, refErr := payments.Refund(ctx, provider, cfg, strPtr(providerPaymentID),
-		refundAmount, currency, strings.TrimSpace(body.Reason))
+		refundAmount, currency, strings.TrimSpace(body.Reason), stored.Receipt)
 	if refErr != nil {
 		writeError(w, http.StatusBadGateway, refErr.Error())
 		return

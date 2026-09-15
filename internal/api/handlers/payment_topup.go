@@ -278,6 +278,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 	var email string
 	_ = h.dbOf(ctx).QueryRow(ctx, `SELECT email FROM core.users WHERE id = $1`, claims.UserID).Scan(&email)
 	appName := firstNonEmpty(settings["app.name"], settings["panel.name"], "Vortanix")
+	receipt := accountingProfileFrom(settings).receipt(email)
 
 	checkoutCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -293,6 +294,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		MethodID:    body.PaymentMethodID,
 		Email:       email,
 		UserID:      claims.UserID,
+		Receipt:     receipt,
 	})
 	if err != nil {
 		log.Printf("платёж %s через %s не создан в кассе: %v", paymentID, code, err)
@@ -314,6 +316,9 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		redirectURL = checkout.RedirectURL
 	}
 	extra["checkout_url"] = redirectURL
+	if payments.ReceiptRequested(row.Config) {
+		extra["receipt"] = receipt
+	}
 	status := "processing"
 	if checkout.Manual {
 		status = "pending"

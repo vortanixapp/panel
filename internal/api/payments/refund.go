@@ -13,7 +13,7 @@ import (
 
 type Refunder interface {
 	Provider
-	Refund(ctx context.Context, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string) (string, error)
+	Refund(ctx context.Context, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string, receipt *Receipt) (string, error)
 }
 
 func RefundSupported(code string) bool {
@@ -25,7 +25,7 @@ func RefundSupported(code string) bool {
 	return refundable
 }
 
-func Refund(ctx context.Context, code string, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string) (string, error) {
+func Refund(ctx context.Context, code string, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string, receipt *Receipt) (string, error) {
 	p, err := Get(code)
 	if err != nil {
 		return "", fmt.Errorf("платёжный провайдер %s не подключён", code)
@@ -37,23 +37,27 @@ func Refund(ctx context.Context, code string, cfg map[string]any, providerPaymen
 	if strings.TrimSpace(providerPaymentID) == "" {
 		return "", fmt.Errorf("у платежа нет идентификатора в шлюзе — возврат по API невозможен")
 	}
-	return r.Refund(ctx, cfg, providerPaymentID, amount, currency, reason)
+	return r.Refund(ctx, cfg, providerPaymentID, amount, currency, reason, receipt)
 }
 
-func (YooKassa) Refund(ctx context.Context, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string) (string, error) {
+func (YooKassa) Refund(ctx context.Context, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string, receipt *Receipt) (string, error) {
 	shopID, secret := strCfg(cfg, "shop_id"), strCfg(cfg, "secret_key")
 	if shopID == "" || secret == "" {
 		return "", notConfigured("yookassa")
 	}
+	value := map[string]string{
+		"value":    money(amount),
+		"currency": upper(currency),
+	}
 	body := map[string]any{
 		"payment_id": providerPaymentID,
-		"amount": map[string]string{
-			"value":    money(amount),
-			"currency": upper(currency),
-		},
+		"amount":     value,
 	}
 	if strings.TrimSpace(reason) != "" {
 		body["description"] = reason
+	}
+	if receipt != nil && receipt.Email != "" {
+		body["receipt"] = yookassaReceipt(cfg, receipt.Email, receipt, "Возврат оплаты", value)
 	}
 	var out struct {
 		ID     string `json:"id"`
@@ -71,7 +75,7 @@ func (YooKassa) Refund(ctx context.Context, cfg map[string]any, providerPaymentI
 	return out.ID, nil
 }
 
-func (Stripe) Refund(ctx context.Context, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string) (string, error) {
+func (Stripe) Refund(ctx context.Context, cfg map[string]any, providerPaymentID string, amount float64, currency, reason string, _ *Receipt) (string, error) {
 	secret := stripeSecret(cfg)
 	if secret == "" {
 		return "", notConfigured("stripe")

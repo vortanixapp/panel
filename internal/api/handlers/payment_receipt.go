@@ -9,18 +9,23 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/vortanixapp/panel/internal/api/payments"
 )
 
 type receiptData struct {
 	Number     int64
+	Invoice    int64
 	IssuedAt   time.Time
 	PaidAt     time.Time
 	Amount     float64
+	Refunded   float64
 	Currency   string
 	Provider   string
 	ExternalID string
-	Email      string
-	Company    map[string]string
+	Fiscal     bool
+	Payer      billingPayer
+	Company    accountingProfile
 }
 
 func (h *Handler) PaymentReceipt(w http.ResponseWriter, r *http.Request) {
@@ -34,18 +39,21 @@ func (h *Handler) PaymentReceipt(w http.ResponseWriter, r *http.Request) {
 
 	var userID, provider, currency, status, email string
 	var externalID *string
-	var amount float64
+	var amount, refunded float64
 	var createdAt time.Time
 	var creditedAt *time.Time
 	var number *int64
+	var invoice int64
+	var fiscal bool
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT p.user_id::text, p.provider, p.currency, p.status, COALESCE(u.email, ''),
-		       p.provider_payment_id, p.amount::float8, p.created_at, p.credited_at, p.receipt_number
+		       p.provider_payment_id, p.amount::float8, p.created_at, p.credited_at, p.receipt_number,
+		       p.invoice_no, p.refunded_amount::float8, p.meta ? 'receipt'
 		FROM core.payments p
 		LEFT JOIN core.users u ON u.id = p.user_id
 		WHERE p.id = $1
 	`, paymentID).Scan(&userID, &provider, &currency, &status, &email,
-		&externalID, &amount, &createdAt, &creditedAt, &number)
+		&externalID, &amount, &createdAt, &creditedAt, &number, &invoice, &refunded, &fiscal)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "payment not found")
 		return
@@ -54,7 +62,7 @@ func (h *Handler) PaymentReceipt(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	if !isPaidStatus(status) {
+	if !isPaidStatus(status) && status != "refunded" {
 		writeError(w, http.StatusConflict, "квитанция выдаётся только по оплаченному платежу")
 		return
 	}
@@ -72,16 +80,23 @@ func (h *Handler) PaymentReceipt(w http.ResponseWriter, r *http.Request) {
 	if creditedAt != nil {
 		paidAt = *creditedAt
 	}
+	payer, err := h.billingPayer(ctx, userID)
+	if err != nil {
+		payer = billingPayer{UserID: userID, Email: email, PayerType: "person"}
+	}
 	data := receiptData{
 		Number:     *number,
+		Invoice:    invoice,
 		IssuedAt:   time.Now(),
 		PaidAt:     paidAt,
 		Amount:     amount,
+		Refunded:   refunded,
 		Currency:   strings.ToUpper(currency),
 		Provider:   provider,
 		ExternalID: strPtr(externalID),
-		Email:      email,
-		Company:    h.receiptCompany(ctx),
+		Fiscal:     fiscal,
+		Payer:      payer,
+		Company:    h.accountingProfile(ctx),
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -116,53 +131,52 @@ func (h *Handler) assignReceiptNumber(ctx context.Context, paymentID string) (in
 	return number, nil
 }
 
-func (h *Handler) receiptCompany(ctx context.Context) map[string]string {
-	out := map[string]string{}
-	keys := map[string]string{
-		"name":    "company.name",
-		"inn":     "company.inn",
-		"address": "company.address",
-		"email":   "company.email",
-		"phone":   "company.phone",
-		"site":    "app.url",
-	}
-	for field, key := range keys {
-		if v := strings.TrimSpace(h.tenantSettingString(ctx, key)); v != "" {
-			out[field] = v
-		}
-	}
-	if out["name"] == "" {
-		if v := strings.TrimSpace(h.tenantSettingString(ctx, "app.name")); v != "" {
-			out["name"] = v
-		}
-	}
-	return out
-}
-
 func renderReceipt(d receiptData) string {
 	esc := html.EscapeString
+	loc := d.Company.Location
+	method := payments.Name(d.Provider)
 	rows := []string{
 		row("Номер", fmt.Sprintf("№ %d", d.Number)),
-		row("Дата платежа", d.PaidAt.Format("02.01.2006 15:04")),
-		row("Сумма", fmt.Sprintf("%.2f %s", d.Amount, esc(d.Currency))),
-		row("Способ оплаты", esc(d.Provider)),
-		row("Плательщик", esc(d.Email)),
+		row("Счёт", fmt.Sprintf("№ %d", d.Invoice)),
+		row("Дата платежа", d.PaidAt.In(loc).Format("02.01.2006 15:04")),
+		row("Сумма", esc(formatMoneyRu(d.Amount)+" "+d.Currency)),
+		row("Способ оплаты", esc(method)),
+		row("Плательщик", esc(d.Payer.title())),
+	}
+	if d.Payer.INN != "" {
+		rows = append(rows, row("ИНН плательщика", esc(d.Payer.INN)))
+	}
+	if d.Payer.Email != "" && d.Payer.Email != d.Payer.title() {
+		rows = append(rows, row("Email", esc(d.Payer.Email)))
 	}
 	if d.ExternalID != "" {
 		rows = append(rows, row("Идентификатор в платёжной системе", esc(d.ExternalID)))
 	}
+	if d.Refunded > 0 {
+		rows = append(rows, row("Возвращено", esc(formatMoneyRu(d.Refunded)+" "+d.Currency)))
+	}
+	if d.Fiscal {
+		rows = append(rows, row("Кассовый чек", esc("передан в "+method)))
+	}
 
+	c := d.Company
 	company := []string{}
-	for _, item := range []struct{ label, key string }{
-		{"Получатель", "name"},
-		{"ИНН", "inn"},
-		{"Адрес", "address"},
-		{"Email", "email"},
-		{"Телефон", "phone"},
-		{"Сайт", "site"},
+	for _, item := range []struct{ label, value string }{
+		{"Получатель", firstNonEmpty(c.FullName, c.Name, c.AppName)},
+		{"ИНН", c.INN},
+		{"КПП", c.KPP},
+		{ogrnLabel(c.OGRN), c.OGRN},
+		{"Адрес", c.Address},
+		{"Расчётный счёт", c.BankAccount},
+		{"Банк", c.BankName},
+		{"БИК", c.BankBIK},
+		{"Корреспондентский счёт", c.BankCorrAccount},
+		{"Email", c.Email},
+		{"Телефон", c.Phone},
+		{"Сайт", c.Site},
 	} {
-		if v := d.Company[item.key]; v != "" {
-			company = append(company, row(item.label, esc(v)))
+		if item.value != "" {
+			company = append(company, row(item.label, esc(item.value)))
 		}
 	}
 	companyBlock := ""
@@ -170,11 +184,19 @@ func renderReceipt(d receiptData) string {
 		companyBlock = `<h2>Получатель платежа</h2><table>` + strings.Join(company, "") + `</table>`
 	}
 
+	note := "Документ подтверждает зачисление средств на баланс в панели управления. Это не кассовый чек: если продавец работает по 54-ФЗ, чек приходит от оператора фискальных данных отдельно."
+	switch {
+	case d.Fiscal:
+		note = "Документ подтверждает зачисление средств на баланс в панели управления. Кассовый чек по 54-ФЗ формирует онлайн-касса платёжной системы и отправляет на email плательщика."
+	case c.TaxSystem == "npd":
+		note = "Документ подтверждает зачисление средств на баланс в панели управления. Продавец применяет налог на профессиональный доход: чек формируется в приложении «Мой налог»."
+	}
+
 	return `<!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
 <title>Квитанция № ` + fmt.Sprint(d.Number) + `</title>
 <style>
-  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #111; margin: 40px auto; max-width: 640px; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #111; margin: 40px auto; max-width: 640px; padding: 0 16px; }
   h1 { font-size: 20px; margin-bottom: 4px; }
   h2 { font-size: 14px; margin: 24px 0 8px; text-transform: uppercase; letter-spacing: .06em; color: #555; }
   table { width: 100%; border-collapse: collapse; }
@@ -188,15 +210,11 @@ func renderReceipt(d receiptData) string {
 <body>
   <div class="noprint" style="margin-bottom:16px"><button onclick="window.print()">Печать / сохранить в PDF</button></div>
   <h1>Квитанция об оплате</h1>
-  <div style="color:#555;font-size:13px">Сформирована ` + d.IssuedAt.Format("02.01.2006 15:04") + `</div>
+  <div style="color:#555;font-size:13px">Сформирована ` + d.IssuedAt.In(loc).Format("02.01.2006 15:04") + `</div>
   <h2>Платёж</h2>
   <table>` + strings.Join(rows, "") + `</table>
   ` + companyBlock + `
-  <p class="note">
-    Документ подтверждает зачисление средств на баланс в панели управления.
-    Это не фискальный чек: если хостер работает по 54-ФЗ, чек приходит от
-    оператора фискальных данных отдельно.
-  </p>
+  <p class="note">` + esc(note) + `</p>
 </body></html>`
 }
 

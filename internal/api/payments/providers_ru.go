@@ -38,21 +38,7 @@ func (YooKassa) CreateCheckout(ctx context.Context, cfg map[string]any, in Check
 		"metadata":     map[string]string{"payment_id": in.PaymentID},
 	}
 	if boolCfg(cfg, "receipt") && in.Email != "" {
-		vat, _ := strconv.Atoi(strCfg(cfg, "vat_code"))
-		if vat == 0 {
-			vat = 1
-		}
-		body["receipt"] = map[string]any{
-			"customer": map[string]string{"email": in.Email},
-			"items": []map[string]any{{
-				"description":     truncate(in.Description, 128),
-				"quantity":        "1.00",
-				"amount":          amount,
-				"vat_code":        vat,
-				"payment_mode":    "full_payment",
-				"payment_subject": "service",
-			}},
-		}
+		body["receipt"] = yookassaReceipt(cfg, in.Email, in.Receipt, in.Description, amount)
 	}
 	var out struct {
 		ID           string `json:"id"`
@@ -69,6 +55,25 @@ func (YooKassa) CreateCheckout(ctx context.Context, cfg map[string]any, in Check
 		return Checkout{}, fmt.Errorf("yookassa: в ответе нет ссылки на оплату")
 	}
 	return Checkout{RedirectURL: out.Confirmation.URL, ProviderPaymentID: out.ID}, nil
+}
+
+func yookassaReceipt(cfg map[string]any, email string, rc *Receipt, description string, amount map[string]string) map[string]any {
+	fallback, _ := strconv.Atoi(strCfg(cfg, "vat_code"))
+	receipt := map[string]any{
+		"customer": map[string]string{"email": email},
+		"items": []map[string]any{{
+			"description":     rc.item(description),
+			"quantity":        "1.00",
+			"amount":          amount,
+			"vat_code":        rc.yookassaVAT(fallback),
+			"payment_mode":    rc.mode(),
+			"payment_subject": rc.subject(),
+		}},
+	}
+	if code, ok := yookassaTaxSystems[rc.sno()]; ok {
+		receipt["tax_system_code"] = code
+	}
+	return receipt
 }
 
 func (YooKassa) HandleNotification(ctx context.Context, cfg map[string]any, req *NotifyRequest) (Notification, error) {
@@ -202,6 +207,24 @@ func (TKassa) CreateCheckout(ctx context.Context, cfg map[string]any, in Checkou
 	}
 	if in.Email != "" {
 		body["DATA"] = map[string]string{"Email": in.Email}
+		if boolCfg(cfg, "receipt") {
+			receipt := map[string]any{
+				"Email": in.Email,
+				"Items": []map[string]any{{
+					"Name":          in.Receipt.item(desc),
+					"Price":         amount,
+					"Quantity":      1,
+					"Amount":        amount,
+					"Tax":           in.Receipt.atolTax(),
+					"PaymentMethod": in.Receipt.mode(),
+					"PaymentObject": in.Receipt.subject(),
+				}},
+			}
+			if sno := in.Receipt.sno(); sno != "" {
+				receipt["Taxation"] = sno
+			}
+			body["Receipt"] = receipt
+		}
 	}
 	var out struct {
 		Success    bool            `json:"Success"`
@@ -275,6 +298,27 @@ func (Robokassa) CreateCheckout(_ context.Context, cfg map[string]any, in Checko
 		outSumCurrency = cur
 		parts = append(parts, cur)
 	}
+	receipt := ""
+	if boolCfg(cfg, "receipt") {
+		item := map[string]any{
+			"name":           in.Receipt.item(in.Description),
+			"quantity":       1,
+			"sum":            roundCents(in.Amount),
+			"payment_method": in.Receipt.mode(),
+			"payment_object": in.Receipt.subject(),
+			"tax":            in.Receipt.atolTax(),
+		}
+		data := map[string]any{"items": []map[string]any{item}}
+		if sno := in.Receipt.sno(); sno != "" {
+			data["sno"] = sno
+		}
+		raw, err := json.Marshal(data)
+		if err != nil {
+			return Checkout{}, fmt.Errorf("robokassa: %w", err)
+		}
+		receipt = url.QueryEscape(string(raw))
+		parts = append(parts, receipt)
+	}
 	parts = append(parts, pass1, "Shp_payment="+in.PaymentID)
 
 	q := url.Values{}
@@ -287,6 +331,9 @@ func (Robokassa) CreateCheckout(_ context.Context, cfg map[string]any, in Checko
 	q.Set("Culture", "ru")
 	if outSumCurrency != "" {
 		q.Set("OutSumCurrency", outSumCurrency)
+	}
+	if receipt != "" {
+		q.Set("Receipt", receipt)
 	}
 	if in.Email != "" {
 		q.Set("Email", in.Email)
@@ -416,6 +463,26 @@ func (CloudPayments) CreateCheckout(ctx context.Context, cfg map[string]any, in 
 	}
 	if in.Email != "" {
 		body["Email"] = in.Email
+		if boolCfg(cfg, "receipt") {
+			sum := roundCents(in.Amount)
+			receipt := map[string]any{
+				"Items": []map[string]any{{
+					"label":    in.Receipt.item(in.Description),
+					"price":    sum,
+					"quantity": 1,
+					"amount":   sum,
+					"vat":      in.Receipt.cloudPaymentsVAT(),
+					"method":   in.Receipt.cloudPaymentsMethod(),
+					"object":   in.Receipt.cloudPaymentsObject(),
+				}},
+				"email":   in.Email,
+				"amounts": map[string]any{"electronic": sum},
+			}
+			if code, ok := cloudPaymentsTaxations[in.Receipt.sno()]; ok {
+				receipt["taxationSystem"] = code
+			}
+			body["JsonData"] = map[string]any{"CloudPayments": map[string]any{"CustomerReceipt": receipt}}
+		}
 	}
 	var out struct {
 		Success bool   `json:"Success"`
