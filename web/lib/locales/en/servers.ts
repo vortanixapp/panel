@@ -414,6 +414,9 @@ export const servers = {
   "servers.tariff.resources_charged":
     "Resources updated. Charged: {amount} {currency}",
   "servers.tariff.resources_updated": "Resources updated",
+  "servers.tariff.restart_hint": "New limits apply after the server restarts",
+  "servers.tariff.fixed_resources":
+    "Resources are fixed on this plan. Switch plans to get more",
   "servers.tariff.resources_error": "Could not change the resources",
   "servers.tariff.renew_title": "Renewal",
   "servers.tariff.days": "{days} d",

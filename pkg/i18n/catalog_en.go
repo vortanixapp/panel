@@ -134,6 +134,8 @@ var catalogEN = map[string]string{
 	"notify.audit.body":                                   "{who} — {action} ({resource})",
 	"notify.audit.staff":                                  "a staff member",
 	"notify.audit.action.groups.update":                   "role permissions changed",
+	"notify.audit.action.groups.create":                   "staff group created",
+	"notify.audit.action.groups.delete":                   "staff group deleted",
 	"notify.audit.action.user.impersonate":                "signed in as another user",
 	"notify.audit.action.api_key.create":                  "API key issued",
 	"notify.audit.action.webhook.create":                  "outgoing webhook added",

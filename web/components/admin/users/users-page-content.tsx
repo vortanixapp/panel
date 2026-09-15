@@ -290,7 +290,7 @@ export function UsersPageContent() {
                               : "text-muted-foreground"
                           )}
                         >
-                          {roleLabel(u.role)}
+                          {u.staff_group || roleLabel(u.role)}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">

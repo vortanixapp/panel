@@ -176,7 +176,7 @@ export function UserDetailContent() {
             <div className="space-y-1.5">
               <div className="flex items-center gap-2.5">
                 <span className="rounded-md border px-2 py-0.5 text-[11px]">
-                  {roleLabel(role)}
+                  {user.staff_group || roleLabel(role)}
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">
                   #{id.slice(0, 8)}
@@ -237,7 +237,9 @@ export function UserDetailContent() {
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label={t("admin.users.group")}>
-            <span className="text-[15px] font-medium">{roleLabel(role)}</span>
+            <span className="text-[15px] font-medium">
+              {user.staff_group || roleLabel(role)}
+            </span>
           </StatCard>
           <StatCard label={t("common.email")}>
             <span

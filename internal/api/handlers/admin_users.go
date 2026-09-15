@@ -49,7 +49,7 @@ func parseContacts(raw []byte) map[string]any {
 }
 
 func adminUserListItem(
-	id, email, displayName, role, status string,
+	id, email, displayName, role, status, staffGroupID, staffGroup string,
 	emailVerified *string, balance float64, serversCount int, created string,
 ) map[string]any {
 	isAdmin := role == "admin" || role == "owner"
@@ -59,6 +59,8 @@ func adminUserListItem(
 		"email":             email,
 		"name":              displayName,
 		"role":              role,
+		"staff_group_id":    nilIfEmpty(staffGroupID),
+		"staff_group":       nilIfEmpty(staffGroup),
 		"status":            status,
 		"is_admin":          isAdmin,
 		"is_blocked":        isBlocked,
@@ -145,6 +147,8 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 			COALESCE(NULLIF(p.display_name, ''), NULLIF(p.first_name, ''), ''),
 			u.role,
 			u.status,
+			COALESCE(u.staff_group_id::text, ''),
+			COALESCE(sg.name, ''),
 			u.email_verified_at::text,
 			COALESCE((
 				SELECT w.balance::float8
@@ -160,6 +164,7 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 			u.created_at::text
 		FROM core.users u
 		LEFT JOIN core.user_profiles p ON p.user_id = u.id
+		LEFT JOIN core.staff_groups sg ON sg.id = u.staff_group_id
 		WHERE ` + whereSQL + `
 		ORDER BY u.created_at DESC`
 
@@ -177,15 +182,15 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	items := []map[string]any{}
 	for rows.Next() {
-		var id, email, name, role, status, created string
+		var id, email, name, role, status, staffGroupID, staffGroup, created string
 		var emailVerified *string
 		var balance float64
 		var serversCount int
-		if err := rows.Scan(&id, &email, &name, &role, &status, &emailVerified, &balance, &serversCount, &created); err != nil {
+		if err := rows.Scan(&id, &email, &name, &role, &status, &staffGroupID, &staffGroup, &emailVerified, &balance, &serversCount, &created); err != nil {
 			writeError(w, http.StatusInternalServerError, "database error")
 			return
 		}
-		items = append(items, adminUserListItem(id, email, name, role, status, emailVerified, balance, serversCount, created))
+		items = append(items, adminUserListItem(id, email, name, role, status, staffGroupID, staffGroup, emailVerified, balance, serversCount, created))
 	}
 
 	if !usePagination {
@@ -213,13 +218,16 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) adminUserDetail(ctx context.Context, userID string) (map[string]any, error) {
-	var email, role, status, created string
+	var email, role, status, staffGroupID, staffGroup, created string
 	var emailVerified *string
 	var twoFA bool
 	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT email, role, status, email_verified_at::text, two_factor_enabled, created_at::text
-		FROM core.users WHERE id = $1
-	`, userID).Scan(&email, &role, &status, &emailVerified, &twoFA, &created)
+		SELECT u.email, u.role, u.status, COALESCE(u.staff_group_id::text, ''), COALESCE(sg.name, ''),
+		       u.email_verified_at::text, u.two_factor_enabled, u.created_at::text
+		FROM core.users u
+		LEFT JOIN core.staff_groups sg ON sg.id = u.staff_group_id
+		WHERE u.id = $1
+	`, userID).Scan(&email, &role, &status, &staffGroupID, &staffGroup, &emailVerified, &twoFA, &created)
 	if err != nil {
 		return nil, err
 	}
@@ -259,6 +267,8 @@ func (h *Handler) adminUserDetail(ctx context.Context, userID string) (map[strin
 		"discord_id":         contactString(contacts, "discord_id"),
 		"vk_id":              contactString(contacts, "vk_id"),
 		"role":               role,
+		"staff_group_id":     nilIfEmpty(staffGroupID),
+		"staff_group":        nilIfEmpty(staffGroup),
 		"status":             status,
 		"is_blocked":         status == "disabled",
 		"two_factor_enabled": twoFA,
@@ -528,10 +538,10 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var existingRole string
+	var existingRole, existingGroup string
 	if err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT role FROM core.users WHERE id = $1
-	`, id).Scan(&existingRole); err != nil {
+		SELECT role, COALESCE(staff_group_id::text, '') FROM core.users WHERE id = $1
+	`, id).Scan(&existingRole, &existingGroup); err != nil {
 		writeError(w, http.StatusNotFound, "not found")
 		return
 	}
@@ -540,16 +550,45 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if role, ok := body["role"].(string); ok && role != "" {
-		if role != "user" && role != "admin" && role != "support" {
+	role := existingRole
+	if requested, ok := body["role"].(string); ok && requested != "" && requested != existingRole {
+		if requested != "user" && requested != "admin" && requested != "support" {
 			writeError(w, http.StatusBadRequest, "invalid role")
 			return
 		}
-		if claims.Role != "owner" && (role == "admin" || existingRole == "admin") {
+		if claims.Role != "owner" && (requested == "admin" || existingRole == "admin") {
 			writeError(w, http.StatusForbidden, "only owner can change admin roles")
 			return
 		}
-		_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.users SET role = $2 WHERE id = $1`, id, role)
+		role = requested
+	}
+	group := existingGroup
+	if raw, ok := body["staff_group_id"]; ok {
+		group = ""
+		if raw != nil {
+			group = strings.TrimSpace(fmt.Sprint(raw))
+		}
+	}
+	if role != rbacRoleSupport {
+		group = ""
+	}
+	if group != existingGroup {
+		if !isAdminRole(claims.Role) {
+			writeError(w, http.StatusForbidden, "группу сотрудника назначает только администратор")
+			return
+		}
+		if group != "" && !rbacCustomGroupKey(group) {
+			writeError(w, http.StatusBadRequest, "группа не найдена")
+			return
+		}
+	}
+	if role != existingRole || group != existingGroup {
+		if _, err := h.dbOf(ctx).Exec(ctx, `
+			UPDATE core.users SET role = $2, staff_group_id = NULLIF($3, '')::uuid WHERE id = $1
+		`, id, role, group); err != nil {
+			writeError(w, http.StatusBadRequest, "группа не найдена")
+			return
+		}
 	}
 
 	if status, ok := body["status"].(string); ok && status != "" {

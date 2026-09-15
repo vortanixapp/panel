@@ -595,7 +595,7 @@ func (h *Handler) planWHMCSServer(ctx context.Context, serviceID int64, body whm
 	}
 
 	order := whmcsOrder(body.Slots, body.CPUCores, body.RAMGb, body.DiskGb, tariff)
-	if msg := tariffMeetsGame(gameID, tariff, order); msg != "" {
+	if msg := tariffMeetsGame(gameID, order); msg != "" {
 		return nil, errors.New(msg)
 	}
 	limits := gamecatalog.DefaultLimits(gameID)
@@ -1047,7 +1047,7 @@ func (h *Handler) WHMCSServicePackage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	order := whmcsOrder(body.Slots, body.CPUCores, body.RAMGb, body.DiskGb, tariff)
-	if msg := tariffMeetsGame(row.gameID, tariff, order); msg != "" {
+	if msg := tariffMeetsGame(row.gameID, order); msg != "" {
 		writeError(w, http.StatusUnprocessableEntity, msg)
 		return
 	}

@@ -12,6 +12,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/vortanixapp/panel/internal/api/pricing"
 )
 
 type tariffRow struct {
@@ -149,8 +151,35 @@ func jsonIntSlice(raw []byte) []int {
 	return out
 }
 
+func tariffMetaPriced(raw []byte) bool {
+	var m map[string]any
+	if json.Unmarshal(raw, &m) != nil {
+		return false
+	}
+	for _, key := range []string{"price_per_slot", "price_per_cpu_core", "price_per_ram_gb", "price_per_disk_gb", "base_price_monthly"} {
+		if _, ok := m[key]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func intPtrValue(p *int) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
 func tariffToLegacyJSON(row *tariffRow) map[string]any {
 	meta := parseTariffMeta(row.Meta)
+	if !tariffMetaPriced(row.Meta) {
+		if row.BillingType == "slots" {
+			meta["price_per_slot"] = row.PriceMonthly
+		} else {
+			meta["base_price_monthly"] = row.PriceMonthly
+		}
+	}
 	ramGB := 1
 	if row.RAMMb != nil && *row.RAMMb > 0 {
 		ramGB = int(math.Round(float64(*row.RAMMb) / 1024))
@@ -201,7 +230,7 @@ func tariffToLegacyJSON(row *tariffRow) map[string]any {
 	if discounts == nil {
 		discounts = map[string]any{}
 	}
-	return map[string]any{
+	out := map[string]any{
 		"id":                 row.ID,
 		"name":               row.Name,
 		"slug":               row.Slug,
@@ -229,7 +258,7 @@ func tariffToLegacyJSON(row *tariffRow) map[string]any {
 		"min_slots":          minSlots,
 		"max_slots":          maxSlots,
 		"cpu_cores":          cpuCores,
-		"cpu_shares":         row.CPUShares,
+		"cpu_shares":         intPtrValue(row.CPUShares),
 		"ram_gb":             ramGB,
 		"disk_gb":            diskGB,
 		"rental_periods":     jsonIntSlice(row.RentalPeriods),
@@ -245,6 +274,8 @@ func tariffToLegacyJSON(row *tariffRow) map[string]any {
 		"created_at":         row.CreatedAt.Format(time.RFC3339),
 		"updated_at":         row.CreatedAt.Format(time.RFC3339),
 	}
+	out["price_from"] = pricing.PriceFrom(out)
+	return out
 }
 
 const tariffSelectSQL = `
@@ -586,8 +617,8 @@ func parseTariffPayload(body map[string]any) (tariffPayload, string) {
 		return tariffPayload{}, "name is required"
 	}
 	locationID := strings.TrimSpace(fmt.Sprint(body["location_id"]))
-	if locationID == "" || locationID == "<nil>" {
-		return tariffPayload{}, "location_id is required"
+	if locationID == "<nil>" {
+		locationID = ""
 	}
 	gameID := strings.TrimSpace(fmt.Sprint(body["game_id"]))
 	if gameID == "" || gameID == "<nil>" {
@@ -658,7 +689,7 @@ func parseTariffPayload(body map[string]any) (tariffPayload, string) {
 			return tariffPayload{}, "min_slots and max_slots required for slots billing"
 		}
 	}
-	return tariffPayload{
+	payload := tariffPayload{
 		Name:             name,
 		LocationID:       locationID,
 		GameID:           gameID,
@@ -692,7 +723,80 @@ func parseTariffPayload(body map[string]any) (tariffPayload, string) {
 		Discounts:        discounts,
 		Position:         tariffBodyInt(body, "position", 0),
 		IsAvailable:      tariffBodyBool(body, "is_available"),
-	}, ""
+	}
+	if msg := validateTariffPayload(payload); msg != "" {
+		return tariffPayload{}, msg
+	}
+	return payload, ""
+}
+
+func validateTariffPayload(p tariffPayload) string {
+	for _, price := range []float64{p.PricePerSlot, p.PricePerCPUCore, p.PricePerRAMGb, p.PricePerDiskGb, p.BasePriceMonthly, p.AntiddosPrice} {
+		if price < 0 || math.IsNaN(price) || math.IsInf(price, 0) {
+			return "цены тарифа не могут быть отрицательными"
+		}
+	}
+	for _, days := range append(append([]int{}, p.RentalPeriods...), p.RenewalPeriods...) {
+		if days < 1 || days > 365 {
+			return "сроки аренды и продления — от 1 до 365 дней"
+		}
+	}
+	if p.CPUCores < 0 {
+		return "число ядер не может быть отрицательным"
+	}
+	if p.CPUShares != nil && *p.CPUShares < 2 {
+		return "CPU shares — не меньше 2"
+	}
+	if p.RAMGb < 1 || p.DiskGb < 1 {
+		return "RAM и диск контейнера — не меньше 1 ГБ"
+	}
+	if p.BillingType == "slots" && p.MaxSlots < p.MinSlots {
+		return "максимум слотов меньше минимума"
+	}
+	ranges := []struct {
+		name           string
+		lo, hi, stepBy *int
+	}{
+		{"процессора", p.CPUMin, p.CPUMax, p.CPUStep},
+		{"ОЗУ", p.RAMMin, p.RAMMax, p.RAMStep},
+		{"диска", p.DiskMin, p.DiskMax, p.DiskStep},
+	}
+	for _, rg := range ranges {
+		if (rg.lo != nil && *rg.lo < 0) || (rg.hi != nil && *rg.hi < 0) {
+			return "границы диапазона " + rg.name + " не могут быть отрицательными"
+		}
+		if rg.stepBy != nil && *rg.stepBy < 1 {
+			return "шаг диапазона " + rg.name + " — не меньше 1"
+		}
+		if rg.lo != nil && rg.hi != nil && *rg.lo > 0 && *rg.hi > 0 && *rg.lo > *rg.hi {
+			return "минимум диапазона " + rg.name + " больше максимума"
+		}
+	}
+	return validateTariffDiscounts(p.Discounts)
+}
+
+func validateTariffDiscounts(d any) string {
+	switch v := d.(type) {
+	case nil:
+		return ""
+	case []any:
+		if len(v) == 0 {
+			return ""
+		}
+	case map[string]any:
+		for key, value := range v {
+			days, err := strconv.Atoi(strings.TrimSpace(key))
+			if err != nil || days < 1 || days > 365 {
+				return "в скидках ключ — срок в днях от 1 до 365"
+			}
+			percent, ok := value.(float64)
+			if !ok || percent < 0 || percent > 100 {
+				return "скидка за срок — число процентов от 0 до 100"
+			}
+		}
+		return ""
+	}
+	return `скидки задаются объектом вида {"30": 5, "180": 15}`
 }
 
 func tariffMetaFromPayload(p tariffPayload) ([]byte, float64) {
@@ -708,23 +812,34 @@ func tariffMetaFromPayload(p tariffPayload) ([]byte, float64) {
 	meta["price_per_ram_gb"] = p.PricePerRAMGb
 	meta["price_per_disk_gb"] = p.PricePerDiskGb
 	meta["base_price_monthly"] = p.BasePriceMonthly
-	meta["cpu_min"] = p.CPUMin
-	meta["cpu_max"] = p.CPUMax
-	meta["cpu_step"] = p.CPUStep
-	meta["ram_min"] = p.RAMMin
-	meta["ram_max"] = p.RAMMax
-	meta["ram_step"] = p.RAMStep
-	meta["disk_min"] = p.DiskMin
-	meta["disk_max"] = p.DiskMax
-	meta["disk_step"] = p.DiskStep
+	if p.BillingType == "slots" {
+		meta["base_price_monthly"] = float64(0)
+	}
+	meta["cpu_min"] = intPtrValue(p.CPUMin)
+	meta["cpu_max"] = intPtrValue(p.CPUMax)
+	meta["cpu_step"] = intPtrValue(p.CPUStep)
+	meta["ram_min"] = intPtrValue(p.RAMMin)
+	meta["ram_max"] = intPtrValue(p.RAMMax)
+	meta["ram_step"] = intPtrValue(p.RAMStep)
+	meta["disk_min"] = intPtrValue(p.DiskMin)
+	meta["disk_max"] = intPtrValue(p.DiskMax)
+	meta["disk_step"] = intPtrValue(p.DiskStep)
 	meta["allow_antiddos"] = p.AllowAntiddos
 	meta["antiddos_price"] = p.AntiddosPrice
 	metaJSON, _ := json.Marshal(meta)
-	priceMonthly := p.BasePriceMonthly
-	if p.BillingType == "slots" {
-		priceMonthly = p.PricePerSlot
+
+	view := map[string]any{
+		"billing_type": p.BillingType,
+		"cpu_cores":    p.CPUCores,
+		"ram_gb":       p.RAMGb,
+		"disk_gb":      p.DiskGb,
+		"min_slots":    p.MinSlots,
+		"max_slots":    p.MaxSlots,
 	}
-	return metaJSON, priceMonthly
+	for k, v := range meta {
+		view[k] = v
+	}
+	return metaJSON, pricing.PriceFrom(view)
 }
 
 func slugFromTariffName(name string) string {
@@ -778,7 +893,7 @@ func (h *Handler) CreateTariff(w http.ResponseWriter, r *http.Request) {
 			$7, $8, $9, $10, $11, $12,
 			$13::jsonb, $14::jsonb, $15::jsonb, $16, $17, $18::jsonb
 		)
-	`, payload.LocationID, payload.GameID, payload.Name, slug, payload.BillingType, priceMonthly,
+	`, nilIfEmpty(payload.LocationID), payload.GameID, payload.Name, slug, payload.BillingType, priceMonthly,
 		slotsMin, slotsMax, cpuCores, payload.CPUShares, ramMb, diskMb,
 		rentalJSON, renewalJSON, discountsJSON, payload.Position, payload.IsAvailable, metaJSON)
 	if err != nil {
@@ -827,7 +942,7 @@ func (h *Handler) updateTariffFromBody(w http.ResponseWriter, r *http.Request) {
 			ram_mb = $11, disk_mb = $12, rental_periods = $13::jsonb, renewal_periods = $14::jsonb,
 			discounts = $15::jsonb, position = $16, active = $17, meta = $18::jsonb
 		WHERE id = $1
-	`, id, payload.LocationID, payload.GameID, payload.Name, payload.BillingType, priceMonthly,
+	`, id, nilIfEmpty(payload.LocationID), payload.GameID, payload.Name, payload.BillingType, priceMonthly,
 		slotsMin, slotsMax, cpuCores, payload.CPUShares, ramMb, diskMb,
 		rentalJSON, renewalJSON, discountsJSON, payload.Position, payload.IsAvailable, metaJSON)
 	if err != nil || tag.RowsAffected() == 0 {

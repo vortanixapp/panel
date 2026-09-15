@@ -477,6 +477,8 @@ export type AdminUserDetail = {
     discord_id: string | null;
     vk_id: string | null;
     role: string;
+    staff_group_id?: string | null;
+    staff_group?: string | null;
     status: string;
     is_blocked: boolean;
     two_factor_enabled?: boolean;
@@ -572,6 +574,8 @@ export type PanelUser = {
   email: string;
   name?: string;
   role: string;
+  staff_group_id?: string | null;
+  staff_group?: string | null;
   status: string;
   is_admin?: boolean;
   is_blocked?: boolean;
@@ -994,6 +998,8 @@ export type DashboardServer = {
     price_per_ram_gb?: number;
     price_per_disk_gb?: number;
     antiddos_price?: number;
+    monthly_cost?: number;
+    discounts?: Record<string, number> | null;
   } | null;
   limits?: Record<string, unknown>;
   auto_start_enabled?: boolean;
@@ -1886,6 +1892,10 @@ export type RentTariff = {
   price_per_disk_gb?: number | null;
   base_price_monthly?: number | null;
   rental_periods?: number[];
+  min_slots?: number | null;
+  max_slots?: number | null;
+  price_from?: number | null;
+  discounts?: Record<string, number> | null;
 };
 
 export type RentGameOption = {
@@ -2113,7 +2123,12 @@ export async function fetchServerTariffs(serverId: string) {
 }
 
 export async function changeServerTariff(serverId: string, tariffId: string, walletId?: string) {
-  return apiFetch<{ status: string; charged?: number; currency?: string }>(
+  return apiFetch<{
+    status: string;
+    charged?: number;
+    currency?: string;
+    restart_required?: boolean;
+  }>(
     `/v1/servers/${serverId}/tariff/change`,
     {
       method: "POST",
@@ -2142,7 +2157,12 @@ export async function changeServerTariffResources(
   payload: { cpu_cores: number; ram_gb: number; disk_gb: number; slots: number },
   walletId?: string
 ) {
-  return apiFetch<{ status: string; charged?: number; currency?: string }>(
+  return apiFetch<{
+    status: string;
+    charged?: number;
+    currency?: string;
+    restart_required?: boolean;
+  }>(
     `/v1/servers/${serverId}/tariff/resources`,
     {
       method: "POST",
@@ -3929,7 +3949,17 @@ export function brandingUploadUrl(path: string): string {
   return `${API_URL}/v1/uploads/branding/${name}`;
 }
 
+export type AdminGroup = {
+  key: string;
+  name: string;
+  description: string;
+  system: boolean;
+  members: number;
+  permissions: Record<string, boolean>;
+};
+
 export type AdminGroupsResponse = {
+  items: AdminGroup[];
   groups: Record<string, string>;
   keys: string[];
   matrix: Record<string, Record<string, boolean>>;
@@ -3946,6 +3976,33 @@ export async function updateAdminGroups(
   return apiFetch<{ ok: boolean; message: string }>("/v1/admin/groups", {
     method: "PATCH",
     body: JSON.stringify({ permissions }),
+  });
+}
+
+export async function createAdminGroup(payload: {
+  name: string;
+  description: string;
+  copy_from?: string;
+}) {
+  return apiFetch<{ ok: boolean; group: AdminGroup }>("/v1/admin/groups", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function renameAdminGroup(
+  key: string,
+  payload: { name: string; description: string }
+) {
+  return apiFetch<{ ok: boolean }>(`/v1/admin/groups/${encodeURIComponent(key)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdminGroup(key: string) {
+  return apiFetch<{ ok: boolean }>(`/v1/admin/groups/${encodeURIComponent(key)}`, {
+    method: "DELETE",
   });
 }
 

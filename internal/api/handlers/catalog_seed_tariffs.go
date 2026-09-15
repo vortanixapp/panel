@@ -152,6 +152,7 @@ func upsertTariffs(ctx context.Context, db catalogDB, gameID string, g gamecatal
 				ram_mb        = EXCLUDED.ram_mb,
 				disk_mb       = EXCLUDED.disk_mb,
 				slots_max     = EXCLUDED.slots_max
+			WHERE core.tariffs.meta->>'generated_from' = 'gamecatalog'
 		`,
 			gameID, spec.Name, spec.Slug, spec.Price,
 			spec.SlotsMin, spec.SlotsMax, spec.CPUCores, spec.RAMMB, spec.DiskMB,

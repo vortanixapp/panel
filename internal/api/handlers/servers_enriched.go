@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/vortanixapp/panel/internal/api/pricing"
 )
 
 func (h *Handler) listEnrichedServers(ctx context.Context, userID string, allOwners bool, limit int) []map[string]any {
@@ -387,6 +389,12 @@ func (h *Handler) enrichServerDetail(ctx context.Context, serverID string, item 
 		} {
 			if v, ok := meta[key]; ok {
 				tariff[key] = v
+			}
+		}
+		if tariffID != nil && *tariffID != "" {
+			if tariffJSON, loadErr := h.loadTariffLegacyJSON(ctx, *tariffID); loadErr == nil {
+				tariff["monthly_cost"] = pricing.MonthlyCost(tariffJSON, limitsToRentOrder(limits))
+				tariff["discounts"] = tariffJSON["discounts"]
 			}
 		}
 		item["tariff"] = tariff

@@ -134,6 +134,8 @@ var catalogRU = map[string]string{
 	"notify.audit.body":                                   "{who} — {action} ({resource})",
 	"notify.audit.staff":                                  "сотрудник",
 	"notify.audit.action.groups.update":                   "изменены права ролей",
+	"notify.audit.action.groups.create":                   "создана группа сотрудников",
+	"notify.audit.action.groups.delete":                   "удалена группа сотрудников",
 	"notify.audit.action.user.impersonate":                "вход под другим пользователем",
 	"notify.audit.action.api_key.create":                  "выпущен ключ API",
 	"notify.audit.action.webhook.create":                  "добавлен исходящий вебхук",

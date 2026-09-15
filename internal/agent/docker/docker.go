@@ -127,6 +127,8 @@ func buildRunArgs(serverID, gameID string, limits map[string]any, image string, 
 	}
 	if cpu := cpuLimit(limits); cpu != "" {
 		args = append(args, "--cpus", cpu)
+	} else if shares := IntFromPayload(limits["cpu_shares"]); shares >= 2 {
+		args = append(args, "--cpu-shares", strconv.Itoa(shares))
 	}
 	args = append(args, gameRunOptions(serverID, gameID, limits, primaryPort, bindIP)...)
 	args = append(args, image)

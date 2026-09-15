@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -107,6 +108,10 @@ func (h *Handler) ServerRenew(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.Period <= 0 {
 		body.Period = 30
+	}
+	if !h.renewPeriodAllowed(r.Context(), serverID, body.Period) {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("срок продления %d дн. недоступен для этого тарифа", body.Period))
+		return
 	}
 	baseCost, currency, gameID, nodeID, tariffID, err := h.serverRenewBaseCost(r, serverID, body.Period)
 	if err != nil {

@@ -105,13 +105,18 @@ export function estimateMonthlyPrice(form: TariffFormState): number {
     const parsed = typeof v === "number" ? v : Number.parseFloat(v);
     return Number.isFinite(parsed) ? parsed : 0;
   };
-  const base = num(form.base_price_monthly);
   if (form.billing_type === "slots") {
-    return base + num(form.min_slots) * num(form.price_per_slot);
+    return Math.max(1, num(form.min_slots)) * num(form.price_per_slot);
   }
-  const cpu = form.cpu_min !== "" ? num(form.cpu_min) : num(form.cpu_cores);
-  const ram = form.ram_min !== "" ? num(form.ram_min) : num(form.ram_gb);
-  const disk = form.disk_min !== "" ? num(form.disk_min) : num(form.disk_gb);
+  const base = num(form.base_price_monthly);
+  const minOf = (min: string, max: string, fixed: number, fallback: number) => {
+    const value = fixed > 0 ? fixed : fallback;
+    if (num(min) <= 0 && num(max) <= 0) return value;
+    return num(min) > 0 ? num(min) : value;
+  };
+  const cpu = minOf(form.cpu_min, form.cpu_max, num(form.cpu_cores), 1);
+  const ram = minOf(form.ram_min, form.ram_max, num(form.ram_gb), 1);
+  const disk = minOf(form.disk_min, form.disk_max, num(form.disk_gb), 10);
   return (
     base +
     cpu * num(form.price_per_cpu_core) +
@@ -175,8 +180,7 @@ export function TariffForm({
             <NativeSelect
               value={form.location_id}
               onChange={(v) => set("location_id", v)}
-              required
-              placeholder={t("admin.tariff_form.pick_location")}
+              placeholder={t("admin.tariff_form.all_locations")}
               options={locations.map((l) => ({ value: l.id, label: l.name }))}
             />
           </Field>
@@ -306,10 +310,16 @@ export function TariffForm({
             placeholder='{"30": 5, "180": 15}'
             className="min-h-[68px] w-full resize-y rounded-lg border border-input bg-transparent px-3 py-2.5 font-mono text-[13px] leading-relaxed outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
           />
+          <p className="text-xs text-muted-foreground/70">
+            {t("admin.tariff_form.discounts_hint")}
+          </p>
         </Field>
 
         {!isSlots && (
-          <Section title={t("admin.tariff_form.ranges")}>
+          <Section
+            title={t("admin.tariff_form.ranges")}
+            hint={t("admin.tariff_form.ranges_hint")}
+          >
             <div className="grid grid-cols-[1fr_repeat(3,64px)] items-center gap-2 text-center text-[11px] text-muted-foreground">
               <span />
               <span>Min</span>
@@ -747,8 +757,8 @@ export function adminTariffToFormState(t: {
     billing_type: t.billing_type || "resources",
     mysql_engine: t.mysql_engine || "",
     mysql_instance_key: t.mysql_instance_key || "",
-    rental_periods: Array.isArray(t.rental_periods) ? t.rental_periods : [],
-    renewal_periods: Array.isArray(t.renewal_periods) ? t.renewal_periods : [],
+    rental_periods: t.rental_periods?.length ? t.rental_periods : [...PERIODS],
+    renewal_periods: t.renewal_periods?.length ? t.renewal_periods : [...PERIODS],
     price_per_cpu_core: t.price_per_cpu_core ?? 0,
     price_per_ram_gb: t.price_per_ram_gb ?? 0,
     price_per_disk_gb: t.price_per_disk_gb ?? 0,

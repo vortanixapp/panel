@@ -48,10 +48,10 @@ func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
 		if periodDays <= 0 {
 			periodDays = 30
 		}
-		order := buildRentOrderFromQuery(q)
 		tariffJSON, err := h.loadTariffLegacyJSON(ctx, tariffID)
 		if err == nil {
-			if msg := tariffMeetsGame(q.Get("game_id"), tariffJSON, order); msg != "" {
+			order := pricing.Resolve(tariffJSON, buildRentOrderFromQuery(q))
+			if msg := tariffMeetsGame(q.Get("game_id"), order); msg != "" {
 				resp["tariff_warning"] = msg
 			}
 
@@ -182,12 +182,35 @@ func queryPairs(ctx context.Context, h *Handler, q string) []map[string]any {
 	return list
 }
 
+func (h *Handler) rentMinPrices(ctx context.Context) func(gameID string) (float64, bool) {
+	byGame := map[string]float64{}
+	shared, hasShared := 0.0, false
+	for _, tariff := range h.loadRentTariffs(ctx, "", "") {
+		price := floatFromAny(tariff["price_from"])
+		gameID, _ := tariff["game_id"].(string)
+		if gameID == "" {
+			if !hasShared || price < shared {
+				shared, hasShared = price, true
+			}
+			continue
+		}
+		if cur, ok := byGame[gameID]; !ok || price < cur {
+			byGame[gameID] = price
+		}
+	}
+	return func(gameID string) (float64, bool) {
+		price, ok := byGame[gameID]
+		if hasShared && (!ok || shared < price) {
+			return shared, true
+		}
+		return price, ok
+	}
+}
+
 func (h *Handler) queryRentGames(ctx context.Context) []map[string]any {
+	minPrice := h.rentMinPrices(ctx)
 	rows, err := h.dbOf(ctx).Query(ctx, `
 		SELECT g.id::text, g.slug, g.name,
-			(SELECT MIN(t.price_monthly) FROM core.tariffs t
-			  WHERE t.active = true
-			    AND (t.game_id IS NULL OR t.game_id = g.id)),
 			(SELECT COUNT(*)::int FROM core.servers s
 			  WHERE s.game_id = g.slug)
 		FROM core.games g
@@ -201,14 +224,13 @@ func (h *Handler) queryRentGames(ctx context.Context) []map[string]any {
 	list := []map[string]any{}
 	for rows.Next() {
 		var id, slug, name string
-		var minPrice *float64
 		var serversCount int
-		if rows.Scan(&id, &slug, &name, &minPrice, &serversCount) != nil {
+		if rows.Scan(&id, &slug, &name, &serversCount) != nil {
 			continue
 		}
 		item := map[string]any{"id": id, "slug": slug, "name": name, "servers_count": serversCount}
-		if minPrice != nil {
-			item["min_price"] = *minPrice
+		if price, ok := minPrice(id); ok {
+			item["min_price"] = price
 		}
 		if g, ok := gamecatalog.Resolve(gamecatalog.Normalize(slug)); ok {
 			if g.Install.SourceType == gamecatalog.SourceDocker {
@@ -368,60 +390,38 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	limits := gamecatalog.DefaultLimits(gameID)
-	var rentPrice float64
-	var currency string = "RUB"
-	var promoID string
-
-	order := pricing.RentOrder{
+	tariffJSON, loadErr := h.loadTariffLegacyJSON(r.Context(), body.TariffID)
+	if loadErr != nil {
+		writeCodedError(w, http.StatusBadRequest, "tariff_unknown", "тариф не найден")
+		return
+	}
+	if msg := h.rentTariffRefusal(r.Context(), tariffJSON, body.TariffID, nodeID, gameID, periodDays); msg != "" {
+		writeCodedError(w, http.StatusBadRequest, "tariff_unavailable", msg)
+		return
+	}
+	order := pricing.Resolve(tariffJSON, pricing.RentOrder{
 		Slots: body.Slots, CPUCores: body.CPUCores, RAMGb: body.RAMGb,
 		DiskGb: body.DiskGb, AntiddosEnabled: body.Antiddos,
+	})
+	if msg := tariffMeetsGame(gameID, order); msg != "" {
+		writeCodedError(w, http.StatusBadRequest, "tariff_too_small", msg)
+		return
 	}
 
-	{
-		tariffJSON, err := h.loadTariffLegacyJSON(r.Context(), body.TariffID)
-		if err != nil {
-			writeCodedError(w, http.StatusBadRequest, "tariff_unknown", "тариф не найден")
-			return
-		}
-		{
-			if msg := tariffMeetsGame(gameID, tariffJSON, order); msg != "" {
-				writeCodedError(w, http.StatusBadRequest, "tariff_too_small", msg)
-				return
-			}
-
-			baseCost := pricing.CalculateRentCost(tariffJSON, order, periodDays)
-			promo, promoErr := payments.PickPromotion(
-				r.Context(), h.dbOf(r.Context()), payments.ApplyRent, claims.UserID,
-				body.PromoCode, body.TariffID, body.GameID, nodeID, baseCost,
-			)
-			if promoErr != "" {
-				writeError(w, http.StatusBadRequest, promoErr)
-				return
-			}
-			preview := payments.ApplyRentDiscount(promo, baseCost)
-			rentPrice = preview.FinalCost
-			promoID = preview.PromoID
-			currency = fmt.Sprint(tariffJSON["currency"])
-			if currency == "" {
-				currency = "RUB"
-			}
-			if ram := intFromAny(tariffJSON["ram_gb"]); ram > 0 {
-				limits["memory_mb"] = ram * 1024
-			}
-			if disk := intFromAny(tariffJSON["disk_gb"]); disk > 0 {
-				limits["disk_mb"] = disk * 1024
-			}
-			if cpu := intFromAny(tariffJSON["cpu_cores"]); cpu > 0 {
-				limits["cpu"] = cpu
-			}
-		}
+	baseCost := pricing.CalculateRentCost(tariffJSON, order, periodDays)
+	promo, promoErr := payments.PickPromotion(
+		r.Context(), h.dbOf(r.Context()), payments.ApplyRent, claims.UserID,
+		body.PromoCode, body.TariffID, body.GameID, nodeID, baseCost,
+	)
+	if promoErr != "" {
+		writeError(w, http.StatusBadRequest, promoErr)
+		return
 	}
-	if order.Slots > 0 {
-		limits["slots"] = order.Slots
-	} else if body.Slots > 0 {
-		limits["slots"] = body.Slots
-	}
+	preview := payments.ApplyRentDiscount(promo, baseCost)
+	rentPrice := preview.FinalCost
+	promoID := preview.PromoID
+	currency := tariffCurrency(tariffJSON)
+	limits := tariffLimits(tariffJSON, order, gamecatalog.DefaultLimits(gameID))
 
 	rentTxID := ""
 	if rentPrice > 0 {
@@ -615,24 +615,58 @@ func (h *Handler) debitWalletForRentSource(
 	return txID, nil
 }
 
-func tariffMeetsGame(gameSlug string, tariff map[string]any, order pricing.RentOrder) string {
+func (h *Handler) rentTariffRefusal(ctx context.Context, tariff map[string]any, tariffID, nodeID, gameSlug string, periodDays int) string {
+	if !boolFromAny(tariff["active"]) {
+		return "тариф недоступен для заказа"
+	}
+	if loc, _ := tariff["location_id"].(string); loc != "" && loc != nodeID {
+		return "тариф не действует на выбранной локации"
+	}
+	if slug := h.tariffGameSlug(ctx, tariffID); slug != "" && gameSlug != "" && slug != gameSlug {
+		return "тариф предназначен для другой игры"
+	}
+	periods, _ := tariff["rental_periods"].([]int)
+	if !tariffPeriodAllowed(periods, periodDays) {
+		return fmt.Sprintf("срок %d дн. недоступен для этого тарифа", periodDays)
+	}
+	return ""
+}
+
+func tariffPeriodAllowed(periods []int, days int) bool {
+	if len(periods) == 0 {
+		return days >= 1 && days <= 365
+	}
+	for _, p := range periods {
+		if p == days {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *Handler) renewPeriodAllowed(ctx context.Context, serverID string, days int) bool {
+	var raw []byte
+	err := h.dbOf(ctx).QueryRow(ctx, `
+		SELECT COALESCE(t.renewal_periods, '[]'::jsonb)
+		FROM core.servers s
+		LEFT JOIN core.tariffs t ON t.id = s.tariff_id
+		WHERE s.id = $1
+	`, serverID).Scan(&raw)
+	if err != nil {
+		return days >= 1 && days <= 365
+	}
+	return tariffPeriodAllowed(jsonIntSlice(raw), days)
+}
+
+func tariffMeetsGame(gameSlug string, order pricing.RentOrder) string {
 	g, ok := gamecatalog.Resolve(gamecatalog.Normalize(gameSlug))
 	if !ok {
 		return ""
 	}
 
-	ramMB := intFromAny(tariff["ram_gb"]) * 1024
-	if order.RAMGb*1024 > ramMB {
-		ramMB = order.RAMGb * 1024
-	}
-	diskMB := intFromAny(tariff["disk_gb"]) * 1024
-	if order.DiskGb*1024 > diskMB {
-		diskMB = order.DiskGb * 1024
-	}
-	cpu := intFromAny(tariff["cpu_cores"])
-	if order.CPUCores > cpu {
-		cpu = order.CPUCores
-	}
+	ramMB := order.RAMGb * 1024
+	diskMB := order.DiskGb * 1024
+	cpu := order.CPUCores
 
 	if ramMB > 0 && g.MinRAMMB > 0 && ramMB < g.MinRAMMB {
 		return fmt.Sprintf("%s требует минимум %d ГБ оперативной памяти, в тарифе — %d ГБ",

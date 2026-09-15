@@ -11,6 +11,8 @@ import (
 
 var auditAlertActions = map[string]bool{
 	"groups.update":                   true,
+	"groups.create":                   true,
+	"groups.delete":                   true,
 	"user.impersonate":                true,
 	"api_key.create":                  true,
 	"webhook.create":                  true,

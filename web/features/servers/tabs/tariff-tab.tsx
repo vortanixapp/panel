@@ -29,10 +29,13 @@ import {
 import { formatAmount } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
+import { allowedPeriods, fitRange, slotRange, tariffRange } from "@/lib/tariff-pricing";
 import { useServerDetail } from "@/hooks/use-queries";
 import { WhmcsBillingPanel, isWhmcsBilled } from "@/features/servers/whmcs-billing";
 import { dateLocaleTag } from "@/lib/i18n";
 import { useT } from "@/hooks/use-translations";
+
+const DEFAULT_PERIODS = [15, 30, 60, 180] as const;
 
 export function ServerTariffTab() {
   const t = useT();
@@ -107,6 +110,14 @@ export function ServerTariffTab() {
     if (server?.auto_renew !== undefined) setAutoRenew(Boolean(server.auto_renew));
   }, [server?.auto_renew]);
 
+  const notifyApplied = (message: string, restartRequired?: boolean) => {
+    if (restartRequired) {
+      toast.success(message, { description: t("servers.tariff.restart_hint") });
+    } else {
+      toast.success(message);
+    }
+  };
+
   const autoRenewMutation = useMutation({
     mutationFn: (enabled: boolean) => setServerAutoRenew(id, enabled),
     onSuccess: (res) => {
@@ -139,15 +150,17 @@ export function ServerTariffTab() {
     mutationFn: (tariffId: string) =>
       changeServerTariff(id, tariffId, walletId || billing?.selected_wallet?.id),
     onSuccess: (data) => {
-      toast.success(
+      notifyApplied(
         data.charged
           ? t("servers.tariff.changed_charged", {
               amount: data.charged,
               currency: data.currency ?? "",
             })
-          : t("servers.tariff.changed")
+          : t("servers.tariff.changed"),
+        data.restart_required
       );
       void queryClient.invalidateQueries({ queryKey: queryKeys.serverDetail(id) });
+      void queryClient.invalidateQueries({ queryKey: ["server-tariffs", id] });
     },
     onError: (err) =>
       toast.error(
@@ -163,13 +176,14 @@ export function ServerTariffTab() {
         walletId || billing?.selected_wallet?.id
       ),
     onSuccess: (data) => {
-      toast.success(
+      notifyApplied(
         data.charged
           ? t("servers.tariff.resources_charged", {
               amount: data.charged,
               currency: data.currency ?? "",
             })
-          : t("servers.tariff.resources_updated")
+          : t("servers.tariff.resources_updated"),
+        data.restart_required
       );
       void queryClient.invalidateQueries({ queryKey: queryKeys.serverDetail(id) });
     },
@@ -179,9 +193,7 @@ export function ServerTariffTab() {
       ),
   });
 
-  const renewalPeriods = server?.tariff?.renewal_periods?.length
-    ? server.tariff.renewal_periods
-    : [15, 30, 60, 180];
+  const renewalPeriods = allowedPeriods(server?.tariff?.renewal_periods, DEFAULT_PERIODS);
 
   const availableTariffs = tariffsQuery.data?.tariffs ?? [];
   const activeTariff = useMemo(
@@ -193,17 +205,35 @@ export function ServerTariffTab() {
     if (!renewalPeriods.includes(renewPeriod)) setRenewPeriod(renewalPeriods[0] ?? 30);
   }, [renewalPeriods, renewPeriod]);
 
+  useEffect(() => {
+    if (!activeTariff) return;
+    setCpuCores((v) => fitRange(tariffRange(activeTariff, "cpu", v), v));
+    setRamGb((v) => fitRange(tariffRange(activeTariff, "ram", v), v));
+    setDiskGb((v) => fitRange(tariffRange(activeTariff, "disk", v), v));
+    setSlots((v) => fitRange(slotRange(activeTariff, v), v));
+  }, [activeTariff]);
+
   const tariffChangePreview = useQuery({
     queryKey: ["server-tariff-change-preview", id, selectedTariffId],
     queryFn: () => previewServerTariffChange(id, selectedTariffId),
     enabled: !!id && !!selectedTariffId && selectedTariffId !== String(tariff?.id ?? ""),
   });
 
+  const cpuRange = tariffRange(activeTariff, "cpu", cpuCores);
+  const ramRange = tariffRange(activeTariff, "ram", ramGb);
+  const diskRange = tariffRange(activeTariff, "disk", diskGb);
+  const slotsRange = slotRange(activeTariff, slots);
+  const tuneCpu = cpuRange.max > cpuRange.min;
+  const tuneRam = ramRange.max > ramRange.min;
+  const tuneDisk = diskRange.max > diskRange.min;
+  const tuneSlots = slotsRange.max > slotsRange.min;
+  const showResourceSliders = tuneCpu || tuneRam || tuneDisk || tuneSlots;
+
   const resourcesPreview = useQuery({
     queryKey: ["server-tariff-resources-preview", id, cpuCores, ramGb, diskGb, slots],
     queryFn: () =>
       previewServerTariffResources(id, { cpu_cores: cpuCores, ram_gb: ramGb, disk_gb: diskGb, slots }),
-    enabled: !!id,
+    enabled: !!id && showResourceSliders,
   });
 
   if (!server) return null;
@@ -221,8 +251,7 @@ export function ServerTariffTab() {
     ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000))
     : null;
 
-  const billingType = tariff?.billing_type ?? activeTariff?.billing_type ?? "resources";
-  const showResourceSliders = billingType === "resources" || billingType === "slots";
+  const monthlyCost = tariff?.monthly_cost ?? tariff?.price_monthly;
   const promoError = renewPreview.data?.promo_preview?.error;
 
   return (
@@ -328,12 +357,12 @@ export function ServerTariffTab() {
       >
         <div>
           <InfoRow k={t("common.tariff")} v={tariff?.name ?? "—"} />
-          {tariff?.price_monthly != null && (
+          {monthlyCost != null && (
             <InfoRow
               k={t("servers.tariff.row_price")}
               v={t("servers.tariff.price_per_month", {
-                amount: formatAmount(tariff.price_monthly),
-                currency: tariff.currency ?? "RUB",
+                amount: formatAmount(monthlyCost),
+                currency: tariff?.currency ?? "RUB",
               })}
             />
           )}
@@ -388,48 +417,52 @@ export function ServerTariffTab() {
           </div>
         )}
 
-        {showResourceSliders && (
+        {showResourceSliders ? (
           <div className="flex flex-col gap-4 border-t border-[var(--vx-border)] pt-3.5">
-            {billingType === "resources" && (
-              <>
-                <ResourceSlider
-                  label="CPU"
-                  value={cpuCores}
-                  display={String(cpuCores)}
-                  min={activeTariff?.cpu_min ?? 1}
-                  max={activeTariff?.cpu_max ?? 16}
-                  step={activeTariff?.cpu_step ?? 1}
-                  onChange={setCpuCores}
-                />
-                <ResourceSlider
-                  label="RAM"
-                  value={ramGb}
-                  display={`${ramGb} GB`}
-                  min={activeTariff?.ram_min ?? 1}
-                  max={activeTariff?.ram_max ?? 64}
-                  step={activeTariff?.ram_step ?? 1}
-                  onChange={setRamGb}
-                />
-                <ResourceSlider
-                  label={t("servers.tariff.slider_disk")}
-                  value={diskGb}
-                  display={`${diskGb} GB`}
-                  min={activeTariff?.disk_min ?? 10}
-                  max={activeTariff?.disk_max ?? 500}
-                  step={activeTariff?.disk_step ?? 10}
-                  onChange={setDiskGb}
-                />
-              </>
+            {tuneCpu && (
+              <ResourceSlider
+                label="CPU"
+                value={cpuCores}
+                display={String(cpuCores)}
+                min={cpuRange.min}
+                max={cpuRange.max}
+                step={cpuRange.step}
+                onChange={setCpuCores}
+              />
             )}
-            <ResourceSlider
-              label={t("servers.tariff.slider_slots")}
-              value={slots}
-              display={String(slots)}
-              min={activeTariff?.min_slots ?? 1}
-              max={activeTariff?.max_slots ?? 100}
-              step={1}
-              onChange={setSlots}
-            />
+            {tuneRam && (
+              <ResourceSlider
+                label="RAM"
+                value={ramGb}
+                display={`${ramGb} GB`}
+                min={ramRange.min}
+                max={ramRange.max}
+                step={ramRange.step}
+                onChange={setRamGb}
+              />
+            )}
+            {tuneDisk && (
+              <ResourceSlider
+                label={t("servers.tariff.slider_disk")}
+                value={diskGb}
+                display={`${diskGb} GB`}
+                min={diskRange.min}
+                max={diskRange.max}
+                step={diskRange.step}
+                onChange={setDiskGb}
+              />
+            )}
+            {tuneSlots && (
+              <ResourceSlider
+                label={t("servers.tariff.slider_slots")}
+                value={slots}
+                display={String(slots)}
+                min={slotsRange.min}
+                max={slotsRange.max}
+                step={1}
+                onChange={setSlots}
+              />
+            )}
 
             <div
               className={cn(
@@ -462,6 +495,17 @@ export function ServerTariffTab() {
                 : t("servers.tariff.apply_resources")}
             </Btn>
           </div>
+        ) : (
+          activeTariff && (
+            <p
+              className={cn(
+                "border-t border-[var(--vx-border)] pt-3.5 text-[12px]",
+                VX_MUTED
+              )}
+            >
+              {t("servers.tariff.fixed_resources")}
+            </p>
+          )
         )}
       </Panel>
     </div>

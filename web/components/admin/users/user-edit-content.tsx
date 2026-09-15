@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { togglePanelUserBlock, verifyPanelUserEmail } from "@/lib/api";
+import {
+  fetchAdminGroups,
+  togglePanelUserBlock,
+  verifyPanelUserEmail,
+} from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { isOwnerRole } from "@/lib/rbac";
 import { useAdminUser, useUpdateAdminUser } from "@/hooks/use-queries";
@@ -42,9 +46,11 @@ type FormState = {
   password: string;
   password_confirmation: string;
   role: string;
+  staff_group_id: string;
 };
 
 const emptyForm: FormState = {
+  staff_group_id: "",
   name: "",
   last_name: "",
   public_id: "",
@@ -78,6 +84,12 @@ export function UserEditContent() {
   const qc = useQueryClient();
   const userQuery = useAdminUser(id);
   const saveMutation = useUpdateAdminUser(id);
+  const groupsQuery = useQuery({
+    queryKey: queryKeys.adminGroups,
+    queryFn: fetchAdminGroups,
+    retry: false,
+  });
+  const customGroups = (groupsQuery.data?.items ?? []).filter((group) => !group.system);
 
   const [error, setError] = useState("");
   const [walletBalances, setWalletBalances] = useState<WalletBalances>({});
@@ -106,6 +118,7 @@ export function UserEditContent() {
       password: "",
       password_confirmation: "",
       role: u.role || "user",
+      staff_group_id: u.staff_group_id || "",
     };
     const balances: WalletBalances = {};
     wallets.forEach((wl) => {
@@ -165,6 +178,7 @@ export function UserEditContent() {
         discord_id: f.discord_id,
         vk_id: f.vk_id,
         role: f.role,
+        staff_group_id: f.role === "support" ? f.staff_group_id : "",
         wallets: walletBalances,
       };
       if (f.password) {
@@ -416,6 +430,25 @@ export function UserEditContent() {
                   ))}
                 </div>
               </Field>
+              {f.role === "support" && customGroups.length > 0 && (
+                <Field label={t("admin.users.staff_group")}>
+                  <select
+                    value={f.staff_group_id}
+                    onChange={(e) => set("staff_group_id", e.target.value)}
+                    className="h-[38px] w-full rounded-lg border border-input bg-transparent px-2.5 text-[13px] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                  >
+                    <option value="">{t("admin.users.staff_group_base")}</option>
+                    {customGroups.map((group) => (
+                      <option key={group.key} value={group.key}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-muted-foreground/70">
+                    {t("admin.users.staff_group_hint")}
+                  </span>
+                </Field>
+              )}
               {owner && (
                 <p className="text-xs text-muted-foreground">
                   {t("admin.users.owner_locked")}

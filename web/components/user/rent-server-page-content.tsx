@@ -33,6 +33,13 @@ import { formatAmount } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
+import {
+  allowedPeriods,
+  fitRange,
+  periodCost,
+  slotRange,
+  tariffRange,
+} from "@/lib/tariff-pricing";
 import { useT } from "@/hooks/use-translations";
 
 const STEPS = [
@@ -55,42 +62,20 @@ function money(value: number | null | undefined, currency = "RUB"): string {
   return `${formatAmount(value, 0)} ${symbol}`;
 }
 
-function proRata(tariff: RentTariff | undefined, days: number): number | null {
-  if (!tariff?.price_monthly) return null;
-  return (tariff.price_monthly * days) / 30;
-}
-
-function tariffRange(
-  tariff: RentTariff | undefined,
-  field: "cpu" | "ram" | "disk",
-  fallback: number
-): { min: number; max: number; step: number; default: number } {
-  if (!tariff) return { min: fallback, max: fallback * 2, step: 1, default: fallback };
-  const minKey = `${field}_min` as keyof RentTariff;
-  const maxKey = `${field}_max` as keyof RentTariff;
-  const stepKey = `${field}_step` as keyof RentTariff;
-
-  let defaultVal = fallback;
-  if (field === "ram" && tariff.ram_gb != null) defaultVal = tariff.ram_gb;
-  else if (field === "disk" && tariff.disk_gb != null) defaultVal = tariff.disk_gb;
-  else if (field === "cpu" && tariff.cpu_cores != null) defaultVal = tariff.cpu_cores;
-  else if (field === "ram" && tariff.ram_mb) defaultVal = Math.max(1, Math.round(tariff.ram_mb / 1024));
-  else if (field === "disk" && tariff.disk_mb) defaultVal = Math.max(1, Math.round(tariff.disk_mb / 1024));
-
-  const min = Number(tariff[minKey] ?? defaultVal);
-  const max = Number(tariff[maxKey] ?? Math.max(defaultVal, min));
-  const step = Number(tariff[stepKey] ?? 1) || 1;
-  return { min, max: Math.max(max, min), step, default: defaultVal };
-}
-
 function tariffSpecs(tariff: RentTariff): { k: string; v: string }[] {
   const specs: { k: string; v: string }[] = [];
-  if (tariff.cpu_cores != null) specs.push({ k: "CPU", v: `${tariff.cpu_cores}` });
-  if (tariff.ram_mb) specs.push({ k: "RAM", v: `${Math.round(tariff.ram_mb / 1024)} GB` });
-  if (tariff.disk_mb) {
-    specs.push({ k: t("billing.rent.disk"), v: `${Math.round(tariff.disk_mb / 1024)} GB` });
+  if (tariff.cpu_cores) specs.push({ k: "CPU", v: `${tariff.cpu_cores}` });
+  if (tariff.ram_gb) specs.push({ k: "RAM", v: `${tariff.ram_gb} GB` });
+  if (tariff.disk_gb) specs.push({ k: t("billing.rent.disk"), v: `${tariff.disk_gb} GB` });
+  if (tariff.max_slots) {
+    specs.push({
+      k: t("billing.rent.slots"),
+      v:
+        tariff.billing_type === "slots"
+          ? `${tariff.min_slots ?? 1}–${tariff.max_slots}`
+          : `${tariff.max_slots}`,
+    });
   }
-  if (tariff.slots != null) specs.push({ k: t("billing.rent.slots"), v: `${tariff.slots}` });
   return specs;
 }
 
@@ -210,10 +195,15 @@ export function RentServerPageContent() {
   const selectedGame = useMemo(() => games.find((g) => g.id === gameId), [games, gameId]);
   const selectedNode = useMemo(() => nodes.find((n) => n.id === nodeId), [nodes, nodeId]);
 
-  const tariffs = useMemo(() => {
-    if (!gameId) return allTariffs;
-    return allTariffs.filter((t) => !t.game_id || t.game_id === gameId);
-  }, [allTariffs, gameId]);
+  const tariffs = useMemo(
+    () =>
+      allTariffs.filter(
+        (item) =>
+          (!gameId || !item.game_id || item.game_id === gameId) &&
+          (!nodeId || !item.location_id || item.location_id === nodeId)
+      ),
+    [allTariffs, gameId, nodeId]
+  );
 
   const selectedTariff = useMemo(() => tariffs.find((t) => t.id === tariffId), [tariffs, tariffId]);
   const versions = useMemo(
@@ -234,14 +224,16 @@ export function RentServerPageContent() {
   const cpuRange = tariffRange(selectedTariff, "cpu", 1);
   const ramRange = tariffRange(selectedTariff, "ram", 1);
   const diskRange = tariffRange(selectedTariff, "disk", 10);
-  const slotsMin = selectedTariff?.slots_min ?? 2;
-  const slotsMax = selectedTariff?.slots_max ?? selectedTariff?.slots ?? 32;
+  const slotsRange = slotRange(selectedTariff, slots);
+  const slotsMin = slotsRange.min;
+  const slotsMax = slotsRange.max;
+  const periods = allowedPeriods(selectedTariff?.rental_periods, PERIODS);
   const currency = selectedTariff?.currency ?? "RUB";
   const promoPreview = quoteQuery.data?.promo_preview;
   const total =
     quoteQuery.data?.calculated_cost ??
     promoPreview?.final_cost ??
-    proRata(selectedTariff, Number(period) || 30);
+    periodCost(selectedTariff, Number(period) || 30);
   const baseCost = promoPreview?.base_cost ?? quoteQuery.data?.base_cost ?? null;
   const discount = promoPreview?.valid ? (promoPreview.discount ?? 0) : 0;
   const isRecalculating = quoteQuery.isFetching;
@@ -300,10 +292,10 @@ export function RentServerPageContent() {
 
   function selectTariff(tariff: RentTariff) {
     setTariffId(tariff.id);
+    const nextPeriods = allowedPeriods(tariff.rental_periods, PERIODS);
+    if (!nextPeriods.includes(Number(period))) setPeriod(String(nextPeriods[0]));
     if (tariff.billing_type === "slots") {
-      const min = tariff.slots_min ?? 2;
-      const max = tariff.slots_max ?? tariff.slots ?? 32;
-      setSlots(Math.min(max, Math.max(min, slots)));
+      setSlots(fitRange(slotRange(tariff, slots), slots));
     }
     if (tariff.billing_type === "resources") {
       const cpu = tariffRange(tariff, "cpu", 1);
@@ -616,7 +608,7 @@ export function RentServerPageContent() {
                                 ))}
                               </span>
                               <span className="mt-auto border-t border-[var(--vx-border)] pt-2.5 font-mono text-[15px] text-[var(--vx-fg)]">
-                                {money(tariff.price_monthly, tariff.currency ?? "RUB")}
+                                {money(tariff.price_from ?? tariff.price_monthly, tariff.currency ?? "RUB")}
                               </span>
                             </button>
                           );
@@ -744,9 +736,9 @@ export function RentServerPageContent() {
 
                       <span className="text-[15px] font-semibold">{t("common.period")}</span>
                       <div className="grid grid-cols-4 gap-2">
-                        {PERIODS.map((days) => {
+                        {periods.map((days) => {
                           const selected = period === String(days);
-                          const cost = proRata(selectedTariff, days);
+                          const cost = periodCost(selectedTariff, days);
                           return (
                             <button
                               key={days}

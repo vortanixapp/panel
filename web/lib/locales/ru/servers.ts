@@ -412,6 +412,9 @@ export const servers = {
   "servers.tariff.resources_charged":
     "Ресурсы обновлены. Списано: {amount} {currency}",
   "servers.tariff.resources_updated": "Ресурсы обновлены",
+  "servers.tariff.restart_hint": "Новые лимиты применятся после перезапуска сервера",
+  "servers.tariff.fixed_resources":
+    "На этом тарифе ресурсы фиксированные. Чтобы получить больше, смените тариф",
   "servers.tariff.resources_error": "Ошибка изменения ресурсов",
   "servers.tariff.renew_title": "Продление",
   "servers.tariff.days": "{days} дн.",

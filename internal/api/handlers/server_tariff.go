@@ -135,7 +135,7 @@ func (h *Handler) ServerTariffChange(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Тариф не найден")
 		return
 	}
-	if !tariffAvailableForServer(newTariff, row.nodeID, row.gameID) {
+	if !h.tariffAvailableForServer(ctx, newTariff, newTariffID, row.nodeID, row.gameID) {
 		writeError(w, http.StatusBadRequest, "Этот тариф недоступен для сервера")
 		return
 	}
@@ -146,9 +146,9 @@ func (h *Handler) ServerTariffChange(w http.ResponseWriter, r *http.Request) {
 	}
 
 	order := limitsToRentOrder(row.limits)
-	clamped := clampToTariff(order, newTariff)
-	oldMonthly := serverMonthlyPrice(currentTariff, order)
-	newMonthly := serverMonthlyPrice(newTariff, clamped)
+	target := pricing.Resolve(newTariff, order)
+	oldMonthly := pricing.MonthlyCost(currentTariff, order)
+	newMonthly := pricing.MonthlyCost(newTariff, target)
 	if oldMonthly <= 0 || newMonthly <= 0 {
 		writeError(w, http.StatusBadRequest, "Не удалось рассчитать стоимость")
 		return
@@ -164,7 +164,7 @@ func (h *Handler) ServerTariffChange(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	limits := rentOrderToLimits(clamped)
+	limits := tariffLimits(newTariff, target, row.limits)
 	limitsJSON, _ := json.Marshal(limits)
 	_, err = h.dbOf(ctx).Exec(ctx, `
 		UPDATE core.servers
@@ -179,9 +179,10 @@ func (h *Handler) ServerTariffChange(w http.ResponseWriter, r *http.Request) {
 		"from_tariff_id": row.tariffID, "to_tariff_id": newTariffID, "delta": delta,
 	})
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":   "changed",
-		"charged":  delta,
-		"currency": curCurrency,
+		"status":           "changed",
+		"charged":          delta,
+		"currency":         curCurrency,
+		"restart_required": limitsDiffer(row.limits, limits),
 	})
 }
 
@@ -233,12 +234,17 @@ func (h *Handler) ServerTariffChangePreview(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadRequest, "Тариф не найден")
 		return
 	}
+	if !h.tariffAvailableForServer(ctx, newTariff, newTariffID, row.nodeID, row.gameID) {
+		writeError(w, http.StatusBadRequest, "Этот тариф недоступен для сервера")
+		return
+	}
 	order := limitsToRentOrder(row.limits)
-	clamped := clampToTariff(order, newTariff)
-	oldMonthly := serverMonthlyPrice(currentTariff, order)
-	newMonthly := serverMonthlyPrice(newTariff, clamped)
+	target := pricing.Resolve(newTariff, order)
+	oldMonthly := pricing.MonthlyCost(currentTariff, order)
+	newMonthly := pricing.MonthlyCost(newTariff, target)
 	daysLeft := serverRemainingDays(row.expiresAt)
 	delta, newExpires := tariffChangeBilling(oldMonthly, newMonthly, daysLeft, row.expiresAt)
+	limits := tariffLimits(newTariff, target, row.limits)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":                true,
 		"from_tariff_id":    row.tariffID,
@@ -247,8 +253,9 @@ func (h *Handler) ServerTariffChangePreview(w http.ResponseWriter, r *http.Reque
 		"currency":          tariffCurrency(currentTariff),
 		"days_left":         daysLeft,
 		"new_expires_at":    newExpires,
-		"target_resources":  rentOrderToLimits(clamped),
+		"target_resources":  limits,
 		"current_resources": row.limits,
+		"restart_required":  limitsDiffer(row.limits, limits),
 	})
 }
 
@@ -310,17 +317,16 @@ func (h *Handler) ServerTariffResources(w http.ResponseWriter, r *http.Request) 
 	}
 
 	oldOrder := limitsToRentOrder(row.limits)
-	oldMonthly := serverMonthlyPrice(tariffJSON, oldOrder)
+	oldMonthly := pricing.MonthlyCost(tariffJSON, oldOrder)
 	if oldMonthly <= 0 {
 		writeError(w, http.StatusBadRequest, "Не удалось рассчитать стоимость")
 		return
 	}
 
-	target := pricing.RentOrder{
-		Slots: body.Slots, CPUCores: int(body.CPUCores), RAMGb: body.RAMGb, DiskGb: body.DiskGb,
-	}
-	clamped := clampToTariff(target, tariffJSON)
-	newMonthly := serverMonthlyPrice(tariffJSON, clamped)
+	target := pricing.Resolve(tariffJSON, pricing.RentOrder{
+		Slots: body.Slots, CPUCores: int(math.Round(body.CPUCores)), RAMGb: body.RAMGb, DiskGb: body.DiskGb,
+	})
+	newMonthly := pricing.MonthlyCost(tariffJSON, target)
 	if newMonthly <= 0 {
 		writeError(w, http.StatusBadRequest, "Не удалось рассчитать стоимость")
 		return
@@ -337,7 +343,7 @@ func (h *Handler) ServerTariffResources(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	limits := rentOrderToLimits(clamped)
+	limits := tariffLimits(tariffJSON, target, row.limits)
 	limitsJSON, _ := json.Marshal(limits)
 	_, err = h.dbOf(ctx).Exec(ctx, `
 		UPDATE core.servers SET limits = $2::jsonb, expires_at = $3 WHERE id = $1
@@ -348,9 +354,10 @@ func (h *Handler) ServerTariffResources(w http.ResponseWriter, r *http.Request) 
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "server.tariff_resources", serverID, map[string]any{"delta": delta})
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":   "updated",
-		"charged":  delta,
-		"currency": currency,
+		"status":           "updated",
+		"charged":          delta,
+		"currency":         currency,
+		"restart_required": limitsDiffer(row.limits, limits),
 	})
 }
 
@@ -396,22 +403,23 @@ func (h *Handler) ServerTariffResourcesPreview(w http.ResponseWriter, r *http.Re
 		return
 	}
 	oldOrder := limitsToRentOrder(row.limits)
-	oldMonthly := serverMonthlyPrice(tariffJSON, oldOrder)
-	target := pricing.RentOrder{
-		Slots: body.Slots, CPUCores: int(body.CPUCores), RAMGb: body.RAMGb, DiskGb: body.DiskGb,
-	}
-	clamped := clampToTariff(target, tariffJSON)
-	newMonthly := serverMonthlyPrice(tariffJSON, clamped)
+	oldMonthly := pricing.MonthlyCost(tariffJSON, oldOrder)
+	target := pricing.Resolve(tariffJSON, pricing.RentOrder{
+		Slots: body.Slots, CPUCores: int(math.Round(body.CPUCores)), RAMGb: body.RAMGb, DiskGb: body.DiskGb,
+	})
+	newMonthly := pricing.MonthlyCost(tariffJSON, target)
 	daysLeft := serverRemainingDays(row.expiresAt)
 	delta, newExpires := tariffChangeBilling(oldMonthly, newMonthly, daysLeft, row.expiresAt)
+	limits := tariffLimits(tariffJSON, target, row.limits)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":                true,
 		"charged":           delta,
 		"currency":          tariffCurrency(tariffJSON),
 		"days_left":         daysLeft,
 		"new_expires_at":    newExpires,
-		"target_resources":  rentOrderToLimits(clamped),
+		"target_resources":  limits,
 		"current_resources": row.limits,
+		"restart_required":  limitsDiffer(row.limits, limits),
 	})
 }
 
@@ -455,7 +463,7 @@ func limitsToRentOrder(limits map[string]any) pricing.RentOrder {
 		DiskGb:   intFromAny(limits["disk_gb"]),
 	}
 	if order.CPUCores <= 0 {
-		order.CPUCores = intFromAny(limits["cpu"])
+		order.CPUCores = int(math.Round(floatFromAny(limits["cpu"])))
 	}
 	if order.RAMGb <= 0 {
 		if mb := intFromAny(limits["memory_mb"]); mb > 0 {
@@ -470,32 +478,38 @@ func limitsToRentOrder(limits map[string]any) pricing.RentOrder {
 	return order
 }
 
-func rentOrderToLimits(order pricing.RentOrder) map[string]any {
-	cpu := order.CPUCores
-	if cpu <= 0 {
-		cpu = 1
+func tariffLimits(tariff map[string]any, order pricing.RentOrder, base map[string]any) map[string]any {
+	limits := make(map[string]any, len(base)+8)
+	for k, v := range base {
+		limits[k] = v
 	}
-	ram := order.RAMGb
-	if ram <= 0 {
-		ram = 1
+	limits["ram_gb"] = order.RAMGb
+	limits["memory_mb"] = order.RAMGb * 1024
+	limits["disk_gb"] = order.DiskGb
+	limits["disk_mb"] = order.DiskGb * 1024
+	shares := intFromAny(tariff["cpu_shares"])
+	if intFromAny(tariff["cpu_cores"]) <= 0 && shares > 0 && !pricing.ResourceRange(tariff, "cpu").Configurable() {
+		delete(limits, "cpu")
+		delete(limits, "cpu_cores")
+		limits["cpu_shares"] = shares
+	} else {
+		delete(limits, "cpu_shares")
+		limits["cpu"] = order.CPUCores
+		limits["cpu_cores"] = order.CPUCores
 	}
-	disk := order.DiskGb
-	if disk <= 0 {
-		disk = 10
+	if order.Slots > 0 {
+		limits["slots"] = order.Slots
 	}
-	slots := order.Slots
-	if slots <= 0 {
-		slots = 10
-	}
-	return map[string]any{
-		"slots": slots, "cpu_cores": cpu, "cpu": cpu,
-		"ram_gb": ram, "memory_mb": ram * 1024,
-		"disk_gb": disk, "disk_mb": disk * 1024,
-	}
+	return limits
 }
 
-func serverMonthlyPrice(tariff map[string]any, order pricing.RentOrder) float64 {
-	return pricing.CalculateRentCost(tariff, order, 30)
+func limitsDiffer(before, after map[string]any) bool {
+	for _, key := range []string{"memory_mb", "disk_mb", "cpu", "cpu_shares", "slots"} {
+		if floatFromAny(before[key]) != floatFromAny(after[key]) {
+			return true
+		}
+	}
+	return false
 }
 
 func serverRemainingDays(expiresAt *time.Time) float64 {
@@ -538,99 +552,13 @@ func tariffCurrency(tariff map[string]any) string {
 	return "RUB"
 }
 
-func tariffAvailableForServer(tariff map[string]any, nodeID, gameSlug string) bool {
-	if !boolFromAny(tariff["is_available"]) && !boolFromAny(tariff["active"]) {
+func (h *Handler) tariffAvailableForServer(ctx context.Context, tariff map[string]any, tariffID, nodeID, gameSlug string) bool {
+	if !boolFromAny(tariff["active"]) {
 		return false
 	}
-	if loc, ok := tariff["location_id"].(string); ok && loc != "" && nodeID != "" && loc != nodeID {
+	if loc, _ := tariff["location_id"].(string); loc != "" && nodeID != "" && loc != nodeID {
 		return false
 	}
-	return true
-}
-
-func clampToTariff(order pricing.RentOrder, tariff map[string]any) pricing.RentOrder {
-	cpu := float64(order.CPUCores)
-	if cpu <= 0 {
-		cpu = float64(intFromAny(tariff["cpu_cores"]))
-	}
-	ram := order.RAMGb
-	if ram <= 0 {
-		ram = intFromAny(tariff["ram_gb"])
-	}
-	disk := order.DiskGb
-	if disk <= 0 {
-		disk = intFromAny(tariff["disk_gb"])
-	}
-	slots := order.Slots
-	if slots <= 0 {
-		slots = intFromAny(tariff["min_slots"])
-	}
-
-	cpuMin := intFromAny(tariff["cpu_min"])
-	cpuMax := intFromAny(tariff["cpu_max"])
-	cpuStep := intFromAny(tariff["cpu_step"])
-	ramMin := intFromAny(tariff["ram_min"])
-	ramMax := intFromAny(tariff["ram_max"])
-	ramStep := intFromAny(tariff["ram_step"])
-	diskMin := intFromAny(tariff["disk_min"])
-	diskMax := intFromAny(tariff["disk_max"])
-	diskStep := intFromAny(tariff["disk_step"])
-	minSlots := intFromAny(tariff["min_slots"])
-	maxSlots := intFromAny(tariff["max_slots"])
-
-	if cpuStep <= 0 {
-		cpuStep = 1
-	}
-	if ramStep <= 0 {
-		ramStep = 1
-	}
-	if diskStep <= 0 {
-		diskStep = 1
-	}
-	if minSlots <= 0 {
-		minSlots = 1
-	}
-	if maxSlots <= 0 {
-		maxSlots = 100
-	}
-	if cpuMax > 0 {
-		cpu = math.Min(cpu, float64(cpuMax))
-	}
-	if cpuMin > 0 {
-		cpu = math.Max(cpu, float64(cpuMin))
-	}
-	cpu = math.Round(cpu/float64(cpuStep)) * float64(cpuStep)
-	if ramMax > 0 {
-		ram = minInt(ram, ramMax)
-	}
-	if ramMin > 0 {
-		ram = maxInt(ram, ramMin)
-	}
-	ram = int(math.Round(float64(ram)/float64(ramStep))) * ramStep
-	if diskMax > 0 {
-		disk = minInt(disk, diskMax)
-	}
-	if diskMin > 0 {
-		disk = maxInt(disk, diskMin)
-	}
-	disk = int(math.Round(float64(disk)/float64(diskStep))) * diskStep
-	slots = maxInt(minSlots, minInt(maxSlots, slots))
-
-	return pricing.RentOrder{
-		Slots: slots, CPUCores: int(cpu), RAMGb: ram, DiskGb: disk,
-	}
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
+	slug := h.tariffGameSlug(ctx, tariffID)
+	return slug == "" || gameSlug == "" || slug == gameSlug
 }
