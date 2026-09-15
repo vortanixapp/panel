@@ -276,6 +276,9 @@ func (h *Handler) ServerAutoRenew(w http.ResponseWriter, r *http.Request) {
 	if !h.requireServerTenant(w, r, serverID) {
 		return
 	}
+	if h.refuseWHMCSBilled(r.Context(), w, serverID) {
+		return
+	}
 	var body struct {
 		Enabled bool `json:"enabled"`
 	}

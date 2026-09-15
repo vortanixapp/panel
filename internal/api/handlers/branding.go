@@ -25,7 +25,8 @@ func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
 		primary = defaultPanelAccent
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
+	payload := map[string]any{
+		"whmcs":             whmcsPublicInfo(settings),
 		"brand_name":        name,
 		"logo_url":          logo,
 		"logo_dark_url":     h.brandingPublicURL(r, a.LogoDark),
@@ -44,7 +45,8 @@ func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
 			"hero":         a.Hero,
 			"links":        a.Links,
 		},
-	})
+	}
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func jsonObjectOfStrings(raw string) map[string]string {

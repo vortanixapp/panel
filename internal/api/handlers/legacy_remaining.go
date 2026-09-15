@@ -96,6 +96,9 @@ func (h *Handler) ServerRenew(w http.ResponseWriter, r *http.Request) {
 	if !h.authorizeServerAction(w, r, claims, serverID, "renew") {
 		return
 	}
+	if h.refuseWHMCSBilled(r.Context(), w, serverID) {
+		return
+	}
 	var body struct {
 		Period    int    `json:"period"`
 		WalletID  string `json:"wallet_id"`
@@ -499,35 +502,22 @@ func (h *Handler) AdminListServers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"servers": list})
 }
 
-func (h *Handler) AdminToggleServerBlock(w http.ResponseWriter, r *http.Request) {
-	claims, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	var body struct {
-		Blocked bool   `json:"blocked"`
-		Reason  string `json:"reason"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	ctx := r.Context()
-
-	var nodeID, name, gameID, status, ownerID string
+func (h *Handler) applyServerBlock(ctx context.Context, id string, blocked bool, reason string) (ownerID, name string, err error) {
+	var nodeID, gameID, status string
 	var limitsRaw []byte
-	err := h.dbOf(ctx).QueryRow(ctx, `
+	err = h.dbOf(ctx).QueryRow(ctx, `
 		UPDATE core.servers SET is_blocked = $2, blocked_reason = NULLIF($3, ''),
 		    blocked_at = CASE WHEN $2 THEN now() ELSE NULL END
 		WHERE id = $1
 		RETURNING COALESCE(node_id::text, ''), name, game_id, COALESCE(status, ''),
 		          COALESCE(user_id::text, ''), COALESCE(limits, '{}'::jsonb)
-	`, id, body.Blocked, body.Reason).
+	`, id, blocked, reason).
 		Scan(&nodeID, &name, &gameID, &status, &ownerID, &limitsRaw)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "server not found")
-		return
+		return "", "", err
 	}
 
-	if body.Blocked && nodeID != "" && status != "stopped" && status != "error" {
+	if blocked && nodeID != "" && status != "stopped" && status != "error" {
 		var lim map[string]any
 		_ = json.Unmarshal(limitsRaw, &lim)
 		cmdErr := h.relay.SendCommand(ctx, nodeID, relay.CommandRequest{
@@ -549,6 +539,27 @@ func (h *Handler) AdminToggleServerBlock(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	_ = h.cache.InvalidateTenantServers(ctx)
+	return ownerID, name, nil
+}
+
+func (h *Handler) AdminToggleServerBlock(w http.ResponseWriter, r *http.Request) {
+	claims, ok := tenantClaims(r.Context())
+	if !ok {
+		return
+	}
+	id := chi.URLParam(r, "id")
+	var body struct {
+		Blocked bool   `json:"blocked"`
+		Reason  string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	ctx := r.Context()
+
+	ownerID, name, err := h.applyServerBlock(ctx, id, body.Blocked, body.Reason)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "server not found")
+		return
+	}
 
 	if ownerID != "" {
 		reason := i18n.Raw(body.Reason)

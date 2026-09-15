@@ -20,6 +20,9 @@ licence keys and activation are not part of it.
   with individual permissions, resource graphs.
 - **Billing.** Tariffs, account balance, promotions, payment gateways,
   documents.
+- **WHMCS.** A provisioning module creates, suspends, changes and deletes
+  servers on billing events and signs clients in without a password. See
+  [docs/whmcs.md](docs/whmcs.md).
 - **Backups.** Local, and off-site to any S3-compatible storage.
 - **Updates.** The panel and the game node agents update with one button or
   automatically when a new release comes out. A database backup is taken

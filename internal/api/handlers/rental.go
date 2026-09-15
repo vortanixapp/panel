@@ -308,6 +308,10 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	if h.whmcsOrdersOnly(r.Context()) {
+		writeCodedError(w, http.StatusConflict, "orders_in_whmcs", "серверы заказываются через биллинг WHMCS")
+		return
+	}
 	var body struct {
 		NodeID        string `json:"node_id"`
 		LocationID    string `json:"location_id"`
@@ -452,73 +456,12 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 			UPDATE core.transactions SET source_id = $2::uuid WHERE id = $1
 		`, rentTxID, id)
 	}
-	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-		INSERT INTO core.jobs ( type, status, payload)
-		VALUES ( 'provision_server', 'pending', $1::jsonb)
-	`, mustJSON(map[string]string{"server_id": id}))
-	jobwake.Notify("provision_server")
 	h.emitWebhook(r.Context(), "server.created", map[string]any{
 		"server_id": id, "server_name": body.Name, "game_id": gameID,
 		"node_id": nodeID, "user_id": claims.UserID,
 	})
+	h.launchNewServer(r.Context(), id, nodeID, gameID, body.Name, limitsJSON)
 
-	var lim map[string]any
-	_ = json.Unmarshal(limitsJSON, &lim)
-	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-		UPDATE core.servers s SET ip_address = n.fqdn
-		FROM core.nodes n
-		WHERE s.id = $1 AND n.id = s.node_id AND COALESCE(s.ip_address, '') = ''
-	`, id)
-	port := 0
-	if gameID != "test" {
-		assigned, err := portalloc.Assign(r.Context(), h.dbOf(r.Context()), nodeID, id, gameID)
-		if err != nil {
-			log.Printf("rental: не удалось выдать порт серверу %s (%s): %v", id, gameID, err)
-		} else {
-			port = assigned
-		}
-	}
-	payload := map[string]any{
-		"power_action": "start",
-		"name":         body.Name,
-		"game_id":      gameID,
-		"limits":       lim,
-	}
-	if port > 0 {
-		payload["primary_port"] = port
-	}
-	if bindIP := h.serverBindIP(r.Context(), id); bindIP != "" {
-		payload["bind_ip"] = bindIP
-	}
-	if img := h.resolveDockerImage(r.Context(), id); img != "" {
-		payload["docker_image"] = img
-	}
-	if spec := h.resolveInstallSpec(r.Context(), id); spec != nil {
-		payload["install"] = spec
-	}
-	cmdID := uuid.NewString()
-	startErr := h.relay.SendCommand(r.Context(), nodeID, relay.CommandRequest{
-		CommandID: cmdID,
-		Action:    "power",
-		ServerID:  id,
-		Payload:   payload,
-	})
-	if startErr == nil {
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-			UPDATE core.servers SET status = 'starting', provisioning_status = 'provisioning', provisioning_error = NULL WHERE id = $1
-		`, id)
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-			UPDATE core.jobs SET status = 'completed', result = '{"ok":true}'::jsonb
-			WHERE type = 'provision_server' AND status = 'pending'
-			  AND payload->>'server_id' = $1
-		`, id)
-	} else {
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-			UPDATE core.servers SET provisioning_status = 'failed', provisioning_error = $2 WHERE id = $1
-		`, id, startErr.Error())
-	}
-
-	_ = h.cache.InvalidateTenantServers(r.Context())
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"id":          id,
 		"server_id":   id,
@@ -527,6 +470,71 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		"expires_at":  expires.Format(time.RFC3339),
 		"cost":        rentPrice,
 	})
+}
+
+func (h *Handler) launchNewServer(ctx context.Context, id, nodeID, gameID, name string, limitsJSON []byte) {
+	_, _ = h.dbOf(ctx).Exec(ctx, `
+		INSERT INTO core.jobs ( type, status, payload)
+		VALUES ( 'provision_server', 'pending', $1::jsonb)
+	`, mustJSON(map[string]string{"server_id": id}))
+	jobwake.Notify("provision_server")
+
+	var lim map[string]any
+	_ = json.Unmarshal(limitsJSON, &lim)
+	_, _ = h.dbOf(ctx).Exec(ctx, `
+		UPDATE core.servers s SET ip_address = n.fqdn
+		FROM core.nodes n
+		WHERE s.id = $1 AND n.id = s.node_id AND COALESCE(s.ip_address, '') = ''
+	`, id)
+	port := 0
+	if gameID != "test" {
+		assigned, err := portalloc.Assign(ctx, h.dbOf(ctx), nodeID, id, gameID)
+		if err != nil {
+			log.Printf("rental: не удалось выдать порт серверу %s (%s): %v", id, gameID, err)
+		} else {
+			port = assigned
+		}
+	}
+	payload := map[string]any{
+		"power_action": "start",
+		"name":         name,
+		"game_id":      gameID,
+		"limits":       lim,
+	}
+	if port > 0 {
+		payload["primary_port"] = port
+	}
+	if bindIP := h.serverBindIP(ctx, id); bindIP != "" {
+		payload["bind_ip"] = bindIP
+	}
+	if img := h.resolveDockerImage(ctx, id); img != "" {
+		payload["docker_image"] = img
+	}
+	if spec := h.resolveInstallSpec(ctx, id); spec != nil {
+		payload["install"] = spec
+	}
+	startErr := h.relay.SendCommand(ctx, nodeID, relay.CommandRequest{
+		CommandID: uuid.NewString(),
+		Action:    "power",
+		ServerID:  id,
+		Payload:   payload,
+	})
+	if startErr == nil {
+		_, _ = h.dbOf(ctx).Exec(ctx, `
+			UPDATE core.servers SET status = 'starting', provisioning_status = 'provisioning', provisioning_error = NULL WHERE id = $1
+		`, id)
+		_, _ = h.dbOf(ctx).Exec(ctx, `
+			UPDATE core.jobs SET status = 'completed', result = '{"ok":true}'::jsonb
+			WHERE type = 'provision_server' AND status = 'pending'
+			  AND payload->>'server_id' = $1
+		`, id)
+	} else {
+		_, _ = h.dbOf(ctx).Exec(ctx, `
+			UPDATE core.servers SET provisioning_status = 'failed', provisioning_error = $2 WHERE id = $1
+		`, id, startErr.Error())
+	}
+
+	_ = h.cache.InvalidateTenantServers(ctx)
 }
 
 func resolveGameSlug(ctx context.Context, h *Handler, raw string) (string, bool) {

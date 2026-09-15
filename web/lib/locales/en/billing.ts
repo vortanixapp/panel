@@ -285,6 +285,11 @@ export const billing = {
   "billing.rent.subtitle": "Deployment takes about 2 minutes after payment",
   "billing.rent.step_config": "Configuration",
   "billing.rent.step_confirm": "Confirmation",
+  "billing.whmcs.orders_title": "Order servers in billing",
+  "billing.whmcs.orders_desc":
+    "New servers are ordered and paid for in WHMCS. After payment the server appears in the panel automatically.",
+  "billing.whmcs.order_button": "Go to order",
+  "billing.whmcs.client_area": "My services in WHMCS",
   "billing.rent.disk": "Disk",
   "billing.rent.slots": "Slots",
   "billing.rent.servers_count": "{count} servers",

@@ -442,6 +442,20 @@ export const servers = {
   "servers.tariff.calculating": "calculating…",
   "servers.tariff.apply_resources": "Apply resources",
 
+  "servers.whmcs.title": "Billing in WHMCS",
+  "servers.whmcs.desc":
+    "This server is billed in WHMCS. Renewals, plan changes and cancellation are handled there.",
+  "servers.whmcs.service": "Service",
+  "servers.whmcs.status": "Service status",
+  "servers.whmcs.next_due": "Next payment",
+  "servers.whmcs.manage": "Open in WHMCS",
+  "servers.whmcs.suspended_notice":
+    "The service is suspended in WHMCS. Pay the invoice and the server becomes available again.",
+  "servers.whmcs.status_pending": "Pending",
+  "servers.whmcs.status_active": "Active",
+  "servers.whmcs.status_suspended": "Suspended",
+  "servers.whmcs.status_terminated": "Terminated",
+
   "servers.friends.added": "Friend added",
   "servers.friends.add_error": "Could not add the friend",
   "servers.friends.revoked": "Access revoked",

@@ -960,6 +960,14 @@ export type DashboardServer = {
   game: { name: string; slug: string; image: string | null } | null;
   auto_renew?: boolean;
   rental_period_days?: number;
+  billing_source?: "panel" | "whmcs";
+  whmcs?: {
+    service_id: number;
+    status: "pending" | "active" | "suspended" | "terminated";
+    suspend_reason: string | null;
+    next_due_date: string | null;
+    manage_url: string | null;
+  } | null;
   location: {
     name: string;
     country: string;
@@ -5153,6 +5161,98 @@ export async function createAdminAPIKey(data: {
 
 export async function revokeAdminAPIKey(id: string) {
   return apiFetch<{ status: string }>(`/v1/admin/api-keys/${id}`, { method: "DELETE" });
+}
+
+export type AdminWhmcsSettings = {
+  url: string;
+  order_url: string;
+  orders_only: boolean;
+  panel_url: string;
+  scope: string;
+  active_keys: number;
+  module_version: string;
+  services: { total: number; active: number; suspended: number };
+};
+
+export type AdminWhmcsService = {
+  service_id: number;
+  client_id: number;
+  status: "pending" | "active" | "suspended" | "terminated";
+  product: string;
+  next_due_date: string | null;
+  updated_at: string;
+  email: string;
+  server_id: string | null;
+  server_name: string;
+  server_status: string;
+};
+
+export async function fetchAdminWhmcsSettings() {
+  return apiFetch<AdminWhmcsSettings>("/v1/admin/settings/whmcs");
+}
+
+export async function saveAdminWhmcsSettings(data: {
+  url: string;
+  order_url: string;
+  orders_only: boolean;
+}) {
+  return apiFetch<AdminWhmcsSettings>("/v1/admin/settings/whmcs", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchAdminWhmcsServices() {
+  return apiFetch<{ services: AdminWhmcsService[] }>("/v1/admin/whmcs/services");
+}
+
+export async function downloadWhmcsModule() {
+  await ensureValidSession();
+  const token = getAccessToken();
+  const res = await fetch(API_URL + "/v1/admin/settings/whmcs/module.zip", {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    let message = t("admin.integrations.whmcs.download_failed");
+    try {
+      message = ((await res.json()) as { error?: string }).error ?? message;
+    } catch {}
+    throw new Error(message);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "vortanix-whmcs-module.zip";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+export async function exchangeWhmcsSSO(token: string) {
+  const res = await fetch(API_URL + "/v1/auth/whmcs/exchange", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  let data: {
+    access_token?: string;
+    refresh_token?: string;
+    redirect?: string;
+    error?: string;
+  } = {};
+  try {
+    data = (await res.json()) as typeof data;
+  } catch {}
+  if (!res.ok || !data.access_token) {
+    throw new Error(data.error || t("auth.whmcs.failed"));
+  }
+  return {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token ?? "",
+    redirect: data.redirect ?? "",
+  };
 }
 
 export type AdminWebhook = {

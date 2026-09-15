@@ -1,5 +1,5 @@
-import { RentServerPageContent } from "@/components/user/rent-server-page-content";
+import { RentServerGate } from "@/components/user/rent-server-gate";
 
 export default function RentServerPage() {
-  return <RentServerPageContent />;
+  return <RentServerGate />;
 }

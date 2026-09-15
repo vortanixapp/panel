@@ -546,6 +546,47 @@ export const adminInfra = {
   "admin.integrations.delivery_failed": "error: {error}",
   "admin.integrations.delivery_queued": "queued",
 
+  "admin.integrations.whmcs.title": "WHMCS",
+  "admin.integrations.whmcs.subtitle":
+    "The WHMCS module creates, suspends, changes and deletes servers on billing events, signs clients in to the panel without a password and shows the server in the WHMCS client area",
+  "admin.integrations.whmcs.step_download":
+    "Download the module and unpack the archive into the WHMCS root — the files go to modules/servers/vortanix.",
+  "admin.integrations.whmcs.download": "Download module",
+  "admin.integrations.whmcs.download_failed": "Could not download the module",
+  "admin.integrations.whmcs.module_version": "version {version}",
+  "admin.integrations.whmcs.step_key":
+    "Issue an API key for WHMCS. The key only gets the {scope} permission and opens nothing else in the admin area.",
+  "admin.integrations.whmcs.issue_key": "Issue a WHMCS key",
+  "admin.integrations.whmcs.active_keys": "Active WHMCS keys: {count}",
+  "admin.integrations.whmcs.key_hint":
+    "Paste the key into the Access Hash field of the Vortanix server in WHMCS.",
+  "admin.integrations.whmcs.step_server":
+    "In WHMCS open System Settings → Servers and add a server: module Vortanix, hostname {host}, the key in the Access Hash field, SSL enabled.",
+  "admin.integrations.whmcs.step_product":
+    "Create a product with the Vortanix module, attach the server group and pick the panel plan in the module settings.",
+  "admin.integrations.whmcs.step_product_options":
+    "Client choices are passed through configurable options and client fields named",
+  "admin.integrations.whmcs.settings_title": "Panel and billing link",
+  "admin.integrations.whmcs.url": "WHMCS address",
+  "admin.integrations.whmcs.url_hint":
+    "The panel links to the client's service and invoices in WHMCS",
+  "admin.integrations.whmcs.order_url": "Order link",
+  "admin.integrations.whmcs.order_url_hint": "Empty uses the WHMCS cart",
+  "admin.integrations.whmcs.orders_only": "Take server orders only in WHMCS",
+  "admin.integrations.whmcs.orders_only_hint":
+    "The rent page in the panel sends clients to WHMCS, and paying for rent from the panel balance is turned off",
+  "admin.integrations.whmcs.saved": "WHMCS settings saved",
+  "admin.integrations.whmcs.save_failed": "Could not save WHMCS settings",
+  "admin.integrations.whmcs.services_title": "Services from WHMCS",
+  "admin.integrations.whmcs.services_summary":
+    "{total} total, {active} active, {suspended} suspended",
+  "admin.integrations.whmcs.services_empty": "No services from WHMCS yet",
+  "admin.integrations.whmcs.col_service": "Service",
+  "admin.integrations.whmcs.col_client": "Client",
+  "admin.integrations.whmcs.col_server": "Server",
+  "admin.integrations.whmcs.col_due": "Next payment",
+  "admin.integrations.whmcs.no_server": "not created",
+
   "admin.security.title": "Security",
   "admin.security.subtitle":
     "Sign-in history, addresses guessing passwords and the measures taken. An address is blocked automatically for 30 minutes after ten failed attempts within 15 minutes",

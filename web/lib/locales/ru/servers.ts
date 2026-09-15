@@ -440,6 +440,20 @@ export const servers = {
   "servers.tariff.calculating": "расчёт…",
   "servers.tariff.apply_resources": "Применить ресурсы",
 
+  "servers.whmcs.title": "Оплата в WHMCS",
+  "servers.whmcs.desc":
+    "Сервер оплачивается в биллинге WHMCS. Продление, смена тарифа и отказ от сервера выполняются там.",
+  "servers.whmcs.service": "Услуга",
+  "servers.whmcs.status": "Статус услуги",
+  "servers.whmcs.next_due": "Следующий платёж",
+  "servers.whmcs.manage": "Открыть в WHMCS",
+  "servers.whmcs.suspended_notice":
+    "Услуга приостановлена в WHMCS. Оплатите счёт, и сервер снова станет доступен.",
+  "servers.whmcs.status_pending": "Ожидает создания",
+  "servers.whmcs.status_active": "Активна",
+  "servers.whmcs.status_suspended": "Приостановлена",
+  "servers.whmcs.status_terminated": "Удалена",
+
   "servers.friends.added": "Друг добавлен",
   "servers.friends.add_error": "Ошибка добавления",
   "servers.friends.revoked": "Доступ отозван",

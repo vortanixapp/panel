@@ -281,6 +281,11 @@ export const billing = {
   "billing.rent.subtitle": "Развёртывание занимает около 2 минут после оплаты",
   "billing.rent.step_config": "Конфигурация",
   "billing.rent.step_confirm": "Подтверждение",
+  "billing.whmcs.orders_title": "Заказ серверов в биллинге",
+  "billing.whmcs.orders_desc":
+    "Новые серверы оформляются и оплачиваются в WHMCS. После оплаты сервер появится в панели автоматически.",
+  "billing.whmcs.order_button": "Перейти к заказу",
+  "billing.whmcs.client_area": "Мои услуги в WHMCS",
   "billing.rent.disk": "Диск",
   "billing.rent.slots": "Слоты",
   "billing.rent.servers_count": "{count} серверов",

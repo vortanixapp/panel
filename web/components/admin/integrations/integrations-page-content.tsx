@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { WhmcsSection } from "@/components/admin/integrations/whmcs-section";
 import { PageShell } from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,8 @@ export function IntegrationsPageContent() {
           {t("admin.integrations.subtitle")}
         </p>
       </div>
+
+      <WhmcsSection />
 
       <div className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">

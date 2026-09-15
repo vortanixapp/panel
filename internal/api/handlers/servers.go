@@ -194,6 +194,9 @@ func (h *Handler) DeleteServer(w http.ResponseWriter, r *http.Request) {
 	if !h.authorizeServerAction(w, r, claims, id, "delete") {
 		return
 	}
+	if !isStaffRole(claims.Role) && h.refuseWHMCSBilled(ctx, w, id) {
+		return
+	}
 
 	var nodeID string
 	err := h.dbOf(ctx).QueryRow(ctx, `
@@ -204,6 +207,28 @@ func (h *Handler) DeleteServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	deferred, err := h.destroyServer(r, id, nodeID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "server not found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	audit(ctx, h.dbOf(ctx), claims.UserID, "server.delete", "server:"+id, map[string]any{
+		"node_cleaned":     !deferred,
+		"cleanup_deferred": deferred,
+	})
+	res := map[string]string{"status": "deleted"}
+	if deferred {
+		res["cleanup"] = "deferred"
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+func (h *Handler) destroyServer(r *http.Request, id, nodeID string) (bool, error) {
+	ctx := r.Context()
 	agentErr := h.relay.SendCommand(ctx, nodeID, relay.CommandRequest{
 		CommandID: uuid.NewString(),
 		Action:    "destroy",
@@ -217,8 +242,7 @@ func (h *Handler) DeleteServer(w http.ResponseWriter, r *http.Request) {
 			INSERT INTO core.jobs (type, status, payload) VALUES ('server_destroy', 'pending', $1::jsonb)
 		`, payload); err != nil {
 			log.Printf("удаление сервера %s: отложенная очистка ноды не поставлена: %v", id, err)
-			writeError(w, http.StatusInternalServerError, "нода недоступна, а очистку на потом поставить не удалось")
-			return
+			return false, errors.New("нода недоступна, а очистку на потом поставить не удалось")
 		}
 		deferred = true
 	}
@@ -234,19 +258,10 @@ func (h *Handler) DeleteServer(w http.ResponseWriter, r *http.Request) {
 
 	tag, err := h.dbOf(ctx).Exec(ctx, `DELETE FROM core.servers WHERE id = $1`, id)
 	if err != nil || tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "server not found")
-		return
+		return deferred, pgx.ErrNoRows
 	}
 	_ = h.cache.InvalidateTenantServers(ctx)
-	audit(ctx, h.dbOf(ctx), claims.UserID, "server.delete", "server:"+id, map[string]any{
-		"node_cleaned":     agentErr == nil,
-		"cleanup_deferred": deferred,
-	})
-	res := map[string]string{"status": "deleted"}
-	if deferred {
-		res["cleanup"] = "deferred"
-	}
-	writeJSON(w, http.StatusOK, res)
+	return deferred, nil
 }
 
 type powerRequest struct {

@@ -98,6 +98,13 @@ export const auth = {
     "The social callback parameters are missing. Start the social sign-in again.",
   "auth.social.failed": "Social sign-in failed.",
 
+  "auth.whmcs.title": "Signing in from billing",
+  "auth.whmcs.waiting": "Checking the sign-in link…",
+  "auth.whmcs.progress": "Signing in…",
+  "auth.whmcs.error_title": "Could not sign in",
+  "auth.whmcs.missing_token": "The link has no sign-in key. Open the panel from WHMCS again.",
+  "auth.whmcs.failed": "Could not sign in with the WHMCS link.",
+
   "auth.verify.title": "Confirm your email",
   "auth.verify.subtitle":
     "We have sent you a confirmation link. Follow the link from the email or request another one.",

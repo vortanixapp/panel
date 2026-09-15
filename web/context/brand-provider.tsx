@@ -19,6 +19,12 @@ import {
   reloadRuntimeBranding,
 } from "@/lib/brand";
 
+type WhmcsLinks = {
+  orderUrl: string;
+  clientAreaUrl: string;
+  ordersOnly: boolean;
+};
+
 type BrandState = {
   name: string;
   logoUrl: string;
@@ -28,6 +34,7 @@ type BrandState = {
   userMenuVariant: "default" | "screenshot";
   hero: Record<string, string>;
   links: Record<string, string>;
+  whmcs: WhmcsLinks | null;
   ready: boolean;
   refresh: () => Promise<void>;
 };
@@ -43,6 +50,7 @@ const BrandContext = createContext<BrandState>({
   userMenuVariant: "default",
   hero: EMPTY,
   links: EMPTY,
+  whmcs: null,
   ready: false,
   refresh: async () => undefined,
 });
@@ -83,6 +91,13 @@ export function BrandProvider({ children }: { children: ReactNode }) {
         branding?.user_menu_variant === "screenshot" ? "screenshot" : "default",
       hero: branding?.appearance?.hero ?? EMPTY,
       links: branding?.appearance?.links ?? EMPTY,
+      whmcs: branding?.whmcs?.order_url
+        ? {
+            orderUrl: branding.whmcs.order_url,
+            clientAreaUrl: branding.whmcs.client_area_url || "",
+            ordersOnly: Boolean(branding.whmcs.orders_only),
+          }
+        : null,
       ready,
       refresh,
     }),

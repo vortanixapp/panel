@@ -99,6 +99,13 @@ export const auth = {
     "Отсутствуют параметры social callback. Запустите вход через соцсеть заново.",
   "auth.social.failed": "Ошибка авторизации через соцсеть.",
 
+  "auth.whmcs.title": "Вход из биллинга",
+  "auth.whmcs.waiting": "Проверяем ссылку для входа…",
+  "auth.whmcs.progress": "Входим в панель…",
+  "auth.whmcs.error_title": "Не удалось войти",
+  "auth.whmcs.missing_token": "В ссылке нет ключа входа. Откройте панель из WHMCS ещё раз.",
+  "auth.whmcs.failed": "Не удалось войти по ссылке из WHMCS.",
+
   "auth.verify.title": "Подтвердите email",
   "auth.verify.subtitle":
     "Мы отправили письмо со ссылкой для подтверждения. Перейдите по ссылке из письма или запросите повторную отправку.",

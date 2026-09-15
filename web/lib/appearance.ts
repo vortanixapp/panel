@@ -36,6 +36,11 @@ export type BrandingPayload = {
   blocks?: Record<string, boolean>;
   user_menu_variant?: "default" | "screenshot";
   appearance?: PublicAppearance;
+  whmcs?: {
+    order_url: string;
+    client_area_url: string;
+    orders_only: boolean;
+  } | null;
 };
 
 export const DEFAULT_PANEL_ACCENT = "#6366f1";

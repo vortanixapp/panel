@@ -277,6 +277,7 @@ func (h *Handler) GetServerDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.enrichServerDetail(r.Context(), id, item, access)
+	h.attachWHMCSBilling(r.Context(), id, item)
 	writeJSON(w, http.StatusOK, item)
 }
 

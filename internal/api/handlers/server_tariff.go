@@ -92,6 +92,9 @@ func (h *Handler) ServerTariffChange(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "only server owner can change tariff")
 		return
 	}
+	if h.refuseWHMCSBilled(r.Context(), w, serverID) {
+		return
+	}
 
 	var body struct {
 		TariffID any    `json:"tariff_id"`
@@ -267,6 +270,9 @@ func (h *Handler) ServerTariffResources(w http.ResponseWriter, r *http.Request) 
 	}
 	if !access.IsOwner {
 		writeError(w, http.StatusForbidden, "only server owner can change resources")
+		return
+	}
+	if h.refuseWHMCSBilled(r.Context(), w, serverID) {
 		return
 	}
 

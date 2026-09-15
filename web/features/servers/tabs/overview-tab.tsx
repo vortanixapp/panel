@@ -19,7 +19,9 @@ import {
   VX_SELECT,
   Tile,
   Toggle,
+  btnClass,
 } from "@/components/vx/panel-ui";
+import { isWhmcsBilled, whmcsDueLabel } from "@/features/servers/whmcs-billing";
 import { VxInlineLoader } from "@/components/vx/loader";
 import { ServerInstallConsole } from "@/features/servers/install-console";
 import {
@@ -329,6 +331,17 @@ export function ServerOverviewTab() {
       : t("servers.overview.no_limit");
   const cpuLimit = Number(server.limits?.cpu_cores ?? 0);
 
+  const billedInWhmcs = isWhmcsBilled(server);
+  const rentRows: [string, string][] = billedInWhmcs
+    ? [[t("servers.whmcs.next_due"), whmcsDueLabel(server.whmcs?.next_due_date)]]
+    : [
+        [t("servers.overview.row_rented_until"), formatDateTime(server.expires_at)],
+        [
+          t("servers.overview.row_left"),
+          t("servers.overview.days", { days: expired ? 0 : daysLeft }),
+        ],
+      ];
+
   const infoRows: [string, string][] = [
     [t("common.game"), server.game?.name || "—"],
     [
@@ -339,11 +352,7 @@ export function ServerOverviewTab() {
     [t("common.tariff"), server.tariff?.name || "—"],
     [t("common.location"), server.location?.name || "—"],
     [t("common.created_at"), formatDateTime(server.created_at)],
-    [t("servers.overview.row_rented_until"), formatDateTime(server.expires_at)],
-    [
-      t("servers.overview.row_left"),
-      t("servers.overview.days", { days: expired ? 0 : daysLeft }),
-    ],
+    ...rentRows,
     [t("servers.overview.row_uptime"), running ? server.uptime || "—" : "—"],
   ];
 
@@ -543,10 +552,20 @@ export function ServerOverviewTab() {
                     {t("servers.shell.reinstall")}
                   </Btn>
                 )}
-                {isOwner && (
+                {isOwner && !billedInWhmcs && (
                   <Btn tone="primary" className="flex-1" onClick={() => setRenewOpen(true)}>
                     {t("servers.shell.extend_rent")}
                   </Btn>
+                )}
+                {isOwner && billedInWhmcs && server.whmcs?.manage_url && (
+                  <a
+                    href={server.whmcs.manage_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(btnClass("primary"), "flex-1")}
+                  >
+                    {t("servers.whmcs.manage")}
+                  </a>
                 )}
               </div>
             </div>

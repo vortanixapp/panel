@@ -30,6 +30,7 @@ import { formatAmount } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useServerDetail } from "@/hooks/use-queries";
+import { WhmcsBillingPanel, isWhmcsBilled } from "@/features/servers/whmcs-billing";
 import { dateLocaleTag } from "@/lib/i18n";
 import { useT } from "@/hooks/use-translations";
 
@@ -206,6 +207,14 @@ export function ServerTariffTab() {
   });
 
   if (!server) return null;
+
+  if (isWhmcsBilled(server)) {
+    return (
+      <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-2">
+        <WhmcsBillingPanel server={server} />
+      </div>
+    );
+  }
 
   const expiresAt = server.expires_at ? new Date(server.expires_at) : null;
   const daysLeft = expiresAt

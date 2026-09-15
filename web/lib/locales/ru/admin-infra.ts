@@ -545,6 +545,47 @@ export const adminInfra = {
   "admin.integrations.delivery_failed": "ошибка: {error}",
   "admin.integrations.delivery_queued": "в очереди",
 
+  "admin.integrations.whmcs.title": "WHMCS",
+  "admin.integrations.whmcs.subtitle":
+    "Модуль для WHMCS создаёт, приостанавливает, меняет и удаляет серверы по событиям биллинга, пускает клиентов в панель без пароля и показывает сервер в личном кабинете WHMCS",
+  "admin.integrations.whmcs.step_download":
+    "Скачайте модуль и распакуйте архив в корень WHMCS — файлы лягут в modules/servers/vortanix.",
+  "admin.integrations.whmcs.download": "Скачать модуль",
+  "admin.integrations.whmcs.download_failed": "Не удалось скачать модуль",
+  "admin.integrations.whmcs.module_version": "версия {version}",
+  "admin.integrations.whmcs.step_key":
+    "Выпустите ключ API для WHMCS. Ключ получает только право {scope} и не открывает остальную админку.",
+  "admin.integrations.whmcs.issue_key": "Выпустить ключ для WHMCS",
+  "admin.integrations.whmcs.active_keys": "Активных ключей WHMCS: {count}",
+  "admin.integrations.whmcs.key_hint":
+    "Вставьте ключ в поле Access Hash сервера Vortanix в WHMCS.",
+  "admin.integrations.whmcs.step_server":
+    "В WHMCS откройте «Настройки системы → Серверы» и добавьте сервер: модуль Vortanix, имя хоста {host}, ключ в поле Access Hash, включите SSL.",
+  "admin.integrations.whmcs.step_product":
+    "Создайте продукт с модулем Vortanix, привяжите группу серверов и выберите тариф панели в настройках модуля.",
+  "admin.integrations.whmcs.step_product_options":
+    "Выбор клиента передаётся настраиваемыми опциями и полями клиента с именами",
+  "admin.integrations.whmcs.settings_title": "Связь панели с биллингом",
+  "admin.integrations.whmcs.url": "Адрес WHMCS",
+  "admin.integrations.whmcs.url_hint":
+    "Из панели ведут ссылки на услугу клиента в WHMCS и на оплату счетов",
+  "admin.integrations.whmcs.order_url": "Ссылка на заказ",
+  "admin.integrations.whmcs.order_url_hint": "Пусто — корзина WHMCS",
+  "admin.integrations.whmcs.orders_only": "Принимать заказы серверов только в WHMCS",
+  "admin.integrations.whmcs.orders_only_hint":
+    "Страница аренды в панели отправит клиента в WHMCS, оплата аренды с баланса панели станет недоступна",
+  "admin.integrations.whmcs.saved": "Настройки WHMCS сохранены",
+  "admin.integrations.whmcs.save_failed": "Не удалось сохранить настройки WHMCS",
+  "admin.integrations.whmcs.services_title": "Услуги из WHMCS",
+  "admin.integrations.whmcs.services_summary":
+    "всего {total}, активных {active}, приостановленных {suspended}",
+  "admin.integrations.whmcs.services_empty": "Услуг из WHMCS пока нет",
+  "admin.integrations.whmcs.col_service": "Услуга",
+  "admin.integrations.whmcs.col_client": "Клиент",
+  "admin.integrations.whmcs.col_server": "Сервер",
+  "admin.integrations.whmcs.col_due": "Следующий платёж",
+  "admin.integrations.whmcs.no_server": "не создан",
+
   "admin.security.title": "Безопасность",
   "admin.security.subtitle":
     "История входов, адреса с подбором паролей и принятые меры. Адрес блокируется автоматически на 30 минут после десяти неудачных попыток за 15 минут",
