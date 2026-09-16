@@ -1,65 +1,145 @@
 import type { TranslateFn } from "@/lib/i18n";
 
-export const LANDING_DEPLOY_LOG = [
-  { t: "00,0", text: "$ vortanix create --game minecraft --ram 8G", color: "text-primary" },
-  { t: "02,4", text: "node FRA-2 selected · 4 cores pinned", color: "text-muted-foreground" },
-  { t: "08,1", text: "volume nvme-gen4 attached · 80 GB", color: "text-muted-foreground" },
-  { t: "14,7", text: "anti-ddos profile applied · L3-L7", color: "text-muted-foreground" },
-  { t: "22,9", text: "paper 1.21.4 downloaded · aikar flags set", color: "text-muted-foreground" },
-  { t: "36,5", text: "world generated · 4 096 chunks", color: "text-muted-foreground" },
-  { t: "40,2", text: "server online · 203.0.113.10:25565", color: "text-primary" },
-] as const;
+export type HeroGame = {
+  id: string;
+  name: string;
+  server: string;
+  build: string;
+  port: number;
+  slots: number;
+  ramGb: number;
+  price: number;
+  image: string;
+  log: string[];
+};
 
-export const LANDING_FEATURED_GAMES = [
+export const HERO_GAMES: HeroGame[] = [
   {
+    id: "minecraft",
     name: "Minecraft",
-    tag: "MC",
-    from: 199,
+    server: "survival",
+    build: "Paper 1.21.4",
+    port: 25565,
+    slots: 20,
+    ramGb: 4,
+    price: 199,
     image: "/landing/games/minecraft.svg",
+    log: [
+      "Starting minecraft server version 1.21.4",
+      "Preparing level \"world\"",
+      "Preparing spawn area: 100%",
+      "Done (3.84s)! For help, type \"help\"",
+    ],
   },
-  { name: "CS2", tag: "CS2", from: 349, image: "/landing/games/cs2.svg" },
-  { name: "Rust", tag: "RST", from: 690, image: "/landing/games/rust.svg" },
-  { name: "ARK: SE", tag: "ARK", from: 790, image: "/landing/games/ark.svg" },
   {
+    id: "cs2",
+    name: "Counter-Strike 2",
+    server: "retake-mirage",
+    build: "CS2 · MetaMod",
+    port: 27015,
+    slots: 12,
+    ramGb: 2,
+    price: 349,
+    image: "/landing/games/cs2.svg",
+    log: [
+      "Loading map \"de_mirage\"",
+      "MetaMod:Source 2.0 loaded 4 plugins",
+      "VAC secure mode is activated.",
+      "Connection to Steam servers successful.",
+    ],
+  },
+  {
+    id: "rust",
+    name: "Rust",
+    server: "vanilla-weekly",
+    build: "Rust · Oxide",
+    port: 28015,
+    slots: 100,
+    ramGb: 12,
+    price: 690,
+    image: "/landing/games/rust.svg",
+    log: [
+      "Loading Prefab Bundles",
+      "Generating procedural map, size 3500",
+      "Oxide loaded 11 plugins",
+      "Server startup complete",
+    ],
+  },
+  {
+    id: "valheim",
     name: "Valheim",
-    tag: "VH",
-    from: 399,
+    server: "midgard",
+    build: "Valheim · BepInEx",
+    port: 2456,
+    slots: 10,
+    ramGb: 4,
+    price: 399,
     image: "/landing/games/valheim.svg",
+    log: [
+      "Loading world \"Midgard\"",
+      "BepInEx loaded 6 mods",
+      "Game server connected",
+      "Session \"Midgard\" is ready",
+    ],
   },
   {
+    id: "palworld",
     name: "Palworld",
-    tag: "PAL",
-    from: 590,
+    server: "pal-island",
+    build: "Palworld",
+    port: 8211,
+    slots: 32,
+    ramGb: 16,
+    price: 590,
     image: "/landing/games/palworld.svg",
+    log: [
+      "Loading save data",
+      "World settings applied",
+      "REST API listening on 8212",
+      "Running Palworld dedicated server",
+    ],
   },
+];
+
+export const FEATURED_GAMES = [
+  { name: "Minecraft", note: "Paper · Forge · Fabric", from: 199, image: "/landing/games/minecraft.svg" },
+  { name: "Counter-Strike 2", note: "MetaMod · CounterStrikeSharp", from: 349, image: "/landing/games/cs2.svg" },
+  { name: "Rust", note: "Oxide · Carbon", from: 690, image: "/landing/games/rust.svg" },
+  { name: "ARK: Survival Evolved", note: "Steam Workshop", from: 790, image: "/landing/games/ark.svg" },
+  { name: "Valheim", note: "BepInEx · ValheimPlus", from: 399, image: "/landing/games/valheim.svg" },
+  { name: "Palworld", note: "PalGuard", from: 590, image: "/landing/games/palworld.svg" },
 ] as const;
 
-export const LANDING_MORE_GAMES = [
-  { name: "DayZ", tag: "DZ", from: 690 },
-  { name: "Garry's Mod", tag: "GM", from: 249 },
-  { name: "Terraria", tag: "TER", from: 149 },
-  { name: "FiveM", tag: "5M", from: 890 },
-  { name: "Team Fortress 2", tag: "TF2", from: 249 },
-  { name: "Project Zomboid", tag: "PZ", from: 349 },
+export const MORE_GAMES = [
+  { name: "DayZ", from: 690 },
+  { name: "Garry's Mod", from: 249 },
+  { name: "Terraria", from: 149 },
+  { name: "FiveM", from: 890 },
+  { name: "Team Fortress 2", from: 249 },
+  { name: "Project Zomboid", from: 349 },
 ] as const;
 
-export const LANDING_TPS_BARS: readonly number[] = (() => {
-  const dips: Record<number, number> = { 18: 0.62, 19: 0.55, 20: 0.6, 21: 0.72 };
-  const out: number[] = [];
-  for (let i = 0; i < 24; i++) {
-    const k = dips[i] ?? 0.86 + ((i * 13) % 11) / 100;
-    out.push(Math.round(k * 100));
-  }
-  return out;
-})();
+export const TPS_SERIES: readonly number[] = [
+  19.96, 19.97, 19.95, 19.98, 19.97, 19.96, 19.94, 19.95, 19.93, 19.91, 19.9, 19.88,
+  19.9, 19.87, 19.85, 19.86, 19.82, 19.76, 19.52, 19.31, 19.44, 19.63, 19.84, 19.93,
+];
 
-export const LANDING_PANEL_PREVIEW_LOG = [
-  { time: "18:02:16", text: '[Server] Done (4,102s)! For help, type "help"', color: "text-primary" },
-  { time: "18:07:44", text: "[Auth] Player Nikita_QQ joined the game", color: "text-muted-foreground" },
-  { time: "18:09:02", text: "[Warn] Skipped 12 ticks (chunk gen)", color: "text-amber-600 dark:text-amber-300" },
-  { time: "18:11:38", text: "[Backup] Snapshot 06h complete · 3,1 ГБ", color: "text-muted-foreground/70" },
-  { time: "18:14:20", text: "[Auth] mrGrief tried /op — denied", color: "text-red-600 dark:text-red-400" },
-  { time: "18:16:03", text: "[Sched] restart-warning broadcast sent", color: "text-muted-foreground/70" },
+export const PANEL_LOG = [
+  { time: "18:02:16", text: "[Server] Done (4.102s)! For help, type \"help\"", tone: "ok" },
+  { time: "18:07:44", text: "[Auth] Nikita_QQ joined the game", tone: "muted" },
+  { time: "18:09:02", text: "[Warn] Can't keep up! Skipped 12 ticks", tone: "warn" },
+  { time: "18:11:38", text: "[Backup] Snapshot complete · 3.1 GB", tone: "muted" },
+  { time: "18:14:20", text: "[Auth] mrGrief tried /op — denied", tone: "danger" },
+  { time: "18:16:03", text: "[Sched] Restart warning sent to players", tone: "muted" },
+] as const;
+
+export const PANEL_FILES = [
+  { name: "world/", size: "2.8 GB", dir: true },
+  { name: "plugins/", size: "146 MB", dir: true },
+  { name: "logs/", size: "38 MB", dir: true },
+  { name: "server.properties", size: "1.4 KB", dir: false },
+  { name: "bukkit.yml", size: "3.2 KB", dir: false },
+  { name: "ops.json", size: "212 B", dir: false },
 ] as const;
 
 export function landingNav(t: TranslateFn) {
@@ -71,245 +151,74 @@ export function landingNav(t: TranslateFn) {
   ];
 }
 
-export function landingHeroBadge(t: TranslateFn) {
-  return t("landing.hero.badge");
-}
-
-export function landingHeroGauges(t: TranslateFn) {
-  return [
-    {
-      label: t("landing.hero.gauge_tps_label"),
-      value: t("landing.hero.gauge_tps_value"),
-      pct: 99,
-    },
-    {
-      label: t("landing.hero.gauge_ping_label"),
-      value: t("landing.hero.gauge_ping_value"),
-      pct: 22,
-    },
-    {
-      label: t("landing.hero.gauge_uptime_label"),
-      value: t("landing.hero.gauge_uptime_value"),
-      pct: 99,
-    },
-  ];
-}
-
-export function landingHeroStats(t: TranslateFn) {
-  return [
-    {
-      value: t("landing.hero.stat_deploy_value"),
-      label: t("landing.hero.stat_deploy_label"),
-    },
-    {
-      value: t("landing.hero.stat_uptime_value"),
-      label: t("landing.hero.stat_uptime_label"),
-    },
-    {
-      value: t("landing.hero.stat_support_value"),
-      label: t("landing.hero.stat_support_label"),
-    },
-    {
-      value: t("landing.hero.stat_ddos_value"),
-      label: t("landing.hero.stat_ddos_label"),
-    },
-  ];
-}
-
-export function landingGamesTitle(t: TranslateFn) {
-  return t("landing.games.title");
-}
-
 export function landingSteps(t: TranslateFn) {
-  return [
-    {
-      n: "01",
-      title: t("landing.step1.title"),
-      body: t("landing.step1.body"),
-      meta: t("landing.step1.meta"),
-    },
-    {
-      n: "02",
-      title: t("landing.step2.title"),
-      body: t("landing.step2.body"),
-      meta: t("landing.step2.meta"),
-    },
-    {
-      n: "03",
-      title: t("landing.step3.title"),
-      body: t("landing.step3.body"),
-      meta: t("landing.step3.meta"),
-    },
-  ];
-}
-
-export function landingBento(t: TranslateFn) {
-  return [
-    {
-      kicker: t("landing.bento.cpu_kicker"),
-      title: t("landing.bento.cpu_title"),
-      body: t("landing.bento.cpu_body"),
-      metric: t("landing.bento.cpu_metric"),
-    },
-    {
-      kicker: t("landing.bento.disk_kicker"),
-      title: t("landing.bento.disk_title"),
-      body: t("landing.bento.disk_body"),
-      metric: t("landing.bento.disk_metric"),
-    },
-    {
-      kicker: t("landing.bento.network_kicker"),
-      title: t("landing.bento.network_title"),
-      body: t("landing.bento.network_body"),
-      metric: t("landing.bento.network_metric"),
-    },
-    {
-      kicker: t("landing.bento.scale_kicker"),
-      title: t("landing.bento.scale_title"),
-      body: t("landing.bento.scale_body"),
-      metric: t("landing.bento.scale_metric"),
-    },
-  ];
-}
-
-export function landingPanelPoints(t: TranslateFn) {
-  return [
-    t("landing.panel.point_console"),
-    t("landing.panel.point_sftp"),
-    t("landing.panel.point_roles"),
-    t("landing.panel.point_api"),
-  ];
-}
-
-export function landingPanelMetrics(t: TranslateFn) {
-  return [
-    {
-      label: t("landing.panel.metric_cpu_label"),
-      value: t("landing.panel.metric_cpu_value"),
-      pct: 38,
-    },
-    {
-      label: t("landing.panel.metric_ram_label"),
-      value: t("landing.panel.metric_ram_value"),
-      pct: 68,
-    },
-    {
-      label: t("landing.panel.metric_tps_label"),
-      value: t("landing.panel.metric_tps_value"),
-      pct: 99,
-    },
-    {
-      label: t("landing.panel.metric_players_label"),
-      value: t("landing.panel.metric_players_value"),
-      pct: 39,
-    },
-  ];
-}
-
-export function landingLocations(t: TranslateFn) {
-  const available = t("landing.location.status_available");
-  const lowSlots = t("landing.location.status_low_slots");
-  const rows: {
-    cityKey: string;
-    ms: number;
-    gbit: number;
-    load: string;
-    pct: number;
-    ok: boolean;
-  }[] = [
-    { cityKey: "landing.location.moscow", ms: 4, gbit: 10, load: "62%", pct: 62, ok: true },
-    { cityKey: "landing.location.spb", ms: 9, gbit: 10, load: "48%", pct: 48, ok: true },
-    { cityKey: "landing.location.frankfurt", ms: 28, gbit: 40, load: "71%", pct: 71, ok: true },
-    { cityKey: "landing.location.amsterdam", ms: 34, gbit: 40, load: "55%", pct: 55, ok: true },
-    { cityKey: "landing.location.warsaw", ms: 22, gbit: 20, load: "89%", pct: 89, ok: false },
-    { cityKey: "landing.location.new_york", ms: 96, gbit: 40, load: "41%", pct: 41, ok: true },
-    { cityKey: "landing.location.singapore", ms: 148, gbit: 20, load: "33%", pct: 33, ok: true },
-  ];
-  return rows.map((row) => ({
-    city: t(row.cityKey),
-    ping: t("landing.location.ping", { ms: row.ms }),
-    uplink: t("landing.location.uplink", { gbit: row.gbit }),
-    load: row.load,
-    pct: row.pct,
-    status: row.ok ? available : lowSlots,
-    ok: row.ok,
+  return [1, 2, 3].map((n) => ({
+    n: `0${n}`,
+    title: t(`landing.steps.s${n}_title`),
+    body: t(`landing.steps.s${n}_body`),
+    meta: t(`landing.steps.s${n}_meta`),
   }));
 }
 
+export function landingSpecs(t: TranslateFn) {
+  return ["cpu", "disk", "network", "scale"].map((key) => ({
+    key,
+    label: t(`landing.hardware.${key}_label`),
+    value: t(`landing.hardware.${key}_value`),
+    note: t(`landing.hardware.${key}_note`),
+  }));
+}
+
+export function landingPanelTabs(t: TranslateFn) {
+  return [
+    { id: "console", label: t("landing.panel.tab_console") },
+    { id: "files", label: t("landing.panel.tab_files") },
+    { id: "backups", label: t("landing.panel.tab_backups") },
+    { id: "schedule", label: t("landing.panel.tab_schedule") },
+  ] as const;
+}
+
+export function landingPanelPoints(t: TranslateFn) {
+  return [1, 2, 3, 4].map((n) => t(`landing.panel.point${n}`));
+}
+
+export function landingLocations(t: TranslateFn) {
+  const rows = [
+    { key: "moscow", ms: 4, gbit: 10, load: 62 },
+    { key: "spb", ms: 9, gbit: 10, load: 48 },
+    { key: "frankfurt", ms: 28, gbit: 40, load: 71 },
+    { key: "amsterdam", ms: 34, gbit: 40, load: 55 },
+    { key: "warsaw", ms: 22, gbit: 20, load: 89 },
+    { key: "new_york", ms: 96, gbit: 40, load: 41 },
+    { key: "singapore", ms: 148, gbit: 20, load: 33 },
+  ];
+  return rows.map((row) => ({
+    ...row,
+    city: t(`landing.locations.${row.key}`),
+    busy: row.load > 85,
+  }));
+}
 
 export function landingFaq(t: TranslateFn) {
-  return [
-    { q: t("landing.faq1.q"), a: t("landing.faq1.a") },
-    { q: t("landing.faq2.q"), a: t("landing.faq2.a") },
-    { q: t("landing.faq3.q"), a: t("landing.faq3.a") },
-    { q: t("landing.faq4.q"), a: t("landing.faq4.a") },
-    { q: t("landing.faq5.q"), a: t("landing.faq5.a") },
-  ];
+  return [1, 2, 3, 4, 5].map((n) => ({
+    q: t(`landing.faq.q${n}`),
+    a: t(`landing.faq.a${n}`),
+  }));
 }
 
 export function landingPricing(t: TranslateFn) {
-  return [
-    {
-      id: "start",
-      name: t("landing.pricing.start_name"),
-      badge: t("landing.pricing.start_badge"),
-      price: "199",
-      hourly: "0,42",
-      highlighted: false,
-      specs: [
-        t("landing.pricing.start_spec1"),
-        t("landing.pricing.start_spec2"),
-        t("landing.pricing.start_spec3"),
-        t("landing.pricing.start_spec4"),
-        t("landing.pricing.start_spec5"),
-      ],
-    },
-    {
-      id: "community",
-      name: t("landing.pricing.community_name"),
-      badge: t("landing.pricing.community_badge"),
-      price: "690",
-      hourly: "1,44",
-      highlighted: true,
-      specs: [
-        t("landing.pricing.community_spec1"),
-        t("landing.pricing.community_spec2"),
-        t("landing.pricing.community_spec3"),
-        t("landing.pricing.community_spec4"),
-        t("landing.pricing.community_spec5"),
-      ],
-    },
-    {
-      id: "project",
-      name: t("landing.pricing.project_name"),
-      badge: t("landing.pricing.project_badge"),
-      price: "1890",
-      hourly: "3,94",
-      highlighted: false,
-      specs: [
-        t("landing.pricing.project_spec1"),
-        t("landing.pricing.project_spec2"),
-        t("landing.pricing.project_spec3"),
-        t("landing.pricing.project_spec4"),
-        t("landing.pricing.project_spec5"),
-      ],
-    },
-    {
-      id: "cluster",
-      name: t("landing.pricing.cluster_name"),
-      badge: t("landing.pricing.cluster_badge"),
-      price: "5900",
-      hourly: "12,29",
-      highlighted: false,
-      specs: [
-        t("landing.pricing.cluster_spec1"),
-        t("landing.pricing.cluster_spec2"),
-        t("landing.pricing.cluster_spec3"),
-        t("landing.pricing.cluster_spec4"),
-        t("landing.pricing.cluster_spec5"),
-      ],
-    },
+  const plans = [
+    { id: "start", monthly: 199, hourly: 0.42, highlighted: false },
+    { id: "community", monthly: 690, hourly: 1.44, highlighted: true },
+    { id: "project", monthly: 1890, hourly: 3.94, highlighted: false },
+    { id: "cluster", monthly: 5900, hourly: 12.29, highlighted: false },
   ];
+  return plans.map((plan) => ({
+    ...plan,
+    name: t(`landing.pricing.${plan.id}_name`),
+    audience: t(`landing.pricing.${plan.id}_audience`),
+    specs: [1, 2, 3, 4, 5].map((n) => t(`landing.pricing.${plan.id}_spec${n}`)),
+  }));
 }
 
 export function landingFooterCols(t: TranslateFn) {

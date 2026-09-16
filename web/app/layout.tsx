@@ -8,8 +8,6 @@ import {
   Montserrat,
   Outfit,
   Rubik,
-  Sora,
-  Space_Mono,
 } from "next/font/google";
 import { LOCALE_COOKIE_NAME } from "@/lib/i18n";
 import { loadServerI18n } from "@/lib/i18n-server";
@@ -22,24 +20,6 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
   variable: "--font-inter",
-});
-
-const sora = Sora({
-  subsets: ["latin", "latin-ext"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-sora",
-  display: "swap",
-  fallback: ["system-ui", "sans-serif"],
-  adjustFontFallback: false,
-});
-
-const spaceMono = Space_Mono({
-  subsets: ["latin", "latin-ext"],
-  weight: ["400", "700"],
-  variable: "--font-space-mono",
-  display: "swap",
-  fallback: ["monospace"],
-  adjustFontFallback: false,
 });
 
 const outfit = Outfit({
@@ -125,7 +105,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${sora.variable} ${spaceMono.variable} ${outfit.variable} ${dmMono.variable} ${manrope.variable} ${rubik.variable} ${montserrat.variable} ${ibmPlexSans.variable} font-sans`}
+        className={`${inter.variable} ${outfit.variable} ${dmMono.variable} ${manrope.variable} ${rubik.variable} ${montserrat.variable} ${ibmPlexSans.variable} font-sans`}
       >
         <Providers i18n={i18n} hasLocaleCookie={Boolean(cookieLocale)}>
           <NavigationProgress />

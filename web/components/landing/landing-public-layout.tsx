@@ -3,12 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { AnimatePresence, m, useMotionValueEvent, useScroll } from "motion/react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { landingFontVariables } from "@/components/landing/fonts";
+import { landingFooterCols, landingNav } from "@/components/landing/landing-content";
+import { EASE_OUT, MotionRoot } from "@/components/landing/motion";
 import { useBrand } from "@/context/brand-provider";
 import { getAccessToken } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
-import { landingFooterCols, landingNav } from "@/components/landing/landing-content";
+import { cn } from "@/lib/utils";
 
 const ANCHOR_BLOCKS: Record<string, string> = {
   "#pricing": "pricing",
@@ -41,27 +46,15 @@ function footerContacts(t: TranslateFn, links: Record<string, string>) {
   ].filter((contact) => Boolean(contact.href));
 }
 
-function navLinkClass(active: boolean) {
-  return `px-3.5 py-2 text-[13.5px] font-medium rounded-lg transition-colors whitespace-nowrap ${
-    active
-      ? "text-foreground bg-[var(--vx-tint)]"
-      : "text-muted-foreground hover:text-foreground hover:bg-[var(--vx-tint)]"
-  }`;
-}
-
-function mobileNavLinkClass(active: boolean) {
-  return `flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
-    active
-      ? "bg-[var(--vx-tint)] text-foreground"
-      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-  }`;
-}
-
 export function LandingPublicLayout({ children }: { children: ReactNode }) {
   const t = useT();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
   const pathname = usePathname();
+  const { scrollY } = useScroll();
   const { name: appName, templateBlocks: blocks, links, legal } = useBrand();
   const publishedDocs = new Set((legal?.documents ?? []).map((doc) => doc.kind));
   const legalLinks = [
@@ -102,6 +95,30 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
     setMobileOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileOpen]);
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = scrollY.getPrevious() ?? 0;
+    setScrolled(latest > 8);
+    if (latest < 120) {
+      setHidden(false);
+    } else if (Math.abs(latest - previous) > 4) {
+      setHidden(latest > previous);
+    }
+  });
+
   const scrollTo = (id: string) => {
     setMobileOpen(false);
     if (pathname !== "/") {
@@ -124,198 +141,285 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
     }
   };
 
+  const headerHidden = hidden && !mobileOpen;
+
   return (
-    <div className="font-landing relative flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground antialiased">
-      <header className="sticky top-0 z-50 flex h-16 items-center gap-8 border-b border-border bg-background/88 px-4 backdrop-blur-xl sm:px-10">
-        <Link
-          href="/"
-          className="flex flex-shrink-0 items-center"
-          aria-label={t("landing.header.home_aria")}
+    <MotionRoot>
+      <div
+        className={cn(
+          landingFontVariables,
+          "font-landing relative flex min-h-screen flex-col overflow-x-clip bg-background text-foreground antialiased"
+        )}
+      >
+        <m.header
+          initial={false}
+          animate={{ y: headerHidden ? "-100%" : 0 }}
+          transition={{ duration: 0.4, ease: EASE_OUT }}
+          className={cn(
+            "sticky top-0 z-50 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
+            scrolled || mobileOpen
+              ? "border-border bg-background/85 backdrop-blur-xl"
+              : "border-transparent bg-background"
+          )}
         >
-          <BrandLogo size="sm" className="h-8 max-w-[176px]" priority />
-        </Link>
-
-        <nav className="no-scrollbar hidden flex-1 items-center gap-0.5 overflow-x-auto lg:flex">
-          {navItems.map((item) =>
-            item.href.startsWith("#") ? (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => handleNavClick(item.href)}
-                className={navLinkClass(false)}
-              >
-                {item.label}
-              </button>
-            ) : (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={navLinkClass(pathname === item.href)}
-              >
-                {item.label}
-              </Link>
-            )
-          )}
-        </nav>
-
-        <div className="ml-auto flex flex-shrink-0 items-center gap-2.5">
-          {loggedIn ? (
+          <div className="mx-auto flex h-16 max-w-[1240px] items-center gap-8 px-5 sm:px-8">
             <Link
-              href="/dashboard"
-              className="hidden px-2.5 py-2 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+              href="/"
+              className="flex shrink-0 items-center"
+              aria-label={t("landing.header.home_aria")}
             >
-              {t("landing.header.panel")}
+              <BrandLogo size="sm" className="h-8 max-w-[176px]" priority />
             </Link>
-          ) : (
-            <Link
-              href="/login"
-              className="hidden px-2.5 py-2 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
-            >
-              {t("landing.header.sign_in")}
-            </Link>
-          )}
-          <Link
-            href={loggedIn ? "/dashboard" : "/register"}
-            className="vx-btn hidden rounded-lg px-4 py-2.5 text-[13.5px] font-semibold min-[430px]:inline-flex"
-          >
-            {loggedIn
-              ? t("landing.header.to_panel")
-              : t("landing.header.create_server")}
-          </Link>
-          <button
-            type="button"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
-            aria-label={t("landing.header.menu_aria")}
-          >
-            <i
-              className={`text-xl transition-transform duration-200 ${mobileOpen ? "ri-close-line rotate-90" : "ri-menu-line"}`}
-            />
-          </button>
-        </div>
 
-        {mobileOpen && (
-          <div className="absolute inset-x-0 top-16 border-b border-border bg-background/98 backdrop-blur-xl lg:hidden">
-            <div className="space-y-1 p-4">
-              {navItems.map((item) =>
-                item.href.startsWith("#") ? (
+            <nav
+              className="hidden flex-1 items-center gap-0.5 lg:flex"
+              onMouseLeave={() => setHovered(null)}
+            >
+              {navItems.map((item) => {
+                const active = !item.href.startsWith("#") && pathname === item.href;
+                const content = (
+                  <>
+                    {hovered === item.href && (
+                      <m.span
+                        layoutId="landing-nav-hover"
+                        className="absolute inset-0 rounded-full bg-accent"
+                        transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                      />
+                    )}
+                    <span className="relative">{item.label}</span>
+                  </>
+                );
+                const className = cn(
+                  "relative rounded-full px-3.5 py-2 text-[14px] font-medium whitespace-nowrap transition-colors",
+                  active || hovered === item.href ? "text-foreground" : "text-muted-foreground"
+                );
+                return item.href.startsWith("#") ? (
                   <button
                     key={item.label}
                     type="button"
+                    onMouseEnter={() => setHovered(item.href)}
+                    onFocus={() => setHovered(item.href)}
                     onClick={() => handleNavClick(item.href)}
-                    className={`w-full text-left ${mobileNavLinkClass(false)}`}
+                    className={className}
                   >
-                    {item.label}
+                    {content}
                   </button>
                 ) : (
                   <Link
                     key={item.label}
                     href={item.href}
-                    className={mobileNavLinkClass(pathname === item.href)}
+                    onMouseEnter={() => setHovered(item.href)}
+                    onFocus={() => setHovered(item.href)}
+                    className={className}
                   >
-                    {item.label}
+                    {content}
                   </Link>
-                )
-              )}
-              <div className="my-2 h-px bg-border" />
-              {loggedIn ? (
-                <Link href="/dashboard" className={mobileNavLinkClass(false)}>
-                  {t("landing.header.panel_full")}
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login" className={mobileNavLinkClass(false)}>
-                    {t("landing.header.sign_in")}
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="vx-btn mt-1 flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold"
-                  >
-                    {t("landing.header.create_server")}
-                  </Link>
-                </>
-              )}
+                );
+              })}
+            </nav>
+
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <Link
+                href={loggedIn ? "/dashboard" : "/login"}
+                className="hidden rounded-full px-3.5 py-2 text-[14px] font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+              >
+                {loggedIn ? t("landing.header.panel") : t("landing.header.sign_in")}
+              </Link>
+              <Link
+                href={loggedIn ? "/dashboard" : "/register"}
+                className="group hidden items-center gap-2 rounded-full bg-primary py-2 pr-2 pl-4 text-[14px] font-semibold text-primary-foreground transition-transform active:scale-[0.97] min-[430px]:inline-flex"
+              >
+                {loggedIn ? t("landing.header.to_panel") : t("landing.header.create_server")}
+                <span className="flex size-6 items-center justify-center rounded-full bg-primary-foreground/15 transition-transform duration-300 group-hover:translate-x-0.5">
+                  <ArrowRight className="size-3.5" />
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMobileOpen((open) => !open)}
+                aria-expanded={mobileOpen}
+                aria-label={t("landing.header.menu_aria")}
+                className="relative flex size-10 items-center justify-center rounded-full transition-colors hover:bg-accent lg:hidden"
+              >
+                <m.span
+                  className="absolute h-[1.5px] w-[18px] rounded-full bg-foreground"
+                  animate={mobileOpen ? { rotate: 45, y: 0 } : { rotate: 0, y: -4 }}
+                  transition={{ duration: 0.3, ease: EASE_OUT }}
+                />
+                <m.span
+                  className="absolute h-[1.5px] w-[18px] rounded-full bg-foreground"
+                  animate={mobileOpen ? { rotate: -45, y: 0 } : { rotate: 0, y: 4 }}
+                  transition={{ duration: 0.3, ease: EASE_OUT }}
+                />
+              </button>
             </div>
           </div>
-        )}
-      </header>
 
-      <main className="relative z-10 flex flex-1 flex-col">{children}</main>
+        </m.header>
 
-      <footer className="border-t border-border px-4 py-12 sm:px-10">
-        <div className="mx-auto grid max-w-[1180px] gap-12 lg:grid-cols-[280px_1fr]">
-          <div>
-            <BrandLogo size="sm" className="h-7 max-w-[160px]" />
-            {contacts.length > 0 && (
-              <div className="mt-5 flex flex-wrap gap-2">
-                {contacts.map((contact) => (
-                  <a
-                    key={contact.key}
-                    href={contact.href}
-                    target={contact.key === "email" ? undefined : "_blank"}
-                    rel="noopener noreferrer"
-                    aria-label={contact.label}
-                    title={contact.label}
-                    className="flex size-9 items-center justify-center rounded-lg border border-border text-[var(--vx-ink-dim)] transition-colors hover:text-primary"
+          <AnimatePresence>
+            {mobileOpen && (
+              <m.div
+                key="mobile-menu"
+                initial={{ opacity: 0, clipPath: "inset(0 0 100% 0)" }}
+                animate={{ opacity: 1, clipPath: "inset(0 0 0% 0)" }}
+                exit={{ opacity: 0, clipPath: "inset(0 0 100% 0)" }}
+                transition={{ duration: 0.45, ease: EASE_OUT }}
+                className="fixed inset-x-0 top-16 bottom-0 z-40 overflow-y-auto bg-background lg:hidden"
+              >
+                <m.nav
+                  initial="hidden"
+                  animate="shown"
+                  exit="hidden"
+                  variants={{
+                    hidden: { transition: { staggerChildren: 0.03, staggerDirection: -1 } },
+                    shown: { transition: { staggerChildren: 0.06, delayChildren: 0.1 } },
+                  }}
+                  className="flex min-h-full flex-col px-5 pt-6 pb-10 sm:px-8"
+                >
+                  {navItems.map((item) => {
+                    const className =
+                      "vx-display flex w-full items-center justify-between border-b border-border py-4 text-left text-[1.7rem] font-semibold tracking-[-0.03em]";
+                    return (
+                      <m.div
+                        key={item.label}
+                        variants={{
+                          hidden: { opacity: 0, y: 18 },
+                          shown: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE_OUT } },
+                        }}
+                      >
+                        {item.href.startsWith("#") ? (
+                          <button type="button" onClick={() => handleNavClick(item.href)} className={className}>
+                            {item.label}
+                            <ArrowRight className="size-5 text-muted-foreground" />
+                          </button>
+                        ) : (
+                          <Link href={item.href} onClick={() => setMobileOpen(false)} className={className}>
+                            {item.label}
+                            <ArrowRight className="size-5 text-muted-foreground" />
+                          </Link>
+                        )}
+                      </m.div>
+                    );
+                  })}
+                  <m.div
+                    variants={{
+                      hidden: { opacity: 0, y: 18 },
+                      shown: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE_OUT } },
+                    }}
+                    className="mt-auto flex flex-col gap-3 pt-10"
                   >
-                    {contact.icon ? (
-                      <i className={`${contact.icon} text-lg`} />
+                    {loggedIn ? (
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center justify-center rounded-full bg-primary px-5 py-3.5 text-[15px] font-semibold text-primary-foreground"
+                      >
+                        {t("landing.header.panel_full")}
+                      </Link>
                     ) : (
-                      <span className="text-[11px] font-bold">{contact.label}</span>
+                      <>
+                        <Link
+                          href="/register"
+                          className="flex items-center justify-center rounded-full bg-primary px-5 py-3.5 text-[15px] font-semibold text-primary-foreground"
+                        >
+                          {t("landing.header.create_server")}
+                        </Link>
+                        <Link
+                          href="/login"
+                          className="flex items-center justify-center rounded-full border border-border px-5 py-3.5 text-[15px] font-medium"
+                        >
+                          {t("landing.header.sign_in")}
+                        </Link>
+                      </>
                     )}
-                  </a>
+                  </m.div>
+                </m.nav>
+              </m.div>
+            )}
+          </AnimatePresence>
+
+        <main className="relative flex flex-1 flex-col">{children}</main>
+
+        <footer className="relative overflow-hidden">
+          <div className="mx-auto max-w-[1240px] px-5 pt-16 sm:px-8 sm:pt-20">
+            <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-16">
+              <div>
+                <BrandLogo size="sm" className="h-7 max-w-[160px]" />
+                <p className="mt-5 max-w-[340px] text-[15px] leading-[1.6] text-muted-foreground">
+                  {t("landing.footer.tagline")}
+                </p>
+                {contacts.length > 0 && (
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {contacts.map((contact) => (
+                      <a
+                        key={contact.key}
+                        href={contact.href}
+                        target={contact.key === "email" ? undefined : "_blank"}
+                        rel="noopener noreferrer"
+                        aria-label={contact.label}
+                        title={contact.label}
+                        className="inline-flex h-9 items-center gap-2 rounded-full border border-border px-3.5 text-[13px] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+                      >
+                        {contact.icon ? <i className={`${contact.icon} text-base`} /> : null}
+                        <span className={cn(contact.icon && contact.key !== "email" && "hidden sm:inline")}>
+                          {contact.label}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
+                {footerCols.map((col) => (
+                  <div key={col.title}>
+                    <div className="font-mono text-[12px] text-muted-foreground">{col.title}</div>
+                    <ul className="mt-4 flex flex-col gap-2.5">
+                      {col.links.map((link) => (
+                        <li key={link.label}>
+                          {link.href.startsWith("#") ? (
+                            <button
+                              type="button"
+                              onClick={() => handleNavClick(link.href)}
+                              className="text-left text-[14.5px] text-foreground/80 transition-colors hover:text-foreground"
+                            >
+                              {link.label}
+                            </button>
+                          ) : (
+                            <Link
+                              href={link.href}
+                              className="group inline-flex items-center gap-1 text-[14.5px] text-foreground/80 transition-colors hover:text-foreground"
+                            >
+                              {link.label}
+                              <ArrowUpRight className="size-3.5 -translate-x-1 opacity-0 transition-[opacity,transform] duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
+                            </Link>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
               </div>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-            {footerCols.map((col) => (
-              <div key={col.title}>
-                <div className="font-mono text-[11px] tracking-[0.08em] text-[var(--vx-ink-faint)] uppercase">
-                  {col.title}
-                </div>
-                <div className="mt-3.5 flex flex-col gap-2.5">
-                  {col.links.map((link) =>
-                    link.href.startsWith("#") ? (
-                      <button
-                        key={link.label}
-                        type="button"
-                        onClick={() => handleNavClick(link.href)}
-                        className="text-left text-[13.5px] text-[var(--vx-ink-dim)] transition-colors hover:text-primary"
-                      >
-                        {link.label}
-                      </button>
-                    ) : (
-                      <Link
-                        key={link.label}
-                        href={link.href}
-                        className="text-[13.5px] text-[var(--vx-ink-dim)] transition-colors hover:text-primary"
-                      >
-                        {link.label}
-                      </Link>
-                    )
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="mx-auto mt-10 flex max-w-[1180px] flex-wrap items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground/70">
-          <span>
-            © {new Date().getFullYear()} {appName}. {t("landing.footer.rights")}
-          </span>
-          {legalLinks.length > 0 && (
-            <div className="flex flex-wrap gap-4">
-              {legalLinks.map((link) => (
-                <a key={link.key} href={link.href} className="transition-colors hover:text-primary">
-                  {link.label}
-                </a>
-              ))}
             </div>
-          )}
-          {requisites && <p className="w-full leading-relaxed">{requisites}</p>}
-        </div>
-      </footer>
-    </div>
+
+            <div className="mt-16 flex flex-col gap-4 border-t border-border py-6 text-[12.5px] text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <span>
+                © {new Date().getFullYear()} {appName}. {t("landing.footer.rights")}
+              </span>
+              {legalLinks.length > 0 && (
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  {legalLinks.map((link) => (
+                    <a key={link.key} href={link.href} className="transition-colors hover:text-foreground">
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              )}
+              {requisites && <p className="w-full leading-relaxed">{requisites}</p>}
+            </div>
+          </div>
+        </footer>
+      </div>
+    </MotionRoot>
   );
 }

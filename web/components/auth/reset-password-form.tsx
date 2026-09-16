@@ -5,26 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { PasswordInput } from "@/components/password-input";
+import { AuthError, AuthHeading, AuthSubmit, AuthSwitch, PasswordField } from "@/components/auth/auth-kit";
 import { resetPassword } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
@@ -56,6 +38,7 @@ export function ResetPasswordForm() {
   });
 
   const loading = form.formState.isSubmitting;
+  const password = form.watch("password");
 
   async function onSubmit(values: FormValues) {
     if (!token) {
@@ -72,58 +55,41 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <Card className="gap-4">
-      <CardHeader>
-        <CardTitle className="text-lg tracking-tight">{t("auth.reset.title")}</CardTitle>
-        <CardDescription>
-          {t("auth.reset.subtitle")}{" "}
-          <Link href="/login" className="underline underline-offset-4 hover:text-primary">
-            {t("auth.reset.login_link")}
-          </Link>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("auth.reset.password_label")}</FormLabel>
-                  <FormControl>
-                    <PasswordInput autoComplete="new-password" disabled={loading} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="confirm"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("auth.reset.confirm_label")}</FormLabel>
-                  <FormControl>
-                    <PasswordInput autoComplete="new-password" disabled={loading} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" disabled={loading || !token}>
-              {loading && <Loader2 className="animate-spin" />}
-              {t("auth.reset.submit")}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <>
+      <AuthHeading title={t("auth.reset.title")} subtitle={t("auth.reset.subtitle")} />
+      <AuthError message={error} />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+        <PasswordField
+          id="password"
+          label={t("auth.reset.password_label")}
+          autoComplete="new-password"
+          autoFocus
+          placeholder="••••••••"
+          disabled={loading}
+          strengthOf={password}
+          error={form.formState.errors.password?.message}
+          {...form.register("password")}
+        />
+        <PasswordField
+          id="confirm"
+          label={t("auth.reset.confirm_label")}
+          autoComplete="new-password"
+          placeholder="••••••••"
+          disabled={loading}
+          error={form.formState.errors.confirm?.message}
+          {...form.register("confirm")}
+        />
+        <div className="pt-1">
+          <AuthSubmit loading={loading} disabled={!token}>
+            {t("auth.reset.submit")}
+          </AuthSubmit>
+        </div>
+      </form>
+      <AuthSwitch>
+        <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          {t("auth.reset.login_link")}
+        </Link>
+      </AuthSwitch>
+    </>
   );
 }

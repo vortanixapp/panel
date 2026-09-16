@@ -140,7 +140,7 @@ export function appearanceCSS(a: PublicAppearance | undefined | null): string {
   }
   const landingFont = fontVariable(a.font_landing);
   if (landingFont) {
-    css += `html .font-landing{font-family:var(${landingFont});--font-sans:var(${landingFont})}`;
+    css += `html .font-landing{font-family:var(${landingFont});--font-sans:var(${landingFont});--font-display:var(${landingFont})}`;
   }
   return css;
 }

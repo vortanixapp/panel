@@ -31,14 +31,14 @@ export function LegalDocumentPage() {
           </div>
         ) : isError || !data ? (
           <div className="py-16 text-center">
-            <h1 className="text-2xl font-bold">{t("legal.not_published")}</h1>
+            <h1 className="vx-display text-2xl font-semibold tracking-[-0.02em]">{t("legal.not_published")}</h1>
             <Link href="/" className="mt-4 inline-block text-primary hover:underline">
               {t("legal.to_home")}
             </Link>
           </div>
         ) : (
           <>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{data.title}</h1>
+            <h1 className="vx-display text-3xl font-semibold tracking-[-0.03em] text-balance sm:text-4xl">{data.title}</h1>
             <p className="mt-3 text-sm text-muted-foreground">
               {t("legal.revision", {
                 version: data.version,

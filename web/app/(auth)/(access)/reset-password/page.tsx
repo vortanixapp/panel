@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 import { BootstrappedGuard } from "@/components/auth/bootstrapped-guard";
-import { TwoFactorChallengeForm } from "@/components/auth/two-factor-challenge-form";
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function TwoFactorChallengePage() {
+export default function ResetPasswordPage() {
   return (
-    <BootstrappedGuard>
+    <BootstrappedGuard loaderClassName="min-h-[420px]">
       <Suspense fallback={<Skeleton className="h-64 w-full" />}>
-        <TwoFactorChallengeForm />
+        <ResetPasswordForm />
       </Suspense>
     </BootstrappedGuard>
   );

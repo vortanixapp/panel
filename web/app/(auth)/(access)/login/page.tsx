@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/auth/login-form";
 
 export default function LoginPage() {
   return (
-    <BootstrappedGuard>
+    <BootstrappedGuard loaderClassName="min-h-[420px]">
       <LoginForm />
     </BootstrappedGuard>
   );

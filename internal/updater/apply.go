@@ -102,10 +102,10 @@ func (a *applier) run(ctx context.Context) error {
 	}
 
 	say("Загрузка образов %s", a.version)
-	if out, err := a.compose(ctx, false, "pull", "--quiet"); err != nil {
+	if err := a.pullImages(ctx); err != nil {
 		restoreEnv()
 		git.restore()
-		return fmt.Errorf("образы версии %s не загрузились, панель осталась на прежней версии: %s", a.version, tail(out, err))
+		return err
 	}
 
 	say("Перезапуск служб")
@@ -155,15 +155,77 @@ func minimalEnv() []string {
 	return out
 }
 
-func (a *applier) compose(ctx context.Context, stream bool, args ...string) (string, error) {
+func (a *applier) composeArgs(args ...string) []string {
 	full := []string{"compose", "--ansi", "never", "-p", a.project, "--project-directory", a.workDir}
 	for _, f := range a.files {
 		full = append(full, "-f", f)
 	}
 	full = append(full, "--env-file", a.envFile)
-	full = append(full, args...)
+	return append(full, args...)
+}
 
-	cmd := exec.CommandContext(ctx, "docker", full...)
+func (a *applier) pullImages(ctx context.Context) error {
+	out, err := a.compose(ctx, false, "pull", "--quiet", "--ignore-pull-failures")
+	if err != nil {
+		return fmt.Errorf("образы версии %s не загрузились, панель осталась на прежней версии: %s", a.version, tail(out, err))
+	}
+	images, err := a.composeImages(ctx)
+	if err != nil {
+		return fmt.Errorf("список образов версии %s не получен, панель осталась на прежней версии: %s", a.version, err)
+	}
+	missing := []string{}
+	for _, ref := range images {
+		if _, err := a.docker.InspectImage(ctx, ref); err != nil {
+			if !dockerapi.IsNotFound(err) {
+				return fmt.Errorf("docker недоступен: %w", err)
+			}
+			missing = append(missing, ref)
+		}
+	}
+	if len(missing) > 0 {
+		reason := tail(out, nil)
+		if reason == "" {
+			reason = "реестр не отдал образы"
+		}
+		return fmt.Errorf("образы версии %s не загрузились (%s), панель осталась на прежней версии: %s",
+			a.version, strings.Join(missing, ", "), reason)
+	}
+	if reason := tail(out, nil); reason != "" {
+		say("Часть образов не обновилась, остаются уже загруженные: %s", reason)
+	}
+	return nil
+}
+
+var imageRefPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._\-/]*(:[A-Za-z0-9_.\-]+)?(@sha256:[a-f0-9]{64})?$`)
+
+func (a *applier) composeImages(ctx context.Context) ([]string, error) {
+	cmd := exec.CommandContext(ctx, "docker", a.composeArgs("config", "--images")...)
+	cmd.Dir = a.workDir
+	cmd.Env = minimalEnv()
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	stdout, err := cmd.Output()
+	if err != nil {
+		return nil, errors.New(tail(stderr.String(), err))
+	}
+	seen := map[string]bool{}
+	images := []string{}
+	for _, line := range strings.Split(string(stdout), "\n") {
+		ref := strings.TrimSpace(line)
+		if ref == "" || seen[ref] || !imageRefPattern.MatchString(ref) {
+			continue
+		}
+		seen[ref] = true
+		images = append(images, ref)
+	}
+	if len(images) == 0 {
+		return nil, errors.New("docker compose не вернул ни одного образа")
+	}
+	return images, nil
+}
+
+func (a *applier) compose(ctx context.Context, stream bool, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, "docker", a.composeArgs(args...)...)
 	cmd.Dir = a.workDir
 	cmd.Env = minimalEnv()
 	pr, pw := io.Pipe()

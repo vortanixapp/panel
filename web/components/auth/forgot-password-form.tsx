@@ -1,30 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { AnimatePresence, m } from "motion/react";
+import { MailCheck } from "lucide-react";
+import { AuthError, AuthField, AuthHeading, AuthSubmit, AuthSwitch } from "@/components/auth/auth-kit";
+import { EASE_OUT } from "@/components/landing/motion";
 import { forgotPassword, tenantSlug } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
@@ -59,64 +43,58 @@ export function ForgotPasswordForm() {
     }
   }
 
-  if (sent) {
-    return (
-      <Card className="gap-4">
-        <CardHeader>
-          <CardTitle className="text-lg tracking-tight">
-            {t("auth.forgot.sent_title")}
-          </CardTitle>
-          <CardDescription>{t("auth.forgot.sent_text")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/login">{t("auth.back_to_login")}</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="gap-4">
-      <CardHeader>
-        <CardTitle className="text-lg tracking-tight">{t("auth.forgot.title")}</CardTitle>
-        <CardDescription>
-          {t("auth.forgot.subtitle")}{" "}
-          <Link href="/login" className="underline underline-offset-4 hover:text-primary">
-            {t("auth.forgot.login_link")}
+    <AnimatePresence mode="wait" initial={false}>
+      {sent ? (
+        <m.div
+          key="sent"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: EASE_OUT }}
+        >
+          <m.div
+            initial={{ scale: 0.6, rotate: -12, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 16, delay: 0.1 }}
+            className="mb-7 flex size-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          >
+            <MailCheck className="size-6" />
+          </m.div>
+          <AuthHeading title={t("auth.forgot.sent_title")} subtitle={t("auth.forgot.sent_text")} />
+          <Link
+            href="/login"
+            className="flex h-12 w-full items-center justify-center rounded-full border border-border text-[15px] font-medium transition-colors hover:border-foreground/40 hover:bg-accent"
+          >
+            {t("auth.back_to_login")}
           </Link>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("common.email")}</FormLabel>
-                  <FormControl>
-                    <Input type="email" autoComplete="email" disabled={loading} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+        </m.div>
+      ) : (
+        <m.div key="form" exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}>
+          <AuthHeading title={t("auth.forgot.title")} subtitle={t("auth.forgot.subtitle")} />
+          <AuthError message={error} />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+            <AuthField
+              id="email"
+              type="email"
+              label={t("common.email")}
+              autoComplete="email"
+              autoFocus
+              placeholder="you@example.com"
+              disabled={loading}
+              error={form.formState.errors.email?.message}
+              {...form.register("email")}
             />
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="animate-spin" />}
-              {t("common.send")}
-            </Button>
+            <div className="pt-1">
+              <AuthSubmit loading={loading}>{t("common.send")}</AuthSubmit>
+            </div>
           </form>
-        </Form>
-      </CardContent>
-    </Card>
+          <AuthSwitch>
+            <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+              {t("auth.back_to_login")}
+            </Link>
+          </AuthSwitch>
+        </m.div>
+      )}
+    </AnimatePresence>
   );
 }

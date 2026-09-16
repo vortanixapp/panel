@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BrandLogo } from "@/components/brand-logo";
 import {
   fetchSocialProviders,
   register as registerUser,
@@ -17,16 +16,20 @@ import {
   type TelegramAuthUser,
 } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
-import { TelegramLoginButton } from "@/components/auth/telegram-login-button";
+import {
+  AuthCheckbox,
+  AuthError,
+  AuthField,
+  AuthHeading,
+  AuthSocial,
+  AuthSubmit,
+  AuthSwitch,
+  PasswordField,
+  SOCIAL_BUTTONS,
+} from "@/components/auth/auth-kit";
 import { useBrand } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
-
-const SOCIAL_BUTTONS = [
-  { key: "vk", label: "VK", icon: "ri-vk-line" },
-  { key: "discord", label: "Discord", icon: "ri-discord-line" },
-  { key: "google", label: "Google", icon: "ri-google-line" },
-] as const;
 
 function buildSchema(t: TranslateFn) {
   return z
@@ -47,6 +50,8 @@ function buildSchema(t: TranslateFn) {
 
 type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
+const docLinkClass = "text-foreground underline underline-offset-4 decoration-foreground/30 transition-colors hover:decoration-foreground";
+
 export function RegisterForm() {
   const t = useT();
   const router = useRouter();
@@ -64,6 +69,7 @@ export function RegisterForm() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(buildSchema(t)),
@@ -75,6 +81,8 @@ export function RegisterForm() {
       passwordConfirmation: "",
     },
   });
+
+  const password = watch("password");
 
   const onSubmit = handleSubmit(async (values) => {
     setError("");
@@ -148,354 +156,119 @@ export function RegisterForm() {
   };
 
   const socialButtons = SOCIAL_BUTTONS.filter((b) => configured.includes(b.key));
-  const hasSocial = socialButtons.length > 0 || telegramBot !== "";
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center py-12 overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] animate-pulse" />
-        <div
-          className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] animate-pulse"
-          style={{ animationDelay: "1s" }}
+    <>
+      <AuthHeading title={t("auth.register.title")} subtitle={t("auth.register.subtitle")} />
+
+      <AuthError message={error} />
+
+      <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
+        <div className="grid gap-5 sm:grid-cols-2 sm:gap-3">
+          <AuthField
+            id="name"
+            type="text"
+            label={t("auth.register.name_label")}
+            autoComplete="given-name"
+            autoFocus
+            placeholder={t("auth.register.name_placeholder")}
+            error={errors.name?.message}
+            {...register("name")}
+          />
+          <AuthField
+            id="last_name"
+            type="text"
+            label={t("auth.register.last_name_label")}
+            autoComplete="family-name"
+            placeholder={t("auth.register.last_name_placeholder")}
+            error={errors.lastName?.message}
+            {...register("lastName")}
+          />
+        </div>
+        <AuthField
+          id="email"
+          type="email"
+          label={t("common.email")}
+          autoComplete="email"
+          placeholder="you@example.com"
+          error={errors.email?.message}
+          {...register("email")}
         />
-      </div>
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.02]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
+        <PasswordField
+          id="password"
+          label={t("common.password")}
+          autoComplete="new-password"
+          placeholder="••••••••"
+          strengthOf={password}
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        <PasswordField
+          id="password_confirmation"
+          label={t("auth.register.password_confirm_label")}
+          autoComplete="new-password"
+          placeholder="••••••••"
+          error={errors.passwordConfirmation?.message}
+          {...register("passwordConfirmation")}
+        />
+
+        {(needTerms || needPersonalData) && (
+          <div className="flex flex-col gap-3 pt-1">
+            {needTerms && (
+              <AuthCheckbox
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+              >
+                {t("auth.register.accept_terms")}{" "}
+                {publishedDocs.has("offer") && (
+                  <a href="/legal/offer" target="_blank" rel="noopener noreferrer" className={docLinkClass}>
+                    {t("auth.register.terms_link")}
+                  </a>
+                )}
+                {publishedDocs.has("offer") && publishedDocs.has("privacy")
+                  ? ` ${t("auth.register.terms_and")} `
+                  : null}
+                {publishedDocs.has("privacy") && (
+                  <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" className={docLinkClass}>
+                    {t("auth.register.privacy_link")}
+                  </a>
+                )}
+              </AuthCheckbox>
+            )}
+            {needPersonalData && (
+              <AuthCheckbox
+                checked={acceptPersonalData}
+                onChange={(e) => setAcceptPersonalData(e.target.checked)}
+              >
+                {t("auth.register.accept_personal_data")}{" "}
+                <a href="/legal/consent" target="_blank" rel="noopener noreferrer" className={docLinkClass}>
+                  {t("auth.register.consent_link")}
+                </a>
+              </AuthCheckbox>
+            )}
+          </div>
+        )}
+
+        <div className="pt-1">
+          <AuthSubmit loading={loading}>
+            {loading ? t("auth.register.submitting") : t("auth.register.submit")}
+          </AuthSubmit>
+        </div>
+      </form>
+
+      <AuthSocial
+        providers={socialButtons}
+        telegramBot={telegramBot}
+        onProvider={(provider) => void handleSocial(provider)}
+        onTelegram={handleTelegramAuth}
       />
 
-      <div className="relative w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          <div className="hidden lg:block">
-            <div className="mb-8">
-              <BrandLogo size="lg" className="h-12 max-w-[264px]" priority />
-            </div>
-            <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-6 leading-tight">
-              {t("auth.register.hero_title")}
-              <span className="block text-emerald-500">
-                {t("auth.register.hero_title_accent")}
-              </span>
-            </h1>
-            <p className="text-lg text-muted-foreground mb-10 max-w-md">
-              {t("auth.register.hero_text")}
-            </p>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-sm border border-border rounded-2xl transition-all duration-300 hover:bg-card hover:border-emerald-500/30">
-                <div className="w-12 h-12 flex items-center justify-center bg-emerald-500/10 text-emerald-500 rounded-xl">
-                  <i className="ri-rocket-line text-xl" />
-                </div>
-                <div>
-                  <div className="font-semibold text-foreground">
-                    {t("auth.register.feature_fast_title")}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {t("auth.register.feature_fast_note")}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-sm border border-border rounded-2xl transition-all duration-300 hover:bg-card hover:border-emerald-500/30">
-                <div className="w-12 h-12 flex items-center justify-center bg-primary/10 text-primary rounded-xl">
-                  <i className="ri-money-dollar-circle-line text-xl" />
-                </div>
-                <div>
-                  <div className="font-semibold text-foreground">
-                    {t("auth.register.feature_prepay_title")}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {t("auth.register.feature_prepay_note")}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 p-4 bg-card/50 backdrop-blur-sm border border-border rounded-2xl transition-all duration-300 hover:bg-card hover:border-emerald-500/30">
-                <div className="w-12 h-12 flex items-center justify-center bg-amber-500/10 text-amber-500 rounded-xl">
-                  <i className="ri-gamepad-line text-xl" />
-                </div>
-                <div>
-                  <div className="font-semibold text-foreground">
-                    {t("auth.register.feature_games_title")}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {t("auth.register.feature_games_note")}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative">
-            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/20 via-primary/10 to-emerald-500/20 rounded-[2rem] blur-2xl opacity-50" />
-            <div className="relative bg-card border border-border rounded-3xl shadow-2xl overflow-hidden">
-              <div className="h-1.5 bg-gradient-to-r from-emerald-500/50 via-emerald-500 to-emerald-500/50" />
-              <div className="p-8 sm:p-10">
-                <div className="mb-8 flex items-center justify-center lg:hidden">
-                  <BrandLogo size="md" className="h-9 max-w-[220px]" priority />
-                </div>
-
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-                    {t("auth.register.title")}
-                  </h2>
-                  <p className="text-muted-foreground">{t("auth.register.subtitle")}</p>
-                </div>
-
-                {error && (
-                  <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 flex items-center justify-center bg-rose-500/20 text-rose-500 rounded-xl">
-                        <i className="ri-error-warning-line text-xl" />
-                      </div>
-                      <div className="text-sm text-rose-400">{error}</div>
-                    </div>
-                  </div>
-                )}
-
-                <form onSubmit={onSubmit} className="space-y-5" noValidate>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label
-                        className="block text-sm font-medium text-foreground mb-2"
-                        htmlFor="name"
-                      >
-                        <i className="ri-user-line mr-1.5 text-muted-foreground" />{" "}
-                        {t("auth.register.name_label")}
-                      </label>
-                      <input
-                        id="name"
-                        type="text"
-                        {...register("name")}
-                        autoFocus
-                        placeholder={t("auth.register.name_placeholder")}
-                        className={`w-full px-4 py-3.5 bg-muted/50 border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 ${
-                          errors.name ? "border-rose-500" : "border-border"
-                        }`}
-                      />
-                      {errors.name && (
-                        <p className="mt-1.5 text-xs text-rose-500">{errors.name.message}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label
-                        className="block text-sm font-medium text-foreground mb-2"
-                        htmlFor="last_name"
-                      >
-                        <i className="ri-user-line mr-1.5 text-muted-foreground" />{" "}
-                        {t("auth.register.last_name_label")}
-                      </label>
-                      <input
-                        id="last_name"
-                        type="text"
-                        {...register("lastName")}
-                        placeholder={t("auth.register.last_name_placeholder")}
-                        className={`w-full px-4 py-3.5 bg-muted/50 border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 ${
-                          errors.lastName ? "border-rose-500" : "border-border"
-                        }`}
-                      />
-                      {errors.lastName && (
-                        <p className="mt-1.5 text-xs text-rose-500">{errors.lastName.message}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <label
-                      className="block text-sm font-medium text-foreground mb-2"
-                      htmlFor="email"
-                    >
-                      <i className="ri-mail-line mr-1.5 text-muted-foreground" /> Email
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      {...register("email")}
-                      placeholder="your@email.com"
-                      className={`w-full px-4 py-3.5 bg-muted/50 border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 ${
-                        errors.email ? "border-rose-500" : "border-border"
-                      }`}
-                    />
-                    {errors.email && (
-                      <p className="mt-1.5 text-xs text-rose-500">{errors.email.message}</p>
-                    )}
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label
-                        className="block text-sm font-medium text-foreground mb-2"
-                        htmlFor="password"
-                      >
-                        <i className="ri-lock-line mr-1.5 text-muted-foreground" />{" "}
-                        {t("common.password")}
-                      </label>
-                      <input
-                        id="password"
-                        type="password"
-                        {...register("password")}
-                        placeholder="••••••••"
-                        className={`w-full px-4 py-3.5 bg-muted/50 border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 ${
-                          errors.password ? "border-rose-500" : "border-border"
-                        }`}
-                      />
-                      {errors.password && (
-                        <p className="mt-1.5 text-xs text-rose-500">{errors.password.message}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label
-                        className="block text-sm font-medium text-foreground mb-2"
-                        htmlFor="password_confirmation"
-                      >
-                        <i className="ri-lock-check-line mr-1.5 text-muted-foreground" />{" "}
-                        {t("auth.register.password_confirm_label")}
-                      </label>
-                      <input
-                        id="password_confirmation"
-                        type="password"
-                        {...register("passwordConfirmation")}
-                        placeholder="••••••••"
-                        className={`w-full px-4 py-3.5 bg-muted/50 border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all duration-200 ${
-                          errors.passwordConfirmation ? "border-rose-500" : "border-border"
-                        }`}
-                      />
-                      {errors.passwordConfirmation && (
-                        <p className="mt-1.5 text-xs text-rose-500">
-                          {errors.passwordConfirmation.message}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {(needTerms || needPersonalData) && (
-                    <div className="space-y-3 p-4 bg-muted/30 border border-border rounded-2xl text-xs text-muted-foreground leading-relaxed">
-                      {needTerms && (
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={acceptTerms}
-                            onChange={(e) => setAcceptTerms(e.target.checked)}
-                            className="mt-0.5 size-4 flex-shrink-0 accent-emerald-500"
-                          />
-                          <span>
-                            {t("auth.register.accept_terms")}{" "}
-                            {publishedDocs.has("offer") && (
-                              <a
-                                href="/legal/offer"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                {t("auth.register.terms_link")}
-                              </a>
-                            )}
-                            {publishedDocs.has("offer") && publishedDocs.has("privacy")
-                              ? ` ${t("auth.register.terms_and")} `
-                              : null}
-                            {publishedDocs.has("privacy") && (
-                              <a
-                                href="/legal/privacy"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                {t("auth.register.privacy_link")}
-                              </a>
-                            )}
-                          </span>
-                        </label>
-                      )}
-                      {needPersonalData && (
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={acceptPersonalData}
-                            onChange={(e) => setAcceptPersonalData(e.target.checked)}
-                            className="mt-0.5 size-4 flex-shrink-0 accent-emerald-500"
-                          />
-                          <span>
-                            {t("auth.register.accept_personal_data")}{" "}
-                            <a
-                              href="/legal/consent"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              {t("auth.register.consent_link")}
-                            </a>
-                          </span>
-                        </label>
-                      )}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="group relative w-full flex items-center justify-center gap-2 px-6 py-4 bg-emerald-500 text-white font-semibold rounded-xl overflow-hidden transition-all duration-300 hover:bg-emerald-600 hover:shadow-xl hover:shadow-emerald-500/25 hover:-translate-y-0.5 disabled:opacity-50"
-                  >
-                    <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                    <i className="ri-rocket-line relative" />
-                    <span className="relative">
-                      {loading
-                        ? t("auth.register.submitting")
-                        : t("auth.register.submit")}
-                    </span>
-                  </button>
-                </form>
-
-                {hasSocial && (
-                  <>
-                    <div className="relative my-8">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-border" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-card px-4 text-muted-foreground">
-                          {t("auth.or")}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {socialButtons.map((b) => (
-                        <button
-                          key={b.key}
-                          type="button"
-                          onClick={() => handleSocial(b.key)}
-                          className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-muted/50 border border-border rounded-xl text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-                        >
-                          <i className={b.icon} /> {b.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {telegramBot && (
-                      <div className="mt-3 flex justify-center">
-                        <TelegramLoginButton
-                          botUsername={telegramBot}
-                          onAuth={handleTelegramAuth}
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div className="text-center mt-8">
-                  <p className="text-muted-foreground">
-                    {t("auth.register.have_account")}
-                    <Link
-                      href="/login"
-                      className="font-semibold text-primary hover:text-primary/80 transition-colors ml-1"
-                    >
-                      {t("auth.register.login_link")}
-                    </Link>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
+      <AuthSwitch>
+        {t("auth.register.have_account")}{" "}
+        <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          {t("auth.register.login_link")}
+        </Link>
+      </AuthSwitch>
+    </>
   );
 }

@@ -6,7 +6,7 @@ import { BRAND_NAME } from "@/lib/brand";
 export const metadata: Metadata = {
   title: `${BRAND_NAME} — игровой хостинг`,
   description:
-    "Выделенные ядра, NVMe Gen4 и анти-DDoS L3–L7 на всех тарифах. Развёртывание сервера за 40 секунд.",
+    "Серверы для Minecraft, CS2, Rust и ещё сорока игр. Запуск за минуту, ядра закреплены за вашим сервером, защита от DDoS на всех тарифах.",
 };
 
 export default function Home() {

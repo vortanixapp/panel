@@ -6,7 +6,13 @@ import { useTenantStatus } from "@/hooks/use-tenant-status";
 import { VxPageLoader } from "@/components/vx/loader";
 import { useT } from "@/hooks/use-translations";
 
-export function BootstrappedGuard({ children }: { children: React.ReactNode }) {
+export function BootstrappedGuard({
+  children,
+  loaderClassName,
+}: {
+  children: React.ReactNode;
+  loaderClassName?: string;
+}) {
   const t = useT();
   const router = useRouter();
   const { data, isLoading, isError } = useTenantStatus();
@@ -18,7 +24,13 @@ export function BootstrappedGuard({ children }: { children: React.ReactNode }) {
   }, [data, router]);
 
   if (isLoading) {
-    return <VxPageLoader label="Vortanix" hint={t("layout.loader.checking_session")} />;
+    return (
+      <VxPageLoader
+        label="Vortanix"
+        hint={t("layout.loader.checking_session")}
+        className={loaderClassName}
+      />
+    );
   }
 
   if (isError || !data?.bootstrapped) {

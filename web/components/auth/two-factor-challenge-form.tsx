@@ -5,26 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { AuthError, AuthField, AuthHeading, AuthSubmit, AuthSwitch } from "@/components/auth/auth-kit";
 import { challenge2FA, setTokens } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
 import { useQueryClient } from "@tanstack/react-query";
@@ -71,52 +53,34 @@ export function TwoFactorChallengeForm() {
   }
 
   return (
-    <Card className="gap-4">
-      <CardHeader>
-        <CardTitle className="text-lg tracking-tight">
-          {t("auth.two_factor.title")}
-        </CardTitle>
-        <CardDescription>
-          {t("auth.two_factor.subtitle")}{" "}
-          <Link href="/login" className="underline underline-offset-4 hover:text-primary">
-            {t("common.back")}
-          </Link>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("auth.two_factor.code_label")}</FormLabel>
-                  <FormControl>
-                    <Input
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      disabled={loading}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" disabled={loading || !twoFactorToken}>
-              {loading && <Loader2 className="animate-spin" />}
-              {t("common.confirm")}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <>
+      <AuthHeading title={t("auth.two_factor.title")} subtitle={t("auth.two_factor.subtitle")} />
+      <AuthError message={error} />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+        <AuthField
+          id="code"
+          label={t("auth.two_factor.code_label")}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          autoFocus
+          maxLength={8}
+          placeholder="000000"
+          disabled={loading}
+          error={form.formState.errors.code?.message}
+          className="[&_input]:h-14 [&_input]:text-center [&_input]:font-mono [&_input]:text-[22px] [&_input]:tracking-[0.45em]"
+          {...form.register("code")}
+        />
+        <div className="pt-1">
+          <AuthSubmit loading={loading} disabled={!twoFactorToken}>
+            {t("common.confirm")}
+          </AuthSubmit>
+        </div>
+      </form>
+      <AuthSwitch>
+        <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+          {t("common.back")}
+        </Link>
+      </AuthSwitch>
+    </>
   );
 }
