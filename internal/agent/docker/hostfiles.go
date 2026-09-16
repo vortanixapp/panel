@@ -2,120 +2,151 @@ package docker
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 )
 
-func hostServerPath(serverID, containerTarget string) (string, error) {
-	base := serverDataDir(serverID)
-	realBase, err := filepath.EvalSymlinks(base)
-	if err != nil {
-		return "", err
+func randomSuffix() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 16)
 	}
-	rel := strings.TrimPrefix(strings.TrimPrefix(containerTarget, serverRoot), "/")
-	full := filepath.Join(realBase, filepath.FromSlash(rel))
-
-	probe := full
-	for {
-		resolved, evalErr := filepath.EvalSymlinks(probe)
-		if evalErr == nil {
-			if !underDir(realBase, resolved) {
-				return "", fmt.Errorf("путь вне каталога сервера")
-			}
-			return full, nil
-		}
-		if !os.IsNotExist(evalErr) {
-			return "", evalErr
-		}
-		parent := filepath.Dir(probe)
-		if parent == probe || len(parent) < len(realBase) {
-			return "", fmt.Errorf("путь вне каталога сервера")
-		}
-		probe = parent
-	}
+	return hex.EncodeToString(b)
 }
 
-func underDir(base, p string) bool {
-	if p == base {
-		return true
+func serverRootFor(serverID string) (*os.Root, error) {
+	base := serverDataDir(serverID)
+	if err := os.MkdirAll(base, 0o755); err != nil {
+		return nil, err
 	}
-	return strings.HasPrefix(p, base+string(os.PathSeparator))
+	return os.OpenRoot(base)
+}
+
+func relativeInServer(containerTarget string) string {
+	rel := strings.TrimPrefix(strings.TrimPrefix(containerTarget, serverRoot), "/")
+	if rel == "" {
+		return "."
+	}
+	return filepath.FromSlash(rel)
+}
+
+func openServerPath(serverID, containerTarget string) (*os.Root, string, error) {
+	root, err := serverRootFor(serverID)
+	if err != nil {
+		return nil, "", err
+	}
+	rel := relativeInServer(containerTarget)
+	if rel == "." {
+		return root, rel, nil
+	}
+	if !filepath.IsLocal(rel) {
+		root.Close()
+		return nil, "", fmt.Errorf("путь вне каталога сервера")
+	}
+	return root, rel, nil
 }
 
 func readFileFromHost(serverID, containerTarget string) ([]byte, error) {
-	path, err := hostServerPath(serverID, containerTarget)
+	root, rel, err := openServerPath(serverID, containerTarget)
 	if err != nil {
 		return nil, err
 	}
-	return os.ReadFile(path)
+	defer root.Close()
+	return root.ReadFile(rel)
 }
 
 func writeFileToHost(ctx context.Context, serverID, containerTarget string, content []byte) error {
-	path, err := hostServerPath(serverID, containerTarget)
+	root, rel, err := openServerPath(serverID, containerTarget)
 	if err != nil {
 		return err
 	}
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+	defer root.Close()
+	if rel == "." {
+		return fmt.Errorf("нельзя записать в корень данных сервера")
+	}
+
+	dir := filepath.Dir(rel)
+	if dir != "." {
+		if err := root.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
 	}
 
 	mode := os.FileMode(0o644)
 	reference := dir
-	if st, statErr := os.Stat(path); statErr == nil {
+	if st, statErr := root.Stat(rel); statErr == nil {
 		mode = st.Mode().Perm()
-		reference = path
+		reference = rel
 	}
 
-	tmp, err := os.CreateTemp(dir, ".vtx-write-*")
+	name := ".vtx-write-" + randomSuffix()
+	tmp := name
+	if dir != "." {
+		tmp = filepath.Join(dir, name)
+	}
+	f, err := root.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
 	if err != nil {
 		return err
 	}
-	tmpName := tmp.Name()
+	written := false
 	defer func() {
-		if tmpName != "" {
-			_ = os.Remove(tmpName)
+		if !written {
+			_ = root.Remove(tmp)
 		}
 	}()
-
-	if _, err := tmp.Write(content); err != nil {
-		tmp.Close()
+	if _, err := f.Write(content); err != nil {
+		f.Close()
 		return err
 	}
-	if err := tmp.Sync(); err != nil {
-		tmp.Close()
+	if err := f.Sync(); err != nil {
+		f.Close()
 		return err
 	}
-	if err := tmp.Close(); err != nil {
+	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Chmod(tmpName, mode); err != nil {
+	if err := root.Chmod(tmp, mode); err != nil {
 		return err
 	}
-	copyOwnership(ctx, reference, tmpName)
-	if err := os.Rename(tmpName, path); err != nil {
+	copyOwnership(ctx, root, reference, tmp)
+	if err := root.Rename(tmp, rel); err != nil {
 		return err
 	}
-	tmpName = ""
+	written = true
 	return nil
 }
 
-func copyOwnership(ctx context.Context, reference, target string) {
+func copyOwnership(ctx context.Context, root *os.Root, reference, target string) {
+	base := root.Name()
+	if reference == "." {
+		reference = ""
+	}
 	const script = `o=$(stat -c '%u:%g' "$1") || exit 0
 chown -h "$o" "$2" || true`
-	_ = exec.CommandContext(ctx, "sh", "-c", script, "sh", reference, target).Run()
+	_ = exec.CommandContext(ctx, "sh", "-c", script, "sh",
+		filepath.Join(base, reference), filepath.Join(base, target)).Run()
 }
 
 func listFilesOnHost(serverID, containerTarget string) ([]FileEntry, error) {
-	path, err := hostServerPath(serverID, containerTarget)
+	root, rel, err := openServerPath(serverID, containerTarget)
 	if err != nil {
 		return nil, err
 	}
-	dirEntries, err := os.ReadDir(path)
+	defer root.Close()
+	dir, err := root.Open(rel)
+	if err != nil {
+		return nil, err
+	}
+	defer dir.Close()
+	dirEntries, err := dir.ReadDir(-1)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +156,7 @@ func listFilesOnHost(serverID, containerTarget string) ([]FileEntry, error) {
 		if info, infoErr := e.Info(); infoErr == nil {
 			entry.Size = info.Size()
 			if info.Mode()&os.ModeSymlink != 0 {
-				if st, statErr := os.Stat(filepath.Join(path, e.Name())); statErr == nil {
+				if st, statErr := root.Stat(filepath.Join(rel, e.Name())); statErr == nil {
 					entry.IsDir = st.IsDir()
 					entry.Size = st.Size()
 				}

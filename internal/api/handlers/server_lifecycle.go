@@ -22,7 +22,7 @@ func (h *Handler) UpdateServerGame(w http.ResponseWriter, r *http.Request) {
 	spec := h.resolveInstallSpec(ctx, serverID)
 	if spec == nil {
 		writeError(w, http.StatusBadRequest,
-			"для версии игры не указан источник файлов — обновлять нечего")
+			"Для версии игры не указан источник файлов — обновлять нечего")
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *Handler) UpdateServerGame(w http.ResponseWriter, r *http.Request) {
 	if _, started := result["status"]; !started {
 		h.restoreServerStatus(ctx, serverID, prevStatus, prevRuntime)
 		writeError(w, http.StatusConflict,
-			"агент на ноде устарел и не умеет обновлять игру — обновите его на странице ноды")
+			"Агент на ноде устарел и не умеет обновлять игру — обновите его на странице ноды")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "server.update", "server:"+serverID, nil)

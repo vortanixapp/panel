@@ -92,7 +92,7 @@ func (h *Handler) refuseUnidentified(ctx context.Context, w http.ResponseWriter,
 		return false
 	}
 	writeCodedError(w, http.StatusForbidden, "identification_required",
-		"перед заказом услуг нужно пройти идентификацию: пополните баланс картой российского банка, через СБП или банковским переводом либо обратитесь в поддержку")
+		"Перед заказом услуг нужно пройти идентификацию: пополните баланс картой российского банка, через СБП или банковским переводом либо обратитесь в поддержку")
 	return true
 }
 
@@ -153,7 +153,7 @@ func (h *Handler) AdminUserIdentification(w http.ResponseWriter, r *http.Request
 	}
 	note := strings.TrimSpace(body.Note)
 	if note == "" {
-		writeError(w, http.StatusBadRequest, "укажите основание: каким документом или способом проверена личность клиента")
+		writeError(w, http.StatusBadRequest, "Укажите основание: каким документом или способом проверена личность клиента")
 		return
 	}
 	ctx := r.Context()
@@ -165,7 +165,7 @@ func (h *Handler) AdminUserIdentification(w http.ResponseWriter, r *http.Request
 			return
 		}
 		if !done {
-			writeError(w, http.StatusConflict, "клиент уже идентифицирован или удалён")
+			writeError(w, http.StatusConflict, "Клиент уже идентифицирован или удалён")
 			return
 		}
 	} else {
@@ -178,7 +178,7 @@ func (h *Handler) AdminUserIdentification(w http.ResponseWriter, r *http.Request
 			return
 		}
 		if tag.RowsAffected() == 0 {
-			writeError(w, http.StatusConflict, "клиент не идентифицирован")
+			writeError(w, http.StatusConflict, "Клиент не идентифицирован")
 			return
 		}
 		_, _ = db.Exec(ctx, `
@@ -208,13 +208,13 @@ func (h *Handler) userDeletionBlocker(ctx context.Context, userID string, ignore
 	`, userID).Scan(&balance)
 	switch {
 	case servers > 0:
-		return "у пользователя есть игровые серверы — сначала удалите их"
+		return "У пользователя есть игровые серверы — сначала удалите их"
 	case hosting > 0:
-		return "у пользователя есть аккаунты веб-хостинга — сначала закройте их"
+		return "У пользователя есть аккаунты веб-хостинга — сначала закройте их"
 	case pendingRefunds > 0:
-		return "есть необработанная заявка на возврат остатка баланса"
+		return "Есть необработанная заявка на возврат остатка баланса"
 	case !ignoreBalance && balance > 0.004:
-		return "на балансе остались деньги — сначала верните остаток через заявку на возврат"
+		return "На балансе остались деньги — сначала верните остаток через заявку на возврат"
 	}
 	return ""
 }
@@ -276,7 +276,7 @@ func (h *Handler) AccountDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if isStaffRole(claims.Role) {
-		writeError(w, http.StatusForbidden, "учётную запись сотрудника удаляет владелец панели")
+		writeError(w, http.StatusForbidden, "Учётную запись сотрудника удаляет владелец панели")
 		return
 	}
 	var body struct {
@@ -291,19 +291,19 @@ func (h *Handler) AccountDelete(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT email FROM core.users WHERE id = $1 AND deleted_at IS NULL
 	`, claims.UserID).Scan(&email); err != nil {
-		writeError(w, http.StatusNotFound, "учётная запись не найдена")
+		writeError(w, http.StatusNotFound, "Учётная запись не найдена")
 		return
 	}
 	if !strings.EqualFold(strings.TrimSpace(body.ConfirmEmail), email) {
-		writeError(w, http.StatusBadRequest, "введите email учётной записи, чтобы подтвердить удаление")
+		writeError(w, http.StatusBadRequest, "Введите email учётной записи, чтобы подтвердить удаление")
 		return
 	}
 	if msg := h.userDeletionBlocker(ctx, claims.UserID, false); msg != "" {
-		writeError(w, http.StatusConflict, strings.Replace(msg, "у пользователя есть", "у вас есть", 1))
+		writeError(w, http.StatusConflict, strings.Replace(msg, "У пользователя есть", "У вас есть", 1))
 		return
 	}
 	if err := h.anonymizeUser(ctx, claims.UserID, claims.UserID, "self"); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось удалить учётную запись")
+		writeError(w, http.StatusInternalServerError, "Не удалось удалить учётную запись")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
@@ -387,7 +387,7 @@ func (h *Handler) writeUserExport(w http.ResponseWriter, r *http.Request, userID
 		}
 	}
 	if string(data["account"]) == "null" {
-		writeError(w, http.StatusNotFound, "пользователь не найден")
+		writeError(w, http.StatusNotFound, "Пользователь не найден")
 		return
 	}
 	profile := h.accountingProfile(ctx)

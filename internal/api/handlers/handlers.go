@@ -75,8 +75,13 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !setupRateLimiter.allow("bootstrap:"+clientIPOf(r), 5, time.Minute) {
+		writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте позже")
+		return
+	}
+
 	if h.tenantExists(r) {
-		writeError(w, http.StatusConflict, "панель уже настроена")
+		writeError(w, http.StatusConflict, "Панель уже настроена")
 		return
 	}
 
@@ -104,16 +109,21 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO core.tenant_settings (key, value) VALUES ('panel.name', to_jsonb($1::text))
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
 	`, panelName); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить имя панели")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить имя панели")
 		return
 	}
 
 	var userID string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO core.users ( email, password_hash, role)
-		VALUES ( $1, $2, 'owner')
+		SELECT $1, $2, 'owner'
+		WHERE NOT EXISTS (SELECT 1 FROM core.users WHERE role = 'owner')
 		RETURNING id::text
 	`, strings.ToLower(req.OwnerEmail), string(hash)).Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeError(w, http.StatusConflict, "Панель уже настроена")
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create owner user")
 		return
@@ -168,9 +178,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	req.TenantSlug = singleTenantSlug
 
 	ctx := r.Context()
+	if h.tooManyAttempts(w, r, "login", 15, time.Minute, req.Email) {
+		return
+	}
 	if blocked, reason := h.ipBlocked(ctx, clientIP(r)); blocked {
 		h.recordLoginAttempt(ctx, r, "", req.Email, "адрес заблокирован", false)
-		msg := "доступ с этого адреса заблокирован"
+		msg := "Доступ с этого адреса заблокирован"
 		if reason != "" {
 			msg += ": " + reason
 		}
@@ -206,7 +219,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if !twoFAEnabled && isStaffRole(role) && h.staffRequires2FA(ctx) {
 		h.recordLoginAttempt(ctx, r, userID, req.Email, "требуется 2FA", false)
 		writeError(w, http.StatusForbidden,
-			"для сотрудников включена обязательная двухфакторная аутентификация — обратитесь к владельцу панели, чтобы её настроить")
+			"Для сотрудников включена обязательная двухфакторная аутентификация — обратитесь к владельцу панели, чтобы её настроить")
 		return
 	}
 
@@ -288,13 +301,16 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	if h.tooManyAttempts(w, r, "register", 20, time.Hour, req.Email) {
+		return
+	}
 	consentKinds := h.legalRegistrationKinds(ctx)
 	if (slices.Contains(consentKinds, "offer") || slices.Contains(consentKinds, "privacy")) && !req.AcceptTerms {
-		writeCodedError(w, http.StatusBadRequest, "terms_required", "примите условия оферты и политику обработки персональных данных")
+		writeCodedError(w, http.StatusBadRequest, "terms_required", "Примите условия оферты и политику обработки персональных данных")
 		return
 	}
 	if slices.Contains(consentKinds, "consent") && !req.AcceptPersonalData {
-		writeCodedError(w, http.StatusBadRequest, "consent_required", "дайте согласие на обработку персональных данных")
+		writeCodedError(w, http.StatusBadRequest, "consent_required", "Дайте согласие на обработку персональных данных")
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -412,15 +428,21 @@ func (h *Handler) withLiveAccount(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := tenantClaims(r.Context())
 		if !ok || claims.UserID == "" {
-			next.ServeHTTP(w, r)
+			writeError(w, http.StatusUnauthorized, "invalid token")
 			return
 		}
 		ctx := r.Context()
 		var email, role, status string
+		var sessionAlive bool
 		err := h.dbOf(ctx).QueryRow(ctx, `
-			SELECT email, role, status FROM core.users WHERE id = $1
-		`, claims.UserID).Scan(&email, &role, &status)
-		if errors.Is(err, pgx.ErrNoRows) || (err == nil && status != "active") {
+			SELECT u.email, u.role, u.status,
+			       ($2 = '' OR EXISTS(
+			           SELECT 1 FROM core.user_sessions s
+			           WHERE s.id::text = $2 AND s.user_id = u.id
+			       ))
+			FROM core.users u WHERE u.id = $1
+		`, claims.UserID, claims.SessionID).Scan(&email, &role, &status, &sessionAlive)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && (status != "active" || !sessionAlive)) {
 			writeError(w, http.StatusUnauthorized, "invalid token")
 			return
 		}

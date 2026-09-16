@@ -331,11 +331,11 @@ func (h *Handler) AdminReceiptOffsetRetry(w http.ResponseWriter, r *http.Request
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT provider FROM core.receipt_offsets WHERE id = $1 AND payment_id IS NOT NULL
 	`, id).Scan(&provider); err != nil {
-		writeError(w, http.StatusNotFound, "чек не найден")
+		writeError(w, http.StatusNotFound, "Чек не найден")
 		return
 	}
 	if !payments.ClosingReceiptSupported(provider) {
-		writeError(w, http.StatusConflict, "касса "+payments.Name(provider)+" не принимает чеки зачёта по API — оформите чек в её личном кабинете")
+		writeError(w, http.StatusConflict, "Касса "+payments.Name(provider)+" не принимает чеки зачёта по API — оформите чек в её личном кабинете")
 		return
 	}
 	tag, err := h.dbOf(ctx).Exec(ctx, `
@@ -343,7 +343,7 @@ func (h *Handler) AdminReceiptOffsetRetry(w http.ResponseWriter, r *http.Request
 		WHERE id = $1 AND status IN ('failed', 'pending')
 	`, id)
 	if err != nil || tag.RowsAffected() == 0 {
-		writeError(w, http.StatusConflict, "повторить можно только неотправленный чек")
+		writeError(w, http.StatusConflict, "Повторить можно только неотправленный чек")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "receipt_offset.retry", "receipt_offset:"+id, nil)
@@ -365,7 +365,7 @@ func (h *Handler) AdminReceiptOffsetMarkSent(w http.ResponseWriter, r *http.Requ
 	}
 	reference := strings.TrimSpace(body.Reference)
 	if reference == "" {
-		writeError(w, http.StatusBadRequest, "укажите номер чека или фискальный признак")
+		writeError(w, http.StatusBadRequest, "Укажите номер чека или фискальный признак")
 		return
 	}
 	ctx := r.Context()
@@ -375,7 +375,7 @@ func (h *Handler) AdminReceiptOffsetMarkSent(w http.ResponseWriter, r *http.Requ
 		WHERE id = $1 AND status IN ('manual', 'failed', 'pending')
 	`, id, reference)
 	if err != nil || tag.RowsAffected() == 0 {
-		writeError(w, http.StatusConflict, "чек уже отмечен отправленным")
+		writeError(w, http.StatusConflict, "Чек уже отмечен отправленным")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "receipt_offset.mark_sent", "receipt_offset:"+id, map[string]any{"reference": reference})

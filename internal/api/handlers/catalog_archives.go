@@ -184,17 +184,17 @@ func (h *Handler) UploadPluginArchive(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(r.Context()).QueryRow(r.Context(),
 		`SELECT slug, COALESCE(archive_path, '') FROM core.plugins WHERE id = $1::uuid`,
 		id).Scan(&slug, &oldPath); err != nil {
-		writeError(w, http.StatusNotFound, "плагин не найден")
+		writeError(w, http.StatusNotFound, "Плагин не найден")
 		return
 	}
 
 	if err := r.ParseMultipartForm(16 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "не удалось разобрать форму")
+		writeError(w, http.StatusBadRequest, "Не удалось разобрать форму")
 		return
 	}
 	file, header, err := r.FormFile("archive")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "файл архива обязателен")
+		writeError(w, http.StatusBadRequest, "Файл архива обязателен")
 		return
 	}
 	defer file.Close()
@@ -217,7 +217,7 @@ func (h *Handler) UploadPluginArchive(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1::uuid
 	`, id, rel, archiveType, size); err != nil {
 		_ = h.deleteCatalogFile(rel)
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить архив: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить архив: "+err.Error())
 		return
 	}
 	if oldPath != "" && oldPath != rel {
@@ -237,17 +237,17 @@ func (h *Handler) UploadPluginImage(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(r.Context()).QueryRow(r.Context(),
 		`SELECT slug, COALESCE(image_path, '') FROM core.plugins WHERE id = $1::uuid`,
 		id).Scan(&slug, &oldPath); err != nil {
-		writeError(w, http.StatusNotFound, "плагин не найден")
+		writeError(w, http.StatusNotFound, "Плагин не найден")
 		return
 	}
 
 	if err := r.ParseMultipartForm(4 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "не удалось разобрать форму")
+		writeError(w, http.StatusBadRequest, "Не удалось разобрать форму")
 		return
 	}
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "файл картинки обязателен")
+		writeError(w, http.StatusBadRequest, "Файл картинки обязателен")
 		return
 	}
 	defer file.Close()
@@ -265,7 +265,7 @@ func (h *Handler) UploadPluginImage(w http.ResponseWriter, r *http.Request) {
 		case strings.HasSuffix(lower, ".gif"):
 			ext = ".gif"
 		default:
-			writeError(w, http.StatusUnprocessableEntity, "картинка должна быть jpg, png, webp или gif")
+			writeError(w, http.StatusUnprocessableEntity, "Картинка должна быть jpg, png, webp или gif")
 			return
 		}
 	}
@@ -278,7 +278,7 @@ func (h *Handler) UploadPluginImage(w http.ResponseWriter, r *http.Request) {
 		`UPDATE core.plugins SET image_path = $2, updated_at = now() WHERE id = $1::uuid`,
 		id, rel); err != nil {
 		_ = h.deleteCatalogFile(rel)
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить картинку: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить картинку: "+err.Error())
 		return
 	}
 	if oldPath != "" && oldPath != rel {
@@ -320,8 +320,8 @@ func (h *Handler) ServePluginImage(w http.ResponseWriter, r *http.Request) {
 	case ".gif":
 		w.Header().Set("Content-Type", "image/gif")
 	}
+	setUploadHeaders(w, "")
 	w.Header().Set("Cache-Control", "public, max-age=300")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeFile(w, r, abs)
 }
 
@@ -336,23 +336,23 @@ func (h *Handler) UploadMapArchive(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(r.Context()).QueryRow(r.Context(),
 		`SELECT slug, COALESCE(archive_path, '') FROM core.maps WHERE id = $1::uuid`,
 		id).Scan(&slug, &oldPath); err != nil {
-		writeError(w, http.StatusNotFound, "карта не найдена")
+		writeError(w, http.StatusNotFound, "Карта не найдена")
 		return
 	}
 
 	if err := r.ParseMultipartForm(16 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "не удалось разобрать форму")
+		writeError(w, http.StatusBadRequest, "Не удалось разобрать форму")
 		return
 	}
 	file, header, err := r.FormFile("archive")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "файл архива обязателен")
+		writeError(w, http.StatusBadRequest, "Файл архива обязателен")
 		return
 	}
 	defer file.Close()
 
 	if !strings.HasSuffix(strings.ToLower(header.Filename), ".zip") {
-		writeError(w, http.StatusUnprocessableEntity, "карта загружается только архивом zip")
+		writeError(w, http.StatusUnprocessableEntity, "Карта загружается только архивом zip")
 		return
 	}
 	rel, size, err := h.saveCatalogFile(catalogMaps, slug, "map_", ".zip", file, catalogArchiveMaxBytes)
@@ -374,7 +374,7 @@ func (h *Handler) UploadMapArchive(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(list) == 0 {
 		_ = h.deleteCatalogFile(rel)
-		writeError(w, http.StatusUnprocessableEntity, "в архиве нет файлов")
+		writeError(w, http.StatusUnprocessableEntity, "В архиве нет файлов")
 		return
 	}
 	encoded, err := json.Marshal(list)
@@ -391,7 +391,7 @@ func (h *Handler) UploadMapArchive(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1::uuid
 	`, id, rel, size, encoded); err != nil {
 		_ = h.deleteCatalogFile(rel)
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить архив: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить архив: "+err.Error())
 		return
 	}
 	if oldPath != "" && oldPath != rel {

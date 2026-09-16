@@ -41,38 +41,33 @@ func clientIPOf(r *http.Request) string {
 	return hostOnly(r.RemoteAddr)
 }
 
-var setupRateLimiter = &attemptLimiter{
-	limit:   5,
-	window:  time.Minute,
-	attempt: make(map[string]*attemptWindow),
-}
+var setupRateLimiter = &attemptLimiter{attempt: make(map[string]*attemptWindow)}
 
 type attemptWindow struct {
-	start time.Time
-	count int
+	start  time.Time
+	count  int
+	window time.Duration
 }
 
 type attemptLimiter struct {
 	mu      sync.Mutex
-	limit   int
-	window  time.Duration
 	attempt map[string]*attemptWindow
 }
 
-func (l *attemptLimiter) allow(key string) bool {
+func (l *attemptLimiter) allow(key string, limit int, window time.Duration) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	now := time.Now()
 	win, ok := l.attempt[key]
-	if !ok || now.Sub(win.start) >= l.window {
-		l.attempt[key] = &attemptWindow{start: now, count: 1}
+	if !ok || now.Sub(win.start) >= win.window {
+		l.attempt[key] = &attemptWindow{start: now, count: 1, window: window}
 		l.sweep(now)
 		return true
 	}
 
 	win.count++
-	return win.count <= l.limit
+	return win.count <= limit
 }
 
 func (l *attemptLimiter) sweep(now time.Time) {
@@ -80,7 +75,7 @@ func (l *attemptLimiter) sweep(now time.Time) {
 		return
 	}
 	for key, win := range l.attempt {
-		if now.Sub(win.start) >= l.window {
+		if now.Sub(win.start) >= win.window {
 			delete(l.attempt, key)
 		}
 	}

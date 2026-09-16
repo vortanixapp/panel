@@ -38,7 +38,7 @@ func (h *Handler) AdminAdjustUserBalance(w http.ResponseWriter, r *http.Request)
 	}
 	comment := strings.TrimSpace(body.Comment)
 	if comment == "" {
-		writeError(w, http.StatusBadRequest, "укажите причину корректировки")
+		writeError(w, http.StatusBadRequest, "Укажите причину корректировки")
 		return
 	}
 
@@ -58,11 +58,11 @@ func (h *Handler) AdminAdjustUserBalance(w http.ResponseWriter, r *http.Request)
 		RETURNING id::text, balance::float8
 	`, userID, currency).Scan(&walletID, &balance)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "пользователь или кошелёк не найден")
+		writeError(w, http.StatusNotFound, "Пользователь или кошелёк не найден")
 		return
 	}
 	if balance+amount < 0 {
-		writeError(w, http.StatusBadRequest, "списание больше текущего баланса")
+		writeError(w, http.StatusBadRequest, "Списание больше текущего баланса")
 		return
 	}
 

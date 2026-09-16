@@ -240,7 +240,7 @@ func (h *Handler) AdminServerMigrate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.nodeInMaintenance(ctx, toNode) {
-		writeError(w, http.StatusConflict, "нода назначения на обслуживании")
+		writeError(w, http.StatusConflict, "Нода назначения на обслуживании")
 		return
 	}
 	_ = h.dbOf(ctx).QueryRow(ctx, `SELECT name FROM core.nodes WHERE id = $1`, fromNode).Scan(&fromName)

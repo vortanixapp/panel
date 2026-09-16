@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
+
+	"github.com/vortanixapp/panel/internal/api/paneljwt"
 )
 
 var viewerPermissionKeys = []string{
@@ -37,9 +40,18 @@ type serverAccess struct {
 	IsOwner       bool
 	IsFriend      bool
 	IsStaff       bool
+	StaffWrite    bool
 	FriendPerms   map[string]any
 	IsBlocked     bool
 	BlockedReason string
+}
+
+var serverReadActions = map[string]bool{
+	"files_list": true, "files_read": true, "files_download": true,
+	"logs": true, "metrics": true, "stats": true, "game_query": true,
+	"settings_read": true, "cron_list": true, "firewall_list": true,
+	"ports_list": true, "friends_list": true, "backup_schedule_read": true,
+	"console_attach": true, "mysql_list_catalog": true,
 }
 
 func ownerViewerPermissions() map[string]any {
@@ -68,7 +80,12 @@ func friendViewerPermissions(raw map[string]any) map[string]any {
 }
 
 func (h *Handler) resolveServerAccess(ctx context.Context, userID, role, serverID string) (*serverAccess, error) {
-	access := &serverAccess{IsStaff: isStaffRole(role)}
+	access := &serverAccess{}
+	if isStaffRole(role) {
+		perms := h.rbacClaimsPermissions(ctx, &paneljwt.Claims{UserID: userID, Role: role})
+		access.StaffWrite = perms["admin.servers.write"]
+		access.IsStaff = access.StaffWrite || perms["admin.servers.read"]
+	}
 	var ownerID string
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT COALESCE(user_id::text, ''), COALESCE(is_blocked, false), COALESCE(blocked_reason, '')
@@ -104,12 +121,23 @@ func (h *Handler) resolveServerAccess(ctx context.Context, userID, role, serverI
 	return access, nil
 }
 
+func staffViewerPermissions() map[string]any {
+	out := map[string]any{}
+	for _, key := range viewerPermissionKeys {
+		out[key] = strings.HasPrefix(key, "can_view_")
+	}
+	return out
+}
+
 func viewerPermissionsForAccess(access *serverAccess) map[string]any {
 	if access == nil {
 		return friendViewerPermissions(nil)
 	}
-	if access.IsOwner || access.IsStaff {
+	if access.IsOwner || access.StaffWrite {
 		return ownerViewerPermissions()
+	}
+	if access.IsStaff {
+		return staffViewerPermissions()
 	}
 	if access.IsFriend {
 		return friendViewerPermissions(access.FriendPerms)

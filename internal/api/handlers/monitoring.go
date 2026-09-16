@@ -775,7 +775,7 @@ func (h *Handler) monitoringAllowed(w http.ResponseWriter, r *http.Request) bool
 	if h.publicRequestAllowed(r.Context(), r) {
 		return true
 	}
-	writeError(w, http.StatusForbidden, "нет доступа к публичному мониторингу")
+	writeError(w, http.StatusForbidden, "Нет доступа к публичному мониторингу")
 	return false
 }
 

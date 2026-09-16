@@ -5,11 +5,14 @@ import (
 	"time"
 )
 
-func (c *Cache) AllowWrite(ctx context.Context, limit int, window time.Duration) (bool, error) {
+func (c *Cache) AllowWrite(ctx context.Context, scope string, limit int, window time.Duration) (bool, error) {
+	return c.Allow(ctx, "rl:write:"+scope, limit, window)
+}
+
+func (c *Cache) Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
 	if limit <= 0 {
 		return true, nil
 	}
-	key := "rl:write"
 	n, err := c.rdb.Incr(ctx, key).Result()
 	if err != nil {
 		return true, err

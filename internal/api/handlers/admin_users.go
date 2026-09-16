@@ -551,8 +551,8 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")
 		return
 	}
-	if existingRole == "owner" && claims.Role != "owner" {
-		writeError(w, http.StatusForbidden, "forbidden")
+	if !canManageUser(claims.Role, existingRole) {
+		writeError(w, http.StatusForbidden, "Недостаточно прав для изменения этой учётной записи")
 		return
 	}
 
@@ -562,8 +562,12 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "invalid role")
 			return
 		}
-		if claims.Role != "owner" && (requested == "admin" || existingRole == "admin") {
-			writeError(w, http.StatusForbidden, "only owner can change admin roles")
+		if id == claims.UserID {
+			writeError(w, http.StatusForbidden, "Нельзя менять собственную роль")
+			return
+		}
+		if !canManageUser(claims.Role, requested) {
+			writeError(w, http.StatusForbidden, "Недостаточно прав для назначения этой роли")
 			return
 		}
 		role = requested
@@ -580,11 +584,11 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if group != existingGroup {
 		if !isAdminRole(claims.Role) {
-			writeError(w, http.StatusForbidden, "группу сотрудника назначает только администратор")
+			writeError(w, http.StatusForbidden, "Группу сотрудника назначает только администратор")
 			return
 		}
 		if group != "" && !rbacCustomGroupKey(group) {
-			writeError(w, http.StatusBadRequest, "группа не найдена")
+			writeError(w, http.StatusBadRequest, "Группа не найдена")
 			return
 		}
 	}
@@ -592,7 +596,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		if _, err := h.dbOf(ctx).Exec(ctx, `
 			UPDATE core.users SET role = $2, staff_group_id = NULLIF($3, '')::uuid WHERE id = $1
 		`, id, role, group); err != nil {
-			writeError(w, http.StatusBadRequest, "группа не найдена")
+			writeError(w, http.StatusBadRequest, "Группа не найдена")
 			return
 		}
 	}
@@ -670,7 +674,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 			updated_at = now()
 	`, id, strings.TrimSpace(name), strings.TrimSpace(lastName), strings.TrimSpace(phone), contactsJSON)
 
-	if wallets, ok := body["wallets"].(map[string]any); ok {
+	if wallets, ok := body["wallets"].(map[string]any); ok && (id != claims.UserID || claims.Role == "owner") {
 		for _, currency := range []string{"RUB", "USD", "EUR"} {
 			raw, exists := wallets[currency]
 			if !exists {

@@ -286,7 +286,7 @@ func (h *Handler) AdminServerSetOwner(w http.ResponseWriter, r *http.Request) {
 	body.UserID = strings.TrimSpace(body.UserID)
 	body.Email = strings.TrimSpace(body.Email)
 	if body.UserID == "" && body.Email == "" {
-		writeError(w, http.StatusBadRequest, "укажите пользователя")
+		writeError(w, http.StatusBadRequest, "Укажите пользователя")
 		return
 	}
 
@@ -298,11 +298,11 @@ func (h *Handler) AdminServerSetOwner(w http.ResponseWriter, r *http.Request) {
 		arg = body.Email
 	}
 	if err := h.dbOf(ctx).QueryRow(ctx, lookup, arg).Scan(&newOwnerID, &newOwnerEmail, &newOwnerStatus); err != nil {
-		writeError(w, http.StatusNotFound, "пользователь не найден")
+		writeError(w, http.StatusNotFound, "Пользователь не найден")
 		return
 	}
 	if newOwnerStatus != "active" {
-		writeError(w, http.StatusConflict, "аккаунт получателя отключён")
+		writeError(w, http.StatusConflict, "Аккаунт получателя отключён")
 		return
 	}
 
@@ -312,7 +312,7 @@ func (h *Handler) AdminServerSetOwner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if oldOwnerID == newOwnerID {
-		writeError(w, http.StatusConflict, "сервер уже закреплён за этим пользователем")
+		writeError(w, http.StatusConflict, "Сервер уже закреплён за этим пользователем")
 		return
 	}
 
@@ -326,17 +326,17 @@ func (h *Handler) AdminServerSetOwner(w http.ResponseWriter, r *http.Request) {
 	if _, err := tx.Exec(ctx, `
 		UPDATE core.servers SET user_id = $2::uuid WHERE id = $1::uuid
 	`, id, newOwnerID); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сменить владельца")
+		writeError(w, http.StatusInternalServerError, "Не удалось сменить владельца")
 		return
 	}
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM core.server_friends WHERE server_id = $1::uuid AND user_id = $2::uuid
 	`, id, newOwnerID); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сменить владельца")
+		writeError(w, http.StatusInternalServerError, "Не удалось сменить владельца")
 		return
 	}
 	if err := tx.Commit(ctx); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сменить владельца")
+		writeError(w, http.StatusInternalServerError, "Не удалось сменить владельца")
 		return
 	}
 	_ = h.cache.InvalidateTenantServers(ctx)
@@ -381,11 +381,11 @@ func (h *Handler) AdminServerSetExpiry(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	body.ExpiresAt = strings.TrimSpace(body.ExpiresAt)
 	if body.Days == 0 && body.ExpiresAt == "" {
-		writeError(w, http.StatusBadRequest, "укажите количество дней или дату")
+		writeError(w, http.StatusBadRequest, "Укажите количество дней или дату")
 		return
 	}
 	if body.Days < -3650 || body.Days > 3650 {
-		writeError(w, http.StatusBadRequest, "недопустимое количество дней")
+		writeError(w, http.StatusBadRequest, "Недопустимое количество дней")
 		return
 	}
 
@@ -399,7 +399,7 @@ func (h *Handler) AdminServerSetExpiry(w http.ResponseWriter, r *http.Request) {
 	if body.ExpiresAt != "" {
 		parsed, parseErr := time.Parse(time.RFC3339, body.ExpiresAt)
 		if parseErr != nil {
-			writeError(w, http.StatusBadRequest, "неверный формат даты")
+			writeError(w, http.StatusBadRequest, "Неверный формат даты")
 			return
 		}
 		err = h.dbOf(ctx).QueryRow(ctx, `
@@ -423,7 +423,7 @@ func (h *Handler) AdminServerSetExpiry(w http.ResponseWriter, r *http.Request) {
 		`, id, body.Days).Scan(&newExpiry)
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось изменить срок аренды")
+		writeError(w, http.StatusInternalServerError, "Не удалось изменить срок аренды")
 		return
 	}
 	_ = h.cache.InvalidateTenantServers(ctx)
@@ -500,11 +500,11 @@ func (h *Handler) AdminServerNoteCreate(w http.ResponseWriter, r *http.Request) 
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	body.Body = strings.TrimSpace(body.Body)
 	if body.Body == "" {
-		writeError(w, http.StatusBadRequest, "заметка не может быть пустой")
+		writeError(w, http.StatusBadRequest, "Заметка не может быть пустой")
 		return
 	}
 	if len([]rune(body.Body)) > 4000 {
-		writeError(w, http.StatusBadRequest, "заметка слишком длинная")
+		writeError(w, http.StatusBadRequest, "Заметка слишком длинная")
 		return
 	}
 
@@ -517,7 +517,7 @@ func (h *Handler) AdminServerNoteCreate(w http.ResponseWriter, r *http.Request) 
 		RETURNING id::text, created_at
 	`, id, claims.UserID, body.Body).Scan(&noteID, &createdAt)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить заметку")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить заметку")
 		return
 	}
 
@@ -544,7 +544,7 @@ func (h *Handler) AdminServerNoteDelete(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "заметка не найдена")
+		writeError(w, http.StatusNotFound, "Заметка не найдена")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.note_delete", "server:"+id, nil)
@@ -568,15 +568,15 @@ func (h *Handler) AdminServersBulk(w http.ResponseWriter, r *http.Request) {
 	switch body.Action {
 	case "start", "stop", "restart", "kill", "block", "unblock":
 	default:
-		writeError(w, http.StatusBadRequest, "неизвестное действие")
+		writeError(w, http.StatusBadRequest, "Неизвестное действие")
 		return
 	}
 	if len(body.IDs) == 0 {
-		writeError(w, http.StatusBadRequest, "не выбрано ни одного сервера")
+		writeError(w, http.StatusBadRequest, "Не выбрано ни одного сервера")
 		return
 	}
 	if len(body.IDs) > 200 {
-		writeError(w, http.StatusBadRequest, "за один раз можно обработать не больше 200 серверов")
+		writeError(w, http.StatusBadRequest, "За один раз можно обработать не больше 200 серверов")
 		return
 	}
 
@@ -660,7 +660,7 @@ func (h *Handler) AdminServerCreate(w http.ResponseWriter, r *http.Request) {
 		nodeID = strings.TrimSpace(body.LocationID)
 	}
 	if nodeID == "" || body.Name == "" {
-		writeError(w, http.StatusBadRequest, "укажите название и локацию")
+		writeError(w, http.StatusBadRequest, "Укажите название и локацию")
 		return
 	}
 
@@ -672,11 +672,11 @@ func (h *Handler) AdminServerCreate(w http.ResponseWriter, r *http.Request) {
 
 	gameID, gameOK := resolveGameSlug(ctx, h, body.GameID)
 	if !gameOK {
-		writeError(w, http.StatusBadRequest, "игра не найдена в каталоге")
+		writeError(w, http.StatusBadRequest, "Игра не найдена в каталоге")
 		return
 	}
 	if h.nodeInMaintenance(ctx, nodeID) {
-		writeError(w, http.StatusConflict, "на этой локации идут технические работы")
+		writeError(w, http.StatusConflict, "На этой локации идут технические работы")
 		return
 	}
 	if reason := h.nodeCapacityReason(ctx, nodeID, gameID); reason != "" {
@@ -693,7 +693,7 @@ func (h *Handler) AdminServerCreate(w http.ResponseWriter, r *http.Request) {
 	if body.TariffID != "" {
 		tariffJSON, loadErr := h.loadTariffLegacyJSON(ctx, body.TariffID)
 		if loadErr != nil {
-			writeError(w, http.StatusBadRequest, "тариф не найден")
+			writeError(w, http.StatusBadRequest, "Тариф не найден")
 			return
 		}
 		order := pricing.Resolve(tariffJSON, pricing.RentOrder{
@@ -720,7 +720,7 @@ func (h *Handler) AdminServerCreate(w http.ResponseWriter, r *http.Request) {
 	`, nodeID, gameID, body.GameVersionID, body.Name, limitsJSON, ownerID, body.TariffID, expires, periodDays,
 		h.defaultStartupParams(ctx, gameID)).Scan(&id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось создать сервер")
+		writeError(w, http.StatusInternalServerError, "Не удалось создать сервер")
 		return
 	}
 

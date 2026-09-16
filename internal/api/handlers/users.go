@@ -74,8 +74,8 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if claims.Role != "owner" && (role == "admin") {
-		writeError(w, http.StatusForbidden, "only owner can create admins")
+	if !canManageUser(claims.Role, role) {
+		writeError(w, http.StatusForbidden, "Недостаточно прав для создания учётной записи с этой ролью")
 
 		return
 
@@ -181,6 +181,10 @@ func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if role == "owner" {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "error": "Нельзя удалить владельца панели."})
+		return
+	}
+	if !canManageUser(claims.Role, role) {
+		writeError(w, http.StatusForbidden, "Недостаточно прав для удаления этой учётной записи")
 		return
 	}
 	if msg := h.userDeletionBlocker(ctx, userID, truthySetting(r.URL.Query().Get("force"))); msg != "" {

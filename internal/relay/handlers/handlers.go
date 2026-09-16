@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -34,7 +35,37 @@ type Handler struct {
 	metrics *metricsclient.Client
 	upgr    websocket.Upgrader
 
+	serverNodes sync.Map
+
 	panelURL string
+}
+
+type serverNodeCache struct {
+	nodeID string
+	at     time.Time
+}
+
+const serverNodeCacheTTL = time.Minute
+
+func (h *Handler) nodeOwnsServer(ctx context.Context, c *hub.AgentConn, serverID string) bool {
+	if v, ok := h.serverNodes.Load(serverID); ok {
+		if cached, valid := v.(serverNodeCache); valid &&
+			cached.nodeID == c.NodeID && time.Since(cached.at) < serverNodeCacheTTL {
+			return true
+		}
+	}
+	var nodeID string
+	if err := c.DB.QueryRow(ctx, `
+		SELECT COALESCE(node_id::text, '') FROM core.servers WHERE id = $1
+	`, serverID).Scan(&nodeID); err != nil {
+		return false
+	}
+	if nodeID != c.NodeID {
+		log.Printf("relay: узел %s прислал данные чужого сервера %s", c.NodeID, serverID)
+		return false
+	}
+	h.serverNodes.Store(serverID, serverNodeCache{nodeID: nodeID, at: time.Now()})
+	return true
 }
 
 func (h *Handler) WithPanelURL(u string) *Handler {
@@ -122,7 +153,7 @@ func (h *Handler) AgentConnect(w http.ResponseWriter, r *http.Request) {
 	db, err := h.dbFor(ctx)
 	if err != nil {
 		log.Printf("agent connect отклонён node=%s: %v", nodeID, err)
-		writeError(w, http.StatusServiceUnavailable, "база арендатора недоступна")
+		writeError(w, http.StatusServiceUnavailable, "База арендатора недоступна")
 		return
 	}
 
@@ -275,7 +306,7 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 		serverID, _ := env["server_id"].(string)
 		status, _ := env["status"].(string)
 		errMsg, _ := env["error"].(string)
-		if serverID == "" || status == "" {
+		if serverID == "" || status == "" || !h.nodeOwnsServer(ctx, c, serverID) {
 			return
 		}
 		var prevStatus string
@@ -379,7 +410,7 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 		}
 	case protocol.MsgInstallProgress:
 		serverID, _ := env["server_id"].(string)
-		if serverID == "" {
+		if serverID == "" || !h.nodeOwnsServer(ctx, c, serverID) {
 			return
 		}
 		stage, _ := env["stage"].(string)
@@ -416,7 +447,7 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 		cpu, _ := env["cpu_pct"].(float64)
 		memUsed := intNum(env["mem_used_mb"])
 		memLimit := intNum(env["mem_limit_mb"])
-		if serverID == "" {
+		if serverID == "" || !h.nodeOwnsServer(ctx, c, serverID) {
 			return
 		}
 		if pendingServerOperation(ctx, h.redis, serverID) {

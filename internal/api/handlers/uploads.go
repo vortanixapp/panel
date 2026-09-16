@@ -98,6 +98,14 @@ func (h *Handler) brandingPublicURL(r *http.Request, relative string) string {
 	return h.publicBaseURL(r) + "/v1/uploads/branding/" + name
 }
 
+func setUploadHeaders(w http.ResponseWriter, contentType string) {
+	if contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox")
+}
+
 func (h *Handler) ServeBranding(w http.ResponseWriter, r *http.Request) {
 	filename := chi.URLParam(r, "filename")
 	if filename == "" || strings.Contains(filename, "..") || strings.Contains(filename, "/") {
@@ -124,7 +132,7 @@ func (h *Handler) ServeBranding(w http.ResponseWriter, r *http.Request) {
 	case ".ico":
 		contentType = "image/x-icon"
 	}
-	w.Header().Set("Content-Type", contentType)
+	setUploadHeaders(w, contentType)
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	http.ServeFile(w, r, path)
 }

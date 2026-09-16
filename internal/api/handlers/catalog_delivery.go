@@ -80,17 +80,17 @@ func (h *Handler) ServeCatalogArchive(w http.ResponseWriter, r *http.Request) {
 		//nolint:gosec
 		"SELECT COALESCE(archive_path, '') FROM "+table+" WHERE id = $1::uuid",
 		claims.ID).Scan(&rel); err != nil || rel == "" {
-		writeError(w, http.StatusNotFound, "архив не найден")
+		writeError(w, http.StatusNotFound, "Архив не найден")
 		return
 	}
 	abs, err := h.resolveCatalogPath(rel)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "архив не найден")
+		writeError(w, http.StatusNotFound, "Архив не найден")
 		return
 	}
 	info, statErr := os.Stat(abs)
 	if statErr != nil || info.IsDir() {
-		writeError(w, http.StatusNotFound, "архив не найден")
+		writeError(w, http.StatusNotFound, "Архив не найден")
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")

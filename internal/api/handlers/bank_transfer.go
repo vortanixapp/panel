@@ -49,11 +49,11 @@ func (h *Handler) PaymentInvoice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if provider != "bank" {
-		writeError(w, http.StatusConflict, "счёт на оплату выдаётся только для оплаты банковским переводом")
+		writeError(w, http.StatusConflict, "Счёт на оплату выдаётся только для оплаты банковским переводом")
 		return
 	}
 	if status == "failed" || status == "cancelled" {
-		writeError(w, http.StatusConflict, "платёж отменён — создайте новое пополнение")
+		writeError(w, http.StatusConflict, "Платёж отменён — создайте новое пополнение")
 		return
 	}
 	profile := h.accountingProfile(ctx)
@@ -179,18 +179,18 @@ func parseClientBankExchange(data []byte) ([]map[string]string, error) {
 func (h *Handler) AdminBankStatementPreview(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, bankStatementLimit+(1<<20))
 	if err := r.ParseMultipartForm(bankStatementLimit + (1 << 20)); err != nil {
-		writeError(w, http.StatusBadRequest, "загрузите файл выписки размером до 5 МБ")
+		writeError(w, http.StatusBadRequest, "Загрузите файл выписки размером до 5 МБ")
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "файл выписки не получен")
+		writeError(w, http.StatusBadRequest, "Файл выписки не получен")
 		return
 	}
 	defer file.Close()
 	data, err := io.ReadAll(io.LimitReader(file, bankStatementLimit+1))
 	if err != nil || len(data) > bankStatementLimit {
-		writeError(w, http.StatusBadRequest, "загрузите файл выписки размером до 5 МБ")
+		writeError(w, http.StatusBadRequest, "Загрузите файл выписки размером до 5 МБ")
 		return
 	}
 	docs, err := parseClientBankExchange(data)
@@ -201,7 +201,7 @@ func (h *Handler) AdminBankStatementPreview(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	profile := h.accountingProfile(ctx)
 	if profile.INN == "" && profile.BankAccount == "" {
-		writeError(w, http.StatusConflict, "заполните ИНН и расчётный счёт в реквизитах — по ним находятся поступления")
+		writeError(w, http.StatusConflict, "Заполните ИНН и расчётный счёт в реквизитах — по ним находятся поступления")
 		return
 	}
 	lines := []bankStatementLine{}

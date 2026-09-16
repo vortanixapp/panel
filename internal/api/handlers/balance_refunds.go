@@ -153,28 +153,28 @@ func (h *Handler) BillingRefundRequestCreate(w http.ResponseWriter, r *http.Requ
 	_, balance, found := h.walletForUser(ctx, claims.UserID, currency)
 	switch {
 	case !found:
-		writeError(w, http.StatusBadRequest, "кошелёк в этой валюте не найден")
+		writeError(w, http.StatusBadRequest, "Кошелёк в этой валюте не найден")
 		return
 	case amount <= 0:
-		writeError(w, http.StatusBadRequest, "сумма возврата должна быть больше нуля")
+		writeError(w, http.StatusBadRequest, "Сумма возврата должна быть больше нуля")
 		return
 	case amount > balance+0.009:
-		writeError(w, http.StatusBadRequest, "на балансе меньше: доступно "+formatMoney(balance)+" "+currency)
+		writeError(w, http.StatusBadRequest, "На балансе меньше: доступно "+formatMoney(balance)+" "+currency)
 		return
 	case !slices.Contains([]string{"original", "bank"}, body.Method):
-		writeError(w, http.StatusBadRequest, "выберите способ возврата")
+		writeError(w, http.StatusBadRequest, "Выберите способ возврата")
 		return
 	case body.Method == "bank" && recipient == "":
-		writeError(w, http.StatusBadRequest, "укажите получателя: ФИО или наименование организации")
+		writeError(w, http.StatusBadRequest, "Укажите получателя: ФИО или наименование организации")
 		return
 	case body.Method == "bank" && !digitsOnly(account, 20):
-		writeError(w, http.StatusBadRequest, "номер счёта получателя состоит из 20 цифр")
+		writeError(w, http.StatusBadRequest, "Номер счёта получателя состоит из 20 цифр")
 		return
 	case body.Method == "bank" && !digitsOnly(bik, 9):
 		writeError(w, http.StatusBadRequest, "БИК банка состоит из 9 цифр")
 		return
 	case utf8.RuneCountInString(body.Reason) > 1000 || utf8.RuneCountInString(recipient) > 300:
-		writeError(w, http.StatusBadRequest, "слишком длинный текст заявки")
+		writeError(w, http.StatusBadRequest, "Слишком длинный текст заявки")
 		return
 	}
 	if body.Method != "bank" {
@@ -191,10 +191,10 @@ func (h *Handler) BillingRefundRequestCreate(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			writeError(w, http.StatusConflict, "заявка на возврат в этой валюте уже ждёт обработки")
+			writeError(w, http.StatusConflict, "Заявка на возврат в этой валюте уже ждёт обработки")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "не удалось создать заявку")
+		writeError(w, http.StatusInternalServerError, "Не удалось создать заявку")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "refund.request", "refund_request:"+id, map[string]any{
@@ -221,7 +221,7 @@ func (h *Handler) BillingRefundRequestCancel(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusConflict, "заявку уже нельзя отменить")
+		writeError(w, http.StatusConflict, "Заявку уже нельзя отменить")
 		return
 	}
 	h.BillingRefundRequests(w, r)
@@ -283,11 +283,11 @@ func (h *Handler) AdminRefundRequestComplete(w http.ResponseWriter, r *http.Requ
 	id := chi.URLParam(r, "id")
 	q, err := scanBalanceRefund(db.QueryRow(ctx, balanceRefundSelect+` WHERE r.id = $1`, id))
 	if err != nil {
-		writeError(w, http.StatusNotFound, "заявка не найдена")
+		writeError(w, http.StatusNotFound, "Заявка не найдена")
 		return
 	}
 	if q.Status != "pending" {
-		writeError(w, http.StatusConflict, "заявка уже обработана")
+		writeError(w, http.StatusConflict, "Заявка уже обработана")
 		return
 	}
 	remaining := math.Round((q.Amount-q.Refunded)*100) / 100
@@ -313,7 +313,7 @@ func (h *Handler) AdminRefundRequestComplete(w http.ResponseWriter, r *http.Requ
 			done += part
 		}
 		if done < 0.005 {
-			msg := "через платёжные системы вернуть нечего — верните остаток переводом на счёт клиента"
+			msg := "Через платёжные системы вернуть нечего — верните остаток переводом на счёт клиента"
 			if failure != "" {
 				msg = failure
 			}
@@ -341,14 +341,14 @@ func (h *Handler) AdminRefundRequestComplete(w http.ResponseWriter, r *http.Requ
 			writeJSON(w, http.StatusOK, map[string]any{"status": status, "refunded": newRefunded})
 			return
 		}
-		message := "возвращено " + formatMoney(newRefunded) + " из " + formatMoney(q.Amount) + " " + q.Currency + ": остаток верните переводом"
+		message := "Возвращено " + formatMoney(newRefunded) + " из " + formatMoney(q.Amount) + " " + q.Currency + ": остаток верните переводом"
 		if failure != "" {
 			message += " (" + failure + ")"
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"status": status, "refunded": newRefunded, "message": message})
 	case "manual":
 		if reference == "" {
-			writeError(w, http.StatusBadRequest, "укажите номер и дату платёжного поручения")
+			writeError(w, http.StatusBadRequest, "Укажите номер и дату платёжного поручения")
 			return
 		}
 		tx, err := db.Begin(ctx)
@@ -364,11 +364,11 @@ func (h *Handler) AdminRefundRequestComplete(w http.ResponseWriter, r *http.Requ
 			WHERE user_id = $1 AND UPPER(currency) = $2
 			LIMIT 1 FOR UPDATE
 		`, q.UserID, q.Currency).Scan(&walletID, &balance); err != nil {
-			writeError(w, http.StatusConflict, "кошелёк клиента не найден")
+			writeError(w, http.StatusConflict, "Кошелёк клиента не найден")
 			return
 		}
 		if balance+0.009 < remaining {
-			writeError(w, http.StatusConflict, "на балансе клиента меньше суммы заявки: "+formatMoney(balance)+" "+q.Currency)
+			writeError(w, http.StatusConflict, "На балансе клиента меньше суммы заявки: "+formatMoney(balance)+" "+q.Currency)
 			return
 		}
 		if _, err := tx.Exec(ctx, `
@@ -391,7 +391,7 @@ func (h *Handler) AdminRefundRequestComplete(w http.ResponseWriter, r *http.Requ
 			WHERE id = $1 AND status = 'pending'
 		`, q.ID, reference, note, claims.UserID)
 		if err != nil || tag.RowsAffected() == 0 {
-			writeError(w, http.StatusConflict, "заявка уже обработана")
+			writeError(w, http.StatusConflict, "Заявка уже обработана")
 			return
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -404,7 +404,7 @@ func (h *Handler) AdminRefundRequestComplete(w http.ResponseWriter, r *http.Requ
 		h.notifyRefundDone(ctx, q, q.Amount)
 		writeJSON(w, http.StatusOK, map[string]any{"status": "completed", "refunded": q.Amount})
 	default:
-		writeError(w, http.StatusBadRequest, "выберите способ возврата")
+		writeError(w, http.StatusBadRequest, "Выберите способ возврата")
 	}
 }
 
@@ -436,14 +436,14 @@ func (h *Handler) AdminRefundRequestReject(w http.ResponseWriter, r *http.Reques
 	}
 	note := strings.TrimSpace(body.Note)
 	if note == "" {
-		writeError(w, http.StatusBadRequest, "укажите причину отказа — клиент увидит её в уведомлении")
+		writeError(w, http.StatusBadRequest, "Укажите причину отказа — клиент увидит её в уведомлении")
 		return
 	}
 	ctx := r.Context()
 	db := h.dbOf(ctx)
 	q, err := scanBalanceRefund(db.QueryRow(ctx, balanceRefundSelect+` WHERE r.id = $1`, chi.URLParam(r, "id")))
 	if err != nil {
-		writeError(w, http.StatusNotFound, "заявка не найдена")
+		writeError(w, http.StatusNotFound, "Заявка не найдена")
 		return
 	}
 	tag, err := db.Exec(ctx, `
@@ -452,7 +452,7 @@ func (h *Handler) AdminRefundRequestReject(w http.ResponseWriter, r *http.Reques
 		WHERE id = $1 AND status = 'pending'
 	`, q.ID, note, claims.UserID)
 	if err != nil || tag.RowsAffected() == 0 {
-		writeError(w, http.StatusConflict, "заявка уже обработана")
+		writeError(w, http.StatusConflict, "Заявка уже обработана")
 		return
 	}
 	audit(ctx, db, claims.UserID, "refund.request.reject", "refund_request:"+q.ID, map[string]any{"note": note})

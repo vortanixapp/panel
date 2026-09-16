@@ -11,7 +11,7 @@ import (
 func (r *Runner) processServerDestroys(ctx context.Context) {
 	if _, err := r.db.Exec(ctx, `
 		UPDATE core.jobs j
-		SET status = 'cancelled', result = '{"error":"локация удалена"}'::jsonb
+		SET status = 'cancelled', result = '{"error":"Локация удалена"}'::jsonb
 		WHERE j.type = 'server_destroy' AND j.status = 'pending'
 		  AND NOT EXISTS (SELECT 1 FROM core.nodes n WHERE n.id::text = j.payload->>'node_id')
 	`); err != nil {
@@ -52,7 +52,7 @@ func (r *Runner) processServerDestroys(ctx context.Context) {
 			Payload:  map[string]any{"wipe": true},
 		})
 		if err != nil {
-			result, _ := json.Marshal(map[string]string{"error": "нода недоступна, очистка повторится после подключения: " + err.Error()})
+			result, _ := json.Marshal(map[string]string{"error": "Нода недоступна, очистка повторится после подключения: " + err.Error()})
 			_, _ = r.db.Exec(ctx, `UPDATE core.jobs SET status = 'pending', result = $2::jsonb WHERE id = $1`, t.id, result)
 			continue
 		}

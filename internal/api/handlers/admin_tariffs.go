@@ -972,7 +972,7 @@ func (h *Handler) DeleteTariff(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT count(*) FROM core.servers WHERE tariff_id = $1::uuid
 	`, tariffID).Scan(&live); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось проверить серверы тарифа")
+		writeError(w, http.StatusInternalServerError, "Не удалось проверить серверы тарифа")
 		return
 	}
 	if live > 0 {
@@ -984,7 +984,7 @@ func (h *Handler) DeleteTariff(w http.ResponseWriter, r *http.Request) {
 	if _, err := h.dbOf(ctx).Exec(ctx, `
 		DELETE FROM core.tariffs WHERE id = $1
 	`, tariffID); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось удалить тариф")
+		writeError(w, http.StatusInternalServerError, "Не удалось удалить тариф")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

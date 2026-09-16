@@ -187,7 +187,7 @@ func (h *Handler) RenewHostingAccount(w http.ResponseWriter, r *http.Request) {
 	`, accountID).Scan(&wasSuspended)
 	if wasSuspended {
 		if err := adapter.Unsuspend(r.Context(), panelID); err != nil {
-			writeError(w, http.StatusBadGateway, "не удалось снять приостановку на панели: "+err.Error())
+			writeError(w, http.StatusBadGateway, "Не удалось снять приостановку на панели: "+err.Error())
 			return
 		}
 	}

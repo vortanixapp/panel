@@ -237,7 +237,7 @@ func (h *Handler) AdminUpdatePaymentProvider(w http.ResponseWriter, r *http.Requ
 	code := chi.URLParam(r, "code")
 	def, found := payments.Definition(code)
 	if !found {
-		writeError(w, http.StatusNotFound, "платёжный провайдер не найден")
+		writeError(w, http.StatusNotFound, "Платёжный провайдер не найден")
 		return
 	}
 	var body struct {
@@ -264,7 +264,7 @@ func (h *Handler) AdminUpdatePaymentProvider(w http.ResponseWriter, r *http.Requ
 	if body.FeePercent != nil {
 		parsed, err := percentFromAny(body.FeePercent)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "комиссия должна быть числом от 0 до 100")
+			writeError(w, http.StatusBadRequest, "Комиссия должна быть числом от 0 до 100")
 			return
 		}
 		fee = &parsed
@@ -272,7 +272,7 @@ func (h *Handler) AdminUpdatePaymentProvider(w http.ResponseWriter, r *http.Requ
 
 	if row.Unreadable && body.Config == nil {
 		if enabled {
-			writeError(w, http.StatusConflict, "сохранённые ключи провайдера не расшифровываются — проверьте SECRETS_KEY или введите ключи заново")
+			writeError(w, http.StatusConflict, "Сохранённые ключи провайдера не расшифровываются — проверьте SECRETS_KEY или введите ключи заново")
 			return
 		}
 		if _, err := h.dbOf(ctx).Exec(ctx, `UPDATE core.payment_providers SET enabled = false WHERE provider = $1`, code); err != nil {
@@ -323,7 +323,7 @@ func (h *Handler) AdminUpdatePaymentProvider(w http.ResponseWriter, r *http.Requ
 		plain, _ := json.Marshal(merged)
 		sealed, err := h.secrets.EncryptJSON(plain)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "ключи провайдера не зашифрованы")
+			writeError(w, http.StatusInternalServerError, "Ключи провайдера не зашифрованы")
 			return
 		}
 		if _, err := h.dbOf(ctx).Exec(ctx, `
@@ -368,7 +368,7 @@ func (h *Handler) AdminUpdatePaymentSettings(w http.ResponseWriter, r *http.Requ
 	if body.DefaultCurrency != nil {
 		cur := strings.ToUpper(strings.TrimSpace(*body.DefaultCurrency))
 		if !slices.Contains(walletCurrencies, cur) {
-			writeError(w, http.StatusBadRequest, "неизвестная валюта")
+			writeError(w, http.StatusBadRequest, "Неизвестная валюта")
 			return
 		}
 		h.setTenantSettingString(ctx, "billing.default_currency", cur)
@@ -376,7 +376,7 @@ func (h *Handler) AdminUpdatePaymentSettings(w http.ResponseWriter, r *http.Requ
 	if body.FXFeePercent != nil {
 		fee, err := percentFromAny(body.FXFeePercent)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "комиссия за конвертацию должна быть числом от 0 до 100")
+			writeError(w, http.StatusBadRequest, "Комиссия за конвертацию должна быть числом от 0 до 100")
 			return
 		}
 		h.setTenantSettingString(ctx, fxFeeKey, strconv.FormatFloat(fee, 'f', -1, 64))

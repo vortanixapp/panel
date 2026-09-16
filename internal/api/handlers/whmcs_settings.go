@@ -69,16 +69,16 @@ func (h *Handler) AdminWHMCSSettingsUpdate(w http.ResponseWriter, r *http.Reques
 	}
 	base, err := normalizeHTTPURL(body.URL)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "адрес WHMCS должен начинаться с http:// или https://")
+		writeError(w, http.StatusBadRequest, "Адрес WHMCS должен начинаться с http:// или https://")
 		return
 	}
 	order, err := normalizeHTTPURL(body.OrderURL)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "ссылка на заказ должна начинаться с http:// или https://")
+		writeError(w, http.StatusBadRequest, "Ссылка на заказ должна начинаться с http:// или https://")
 		return
 	}
 	if body.OrdersOnly && whmcsOrderURL(base, order) == "" {
-		writeError(w, http.StatusBadRequest, "чтобы принимать заказы только в WHMCS, укажите адрес WHMCS")
+		writeError(w, http.StatusBadRequest, "Чтобы принимать заказы только в WHMCS, укажите адрес WHMCS")
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *Handler) AdminWHMCSModule(w http.ResponseWriter, r *http.Request) {
 		err = zw.Close()
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось собрать архив модуля")
+		writeError(w, http.StatusInternalServerError, "Не удалось собрать архив модуля")
 		return
 	}
 	w.Header().Set("Content-Type", "application/zip")
@@ -134,13 +134,13 @@ func (h *Handler) WHMCSSSOExchange(w http.ResponseWriter, r *http.Request) {
 	}
 	token := strings.TrimSpace(body.Token)
 	if token == "" {
-		writeError(w, http.StatusBadRequest, "в ссылке нет ключа входа")
+		writeError(w, http.StatusBadRequest, "В ссылке нет ключа входа")
 		return
 	}
 
 	ctx := r.Context()
 	if blocked, reason := h.ipBlocked(ctx, clientIP(r)); blocked {
-		msg := "доступ с этого адреса заблокирован"
+		msg := "Доступ с этого адреса заблокирован"
 		if reason != "" {
 			msg += ": " + reason
 		}
@@ -154,7 +154,7 @@ func (h *Handler) WHMCSSSOExchange(w http.ResponseWriter, r *http.Request) {
 		WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
 		RETURNING user_id::text, redirect
 	`, sha256Hex(token)).Scan(&userID, &redirect); err != nil {
-		writeError(w, http.StatusUnauthorized, "ссылка для входа устарела — откройте панель из WHMCS ещё раз")
+		writeError(w, http.StatusUnauthorized, "Ссылка для входа устарела — откройте панель из WHMCS ещё раз")
 		return
 	}
 
@@ -162,11 +162,11 @@ func (h *Handler) WHMCSSSOExchange(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT email, role FROM core.users WHERE id = $1 AND status = 'active'
 	`, userID).Scan(&email, &role); err != nil {
-		writeError(w, http.StatusUnauthorized, "учётная запись недоступна")
+		writeError(w, http.StatusUnauthorized, "Учётная запись недоступна")
 		return
 	}
 	if isStaffRole(role) {
-		writeError(w, http.StatusForbidden, "вход под сотрудником панели из WHMCS запрещён")
+		writeError(w, http.StatusForbidden, "Вход под сотрудником панели из WHMCS запрещён")
 		return
 	}
 
@@ -246,7 +246,7 @@ func (h *Handler) refuseWHMCSBilled(ctx context.Context, w http.ResponseWriter, 
 		return false
 	}
 	writeCodedError(w, http.StatusConflict, "billed_in_whmcs",
-		"оплата этого сервера ведётся в WHMCS — продление, смена тарифа и удаление выполняются там")
+		"Оплата этого сервера ведётся в WHMCS — продление, смена тарифа и удаление выполняются там")
 	return true
 }
 

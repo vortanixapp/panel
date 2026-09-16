@@ -94,7 +94,7 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !isStaffRole(claims.Role) {
-		writeError(w, http.StatusForbidden, "серверы создаются через аренду")
+		writeError(w, http.StatusForbidden, "Серверы создаются через аренду")
 		return
 	}
 	var req createServerRequest
@@ -120,7 +120,7 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.nodeInMaintenance(ctx, req.NodeID) {
-		writeError(w, http.StatusConflict, "нода на техническом обслуживании")
+		writeError(w, http.StatusConflict, "Нода на техническом обслуживании")
 		return
 	}
 	if reason := h.nodeCapacityReason(ctx, req.NodeID, req.GameID); reason != "" {
@@ -376,7 +376,7 @@ func (h *Handler) PowerServer(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, errServerNotFound):
 			writeError(w, http.StatusNotFound, "server not found")
 		case errors.Is(err, errServerExpired):
-			writeError(w, http.StatusPaymentRequired, "оплаченный период закончился — продлите аренду, чтобы запустить сервер")
+			writeError(w, http.StatusPaymentRequired, "Оплаченный период закончился — продлите аренду, чтобы запустить сервер")
 		case errors.Is(err, errAgentUnreachable):
 			writeError(w, http.StatusBadGateway, err.Error())
 		default:

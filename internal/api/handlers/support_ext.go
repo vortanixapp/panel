@@ -99,7 +99,7 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 
 	r.Body = http.MaxBytesReader(w, r.Body, supportAttachmentMaxBytes+(1<<20))
 	if err := r.ParseMultipartForm(supportAttachmentMaxBytes); err != nil {
-		writeError(w, http.StatusBadRequest, "файл больше 8 МБ или повреждённая форма")
+		writeError(w, http.StatusBadRequest, "Файл больше 8 МБ или повреждённая форма")
 		return
 	}
 	headers := r.MultipartForm.File["file"]
@@ -111,7 +111,7 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if len(headers) > supportAttachmentMaxCount {
-		writeError(w, http.StatusBadRequest, "не больше 5 файлов за раз")
+		writeError(w, http.StatusBadRequest, "Не больше 5 файлов за раз")
 		return
 	}
 
@@ -137,21 +137,21 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 	for _, header := range headers {
 		if header.Size > supportAttachmentMaxBytes {
 			cleanup()
-			writeError(w, http.StatusRequestEntityTooLarge, "файл больше 8 МБ")
+			writeError(w, http.StatusRequestEntityTooLarge, "Файл больше 8 МБ")
 			return
 		}
 		ext := strings.ToLower(filepath.Ext(header.Filename))
 		contentType, allowed := supportAttachmentTypes[ext]
 		if !allowed {
 			cleanup()
-			writeError(w, http.StatusBadRequest, "допустимы png, jpg, webp, gif, txt, log, json, zip, pdf")
+			writeError(w, http.StatusBadRequest, "Допустимы png, jpg, webp, gif, txt, log, json, zip, pdf")
 			return
 		}
 
 		file, err := header.Open()
 		if err != nil {
 			cleanup()
-			writeError(w, http.StatusBadRequest, "не удалось прочитать файл")
+			writeError(w, http.StatusBadRequest, "Не удалось прочитать файл")
 			return
 		}
 		attachmentID := uuid.NewString()

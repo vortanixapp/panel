@@ -122,7 +122,7 @@ func (h *Handler) AdminAccountingSummary(w http.ResponseWriter, r *http.Request)
 	}
 	if err != nil {
 		log.Printf("бухгалтерская сводка не собрана: %v", err)
-		writeError(w, http.StatusInternalServerError, "не удалось собрать сводку")
+		writeError(w, http.StatusInternalServerError, "Не удалось собрать сводку")
 		return
 	}
 
@@ -327,12 +327,12 @@ func (h *Handler) AdminAccountingReport(w http.ResponseWriter, r *http.Request) 
 	case "offsets":
 		rows, err = rep.offsets()
 	default:
-		writeError(w, http.StatusNotFound, "неизвестный отчёт")
+		writeError(w, http.StatusNotFound, "Неизвестный отчёт")
 		return
 	}
 	if err != nil {
 		log.Printf("отчёт %s не сформирован: %v", kind, err)
-		writeError(w, http.StatusInternalServerError, "не удалось сформировать отчёт")
+		writeError(w, http.StatusInternalServerError, "Не удалось сформировать отчёт")
 		return
 	}
 	name := "vortanix-" + kind + "-" + from.Format(accountingDateLayout) + "-" + to.Format(accountingDateLayout) + "-" + strings.ToLower(rep.currency) + ".csv"

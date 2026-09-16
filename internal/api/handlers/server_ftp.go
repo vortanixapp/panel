@@ -77,7 +77,7 @@ func (h *Handler) ServerFtpCreate(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	suffix := strings.ToLower(strings.TrimSpace(body.Suffix))
 	if !ftpSuffixRe.MatchString(suffix) {
-		writeError(w, http.StatusUnprocessableEntity, "суффикс: до 12 символов [a-z0-9_-]")
+		writeError(w, http.StatusUnprocessableEntity, "Суффикс: до 12 символов [a-z0-9_-]")
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *Handler) ServerFtpCreate(w http.ResponseWriter, r *http.Request) {
 		RETURNING id::text
 	`, serverID, username, password).Scan(&accountID)
 	if err != nil {
-		writeError(w, http.StatusConflict, "такой FTP-аккаунт уже существует")
+		writeError(w, http.StatusConflict, "Такой FTP-аккаунт уже существует")
 		return
 	}
 

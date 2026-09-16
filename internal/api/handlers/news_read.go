@@ -12,7 +12,7 @@ func (h *Handler) MarkNewsRead(w http.ResponseWriter, r *http.Request) {
 	if _, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		UPDATE core.users SET news_read_at = now() WHERE id = $1
 	`, claims.UserID); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось отметить новости прочитанными")
+		writeError(w, http.StatusInternalServerError, "Не удалось отметить новости прочитанными")
 		return
 	}
 

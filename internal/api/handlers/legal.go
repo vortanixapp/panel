@@ -111,13 +111,13 @@ func (h *Handler) PublicLegal(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) PublicLegalDocument(w http.ResponseWriter, r *http.Request) {
 	kind := chi.URLParam(r, "kind")
 	if !slices.Contains(legalKinds, kind) {
-		writeError(w, http.StatusNotFound, "документ не найден")
+		writeError(w, http.StatusNotFound, "Документ не найден")
 		return
 	}
 	version, _ := strconv.Atoi(r.URL.Query().Get("version"))
 	doc, err := h.legalDocument(r.Context(), kind, version)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "документ ещё не опубликован")
+		writeError(w, http.StatusNotFound, "Документ ещё не опубликован")
 		return
 	}
 	writeJSON(w, http.StatusOK, doc)
@@ -269,12 +269,12 @@ func (h *Handler) AccountLegalAccept(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(kinds) == 0 {
-		writeError(w, http.StatusBadRequest, "выберите документы, которые принимаете")
+		writeError(w, http.StatusBadRequest, "Выберите документы, которые принимаете")
 		return
 	}
 	ctx := r.Context()
 	if err := h.recordConsents(ctx, r, claims.UserID, kinds, "panel"); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось записать согласие")
+		writeError(w, http.StatusInternalServerError, "Не удалось записать согласие")
 		return
 	}
 	payload, err := h.accountLegalPayload(ctx, claims.UserID, claims.Role)
@@ -334,12 +334,12 @@ func (h *Handler) AdminLegalDocumentVersion(w http.ResponseWriter, r *http.Reque
 	kind := chi.URLParam(r, "kind")
 	version, err := strconv.Atoi(chi.URLParam(r, "version"))
 	if !slices.Contains(legalKinds, kind) || err != nil || version <= 0 {
-		writeError(w, http.StatusNotFound, "документ не найден")
+		writeError(w, http.StatusNotFound, "Документ не найден")
 		return
 	}
 	doc, err := h.legalDocument(r.Context(), kind, version)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "документ не найден")
+		writeError(w, http.StatusNotFound, "Документ не найден")
 		return
 	}
 	writeJSON(w, http.StatusOK, doc)
@@ -353,7 +353,7 @@ func (h *Handler) AdminLegalPublish(w http.ResponseWriter, r *http.Request) {
 	}
 	kind := chi.URLParam(r, "kind")
 	if !slices.Contains(legalKinds, kind) {
-		writeError(w, http.StatusNotFound, "документ не найден")
+		writeError(w, http.StatusNotFound, "Документ не найден")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, legalBodyLimit+(64<<10))
@@ -370,13 +370,13 @@ func (h *Handler) AdminLegalPublish(w http.ResponseWriter, r *http.Request) {
 	text := strings.TrimSpace(strings.ReplaceAll(body.Body, "\r\n", "\n"))
 	switch {
 	case text == "":
-		writeError(w, http.StatusBadRequest, "текст документа пуст")
+		writeError(w, http.StatusBadRequest, "Текст документа пуст")
 		return
 	case len(text) > legalBodyLimit:
-		writeError(w, http.StatusBadRequest, "текст документа длиннее 200 000 символов")
+		writeError(w, http.StatusBadRequest, "Текст документа длиннее 200 000 символов")
 		return
 	case utf8.RuneCountInString(title) > 200:
-		writeError(w, http.StatusBadRequest, "заголовок длиннее 200 символов")
+		writeError(w, http.StatusBadRequest, "Заголовок длиннее 200 символов")
 		return
 	}
 	requires := body.RequiresAcceptance && kind != "cookies"
@@ -393,7 +393,7 @@ func (h *Handler) AdminLegalPublish(w http.ResponseWriter, r *http.Request) {
 		RETURNING version
 	`, kind, title, text, requires, claims.UserID).Scan(&version)
 	if err != nil {
-		writeError(w, http.StatusConflict, "не удалось опубликовать документ, повторите попытку")
+		writeError(w, http.StatusConflict, "Не удалось опубликовать документ, повторите попытку")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "legal.publish", "legal:"+kind, map[string]any{
@@ -410,7 +410,7 @@ func (h *Handler) AdminLegalPublish(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) AdminLegalTemplate(w http.ResponseWriter, r *http.Request) {
 	kind := chi.URLParam(r, "kind")
 	if !slices.Contains(legalKinds, kind) {
-		writeError(w, http.StatusNotFound, "шаблон не найден")
+		writeError(w, http.StatusNotFound, "Шаблон не найден")
 		return
 	}
 	title, body := legalTemplate(kind, h.accountingProfile(r.Context()), time.Now())

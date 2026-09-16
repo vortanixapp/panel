@@ -135,11 +135,11 @@ func (h *Handler) AdminAbuseCaseCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	subject := strings.TrimSpace(body.Subject)
 	if !slices.Contains(abuseSources, body.Source) {
-		writeError(w, http.StatusBadRequest, "укажите, от кого поступило обращение")
+		writeError(w, http.StatusBadRequest, "Укажите, от кого поступило обращение")
 		return
 	}
 	if subject == "" {
-		writeError(w, http.StatusBadRequest, "кратко опишите суть обращения")
+		writeError(w, http.StatusBadRequest, "Кратко опишите суть обращения")
 		return
 	}
 	ctx := r.Context()
@@ -150,7 +150,7 @@ func (h *Handler) AdminAbuseCaseCreate(w http.ResponseWriter, r *http.Request) {
 	if raw := strings.TrimSpace(body.ReceivedAt); raw != "" {
 		t, err := time.ParseInLocation("2006-01-02T15:04", raw, profile.Location)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "дата поступления указана неверно")
+			writeError(w, http.StatusBadRequest, "Дата поступления указана неверно")
 			return
 		}
 		received = t
@@ -166,14 +166,14 @@ func (h *Handler) AdminAbuseCaseCreate(w http.ResponseWriter, r *http.Request) {
 		if err := db.QueryRow(ctx, `
 			SELECT COALESCE(user_id::text, ''), name FROM core.servers WHERE id = $1
 		`, serverID).Scan(&userID, &serverName); err != nil {
-			writeError(w, http.StatusBadRequest, "сервер не найден")
+			writeError(w, http.StatusBadRequest, "Сервер не найден")
 			return
 		}
 	} else if email := strings.TrimSpace(body.UserEmail); email != "" {
 		if err := db.QueryRow(ctx, `
 			SELECT id::text FROM core.users WHERE lower(email) = lower($1) AND deleted_at IS NULL
 		`, email).Scan(&userID); err != nil {
-			writeError(w, http.StatusBadRequest, "клиент с таким email не найден")
+			writeError(w, http.StatusBadRequest, "Клиент с таким email не найден")
 			return
 		}
 	}
@@ -186,7 +186,7 @@ func (h *Handler) AdminAbuseCaseCreate(w http.ResponseWriter, r *http.Request) {
 		RETURNING id::text
 	`, body.Source, strings.TrimSpace(body.Reference), subject, strings.TrimSpace(body.Description),
 		strings.TrimSpace(body.Target), received, deadline, serverID, serverName, userID, claims.UserID).Scan(&id); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить обращение")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить обращение")
 		return
 	}
 	h.addAbuseEvent(r, id, "created", subject, claims.UserID)
@@ -210,7 +210,7 @@ func (h *Handler) writeAbuseCase(w http.ResponseWriter, r *http.Request, id stri
 	db := h.dbOf(ctx)
 	c, err := scanAbuseCase(db.QueryRow(ctx, abuseCaseSelect+` WHERE c.id = $1`, id))
 	if err != nil {
-		writeError(w, http.StatusNotFound, "обращение не найдено")
+		writeError(w, http.StatusNotFound, "Обращение не найдено")
 		return
 	}
 	events := []abuseEvent{}
@@ -252,12 +252,12 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 	db := h.dbOf(ctx)
 	c, err := scanAbuseCase(db.QueryRow(ctx, abuseCaseSelect+` WHERE c.id = $1`, id))
 	if err != nil {
-		writeError(w, http.StatusNotFound, "обращение не найдено")
+		writeError(w, http.StatusNotFound, "Обращение не найдено")
 		return
 	}
 	message := strings.TrimSpace(body.Message)
 	if abuseClosed(c.Status) && body.Action != "note" && body.Action != "lift" {
-		writeError(w, http.StatusConflict, "обращение закрыто")
+		writeError(w, http.StatusConflict, "Обращение закрыто")
 		return
 	}
 	number := strconv.FormatInt(c.Number, 10)
@@ -267,11 +267,11 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 	switch body.Action {
 	case "notify":
 		if c.UserID == "" {
-			writeError(w, http.StatusConflict, "у обращения не указан клиент")
+			writeError(w, http.StatusConflict, "У обращения не указан клиент")
 			return
 		}
 		if message == "" {
-			writeError(w, http.StatusBadRequest, "напишите текст уведомления для клиента")
+			writeError(w, http.StatusBadRequest, "Напишите текст уведомления для клиента")
 			return
 		}
 		h.notifyUser(ctx, c.UserID, notify.Event{
@@ -286,7 +286,7 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 		}
 	case "restrict", "lift":
 		if c.ServerID == "" {
-			writeError(w, http.StatusConflict, "у обращения не указан сервер")
+			writeError(w, http.StatusConflict, "У обращения не указан сервер")
 			return
 		}
 		blocked := body.Action == "restrict"
@@ -296,7 +296,7 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 		}
 		ownerID, name, err := h.applyServerBlock(ctx, c.ServerID, blocked, reason)
 		if err != nil {
-			writeError(w, http.StatusConflict, "не удалось изменить блокировку сервера")
+			writeError(w, http.StatusConflict, "Не удалось изменить блокировку сервера")
 			return
 		}
 		if ownerID != "" {
@@ -325,7 +325,7 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 		}
 	case "resolve", "reject":
 		if message == "" {
-			writeError(w, http.StatusBadRequest, "опишите результат рассмотрения")
+			writeError(w, http.StatusBadRequest, "Опишите результат рассмотрения")
 			return
 		}
 		status = "resolved"
@@ -335,11 +335,11 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 		closing = true
 	case "note":
 		if message == "" {
-			writeError(w, http.StatusBadRequest, "напишите заметку")
+			writeError(w, http.StatusBadRequest, "Напишите заметку")
 			return
 		}
 	default:
-		writeError(w, http.StatusBadRequest, "неизвестное действие")
+		writeError(w, http.StatusBadRequest, "Неизвестное действие")
 		return
 	}
 

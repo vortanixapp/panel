@@ -63,14 +63,14 @@ func (h *Handler) PaymentReceipt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !isPaidStatus(status) && status != "refunded" {
-		writeError(w, http.StatusConflict, "квитанция выдаётся только по оплаченному платежу")
+		writeError(w, http.StatusConflict, "Квитанция выдаётся только по оплаченному платежу")
 		return
 	}
 
 	if number == nil {
 		assigned, err := h.assignReceiptNumber(ctx, paymentID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "не удалось выдать номер квитанции")
+			writeError(w, http.StatusInternalServerError, "Не удалось выдать номер квитанции")
 			return
 		}
 		number = &assigned

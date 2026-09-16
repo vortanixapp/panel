@@ -385,7 +385,7 @@ func (h *Handler) ServeAvatar(w http.ResponseWriter, r *http.Request) {
 	case ".webp":
 		contentType = "image/webp"
 	}
-	w.Header().Set("Content-Type", contentType)
+	setUploadHeaders(w, contentType)
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	http.ServeFile(w, r, path)
 }
@@ -394,6 +394,19 @@ func (h *Handler) Generate2FA(w http.ResponseWriter, r *http.Request) {
 	claims, ok := tenantClaims(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	ctx := r.Context()
+	var enabled bool
+	if err := h.dbOf(ctx).QueryRow(ctx, `
+		SELECT COALESCE(two_factor_enabled, false) FROM core.users WHERE id = $1
+	`, claims.UserID).Scan(&enabled); err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if enabled {
+		writeError(w, http.StatusConflict,
+			"Второй фактор уже включён — сначала отключите его, введя пароль")
 		return
 	}
 	key, err := totp.Generate(totp.GenerateOpts{
@@ -410,7 +423,7 @@ func (h *Handler) Generate2FA(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to encrypt 2fa secret")
 		return
 	}
-	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
+	_, _ = h.dbOf(ctx).Exec(ctx, `
 		INSERT INTO core.two_factor_secrets (user_id, secret)
 		VALUES ($1, $2)
 		ON CONFLICT (user_id) DO UPDATE SET secret = EXCLUDED.secret
@@ -427,8 +440,34 @@ func (h *Handler) Enable2FA(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `UPDATE core.users SET two_factor_enabled = true WHERE id = $1`, claims.UserID)
-	h.notifyUser(r.Context(), claims.UserID, notify.Event{
+	ctx := r.Context()
+	var body struct {
+		Code string `json:"code"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	code := strings.TrimSpace(body.Code)
+	if code == "" {
+		writeError(w, http.StatusBadRequest, "Введите код из приложения-аутентификатора")
+		return
+	}
+	if h.tooManyAttempts(w, r, "2fa-enable", 10, 15*time.Minute, claims.UserID) {
+		return
+	}
+	var sealed string
+	if err := h.dbOf(ctx).QueryRow(ctx, `
+		SELECT secret FROM core.two_factor_secrets WHERE user_id = $1
+	`, claims.UserID).Scan(&sealed); err != nil || sealed == "" {
+		writeError(w, http.StatusConflict, "Сначала создайте ключ второго фактора")
+		return
+	}
+	if !totp.Validate(code, h.secrets.MustDecrypt(sealed)) {
+		writeError(w, http.StatusUnauthorized, "Код не подошёл — проверьте время на устройстве и повторите")
+		return
+	}
+
+	_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.users SET two_factor_enabled = true WHERE id = $1`, claims.UserID)
+	audit(ctx, h.dbOf(ctx), claims.UserID, "user.2fa_enable", "user:"+claims.UserID, nil)
+	h.notifyUser(ctx, claims.UserID, notify.Event{
 		Kind:  notify.KindTwoFactor,
 		Title: i18n.Key("notify.twofactor_enabled.title"),
 		Body:  i18n.Key("notify.twofactor_enabled.body"),
@@ -449,7 +488,7 @@ func (h *Handler) Disable2FA(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if strings.TrimSpace(body.Password) == "" {
-		writeError(w, http.StatusBadRequest, "нужен пароль для отключения второго фактора")
+		writeError(w, http.StatusBadRequest, "Нужен пароль для отключения второго фактора")
 		return
 	}
 	var hash string
@@ -461,7 +500,7 @@ func (h *Handler) Disable2FA(w http.ResponseWriter, r *http.Request) {
 	}
 	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(body.Password)) != nil {
 		h.recordLoginAttempt(ctx, r, claims.UserID, claims.Email, "отключение 2FA: неверный пароль", false)
-		writeError(w, http.StatusUnauthorized, "неверный пароль")
+		writeError(w, http.StatusUnauthorized, "Неверный пароль")
 		return
 	}
 

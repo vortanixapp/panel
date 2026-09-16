@@ -80,7 +80,7 @@ func (h *Handler) ServerMapChangeByName(w http.ResponseWriter, r *http.Request) 
 	}
 	mapName := strings.TrimSpace(body.Map)
 	if !mapNamePattern.MatchString(mapName) {
-		writeError(w, http.StatusBadRequest, "недопустимое название карты")
+		writeError(w, http.StatusBadRequest, "Недопустимое название карты")
 		return
 	}
 	_, err := h.dbOf(r.Context()).Exec(r.Context(), `

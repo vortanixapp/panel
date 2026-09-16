@@ -88,12 +88,12 @@ func (h *Handler) TrialStatus(w http.ResponseWriter, r *http.Request) {
 	var reason string
 	var nextAt any
 	if !cfg.Enabled {
-		reason = "пробный сервер сейчас не выдаётся"
+		reason = "Пробный сервер сейчас не выдаётся"
 	} else {
 		if at := h.trialAvailableAt(ctx, claims.UserID, cfg.CooldownDays); !at.IsZero() {
 			if at.After(time.Now()) {
 				available = false
-				reason = "пробный сервер уже выдавался"
+				reason = "Пробный сервер уже выдавался"
 				nextAt = at.Format(time.RFC3339)
 			}
 		}
@@ -132,22 +132,22 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	cfg := h.trialSettings(ctx)
 	if !cfg.Enabled {
-		writeError(w, http.StatusConflict, "пробный сервер сейчас не выдаётся")
+		writeError(w, http.StatusConflict, "Пробный сервер сейчас не выдаётся")
 		return
 	}
 	if at := h.trialAvailableAt(ctx, claims.UserID, cfg.CooldownDays); at.After(time.Now()) {
 		writeError(w, http.StatusConflict,
-			"пробный сервер уже выдавался, следующий будет доступен "+at.Format("02.01.2006"))
+			"Пробный сервер уже выдавался, следующий будет доступен "+at.Format("02.01.2006"))
 		return
 	}
 
 	gameID, gameOK := resolveGameSlug(ctx, h, body.GameID)
 	if !gameOK {
-		writeError(w, http.StatusBadRequest, "игра не найдена в каталоге")
+		writeError(w, http.StatusBadRequest, "Игра не найдена в каталоге")
 		return
 	}
 	if len(cfg.Games) > 0 && !containsFold(cfg.Games, gameID) {
-		writeError(w, http.StatusConflict, "на этой игре пробный сервер не выдаётся")
+		writeError(w, http.StatusConflict, "На этой игре пробный сервер не выдаётся")
 		return
 	}
 
@@ -161,7 +161,7 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if h.nodeInMaintenance(ctx, nodeID) {
-		writeError(w, http.StatusConflict, "на этой локации идут технические работы")
+		writeError(w, http.StatusConflict, "На этой локации идут технические работы")
 		return
 	}
 	if reason := h.nodeCapacityReason(ctx, nodeID, gameID); reason != "" {
@@ -194,7 +194,7 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 	`, nodeID, gameID, name, limitsJSON, claims.UserID, expires,
 		h.defaultStartupParams(ctx, gameID)).Scan(&serverID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось создать пробный сервер")
+		writeError(w, http.StatusInternalServerError, "Не удалось создать пробный сервер")
 		return
 	}
 
@@ -209,7 +209,7 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 	`, serverID)
 	if gameID != "test" {
 		if _, err := portalloc.Assign(ctx, h.dbOf(ctx), nodeID, serverID, gameID); err != nil {
-			writeError(w, http.StatusConflict, "на локации нет свободного порта для этой игры")
+			writeError(w, http.StatusConflict, "На локации нет свободного порта для этой игры")
 			return
 		}
 	}

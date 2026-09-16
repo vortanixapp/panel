@@ -45,7 +45,7 @@ func (h *Handler) ListKBArticles(w http.ResponseWriter, r *http.Request) {
 		LIMIT 100
 	`, category, query)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось прочитать базу знаний")
+		writeError(w, http.StatusInternalServerError, "Не удалось прочитать базу знаний")
 		return
 	}
 	defer rows.Close()
@@ -80,7 +80,7 @@ func (h *Handler) GetKBArticle(w http.ResponseWriter, r *http.Request) {
 	`, slug).Scan(&a.ID, &a.Slug, &a.Title, &a.Excerpt, &a.Body,
 		&a.Category, &a.Published, &a.Views, &a.Position, &a.UpdatedAt)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "статья не найдена")
+		writeError(w, http.StatusNotFound, "Статья не найдена")
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *Handler) AdminListKBArticles(w http.ResponseWriter, r *http.Request) {
 		ORDER BY position, title
 	`)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось прочитать базу знаний")
+		writeError(w, http.StatusInternalServerError, "Не удалось прочитать базу знаний")
 		return
 	}
 	defer rows.Close()
@@ -147,13 +147,13 @@ func (h *Handler) AdminSaveKBArticle(w http.ResponseWriter, r *http.Request) {
 		Position  int    `json:"position"`
 	}
 	if json.NewDecoder(r.Body).Decode(&body) != nil {
-		writeError(w, http.StatusBadRequest, "неверный запрос")
+		writeError(w, http.StatusBadRequest, "Неверный запрос")
 		return
 	}
 
 	title := strings.TrimSpace(body.Title)
 	if title == "" {
-		writeError(w, http.StatusBadRequest, "заголовок обязателен")
+		writeError(w, http.StatusBadRequest, "Заголовок обязателен")
 		return
 	}
 
@@ -162,7 +162,7 @@ func (h *Handler) AdminSaveKBArticle(w http.ResponseWriter, r *http.Request) {
 		slug = kbSlug(title)
 	}
 	if slug == "" {
-		writeError(w, http.StatusBadRequest, "задайте адрес статьи латиницей")
+		writeError(w, http.StatusBadRequest, "Задайте адрес статьи латиницей")
 		return
 	}
 
@@ -196,7 +196,7 @@ func (h *Handler) AdminSaveKBArticle(w http.ResponseWriter, r *http.Request) {
 			published, body.Position).Scan(&id)
 	}
 	if err != nil || id == "" {
-		writeError(w, http.StatusBadRequest, "не удалось сохранить статью — возможно, адрес занят")
+		writeError(w, http.StatusBadRequest, "Не удалось сохранить статью — возможно, адрес занят")
 		return
 	}
 
@@ -218,7 +218,7 @@ func (h *Handler) AdminDeleteKBArticle(w http.ResponseWriter, r *http.Request) {
 		DELETE FROM core.kb_articles WHERE id = $1::uuid
 	`, id)
 	if err != nil || tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "статья не найдена")
+		writeError(w, http.StatusNotFound, "Статья не найдена")
 		return
 	}
 

@@ -127,7 +127,7 @@ func (h *Handler) ServerRemoteBackupRestore(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if status != "uploaded" {
-		writeError(w, http.StatusConflict, "копия не выгружена в S3 (статус "+status+")")
+		writeError(w, http.StatusConflict, "Копия не выгружена в S3 (статус "+status+")")
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *Handler) ServerRemoteBackupDelete(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if remoteKey == nil || *remoteKey == "" {
-		writeError(w, http.StatusConflict, "у копии нет объекта в S3")
+		writeError(w, http.StatusConflict, "У копии нет объекта в S3")
 		return
 	}
 

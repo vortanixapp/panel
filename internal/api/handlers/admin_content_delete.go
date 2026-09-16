@@ -50,7 +50,7 @@ func (h *Handler) DeleteMailing(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if status == "sending" {
-		writeError(w, http.StatusConflict, "рассылка отправляется — дождитесь завершения")
+		writeError(w, http.StatusConflict, "Рассылка отправляется — дождитесь завершения")
 		return
 	}
 	h.deleteTenantRow(w, r, "core.mailings", "mailing.delete", "mailing")

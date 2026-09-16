@@ -2,8 +2,6 @@ package docker
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -14,11 +12,7 @@ type ExtraPort struct {
 	Purpose  string `json:"purpose"`
 }
 
-func extraPortsPath(serverID string) string {
-	return filepath.Join(serverDataDir(serverID), ".vortanix_ports.json")
-}
-
-func SyncExtraPorts(serverID string, ports []ExtraPort) (bool, error) {
+func cleanExtraPorts(ports []ExtraPort) []ExtraPort {
 	cleaned := make([]ExtraPort, 0, len(ports))
 	for _, p := range ports {
 		if p.Port < 1 || p.Port > 65535 {
@@ -30,31 +24,29 @@ func SyncExtraPorts(serverID string, ports []ExtraPort) (bool, error) {
 		}
 		cleaned = append(cleaned, ExtraPort{Port: p.Port, Protocol: proto, Purpose: p.Purpose})
 	}
+	return cleaned
+}
+
+func SyncExtraPorts(serverID string, ports []ExtraPort) (bool, error) {
+	cleaned := cleanExtraPorts(ports)
 
 	if samePorts(ExtraPortsFor(serverID), cleaned) {
 		return false, nil
 	}
-	if err := os.MkdirAll(serverDataDir(serverID), 0o755); err != nil {
-		return false, err
-	}
-	if err := writeJSONFile(extraPortsPath(serverID), map[string]any{"ports": cleaned}); err != nil {
+	if err := writeStateFile(serverID, statePortsFile, map[string]any{"ports": cleaned}); err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
 func ExtraPortsFor(serverID string) []ExtraPort {
-	raw, err := os.ReadFile(extraPortsPath(serverID))
-	if err != nil {
-		return nil
-	}
 	var parsed struct {
 		Ports []ExtraPort `json:"ports"`
 	}
-	if json.Unmarshal(raw, &parsed) != nil {
+	if !readStateFile(serverID, statePortsFile, &parsed) {
 		return nil
 	}
-	return parsed.Ports
+	return cleanExtraPorts(parsed.Ports)
 }
 
 func DecodeExtraPorts(v any) []ExtraPort {

@@ -17,6 +17,7 @@ import (
 type Profile struct {
 	ProviderUserID string
 	Email          string
+	EmailVerified  bool
 	Name           string
 	AvatarURL      string
 }
@@ -136,10 +137,11 @@ func (r *Registry) exchangeGoogle(ctx context.Context, p *Provider, code string)
 	}
 	defer res.Body.Close()
 	var u struct {
-		ID      string `json:"id"`
-		Email   string `json:"email"`
-		Name    string `json:"name"`
-		Picture string `json:"picture"`
+		ID            string `json:"id"`
+		Email         string `json:"email"`
+		VerifiedEmail *bool  `json:"verified_email"`
+		Name          string `json:"name"`
+		Picture       string `json:"picture"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&u); err != nil {
 		return Profile{}, err
@@ -147,6 +149,7 @@ func (r *Registry) exchangeGoogle(ctx context.Context, p *Provider, code string)
 	return Profile{
 		ProviderUserID: u.ID,
 		Email:          strings.TrimSpace(u.Email),
+		EmailVerified:  u.VerifiedEmail != nil && *u.VerifiedEmail,
 		Name:           strings.TrimSpace(u.Name),
 		AvatarURL:      strings.TrimSpace(u.Picture),
 	}, nil
@@ -167,6 +170,7 @@ func (r *Registry) exchangeDiscord(ctx context.Context, p *Provider, code string
 	var u struct {
 		ID            string `json:"id"`
 		Email         string `json:"email"`
+		Verified      bool   `json:"verified"`
 		Username      string `json:"username"`
 		GlobalName    string `json:"global_name"`
 		Avatar        string `json:"avatar"`
@@ -186,6 +190,7 @@ func (r *Registry) exchangeDiscord(ctx context.Context, p *Provider, code string
 	return Profile{
 		ProviderUserID: u.ID,
 		Email:          strings.TrimSpace(u.Email),
+		EmailVerified:  u.Verified,
 		Name:           name,
 		AvatarURL:      avatar,
 	}, nil
@@ -248,6 +253,7 @@ func (r *Registry) exchangeVK(ctx context.Context, p *Provider, code string) (Pr
 	return Profile{
 		ProviderUserID: fmt.Sprintf("%d", tok.UserID),
 		Email:          strings.TrimSpace(tok.Email),
+		EmailVerified:  strings.TrimSpace(tok.Email) != "",
 		Name:           name,
 		AvatarURL:      avatar,
 	}, nil

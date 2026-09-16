@@ -134,6 +134,8 @@ export const settings = {
   "settings.account.twofa_disable": "Disable 2FA",
   "settings.account.twofa_secret_label": "Secret for your app (Google Authenticator and others):",
   "settings.account.twofa_confirm": "Confirm and enable",
+  "settings.account.twofa_code_label": "Code from the app",
+  "settings.account.twofa_code_required": "Enter the code from your authenticator app",
   "settings.account.twofa_scan": "Scan the QR code in your authenticator app",
   "settings.account.twofa_create_failed": "Could not set up 2FA",
   "settings.account.twofa_enabled": "2FA enabled",

@@ -177,7 +177,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if body.Amount <= 0 {
-		writeError(w, http.StatusBadRequest, "сумма пополнения должна быть больше нуля")
+		writeError(w, http.StatusBadRequest, "Сумма пополнения должна быть больше нуля")
 		return
 	}
 
@@ -191,7 +191,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 	def, known := payments.Definition(code)
 	impl, implErr := payments.Get(code)
 	if !known || implErr != nil {
-		writeError(w, http.StatusBadRequest, "способ оплаты недоступен")
+		writeError(w, http.StatusBadRequest, "Способ оплаты недоступен")
 		return
 	}
 	row, err := h.loadPaymentProvider(ctx, code)
@@ -200,7 +200,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !paymentProviderReady(def, row) {
-		writeError(w, http.StatusBadRequest, "способ оплаты «"+def.Name+"» сейчас недоступен")
+		writeError(w, http.StatusBadRequest, "Способ оплаты «"+def.Name+"» сейчас недоступен")
 		return
 	}
 
@@ -212,7 +212,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		if err := h.dbOf(ctx).QueryRow(ctx, `
 			SELECT currency FROM core.wallets WHERE id = $1 AND user_id = $2
 		`, body.WalletID, claims.UserID).Scan(&cur); err != nil {
-			writeError(w, http.StatusBadRequest, "кошелёк не найден")
+			writeError(w, http.StatusBadRequest, "Кошелёк не найден")
 			return
 		}
 		walletID = &body.WalletID
@@ -237,7 +237,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		rates, err = payments.CurrentRates(ctx)
 		if err != nil {
 			log.Printf("курс %s → %s для пополнения не получен: %v", currency, chargeCurrency, err)
-			writeError(w, http.StatusServiceUnavailable, "не удалось получить курс валют для оплаты в "+chargeCurrency+", попробуйте позже")
+			writeError(w, http.StatusServiceUnavailable, "Не удалось получить курс валют для оплаты в "+chargeCurrency+", попробуйте позже")
 			return
 		}
 	}
@@ -302,7 +302,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		_, _ = h.dbOf(ctx).Exec(ctx, `
 			UPDATE core.payments SET status = 'failed', meta = meta || $2::jsonb, updated_at = now() WHERE id = $1
 		`, paymentID, failMeta)
-		writeError(w, http.StatusBadGateway, "платёжная система не приняла запрос: "+clipText(err.Error(), 300))
+		writeError(w, http.StatusBadGateway, "Платёжная система не приняла запрос: "+clipText(err.Error(), 300))
 		return
 	}
 
@@ -472,11 +472,11 @@ func (h *Handler) AdminCompletePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if status != "pending" && status != "processing" {
-		writeError(w, http.StatusConflict, "платёж уже обработан (статус "+status+")")
+		writeError(w, http.StatusConflict, "Платёж уже обработан (статус "+status+")")
 		return
 	}
 	if def, ok := payments.Definition(provider); !ok || !def.Manual {
-		writeError(w, http.StatusConflict, "вручную подтверждаются только банковские переводы — остальные платежи зачисляются по уведомлению кассы")
+		writeError(w, http.StatusConflict, "Вручную подтверждаются только банковские переводы — остальные платежи зачисляются по уведомлению кассы")
 		return
 	}
 	if err := h.completeTopupPayment(ctx, id, "", payments.Name(provider)); err != nil {
@@ -504,7 +504,7 @@ func (h *Handler) AdminCancelPayment(w http.ResponseWriter, r *http.Request) {
 		RETURNING user_id::text, provider
 	`, id).Scan(&userID, &provider)
 	if err != nil {
-		writeError(w, http.StatusConflict, "отменить можно только платёж, который ещё не оплачен")
+		writeError(w, http.StatusConflict, "Отменить можно только платёж, который ещё не оплачен")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "payment.cancel", "payment:"+id, map[string]any{"provider": provider})

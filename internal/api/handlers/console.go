@@ -19,7 +19,7 @@ func (h *Handler) consoleCommandAllowed(ctx context.Context, claims *paneljwt.Cl
 	if err != nil {
 		return false
 	}
-	if access.IsOwner || access.IsStaff {
+	if access.IsOwner || access.StaffWrite {
 		return true
 	}
 	if !access.IsFriend {

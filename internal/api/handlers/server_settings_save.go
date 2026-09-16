@@ -98,7 +98,7 @@ func (h *Handler) ServerSettingsSave(w http.ResponseWriter, r *http.Request) {
 	if len(unknown) > 0 {
 		sort.Strings(unknown)
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
-			"ok": false, "error": "неизвестные поля: " + strings.Join(unknown, ", "),
+			"ok": false, "error": "Неизвестные поля: " + strings.Join(unknown, ", "),
 		})
 		return
 	}
@@ -170,12 +170,12 @@ func (h *Handler) ServerSettingsSave(w http.ResponseWriter, r *http.Request) {
 
 	if newStartup != st.startup {
 		if err := h.updateServerStartupParamsString(ctx, serverID, newStartup); err != nil {
-			writeError(w, http.StatusInternalServerError, "не удалось сохранить параметры запуска")
+			writeError(w, http.StatusInternalServerError, "Не удалось сохранить параметры запуска")
 			return
 		}
 	}
 	if err := h.mergeGameSettingsConfig(ctx, serverID, profile.Key, saved); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить настройки")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить настройки")
 		return
 	}
 

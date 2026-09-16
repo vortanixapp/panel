@@ -166,7 +166,7 @@ func (h *Handler) AdminStartPanelUpdate(w http.ResponseWriter, r *http.Request) 
 	}
 	current := buildinfo.Current()
 	if updates.IsSemver(current) && !updates.IsNewer(version, current) {
-		writeError(w, http.StatusConflict, fmt.Sprintf("установлена версия %s, выпуск %s не новее", current, version))
+		writeError(w, http.StatusConflict, fmt.Sprintf("Установлена версия %s, выпуск %s не новее", current, version))
 		return
 	}
 	job, err := updates.NewUpdater().Start(ctx, version)
@@ -202,7 +202,7 @@ func (h *Handler) AdminUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, v := range []*int{body.WindowStart, body.WindowEnd} {
 		if v != nil && (*v < -1 || *v > 23) {
-			writeError(w, http.StatusUnprocessableEntity, "час окна обновления должен быть от 0 до 23")
+			writeError(w, http.StatusUnprocessableEntity, "Час окна обновления должен быть от 0 до 23")
 			return
 		}
 	}
@@ -388,7 +388,7 @@ func (h *Handler) AdminStartAgentUpdates(w http.ResponseWriter, r *http.Request)
 		NodeIDs []string `json:"node_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.NodeIDs) == 0 {
-		writeError(w, http.StatusUnprocessableEntity, "выберите локации для обновления агента")
+		writeError(w, http.StatusUnprocessableEntity, "Выберите локации для обновления агента")
 		return
 	}
 	target := buildinfo.Current()
@@ -423,7 +423,7 @@ func (h *Handler) AdminSetAgentAutoUpdate(w http.ResponseWriter, r *http.Request
 		AutoUpdate *bool    `json:"auto_update"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AutoUpdate == nil {
-		writeError(w, http.StatusUnprocessableEntity, "укажите auto_update")
+		writeError(w, http.StatusUnprocessableEntity, "Укажите auto_update")
 		return
 	}
 	var err error

@@ -91,7 +91,7 @@ func (h *Handler) SetTicketNotify(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1::uuid AND user_id = $3
 	`, id, body.Notify, claims.UserID)
 	if err != nil || tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "обращение не найдено")
+		writeError(w, http.StatusNotFound, "Обращение не найдено")
 		return
 	}
 

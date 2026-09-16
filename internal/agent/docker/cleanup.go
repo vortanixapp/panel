@@ -20,6 +20,7 @@ func CleanupServerTraces(ctx context.Context, serverID string) []error {
 	if err := os.Remove(cronFilePath(serverID)); err != nil && !os.IsNotExist(err) {
 		errs = append(errs, fmt.Errorf("файл расписания: %w", err))
 	}
+	dropServerState(serverID)
 	return errs
 }
 

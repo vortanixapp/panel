@@ -58,6 +58,7 @@ func (h *Handler) ConsoleWS(w http.ResponseWriter, r *http.Request) {
 	serverID, _ := data["server_id"].(string)
 	nodeID, _ := data["node_id"].(string)
 	canCommand, _ := data["can_command"].(bool)
+	_ = h.redis.Del(ctx, "console:ticket:"+ticket)
 
 	conn, err := h.upgr.Upgrade(w, r, nil)
 	if err != nil {
@@ -109,9 +110,15 @@ func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "missing token")
 		return
 	}
-	_, err := h.jwt.ParseAccess(token)
+	claims, err := h.jwt.ParseAccess(token)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "invalid token")
+		return
+	}
+	switch claims.Role {
+	case "owner", "admin", "support":
+	default:
+		writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 

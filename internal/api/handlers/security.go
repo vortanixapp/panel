@@ -195,11 +195,11 @@ func (h *Handler) AdminIPBlockCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	ip := strings.TrimSpace(body.IP)
 	if ip == "" {
-		writeError(w, http.StatusBadRequest, "укажите адрес")
+		writeError(w, http.StatusBadRequest, "Укажите адрес")
 		return
 	}
 	if ip == clientIP(r) {
-		writeError(w, http.StatusConflict, "это ваш собственный адрес")
+		writeError(w, http.StatusConflict, "Это ваш собственный адрес")
 		return
 	}
 
@@ -241,7 +241,7 @@ func (h *Handler) AdminIPBlockDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "блокировка не найдена")
+		writeError(w, http.StatusNotFound, "Блокировка не найдена")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "ip.unblock", "ip_block:"+id, nil)

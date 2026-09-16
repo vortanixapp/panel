@@ -87,6 +87,7 @@ export function AccountSettings() {
 
   const [twoFaSecret, setTwoFaSecret] = useState("");
   const [twoFaUri, setTwoFaUri] = useState("");
+  const [twoFaCode, setTwoFaCode] = useState("");
 
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
@@ -174,6 +175,7 @@ export function AccountSettings() {
       const res = await generate2FA();
       setTwoFaSecret(res.secret);
       setTwoFaUri(res.uri);
+      setTwoFaCode("");
       toast.success(t("settings.account.twofa_scan"));
     } catch (err) {
       toast.error(
@@ -183,11 +185,17 @@ export function AccountSettings() {
   }
 
   async function handleEnable2FA() {
+    const code = twoFaCode.trim();
+    if (!code) {
+      toast.error(t("settings.account.twofa_code_required"));
+      return;
+    }
     try {
-      await enable2FA();
+      await enable2FA(code);
       toast.success(t("settings.account.twofa_enabled"));
       setTwoFaSecret("");
       setTwoFaUri("");
+      setTwoFaCode("");
       reloadAccount();
     } catch (err) {
       toast.error(
@@ -750,7 +758,19 @@ export function AccountSettings() {
                     URI: {twoFaUri}
                   </p>
                 )}
-                <Button onClick={handleEnable2FA}>
+                <div className="space-y-2">
+                  <Label htmlFor="twofa-code">{t("settings.account.twofa_code_label")}</Label>
+                  <Input
+                    id="twofa-code"
+                    value={twoFaCode}
+                    onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="000000"
+                    className="max-w-[180px] tracking-[0.3em]"
+                  />
+                </div>
+                <Button onClick={handleEnable2FA} disabled={twoFaCode.trim().length < 6}>
                   {t("settings.account.twofa_confirm")}
                 </Button>
               </div>

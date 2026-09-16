@@ -7,11 +7,23 @@ import (
 	jwtlib "github.com/golang-jwt/jwt/v5"
 )
 
+const (
+	typeAccess  = "access"
+	typeRefresh = "refresh"
+)
+
 type Claims struct {
 	UserID    string `json:"user_id"`
 	Email     string `json:"email"`
 	Role      string `json:"role"`
 	SessionID string `json:"session_id,omitempty"`
+	TokenType string `json:"typ,omitempty"`
+	jwtlib.RegisteredClaims
+}
+
+type refreshClaims struct {
+	UserID    string `json:"user_id,omitempty"`
+	TokenType string `json:"typ,omitempty"`
 	jwtlib.RegisteredClaims
 }
 
@@ -36,6 +48,7 @@ func (m *Manager) AccessToken(userID, email, role, sessionID string) (string, er
 		Email:     email,
 		Role:      role,
 		SessionID: sessionID,
+		TokenType: typeAccess,
 		RegisteredClaims: jwtlib.RegisteredClaims{
 			Subject:   userID,
 			ExpiresAt: jwtlib.NewNumericDate(now.Add(m.accessTTL)),
@@ -54,11 +67,14 @@ func (m *Manager) RefreshTokenWithTTL(userID, sessionID string, ttl time.Duratio
 		ttl = m.refreshTTL
 	}
 	now := time.Now()
-	claims := jwtlib.RegisteredClaims{
-		Subject:   userID,
-		ID:        sessionID,
-		ExpiresAt: jwtlib.NewNumericDate(now.Add(ttl)),
-		IssuedAt:  jwtlib.NewNumericDate(now),
+	claims := refreshClaims{
+		TokenType: typeRefresh,
+		RegisteredClaims: jwtlib.RegisteredClaims{
+			Subject:   userID,
+			ID:        sessionID,
+			ExpiresAt: jwtlib.NewNumericDate(now.Add(ttl)),
+			IssuedAt:  jwtlib.NewNumericDate(now),
+		},
 	}
 	return jwtlib.NewWithClaims(jwtlib.SigningMethodHS256, claims).SignedString(m.secret)
 }
@@ -81,6 +97,9 @@ func (m *Manager) ParseAccess(tokenString string) (*Claims, error) {
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("invalid token")
 	}
+	if claims.UserID == "" || (claims.TokenType != "" && claims.TokenType != typeAccess) {
+		return nil, fmt.Errorf("not an access token")
+	}
 	return claims, nil
 }
 
@@ -90,7 +109,7 @@ func (m *Manager) ParseRefresh(tokenString string) (userID, sessionID string, er
 }
 
 func (m *Manager) ParseRefreshDetails(tokenString string) (userID, sessionID string, expiresAt time.Time, err error) {
-	token, err := jwtlib.ParseWithClaims(tokenString, &jwtlib.RegisteredClaims{}, func(t *jwtlib.Token) (any, error) {
+	token, err := jwtlib.ParseWithClaims(tokenString, &refreshClaims{}, func(t *jwtlib.Token) (any, error) {
 		if t.Method != jwtlib.SigningMethodHS256 {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
@@ -99,9 +118,12 @@ func (m *Manager) ParseRefreshDetails(tokenString string) (userID, sessionID str
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
-	claims, ok := token.Claims.(*jwtlib.RegisteredClaims)
+	claims, ok := token.Claims.(*refreshClaims)
 	if !ok || !token.Valid {
 		return "", "", time.Time{}, fmt.Errorf("invalid token")
+	}
+	if claims.UserID != "" || (claims.TokenType != "" && claims.TokenType != typeRefresh) {
+		return "", "", time.Time{}, fmt.Errorf("not a refresh token")
 	}
 	expiresAt = time.Time{}
 	if claims.ExpiresAt != nil {

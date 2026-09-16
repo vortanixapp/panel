@@ -30,7 +30,7 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	var total, running int
 	if err := db.QueryRow(ctx, `SELECT COUNT(*) FROM core.servers WHERE true`+ownerFilter, args...).Scan(&total); err != nil {
 		log.Printf("главная кабинета: счёт серверов: %v", err)
-		writeError(w, http.StatusInternalServerError, "не удалось прочитать данные кабинета")
+		writeError(w, http.StatusInternalServerError, "Не удалось прочитать данные кабинета")
 		return
 	}
 	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM core.servers WHERE status = 'running'`+ownerFilter, args...).Scan(&running)

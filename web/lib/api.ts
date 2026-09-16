@@ -859,9 +859,10 @@ export async function generate2FA() {
   );
 }
 
-export async function enable2FA() {
+export async function enable2FA(code: string) {
   return apiFetch<{ status: string }>("/v1/account/2fa/enable", {
     method: "POST",
+    body: JSON.stringify({ code }),
   });
 }
 

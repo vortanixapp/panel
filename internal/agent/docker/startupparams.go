@@ -14,36 +14,54 @@ const (
 )
 
 func WriteStartupParams(serverID, params string) error {
-	dir := serverDataDir(serverID)
-	paramsPath := filepath.Join(dir, startupParamsRel)
-	argvPath := filepath.Join(dir, startupArgvRel)
+	root, err := serverRootFor(serverID)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+
+	paramsPath := filepath.FromSlash(startupParamsRel)
+	argvPath := filepath.FromSlash(startupArgvRel)
 
 	line := firstLine(params)
 	if line == "" {
-		return removeAll(paramsPath, argvPath)
+		return removeAll(root, paramsPath, argvPath)
 	}
-	if err := os.MkdirAll(filepath.Join(dir, ".vtx"), 0o755); err != nil {
+	if err := root.MkdirAll(".vtx", 0o755); err != nil {
 		return err
 	}
 
 	argv := gamesettings.SplitArgs(line)
 	if len(argv) == 0 {
-		return removeAll(paramsPath, argvPath)
+		return removeAll(root, paramsPath, argvPath)
 	}
 	var buf strings.Builder
 	for _, tok := range argv {
 		buf.WriteString(gamesettings.Unquote(tok))
 		buf.WriteByte('\n')
 	}
-	if err := os.WriteFile(argvPath, []byte(buf.String()), 0o644); err != nil {
+	if err := writeFileInRoot(root, argvPath, []byte(buf.String())); err != nil {
 		return err
 	}
-	return os.WriteFile(paramsPath, []byte(line+"\n"), 0o644)
+	return writeFileInRoot(root, paramsPath, []byte(line+"\n"))
 }
 
-func removeAll(paths ...string) error {
+func writeFileInRoot(root *os.Root, name string, content []byte) error {
+	_ = root.Remove(name)
+	f, err := root.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(content); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
+}
+
+func removeAll(root *os.Root, paths ...string) error {
 	for _, p := range paths {
-		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+		if err := root.Remove(p); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}

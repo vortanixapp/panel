@@ -114,7 +114,7 @@ func (h *Handler) ServerRenew(w http.ResponseWriter, r *http.Request) {
 		body.Period = 30
 	}
 	if !h.renewPeriodAllowed(r.Context(), serverID, body.Period) {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("срок продления %d дн. недоступен для этого тарифа", body.Period))
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("Срок продления %d дн. недоступен для этого тарифа", body.Period))
 		return
 	}
 	baseCost, currency, gameID, nodeID, tariffID, err := h.serverRenewBaseCost(r, serverID, body.Period)
@@ -257,7 +257,7 @@ func (h *Handler) ServerStartupParams(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(params, "/") || strings.HasPrefix(params, "./") {
 		writeError(w, http.StatusUnprocessableEntity,
-			"параметры запуска не могут начинаться с пути — укажите только аргументы, команду запуска подставит образ игры")
+			"Параметры запуска не могут начинаться с пути — укажите только аргументы, команду запуска подставит образ игры")
 		return
 	}
 

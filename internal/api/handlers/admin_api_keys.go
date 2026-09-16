@@ -96,7 +96,7 @@ func (h *Handler) AdminAPIKeyCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	name := strings.TrimSpace(body.Name)
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "укажите название ключа")
+		writeError(w, http.StatusBadRequest, "Укажите название ключа")
 		return
 	}
 
@@ -104,17 +104,22 @@ func (h *Handler) AdminAPIKeyCreate(w http.ResponseWriter, r *http.Request) {
 	for _, k := range rbacAllPermissionKeys() {
 		allowed[k] = true
 	}
+	own := h.rbacClaimsPermissions(r.Context(), claims)
 	scopes := []string{}
 	for _, s := range body.Scopes {
 		s = strings.TrimSpace(s)
 		if !allowed[s] {
-			writeError(w, http.StatusBadRequest, "неизвестное право: "+s)
+			writeError(w, http.StatusBadRequest, "Неизвестное право: "+s)
+			return
+		}
+		if !own[s] {
+			writeError(w, http.StatusForbidden, "Нельзя выдать ключу право, которого нет у вас: "+s)
 			return
 		}
 		scopes = append(scopes, s)
 	}
 	if len(scopes) == 0 {
-		writeError(w, http.StatusBadRequest, "выберите хотя бы одно право")
+		writeError(w, http.StatusBadRequest, "Выберите хотя бы одно право")
 		return
 	}
 
@@ -130,7 +135,7 @@ func (h *Handler) AdminAPIKeyCreate(w http.ResponseWriter, r *http.Request) {
 
 	key, prefix, hash, err := generateAPIKey()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось создать ключ")
+		writeError(w, http.StatusInternalServerError, "Не удалось создать ключ")
 		return
 	}
 	scopesJSON, _ := json.Marshal(scopes)
@@ -170,7 +175,7 @@ func (h *Handler) AdminAPIKeyRevoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "ключ не найден или уже отозван")
+		writeError(w, http.StatusNotFound, "Ключ не найден или уже отозван")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "api_key.revoke", "api_key:"+id, nil)
@@ -188,23 +193,31 @@ func (h *Handler) authenticateAPIKey(ctx context.Context, key string) (*apiKeyCl
 	if !strings.HasPrefix(key, apiKeyPrefix) {
 		return nil, false
 	}
-	var id, userID string
+	var id, userID, ownerRole string
 	var scopes []byte
 	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT id::text, COALESCE(user_id::text, ''), scopes
-		FROM core.api_keys
-		WHERE key_hash = $1
-		  AND revoked_at IS NULL
-		  AND (expires_at IS NULL OR expires_at > now())
-	`, hashAPIKey(key)).Scan(&id, &userID, &scopes)
+		SELECT k.id::text, COALESCE(k.user_id::text, ''), COALESCE(u.role, ''), k.scopes
+		FROM core.api_keys k
+		LEFT JOIN core.users u ON u.id = k.user_id AND u.status = 'active'
+		WHERE k.key_hash = $1
+		  AND k.revoked_at IS NULL
+		  AND (k.expires_at IS NULL OR k.expires_at > now())
+	`, hashAPIKey(key)).Scan(&id, &userID, &ownerRole, &scopes)
 	if err != nil {
+		return nil, false
+	}
+	if userID != "" && !isStaffRole(ownerRole) {
 		return nil, false
 	}
 
 	var list []string
 	_ = json.Unmarshal(scopes, &list)
 	set := map[string]bool{}
+	owner := h.rbacClaimsPermissions(ctx, &paneljwt.Claims{UserID: userID, Role: ownerRole})
 	for _, s := range list {
+		if userID != "" && !owner[s] {
+			continue
+		}
 		set[s] = true
 	}
 
@@ -236,7 +249,7 @@ func (h *Handler) authWithAPIKey(next http.Handler) http.Handler {
 			return
 		}
 		if !strings.HasPrefix(r.URL.Path, "/v1/admin/") {
-			writeError(w, http.StatusForbidden, "ключ API работает только с /v1/admin/*")
+			writeError(w, http.StatusForbidden, "Ключ API работает только с /v1/admin/*")
 			return
 		}
 		claims := &paneljwt.Claims{

@@ -229,7 +229,7 @@ func (h *Handler) ListPromotions(w http.ResponseWriter, r *http.Request) {
 		ORDER BY created_at DESC
 	`)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось получить список акций: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось получить список акций: "+err.Error())
 		return
 	}
 	defer rows.Close()

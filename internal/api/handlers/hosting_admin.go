@@ -131,7 +131,7 @@ func (h *Handler) DeleteHostingServer(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT count(*) FROM core.hosting_accounts WHERE hosting_server_id = $1::uuid
 	`, id).Scan(&accounts); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось проверить аккаунты сервера")
+		writeError(w, http.StatusInternalServerError, "Не удалось проверить аккаунты сервера")
 		return
 	}
 	if accounts > 0 {
@@ -142,7 +142,7 @@ func (h *Handler) DeleteHostingServer(w http.ResponseWriter, r *http.Request) {
 
 	_, err := h.dbOf(ctx).Exec(ctx, `DELETE FROM core.hosting_servers WHERE id = $1::uuid`, id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось удалить сервер")
+		writeError(w, http.StatusInternalServerError, "Не удалось удалить сервер")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})

@@ -149,7 +149,7 @@ func (h *Handler) BillingPayerUpdate(w http.ResponseWriter, r *http.Request) {
 			payer_type = EXCLUDED.payer_type, legal_name = EXCLUDED.legal_name, inn = EXCLUDED.inn,
 			kpp = EXCLUDED.kpp, ogrn = EXCLUDED.ogrn, address = EXCLUDED.address, updated_at = now()
 	`, claims.UserID, body.PayerType, body.LegalName, body.INN, body.KPP, body.OGRN, body.Address); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить реквизиты")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить реквизиты")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "billing.payer.update", "user:"+claims.UserID, map[string]any{
@@ -202,7 +202,7 @@ func (h *Handler) writeBillingDocuments(w http.ResponseWriter, r *http.Request, 
 	profile := accountingProfileFrom(settings)
 	payer, err := h.billingPayer(ctx, userID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "пользователь не найден")
+		writeError(w, http.StatusNotFound, "Пользователь не найден")
 		return
 	}
 	currencies := h.billingCurrencies(ctx, userID)
@@ -215,7 +215,7 @@ func (h *Handler) writeBillingDocuments(w http.ResponseWriter, r *http.Request, 
 	}
 	months, err := h.billingActMonths(ctx, userID, currency, profile.Location)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось получить список документов")
+		writeError(w, http.StatusInternalServerError, "Не удалось получить список документов")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -351,32 +351,32 @@ func (h *Handler) writeBillingAct(w http.ResponseWriter, r *http.Request, userID
 	profile := accountingProfileFrom(settings)
 	start, err := time.ParseInLocation(accountingMonthLayout, strings.TrimSpace(r.URL.Query().Get("period")), profile.Location)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "месяц акта указан неверно")
+		writeError(w, http.StatusBadRequest, "Месяц акта указан неверно")
 		return
 	}
 	end := start.AddDate(0, 1, 0)
 	if end.After(time.Now()) {
-		writeError(w, http.StatusConflict, "акт за месяц формируется после окончания месяца")
+		writeError(w, http.StatusConflict, "Акт за месяц формируется после окончания месяца")
 		return
 	}
 	currency := billingQueryCurrency(r, settings)
 	payer, err := h.billingPayer(ctx, userID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "пользователь не найден")
+		writeError(w, http.StatusNotFound, "Пользователь не найден")
 		return
 	}
 	lines, err := h.billingServiceLines(ctx, userID, currency, start, end)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось собрать услуги за месяц")
+		writeError(w, http.StatusInternalServerError, "Не удалось собрать услуги за месяц")
 		return
 	}
 	if len(lines) == 0 {
-		writeError(w, http.StatusNotFound, "в этом месяце услуг не было")
+		writeError(w, http.StatusNotFound, "В этом месяце услуг не было")
 		return
 	}
 	number, err := h.billingActNumber(ctx, userID, start, currency)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось присвоить номер акта")
+		writeError(w, http.StatusInternalServerError, "Не удалось присвоить номер акта")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -461,12 +461,12 @@ func (h *Handler) writeReconciliation(w http.ResponseWriter, r *http.Request, us
 	currency := billingQueryCurrency(r, settings)
 	payer, err := h.billingPayer(ctx, userID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "пользователь не найден")
+		writeError(w, http.StatusNotFound, "Пользователь не найден")
 		return
 	}
 	opening, entries, err := h.reconciliationEntries(ctx, userID, currency, from, to.AddDate(0, 0, 1))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось собрать операции за период")
+		writeError(w, http.StatusInternalServerError, "Не удалось собрать операции за период")
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

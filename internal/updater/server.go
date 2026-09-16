@@ -193,7 +193,7 @@ func (s *Server) update(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	version := buildinfo.Normalize(body.Version)
 	if !updates.IsSemver(version) {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "укажите версию выпуска, например 0.1.16"})
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "Укажите версию выпуска, например 0.1.16"})
 		return
 	}
 
@@ -203,17 +203,17 @@ func (s *Server) update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if p.Mode != "images" {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "панель собрана из исходников: обновите её командами на сервере"})
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "Панель собрана из исходников: обновите её командами на сервере"})
 		return
 	}
 	if j := s.job(ctx, p); j != nil && j.State == "running" {
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "обновление уже идёт"})
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "Обновление уже идёт"})
 		return
 	}
 
 	name := helperName(p)
 	if err := s.docker.Remove(ctx, name, true); err != nil && !dockerapi.IsNotFound(err) {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "прошлое обновление не убрано: " + err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Прошлое обновление не убрано: " + err.Error()})
 		return
 	}
 
@@ -242,12 +242,12 @@ func (s *Server) update(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := s.docker.Create(ctx, name, spec)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "обновление не запущено: " + err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Обновление не запущено: " + err.Error()})
 		return
 	}
 	if err := s.docker.Start(ctx, id); err != nil {
 		_ = s.docker.Remove(ctx, id, true)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "обновление не запущено: " + err.Error()})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Обновление не запущено: " + err.Error()})
 		return
 	}
 	job := s.job(ctx, p)

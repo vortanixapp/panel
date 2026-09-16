@@ -27,6 +27,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/httpprom"
 	"github.com/vortanixapp/panel/pkg/netaddr"
 	"github.com/vortanixapp/panel/pkg/oauth"
+	"github.com/vortanixapp/panel/pkg/panelsecret"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 )
 
@@ -62,6 +63,15 @@ func main() {
 		log.Fatalf("redis: %v", err)
 	}
 	defer redisCache.Close()
+
+	jwtSecret, err := panelsecret.JWT(ctx, pools.Write, cfg.JWTSecret)
+	if err != nil {
+		log.Fatalf("ключ подписи токенов: %v", err)
+	}
+	if jwtSecret != cfg.JWTSecret {
+		log.Printf("JWT_SECRET не задан — панель использует собственный ключ из базы")
+	}
+	cfg.JWTSecret = jwtSecret
 
 	tokens := paneljwt.New(cfg.JWTSecret, cfg.AccessTokenTTLMin, cfg.RefreshTokenTTLDays)
 	relayClient := relay.New(cfg.RelayURL, cfg.InternalSecret)

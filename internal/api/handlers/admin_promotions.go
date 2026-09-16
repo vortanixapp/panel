@@ -148,17 +148,17 @@ func (h *Handler) UpdatePromotion(w http.ResponseWriter, r *http.Request) {
 	}
 	discountType, ok := normalizeDiscountType(body.DiscountType)
 	if !ok {
-		writeError(w, http.StatusBadRequest, "тип скидки: percent, fixed или пусто")
+		writeError(w, http.StatusBadRequest, "Тип скидки: percent, fixed или пусто")
 		return
 	}
 	startsAt, ok := parseDate(body.StartsAt)
 	if !ok {
-		writeError(w, http.StatusBadRequest, "некорректная дата начала")
+		writeError(w, http.StatusBadRequest, "Некорректная дата начала")
 		return
 	}
 	endsAt, ok := parseDate(body.EndsAt)
 	if !ok {
-		writeError(w, http.StatusBadRequest, "некорректная дата окончания")
+		writeError(w, http.StatusBadRequest, "Некорректная дата окончания")
 		return
 	}
 	appliesTo, hasApplies := normalizeAppliesTo(body.AppliesTo)
@@ -203,7 +203,7 @@ func (h *Handler) UpdatePromotion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "акция не найдена")
+		writeError(w, http.StatusNotFound, "Акция не найдена")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "promotion.update", "promotion:"+id, nil)
@@ -224,7 +224,7 @@ func (h *Handler) DeletePromotion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "акция не найдена")
+		writeError(w, http.StatusNotFound, "Акция не найдена")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "promotion.delete", "promotion:"+id, nil)

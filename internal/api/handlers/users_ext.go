@@ -101,6 +101,11 @@ func (h *Handler) ImpersonateUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "user.impersonate", "user:"+id,
+		map[string]any{"email": email})
+
+	h.auditAlert(r.Context(), claims.UserID, claims.Email, "user.impersonate", email)
+
 	writeJSON(w, http.StatusOK, map[string]any{
 
 		"ok": true,

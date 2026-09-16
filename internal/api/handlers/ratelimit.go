@@ -1,8 +1,12 @@
 package handlers
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -20,28 +24,63 @@ func (h *Handler) tenantWriteRateLimit(next http.Handler) http.Handler {
 			return
 		}
 
-		_, ok := tenantClaims(r.Context())
+		claims, ok := tenantClaims(r.Context())
 		if !ok {
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		limit := defaultWriteRPM
+		scope := claims.UserID
+		if key, isKey := apiKeyFromContext(r.Context()); isKey {
+			scope = "key:" + key.ID
+		}
+		if scope == "" {
+			scope = clientIP(r)
+		}
 
-		allowed, err := h.cache.AllowWrite(r.Context(), limit, rateWindow)
+		allowed, err := h.cache.AllowWrite(r.Context(), scope, limit, rateWindow)
 		if err != nil {
-			allowed = allowLocal(limit)
+			allowed = allowLocal(scope, limit)
 			rateLimitFallbacks.Add(1)
 		}
 
 		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))
 		if !allowed {
 			writeCodedError(w, http.StatusTooManyRequests, "rate_limit_exceeded",
-				"превышена частота запросов: "+strconv.Itoa(limit)+" в минуту по вашему тарифу")
+				"Превышена частота запросов: "+strconv.Itoa(limit)+" в минуту по вашему тарифу")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (h *Handler) allowAttempt(ctx context.Context, key string, limit int, window time.Duration) bool {
+	allowed, err := h.cache.Allow(ctx, key, limit, window)
+	if err != nil {
+		return attemptFallback.allow(key, limit, window)
+	}
+	return allowed
+}
+
+func (h *Handler) tooManyAttempts(w http.ResponseWriter, r *http.Request, scope string, limit int, window time.Duration, subjects ...string) bool {
+	ip := clientIP(r)
+	if ip != "" && !h.allowAttempt(r.Context(), "rl:"+scope+":ip:"+ip, limit, window) {
+		writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте позже")
+		return true
+	}
+	for _, subject := range subjects {
+		subject = strings.ToLower(strings.TrimSpace(subject))
+		if subject == "" {
+			continue
+		}
+		sum := sha256.Sum256([]byte(subject))
+		if !h.allowAttempt(r.Context(), "rl:"+scope+":id:"+hex.EncodeToString(sum[:8]), limit, window) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте позже")
+			return true
+		}
+	}
+	return false
 }
 
 type localWindow struct {
@@ -53,10 +92,11 @@ type localWindow struct {
 var (
 	localLimiters      sync.Map
 	rateLimitFallbacks atomicCounter
+	attemptFallback    = &attemptLimiter{attempt: make(map[string]*attemptWindow)}
 )
 
-func allowLocal(limit int) bool {
-	v, _ := localLimiters.LoadOrStore("panel", &localWindow{})
+func allowLocal(scope string, limit int) bool {
+	v, _ := localLimiters.LoadOrStore(scope, &localWindow{})
 	win := v.(*localWindow)
 
 	win.mu.Lock()

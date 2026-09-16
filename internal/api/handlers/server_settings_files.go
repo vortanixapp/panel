@@ -62,7 +62,7 @@ func (h *Handler) ServerSettingsFileGet(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 	file, st, resolved, ok := h.settingsFileTarget(ctx, serverID, chi.URLParam(r, "fileId"))
 	if !ok {
-		writeError(w, http.StatusNotFound, "файл настроек не найден")
+		writeError(w, http.StatusNotFound, "Файл настроек не найден")
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *Handler) ServerSettingsFilePut(w http.ResponseWriter, r *http.Request) 
 
 	file, st, resolved, ok := h.settingsFileTarget(ctx, serverID, chi.URLParam(r, "fileId"))
 	if !ok {
-		writeError(w, http.StatusNotFound, "файл настроек не найден")
+		writeError(w, http.StatusNotFound, "Файл настроек не найден")
 		return
 	}
 	if len(body.Content) > file.MaxFileBytes() {

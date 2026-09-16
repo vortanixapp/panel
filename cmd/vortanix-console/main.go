@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/httplog"
 	"github.com/vortanixapp/panel/pkg/netaddr"
 	"github.com/vortanixapp/panel/pkg/paneljwt"
+	"github.com/vortanixapp/panel/pkg/panelsecret"
 )
 
 func main() {
@@ -29,7 +31,21 @@ func main() {
 	redisURL := env("REDIS_URL", "redis://localhost:6379/0")
 	relayURL := env("RELAY_URL", "http://localhost:8082")
 	secret := env("INTERNAL_SECRET", "dev-internal-secret")
-	jwtSecret := env("JWT_SECRET", "dev-secret-change-in-production")
+	jwtSecret := env("JWT_SECRET", panelsecret.DevJWTSecret)
+
+	ctx := context.Background()
+	if dbURL := env("DATABASE_URL", ""); dbURL != "" {
+		pool, err := pgxpool.New(ctx, dbURL)
+		if err != nil {
+			log.Fatalf("database: %v", err)
+		}
+		defer pool.Close()
+		resolved, err := panelsecret.JWT(ctx, pool, jwtSecret)
+		if err != nil {
+			log.Fatalf("ключ подписи токенов: %v", err)
+		}
+		jwtSecret = resolved
+	}
 
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -62,9 +78,9 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_ = srv.Shutdown(ctx)
+	_ = srv.Shutdown(shutdownCtx)
 }
 
 func env(key, fallback string) string {

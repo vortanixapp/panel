@@ -135,7 +135,7 @@ func (h *Handler) ListPlugins(w http.ResponseWriter, r *http.Request) {
 		ORDER BY COALESCE(category, '') ASC, name ASC
 	`)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось получить список плагинов: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось получить список плагинов: "+err.Error())
 		return
 	}
 	defer rows.Close()
@@ -206,11 +206,11 @@ func (h *Handler) CreatePlugin(w http.ResponseWriter, r *http.Request) {
 	active := boolFromBody(body["active"], true)
 
 	if name == "" {
-		writeError(w, http.StatusUnprocessableEntity, "название плагина обязательно")
+		writeError(w, http.StatusUnprocessableEntity, "Название плагина обязательно")
 		return
 	}
 	if len(category) > 64 {
-		writeError(w, http.StatusUnprocessableEntity, "категория не длиннее 64 символов")
+		writeError(w, http.StatusUnprocessableEntity, "Категория не длиннее 64 символов")
 		return
 	}
 
@@ -245,11 +245,11 @@ func (h *Handler) CreatePlugin(w http.ResponseWriter, r *http.Request) {
 		`, id, name, category, version, description, installPath, games,
 			fileActions, uninstallActions, restart, active)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "не удалось сохранить плагин: "+err.Error())
+			writeError(w, http.StatusInternalServerError, "Не удалось сохранить плагин: "+err.Error())
 			return
 		}
 		if tag.RowsAffected() == 0 {
-			writeError(w, http.StatusNotFound, "плагин не найден")
+			writeError(w, http.StatusNotFound, "Плагин не найден")
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "id": id})
@@ -271,7 +271,7 @@ func (h *Handler) CreatePlugin(w http.ResponseWriter, r *http.Request) {
 	`, slug, name, category, version, description, installPath, games,
 		fileActions, uninstallActions, restart, active).Scan(&newID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось создать плагин: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось создать плагин: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"id": newID})
@@ -410,7 +410,7 @@ func (h *Handler) ListMaps(w http.ResponseWriter, r *http.Request) {
 		ORDER BY COALESCE(m.category, '') ASC, m.name ASC
 	`)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось получить список карт: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось получить список карт: "+err.Error())
 		return
 	}
 	defer rows.Close()
@@ -447,7 +447,7 @@ func (h *Handler) CreateMap(w http.ResponseWriter, r *http.Request) {
 	active := boolFromBody(body["active"], true)
 
 	if name == "" {
-		writeError(w, http.StatusUnprocessableEntity, "название карты обязательно")
+		writeError(w, http.StatusUnprocessableEntity, "Название карты обязательно")
 		return
 	}
 
@@ -457,7 +457,7 @@ func (h *Handler) CreateMap(w http.ResponseWriter, r *http.Request) {
 		err := h.dbOf(r.Context()).QueryRow(r.Context(),
 			`SELECT id::text FROM core.games WHERE slug = $1`, gameSlug).Scan(&found)
 		if err != nil {
-			writeError(w, http.StatusUnprocessableEntity, "игра не найдена: "+gameSlug)
+			writeError(w, http.StatusUnprocessableEntity, "Игра не найдена: "+gameSlug)
 			return
 		}
 		gameID = &found
@@ -476,11 +476,11 @@ func (h *Handler) CreateMap(w http.ResponseWriter, r *http.Request) {
 			WHERE id = $1::uuid
 		`, id, name, category, version, gameID, restart, active)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "не удалось сохранить карту: "+err.Error())
+			writeError(w, http.StatusInternalServerError, "Не удалось сохранить карту: "+err.Error())
 			return
 		}
 		if tag.RowsAffected() == 0 {
-			writeError(w, http.StatusNotFound, "карта не найдена")
+			writeError(w, http.StatusNotFound, "Карта не найдена")
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "id": id})
@@ -498,7 +498,7 @@ func (h *Handler) CreateMap(w http.ResponseWriter, r *http.Request) {
 		RETURNING id::text
 	`, slug, name, category, version, gameID, restart, active).Scan(&newID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось создать карту: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось создать карту: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"id": newID})

@@ -272,12 +272,12 @@ func (h *Handler) UploadAdminAppearanceAsset(w http.ResponseWriter, r *http.Requ
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, appearanceAssetSize+(1<<20))
 	if err := r.ParseMultipartForm(appearanceAssetSize); err != nil {
-		writeError(w, http.StatusBadRequest, "файл больше 5 МБ или повреждён")
+		writeError(w, http.StatusBadRequest, "Файл больше 5 МБ или повреждён")
 		return
 	}
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "выберите файл")
+		writeError(w, http.StatusBadRequest, "Выберите файл")
 		return
 	}
 	defer file.Close()
@@ -285,7 +285,7 @@ func (h *Handler) UploadAdminAppearanceAsset(w http.ResponseWriter, r *http.Requ
 	base := strings.ReplaceAll(kind, "_", "-") + "-" + strconv.FormatInt(time.Now().Unix(), 36)
 	path, err := h.saveBrandingFile(file, header.Filename, base)
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "поддерживаются PNG, JPG, WEBP, SVG и ICO")
+		writeError(w, http.StatusUnprocessableEntity, "Поддерживаются PNG, JPG, WEBP, SVG и ICO")
 		return
 	}
 	previous := h.tenantSettingString(ctx, key)

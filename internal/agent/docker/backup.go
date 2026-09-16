@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -82,22 +81,24 @@ func extractBackup(ctx context.Context, serverID, cname, name string) error {
 	dataDir := serverDataDir(serverID)
 	archive := "/data/backups/" + name
 
-	if img := containerImage(ctx, cname); img != "" {
-		script := fmt.Sprintf(
-			"cd /data && tar --exclude=backups -xzof %s && "+
-				"find /data -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true",
-			shellQuote(archive),
-		)
-		return exec.CommandContext(ctx, "docker", "run", "--rm",
-			"--network", "none",
-			"--entrypoint", "sh",
-			"-v", dataDir+":/data",
-			img, "-c", script,
-		).Run()
+	img := containerImage(ctx, cname)
+	if img == "" {
+		img = resolveImage(ctx, "")
 	}
-
-	return exec.CommandContext(ctx, "tar", "--exclude=backups", "-xzof",
-		filepath.Join(dataDir, "backups", name), "-C", dataDir).Run()
+	if img == "" {
+		return fmt.Errorf("не найден образ сервера для распаковки резервной копии")
+	}
+	script := fmt.Sprintf(
+		"cd /data && tar --exclude=backups -xzof %s && "+
+			"find /data -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true",
+		shellQuote(archive),
+	)
+	return exec.CommandContext(ctx, "docker", "run", "--rm",
+		"--network", "none",
+		"--entrypoint", "sh",
+		"-v", dataDir+":/data",
+		img, "-c", script,
+	).Run()
 }
 
 func containerImage(ctx context.Context, cname string) string {

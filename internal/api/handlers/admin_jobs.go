@@ -283,7 +283,7 @@ func (h *Handler) AdminJobCancel(w http.ResponseWriter, r *http.Request) {
 	}
 	id := chi.URLParam(r, "id")
 	stuckMinutes := jobQueryInt(r.URL.Query().Get("stuck_minutes"), defaultJobStuckMinutes, 1, 1440)
-	result, _ := json.Marshal(map[string]string{"error": "отменено администратором"})
+	result, _ := json.Marshal(map[string]string{"error": "Отменено администратором"})
 
 	var jobType string
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `

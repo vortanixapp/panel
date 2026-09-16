@@ -307,7 +307,7 @@ func (h *Handler) SetNodeImageTag(w http.ResponseWriter, r *http.Request) {
 	slug := gamecatalog.Normalize(strings.TrimSpace(body.GameSlug))
 	game, known := gamecatalog.Resolve(slug)
 	if !known {
-		writeError(w, http.StatusBadRequest, "неизвестная игра: образы задаются только для игр из каталога Vortanix")
+		writeError(w, http.StatusBadRequest, "Неизвестная игра: образы задаются только для игр из каталога Vortanix")
 		return
 	}
 
@@ -315,7 +315,7 @@ func (h *Handler) SetNodeImageTag(w http.ResponseWriter, r *http.Request) {
 	if tag == "" && body.DockerImage != "" {
 		if !gamecatalog.BelongsTo(game.Key, body.DockerImage) {
 			writeError(w, http.StatusUnprocessableEntity,
-				"сторонние образы запрещены: допустим только "+gamecatalog.Repository(game.Key)+":<tag>")
+				"Сторонние образы запрещены: допустим только "+gamecatalog.Repository(game.Key)+":<tag>")
 			return
 		}
 		tag = gamecatalog.TagOf(body.DockerImage)
@@ -324,7 +324,7 @@ func (h *Handler) SetNodeImageTag(w http.ResponseWriter, r *http.Request) {
 		tag = gamecatalog.DefaultTag(game.Key)
 	}
 	if !gamecatalog.ValidTag(tag) {
-		writeError(w, http.StatusUnprocessableEntity, "недопустимый тег образа")
+		writeError(w, http.StatusUnprocessableEntity, "Недопустимый тег образа")
 		return
 	}
 
@@ -333,7 +333,7 @@ func (h *Handler) SetNodeImageTag(w http.ResponseWriter, r *http.Request) {
 		SELECT id::text FROM core.games WHERE slug = ANY($1::text[])
 		ORDER BY slug = $2 DESC LIMIT 1
 	`, gamecatalog.Slugs(game.Key), game.Key).Scan(&gameID); err != nil {
-		writeError(w, http.StatusNotFound, "игра не подключена в этом тенанте")
+		writeError(w, http.StatusNotFound, "Игра не подключена в этом тенанте")
 		return
 	}
 
@@ -344,7 +344,7 @@ func (h *Handler) SetNodeImageTag(w http.ResponseWriter, r *http.Request) {
 		ON CONFLICT (game_id, version) DO UPDATE SET docker_image = EXCLUDED.docker_image, active = true
 	`, gameID, tag, image)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить тег")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить тег")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "image.tag_set", "game:"+game.Key,
@@ -368,7 +368,7 @@ func (h *Handler) SetImageBuildFlag(w http.ResponseWriter, r *http.Request) {
 
 	slug := gamecatalog.Normalize(strings.TrimSpace(body.GameSlug))
 	if _, known := gamecatalog.Resolve(slug); !known {
-		writeError(w, http.StatusBadRequest, "неизвестная игра")
+		writeError(w, http.StatusBadRequest, "Неизвестная игра")
 		return
 	}
 
@@ -377,11 +377,11 @@ func (h *Handler) SetImageBuildFlag(w http.ResponseWriter, r *http.Request) {
 		WHERE slug = $1
 	`, slug, body.Build)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить: "+err.Error())
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "игра не заведена в каталоге этой панели")
+		writeError(w, http.StatusNotFound, "Игра не заведена в каталоге этой панели")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "game": slug, "build_image": body.Build})
@@ -573,7 +573,7 @@ func (h *Handler) BuildNodeImages(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if err := h.enqueueImageBuild(ctx, n.ID, keys); err != nil {
-			writeError(w, http.StatusInternalServerError, "не удалось поставить сборку в очередь: "+err.Error())
+			writeError(w, http.StatusInternalServerError, "Не удалось поставить сборку в очередь: "+err.Error())
 			return
 		}
 		queued = append(queued, map[string]any{"node_id": n.ID, "name": n.Name})

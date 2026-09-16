@@ -233,19 +233,26 @@ func (h *Handler) authorizeServerAction(
 		if reason == "" {
 			reason = "обратитесь в поддержку"
 		}
-		writeError(w, http.StatusForbidden, "сервер заблокирован: "+reason)
+		writeError(w, http.StatusForbidden, "Сервер заблокирован: "+reason)
 		return false
 	}
-	if access.IsOwner || access.IsStaff {
+	if access.IsOwner || access.StaffWrite {
 		return true
+	}
+	if access.IsStaff {
+		if serverReadActions[action] {
+			return true
+		}
+		writeError(w, http.StatusForbidden, "Нужно право admin.servers.write")
+		return false
 	}
 	perm := agentActionPermission(action)
 	if perm == "" || !access.IsFriend {
-		writeError(w, http.StatusForbidden, "нет доступа к этому серверу")
+		writeError(w, http.StatusForbidden, "Нет доступа к этому серверу")
 		return false
 	}
 	if allowed, _ := access.FriendPerms[perm].(bool); !allowed {
-		writeError(w, http.StatusForbidden, "нет права "+perm)
+		writeError(w, http.StatusForbidden, "Нет права "+perm)
 		return false
 	}
 	return true

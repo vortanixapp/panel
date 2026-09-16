@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/pquerna/otp/totp"
 )
@@ -27,10 +28,19 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	if h.tooManyAttempts(w, r, "2fa", 20, 15*time.Minute) {
+		return
+	}
 	var pending map[string]string
 	ok, err := h.cache.GetJSON(ctx, "2fa:"+req.Token, &pending)
 	if err != nil || !ok || pending["user_id"] == "" {
 		writeError(w, http.StatusUnauthorized, "invalid or expired challenge")
+		return
+	}
+	if !h.allowAttempt(ctx, "2fa:tries:"+req.Token, 5, 10*time.Minute) {
+		_ = h.cache.Delete(ctx, "2fa:"+req.Token)
+		h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "2FA: превышено число попыток", false)
+		writeError(w, http.StatusUnauthorized, "Слишком много неверных кодов — войдите заново")
 		return
 	}
 
@@ -43,11 +53,12 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 	}
 	secret = h.secrets.MustDecrypt(secret)
 	if !totp.Validate(req.Code, secret) {
+		h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "2FA: неверный код", false)
 		writeError(w, http.StatusUnauthorized, "invalid code")
 		return
 	}
 
-	_ = h.cache.Delete(ctx, "2fa:"+req.Token)
+	_ = h.cache.Delete(ctx, "2fa:"+req.Token, "2fa:tries:"+req.Token)
 	access, refresh, err := h.issueAuthTokens(r, pending["user_id"], pending["email"], pending["role"], "", rememberRefreshTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")

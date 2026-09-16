@@ -626,7 +626,7 @@ func (h *Handler) DeleteAdminLocation(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT count(*) FROM core.servers WHERE node_id = $1::uuid
 	`, id).Scan(&live); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось проверить серверы локации")
+		writeError(w, http.StatusInternalServerError, "Не удалось проверить серверы локации")
 		return
 	}
 	if live > 0 {
@@ -672,7 +672,7 @@ func (h *Handler) GetAdminLocationInstallScript(w http.ResponseWriter, r *http.R
 	relayURL := strings.TrimSuffix(strings.TrimSpace(envOr("RELAY_PUBLIC_URL", "")), "/")
 	if relayURL == "" {
 		writeError(w, http.StatusPreconditionFailed,
-			"не задан RELAY_PUBLIC_URL — внешний адрес relay, по которому нода до него достучится. "+
+			"Не задан RELAY_PUBLIC_URL — внешний адрес relay, по которому нода до него достучится. "+
 				"Без него команда установки увела бы ноду в никуда")
 		return
 	}

@@ -341,7 +341,7 @@ func (h *Handler) GetGroups(w http.ResponseWriter, r *http.Request) {
 
 	groups, err := h.rbacGroups(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось загрузить группы")
+		writeError(w, http.StatusInternalServerError, "Не удалось загрузить группы")
 		return
 	}
 	labels := make(map[string]string, len(groups))
@@ -433,7 +433,7 @@ func (h *Handler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	if from := strings.TrimSpace(body.CopyFrom); from != "" {
 		source, found := h.rbacFindGroup(ctx, from)
 		if !found {
-			writeError(w, http.StatusBadRequest, "группа для копирования прав не найдена")
+			writeError(w, http.StatusBadRequest, "Группа для копирования прав не найдена")
 			return
 		}
 		permissions = source.Permissions
@@ -448,10 +448,10 @@ func (h *Handler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	`, name, description, raw).Scan(&id)
 	if err != nil {
 		if rbacDuplicateName(err) {
-			writeError(w, http.StatusConflict, "группа с таким названием уже есть")
+			writeError(w, http.StatusConflict, "Группа с таким названием уже есть")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "не удалось создать группу")
+		writeError(w, http.StatusInternalServerError, "Не удалось создать группу")
 		return
 	}
 
@@ -471,7 +471,7 @@ func (h *Handler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	key := chi.URLParam(r, "key")
 	if !rbacCustomGroupKey(key) {
-		writeError(w, http.StatusBadRequest, "системные группы не переименовываются")
+		writeError(w, http.StatusBadRequest, "Системные группы не переименовываются")
 		return
 	}
 
@@ -495,14 +495,14 @@ func (h *Handler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	`, key, name, description)
 	if err != nil {
 		if rbacDuplicateName(err) {
-			writeError(w, http.StatusConflict, "группа с таким названием уже есть")
+			writeError(w, http.StatusConflict, "Группа с таким названием уже есть")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить группу")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить группу")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "группа не найдена")
+		writeError(w, http.StatusNotFound, "Группа не найдена")
 		return
 	}
 
@@ -517,7 +517,7 @@ func (h *Handler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	key := chi.URLParam(r, "key")
 	if !rbacCustomGroupKey(key) {
-		writeError(w, http.StatusBadRequest, "системные группы не удаляются")
+		writeError(w, http.StatusBadRequest, "Системные группы не удаляются")
 		return
 	}
 
@@ -529,11 +529,11 @@ func (h *Handler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 		FROM core.staff_groups g WHERE g.id = $1::uuid
 	`, key).Scan(&name, &members)
 	if errors.Is(err, pgx.ErrNoRows) {
-		writeError(w, http.StatusNotFound, "группа не найдена")
+		writeError(w, http.StatusNotFound, "Группа не найдена")
 		return
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось удалить группу")
+		writeError(w, http.StatusInternalServerError, "Не удалось удалить группу")
 		return
 	}
 	if members > 0 {
@@ -542,13 +542,33 @@ func (h *Handler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.dbOf(ctx).Exec(ctx, `DELETE FROM core.staff_groups WHERE id = $1::uuid`, key); err != nil {
-		writeError(w, http.StatusConflict, "в группе появились сотрудники: переведите их в другую группу перед удалением")
+		writeError(w, http.StatusConflict, "В группе появились сотрудники: переведите их в другую группу перед удалением")
 		return
 	}
 
 	audit(ctx, h.dbOf(ctx), claims.UserID, "groups.delete", key, map[string]any{"name": name})
 	h.auditAlert(ctx, claims.UserID, claims.Email, "groups.delete", name)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func staffRank(role string) int {
+	switch role {
+	case "owner":
+		return 3
+	case rbacRoleAdmin:
+		return 2
+	case rbacRoleSupport:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func canManageUser(actorRole, targetRole string) bool {
+	if actorRole == "owner" {
+		return true
+	}
+	return staffRank(actorRole) > staffRank(targetRole)
 }
 
 func rbacIsWriteMethod(method string) bool {
@@ -705,7 +725,7 @@ func (h *Handler) adminRBACMiddleware(next http.Handler) http.Handler {
 		permission, bypass := rbacResolveAdminPermission(r.URL.Path, r.Method)
 		if bypass {
 			if key, isKey := apiKeyFromContext(r.Context()); isKey && !key.Scopes["admin.dashboard.read"] {
-				writeError(w, http.StatusForbidden, "ключ не имеет права admin.dashboard.read")
+				writeError(w, http.StatusForbidden, "Ключ не имеет права admin.dashboard.read")
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -719,7 +739,7 @@ func (h *Handler) adminRBACMiddleware(next http.Handler) http.Handler {
 
 		if key, ok := apiKeyFromContext(r.Context()); ok {
 			if !key.Scopes[permission] {
-				writeError(w, http.StatusForbidden, "ключ не имеет права "+permission)
+				writeError(w, http.StatusForbidden, "Ключ не имеет права "+permission)
 				return
 			}
 			next.ServeHTTP(w, r)

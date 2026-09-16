@@ -213,7 +213,7 @@ func (h *Handler) ReplySupportTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.TrimSpace(body.Body) == "" {
-		writeError(w, http.StatusBadRequest, "нужен текст сообщения")
+		writeError(w, http.StatusBadRequest, "Нужен текст сообщения")
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *Handler) ReplySupportTicket(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO core.support_messages ( ticket_id, user_id, message, body, is_staff)
 		VALUES ( $1::uuid, $2::uuid, $3, $3, $4)
 	`, ticketID, claims.UserID, body.Body, staff); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить сообщение")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить сообщение")
 		return
 	}
 	if staff {
@@ -281,7 +281,7 @@ func (h *Handler) ListNews(w http.ResponseWriter, r *http.Request) {
 		LIMIT 50
 	`, claims.UserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось получить новости")
+		writeError(w, http.StatusInternalServerError, "Не удалось получить новости")
 		return
 	}
 	defer rows.Close()
@@ -359,7 +359,7 @@ func (h *Handler) ListNewsAdmin(w http.ResponseWriter, r *http.Request) {
 		FROM core.news ORDER BY pinned DESC, COALESCE(published_at, created_at) DESC LIMIT 50
 	`)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось получить новости: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось получить новости: "+err.Error())
 		return
 	}
 	defer rows.Close()
@@ -426,7 +426,7 @@ func (h *Handler) CreateNews(w http.ResponseWriter, r *http.Request) {
 	_ = h.dbOf(r.Context()).QueryRow(r.Context(),
 		`SELECT id::text FROM core.news WHERE slug = $1`, slug).Scan(&taken)
 	if taken != "" {
-		writeError(w, http.StatusConflict, "новость с таким адресом уже есть")
+		writeError(w, http.StatusConflict, "Новость с таким адресом уже есть")
 		return
 	}
 
@@ -440,7 +440,7 @@ func (h *Handler) CreateNews(w http.ResponseWriter, r *http.Request) {
 	`, slug, title, excerpt, body.Body, hasPublished, publishedAt, body.Active,
 		strings.TrimSpace(derefOrEmpty(body.Tag)), body.Pinned).Scan(&id)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось создать новость: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось создать новость: "+err.Error())
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "news.create", "news:"+id, nil)
@@ -565,7 +565,7 @@ func (h *Handler) publicMonitoringAllowed(w http.ResponseWriter, ctx context.Con
 
 func (h *Handler) monitoringPublicAllowed(w http.ResponseWriter, ctx context.Context, r *http.Request) bool {
 	if !h.publicRequestAllowed(ctx, r) {
-		writeError(w, http.StatusForbidden, "нет доступа к публичному мониторингу")
+		writeError(w, http.StatusForbidden, "Нет доступа к публичному мониторингу")
 		return false
 	}
 	return true

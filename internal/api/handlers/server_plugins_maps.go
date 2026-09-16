@@ -84,7 +84,7 @@ func (h *Handler) ServerPluginToggle(w http.ResponseWriter, r *http.Request) {
 	}
 	state, err := h.loadServerOperableState(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "сервер не найден")
+		writeError(w, http.StatusNotFound, "Сервер не найден")
 		return
 	}
 	if err := state.ensureAcceptsChanges(); err != nil {
@@ -96,7 +96,7 @@ func (h *Handler) ServerPluginToggle(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(r.Context()).QueryRow(r.Context(), `
 		SELECT installed FROM core.server_plugins WHERE server_id = $1::uuid AND plugin_id = $2::uuid
 	`, serverID, pluginID).Scan(&alreadyInstalled); err != nil || !alreadyInstalled {
-		writeError(w, http.StatusUnprocessableEntity, "сначала установите плагин на сервер")
+		writeError(w, http.StatusUnprocessableEntity, "Сначала установите плагин на сервер")
 		return
 	}
 
@@ -104,7 +104,7 @@ func (h *Handler) ServerPluginToggle(w http.ResponseWriter, r *http.Request) {
 		UPDATE core.server_plugins SET enabled = $3, updated_at = now()
 		WHERE server_id = $1::uuid AND plugin_id = $2::uuid
 	`, serverID, pluginID, enabled); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось переключить плагин")
+		writeError(w, http.StatusInternalServerError, "Не удалось переключить плагин")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "enabled": enabled})
@@ -129,7 +129,7 @@ func (h *Handler) serverPluginMutate(w http.ResponseWriter, r *http.Request, ins
 
 	state, err := h.loadServerOperableState(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "сервер не найден")
+		writeError(w, http.StatusNotFound, "Сервер не найден")
 		return
 	}
 	if err := state.ensureAcceptsChanges(); err != nil {
@@ -139,7 +139,7 @@ func (h *Handler) serverPluginMutate(w http.ResponseWriter, r *http.Request, ins
 
 	spec, err := h.loadPluginInstallSpec(r.Context(), pluginID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "плагин не найден")
+		writeError(w, http.StatusNotFound, "Плагин не найден")
 		return
 	}
 	if installed {
@@ -168,7 +168,7 @@ func (h *Handler) serverPluginMutate(w http.ResponseWriter, r *http.Request, ins
 
 	nodeID, err := h.serverNodeID(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "сервер не найден")
+		writeError(w, http.StatusNotFound, "Сервер не найден")
 		return
 	}
 	if _, err := h.agentCommand(r.Context(), nodeID, serverID, "plugins_apply", payload); err != nil {
@@ -185,7 +185,7 @@ func (h *Handler) serverPluginMutate(w http.ResponseWriter, r *http.Request, ins
 		ON CONFLICT (server_id, plugin_id) DO UPDATE
 		SET installed = $3, enabled = $4, installed_at = $5, last_error = NULL, updated_at = now()
 	`, serverID, pluginID, installed, enabled, now); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить состояние плагина")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить состояние плагина")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
@@ -202,7 +202,7 @@ func (h *Handler) recordPluginError(ctx context.Context, serverID, pluginID, msg
 func (h *Handler) deliverPluginArchive(w http.ResponseWriter, r *http.Request, serverID, pluginID string) (string, error) {
 	nodeID, err := h.serverNodeID(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "сервер не найден")
+		writeError(w, http.StatusNotFound, "Сервер не найден")
 		return "", err
 	}
 	cachePath, err := h.deliverCatalogArchive(r, nodeID, catalogPlugins, pluginID)
@@ -327,7 +327,7 @@ func (h *Handler) ServerMapActivate(w http.ResponseWriter, r *http.Request) {
 	}
 	state, err := h.loadServerOperableState(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "сервер не найден")
+		writeError(w, http.StatusNotFound, "Сервер не найден")
 		return
 	}
 	if err := state.ensureAcceptsChanges(); err != nil {
@@ -339,7 +339,7 @@ func (h *Handler) ServerMapActivate(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(r.Context()).QueryRow(r.Context(), `
 		SELECT installed FROM core.server_maps WHERE server_id = $1::uuid AND map_id = $2::uuid
 	`, serverID, mapID).Scan(&installed); err != nil || !installed {
-		writeError(w, http.StatusUnprocessableEntity, "сначала установите карту на сервер")
+		writeError(w, http.StatusUnprocessableEntity, "Сначала установите карту на сервер")
 		return
 	}
 
@@ -347,7 +347,7 @@ func (h *Handler) ServerMapActivate(w http.ResponseWriter, r *http.Request) {
 	payload["action"] = "activate"
 	nodeID, err := h.serverNodeID(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "сервер не найден")
+		writeError(w, http.StatusNotFound, "Сервер не найден")
 		return
 	}
 	if _, err := h.agentCommand(r.Context(), nodeID, serverID, "maps_apply", payload); err != nil {
@@ -381,7 +381,7 @@ func (h *Handler) serverMapMutate(w http.ResponseWriter, r *http.Request, instal
 	}
 	state, err := h.loadServerOperableState(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "сервер не найден")
+		writeError(w, http.StatusNotFound, "Сервер не найден")
 		return
 	}
 	if err := state.ensureAcceptsChanges(); err != nil {
@@ -391,7 +391,7 @@ func (h *Handler) serverMapMutate(w http.ResponseWriter, r *http.Request, instal
 
 	spec, err := h.loadMapInstallSpec(r.Context(), mapID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "карта не найдена")
+		writeError(w, http.StatusNotFound, "Карта не найдена")
 		return
 	}
 	if installed {
@@ -406,7 +406,7 @@ func (h *Handler) serverMapMutate(w http.ResponseWriter, r *http.Request, instal
 
 	nodeID, err := h.serverNodeID(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "сервер не найден")
+		writeError(w, http.StatusNotFound, "Сервер не найден")
 		return
 	}
 	if action == "install" {
@@ -435,7 +435,7 @@ func (h *Handler) serverMapMutate(w http.ResponseWriter, r *http.Request, instal
 		ON CONFLICT (server_id, map_id) DO UPDATE
 		SET installed = $3, is_active = $4, last_error = NULL, updated_at = now()
 	`, serverID, mapID, installed, isActive, now); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить состояние карты")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить состояние карты")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})

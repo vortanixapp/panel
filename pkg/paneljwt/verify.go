@@ -7,9 +7,10 @@ import (
 )
 
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	UserID    string `json:"user_id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	TokenType string `json:"typ,omitempty"`
 	jwtlib.RegisteredClaims
 }
 
@@ -34,6 +35,9 @@ func (v *Verifier) ParseAccess(tokenString string) (*Claims, error) {
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("invalid token")
+	}
+	if claims.UserID == "" || (claims.TokenType != "" && claims.TokenType != "access") {
+		return nil, fmt.Errorf("not an access token")
 	}
 	return claims, nil
 }

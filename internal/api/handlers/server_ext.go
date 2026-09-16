@@ -29,7 +29,7 @@ func (h *Handler) PatchServer(w http.ResponseWriter, r *http.Request) {
 	}
 	if v, has := body["limits"]; has {
 		if !isStaffRole(claims.Role) {
-			writeError(w, http.StatusForbidden, "изменение лимитов доступно только сотрудникам")
+			writeError(w, http.StatusForbidden, "Изменение лимитов доступно только сотрудникам")
 			return
 		}
 		lim, _ = json.Marshal(v)

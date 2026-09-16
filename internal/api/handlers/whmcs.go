@@ -149,7 +149,7 @@ func (h *Handler) loadWHMCSService(ctx context.Context, serviceID int64) (*whmcs
 func (h *Handler) whmcsServiceFromRequest(w http.ResponseWriter, r *http.Request) (*whmcsService, bool) {
 	serviceID, ok := whmcsIDParam(r, "serviceId")
 	if !ok {
-		writeError(w, http.StatusBadRequest, "некорректный номер услуги WHMCS")
+		writeError(w, http.StatusBadRequest, "Некорректный номер услуги WHMCS")
 		return nil, false
 	}
 	s, err := h.loadWHMCSService(r.Context(), serviceID)
@@ -166,7 +166,7 @@ func (h *Handler) whmcsServiceFromRequest(w http.ResponseWriter, r *http.Request
 
 func requireWHMCSServer(w http.ResponseWriter, s *whmcsService) bool {
 	if s.ServerID == "" {
-		writeError(w, http.StatusConflict, "сервер этой услуги в панели не создан")
+		writeError(w, http.StatusConflict, "Сервер этой услуги в панели не создан")
 		return false
 	}
 	return true
@@ -438,7 +438,7 @@ func (h *Handler) WHMCSUsage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) WHMCSServiceShow(w http.ResponseWriter, r *http.Request) {
 	serviceID, ok := whmcsIDParam(r, "serviceId")
 	if !ok {
-		writeError(w, http.StatusBadRequest, "некорректный номер услуги WHMCS")
+		writeError(w, http.StatusBadRequest, "Некорректный номер услуги WHMCS")
 		return
 	}
 	h.writeWHMCSService(w, r, serviceID, http.StatusOK, nil)
@@ -452,7 +452,7 @@ func (h *Handler) WHMCSServiceCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	serviceID, ok := whmcsIDParam(r, "serviceId")
 	if !ok {
-		writeError(w, http.StatusBadRequest, "некорректный номер услуги WHMCS")
+		writeError(w, http.StatusBadRequest, "Некорректный номер услуги WHMCS")
 		return
 	}
 	var body whmcsServiceRequest
@@ -462,7 +462,7 @@ func (h *Handler) WHMCSServiceCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	body.Client.Email = strings.ToLower(strings.TrimSpace(body.Client.Email))
 	if body.Client.ID <= 0 || !strings.Contains(body.Client.Email, "@") {
-		writeError(w, http.StatusBadRequest, "укажите номер и email клиента WHMCS")
+		writeError(w, http.StatusBadRequest, "Укажите номер и email клиента WHMCS")
 		return
 	}
 
@@ -509,7 +509,7 @@ func (h *Handler) WHMCSServiceCreate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("whmcs: учётная запись клиента %d не подготовлена: %v", body.Client.ID, err)
-		writeError(w, http.StatusInternalServerError, "не удалось подготовить учётную запись клиента")
+		writeError(w, http.StatusInternalServerError, "Не удалось подготовить учётную запись клиента")
 		return
 	}
 
@@ -524,7 +524,7 @@ func (h *Handler) WHMCSServiceCreate(w http.ResponseWriter, r *http.Request) {
 	`, plan.nodeID, plan.gameID, plan.versionID, plan.name, limitsJSON, account.userID, plan.tariffID,
 		h.defaultStartupParams(ctx, plan.gameID)).Scan(&serverID); err != nil {
 		log.Printf("whmcs: сервер услуги %d не создан: %v", serviceID, err)
-		writeError(w, http.StatusInternalServerError, "не удалось создать сервер")
+		writeError(w, http.StatusInternalServerError, "Не удалось создать сервер")
 		return
 	}
 	if _, err := tx.Exec(ctx, `
@@ -846,7 +846,7 @@ func (h *Handler) WHMCSServiceTerminate(w http.ResponseWriter, r *http.Request) 
 	}
 	serviceID, ok := whmcsIDParam(r, "serviceId")
 	if !ok {
-		writeError(w, http.StatusBadRequest, "некорректный номер услуги WHMCS")
+		writeError(w, http.StatusBadRequest, "Некорректный номер услуги WHMCS")
 		return
 	}
 	ctx := r.Context()
@@ -919,7 +919,7 @@ func (h *Handler) WHMCSServiceSuspend(w http.ResponseWriter, r *http.Request) {
 		case !blocked:
 			ownerID, name, err := h.applyServerBlock(ctx, s.ServerID, true, reason)
 			if err != nil {
-				writeError(w, http.StatusInternalServerError, "не удалось приостановить сервер")
+				writeError(w, http.StatusInternalServerError, "Не удалось приостановить сервер")
 				return
 			}
 			blockedNow = true
@@ -959,7 +959,7 @@ func (h *Handler) WHMCSServiceUnsuspend(w http.ResponseWriter, r *http.Request) 
 	if s.ServerID != "" && s.BlockedByWHMCS {
 		ownerID, name, err := h.applyServerBlock(ctx, s.ServerID, false, "")
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "не удалось возобновить сервер")
+			writeError(w, http.StatusInternalServerError, "Не удалось возобновить сервер")
 			return
 		}
 		h.notifyWHMCSSuspension(ctx, ownerID, s, name, false)
@@ -1028,21 +1028,21 @@ func (h *Handler) WHMCSServicePackage(w http.ResponseWriter, r *http.Request) {
 		tariffID = row.tariffID
 	}
 	if tariffID == "" {
-		writeError(w, http.StatusUnprocessableEntity, "в настройках продукта WHMCS не выбран тариф панели")
+		writeError(w, http.StatusUnprocessableEntity, "В настройках продукта WHMCS не выбран тариф панели")
 		return
 	}
 	tariff, err := h.loadTariffLegacyJSON(ctx, tariffID)
 	if err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "тариф панели не найден")
+		writeError(w, http.StatusUnprocessableEntity, "Тариф панели не найден")
 		return
 	}
 	if game := h.tariffGameSlug(ctx, tariffID); game != "" && game != row.gameID {
 		writeError(w, http.StatusUnprocessableEntity,
-			"новый тариф предназначен для другой игры — смена игры выполняется новой услугой")
+			"Новый тариф предназначен для другой игры — смена игры выполняется новой услугой")
 		return
 	}
 	if node, _ := tariff["location_id"].(string); node != "" && node != row.nodeID {
-		writeError(w, http.StatusUnprocessableEntity, "новый тариф привязан к другой локации")
+		writeError(w, http.StatusUnprocessableEntity, "Новый тариф привязан к другой локации")
 		return
 	}
 
@@ -1114,11 +1114,11 @@ func (h *Handler) WHMCSServicePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	password := strings.TrimSpace(body.Password)
 	if len(password) < 8 {
-		writeError(w, http.StatusUnprocessableEntity, "пароль должен быть не короче 8 символов")
+		writeError(w, http.StatusUnprocessableEntity, "Пароль должен быть не короче 8 символов")
 		return
 	}
 	if s.UserID == "" {
-		writeError(w, http.StatusConflict, "у услуги нет учётной записи в панели")
+		writeError(w, http.StatusConflict, "У услуги нет учётной записи в панели")
 		return
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -1135,7 +1135,7 @@ func (h *Handler) WHMCSServicePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusConflict, "пароль этой учётной записи из WHMCS не меняется")
+		writeError(w, http.StatusConflict, "Пароль этой учётной записи из WHMCS не меняется")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "whmcs.service.password", "user:"+s.UserID,
@@ -1149,7 +1149,7 @@ func (h *Handler) whmcsServerUsable(w http.ResponseWriter, r *http.Request) (*wh
 		return nil, false
 	}
 	if s.Status == "suspended" {
-		writeError(w, http.StatusForbidden, "услуга приостановлена в WHMCS")
+		writeError(w, http.StatusForbidden, "Услуга приостановлена в WHMCS")
 		return nil, false
 	}
 	var blocked bool
@@ -1161,7 +1161,7 @@ func (h *Handler) whmcsServerUsable(w http.ResponseWriter, r *http.Request) (*wh
 		if reason == "" {
 			reason = "обратитесь в поддержку"
 		}
-		writeError(w, http.StatusForbidden, "сервер заблокирован: "+reason)
+		writeError(w, http.StatusForbidden, "Сервер заблокирован: "+reason)
 		return nil, false
 	}
 	return s, true
@@ -1201,11 +1201,11 @@ func (h *Handler) WHMCSServiceSSO(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.UserID == "" {
-		writeError(w, http.StatusConflict, "у услуги нет учётной записи в панели")
+		writeError(w, http.StatusConflict, "У услуги нет учётной записи в панели")
 		return
 	}
 	if s.Status == "terminated" {
-		writeError(w, http.StatusConflict, "услуга удалена")
+		writeError(w, http.StatusConflict, "Услуга удалена")
 		return
 	}
 	var body struct {
@@ -1218,19 +1218,19 @@ func (h *Handler) WHMCSServiceSSO(w http.ResponseWriter, r *http.Request) {
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT role, status FROM core.users WHERE id = $1
 	`, s.UserID).Scan(&role, &status); err != nil {
-		writeError(w, http.StatusNotFound, "учётная запись не найдена")
+		writeError(w, http.StatusNotFound, "Учётная запись не найдена")
 		return
 	}
 	if isStaffRole(role) {
-		writeError(w, http.StatusForbidden, "вход под сотрудником панели из WHMCS запрещён")
+		writeError(w, http.StatusForbidden, "Вход под сотрудником панели из WHMCS запрещён")
 		return
 	}
 	if status != "active" {
-		writeError(w, http.StatusForbidden, "учётная запись в панели отключена")
+		writeError(w, http.StatusForbidden, "Учётная запись в панели отключена")
 		return
 	}
 	if h.frontendURL == "" {
-		writeError(w, http.StatusInternalServerError, "не задан публичный адрес панели (FRONTEND_URL)")
+		writeError(w, http.StatusInternalServerError, "Не задан публичный адрес панели (FRONTEND_URL)")
 		return
 	}
 
@@ -1260,7 +1260,7 @@ func (h *Handler) WHMCSClientUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	clientID, ok := whmcsIDParam(r, "clientId")
 	if !ok {
-		writeError(w, http.StatusBadRequest, "некорректный номер клиента WHMCS")
+		writeError(w, http.StatusBadRequest, "Некорректный номер клиента WHMCS")
 		return
 	}
 	var body whmcsClient
@@ -1286,7 +1286,7 @@ func (h *Handler) WHMCSClientUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if isStaffRole(role) {
-		writeError(w, http.StatusConflict, "клиент WHMCS связан с сотрудником панели")
+		writeError(w, http.StatusConflict, "Клиент WHMCS связан с сотрудником панели")
 		return
 	}
 

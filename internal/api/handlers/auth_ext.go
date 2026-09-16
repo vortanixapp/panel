@@ -53,15 +53,17 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	refreshTTL := refreshTTLFromRemaining(remaining, h.tokens.DefaultRefreshTTL())
 	ctx := r.Context()
 
-	if sessionID != "" {
-		var alive bool
-		if err := h.dbOf(ctx).QueryRow(ctx,
-			`SELECT EXISTS(SELECT 1 FROM core.user_sessions WHERE id = $1 AND user_id = $2)`,
-			sessionID, userID,
-		).Scan(&alive); err != nil || !alive {
-			writeError(w, http.StatusUnauthorized, "сессия закрыта")
-			return
-		}
+	if sessionID == "" {
+		writeError(w, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+	var alive bool
+	if err := h.dbOf(ctx).QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM core.user_sessions WHERE id = $1 AND user_id = $2)`,
+		sessionID, userID,
+	).Scan(&alive); err != nil || !alive {
+		writeError(w, http.StatusUnauthorized, "Сессия закрыта")
+		return
 	}
 	var email, role string
 	err = h.dbOf(ctx).QueryRow(ctx, `
@@ -101,6 +103,9 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	if h.tooManyAttempts(w, r, "forgot", 5, 15*time.Minute, req.Email) {
+		return
+	}
 	var userID string
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT u.id::text FROM core.users u
@@ -125,8 +130,10 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		if err := h.mail.Send(req.Email, subject, body); err != nil {
 			log.Printf("forgot-password: письмо на %s не отправлено: %v", req.Email, err)
 		}
-	} else {
+	} else if h.mail.DevExpose {
 		log.Printf("forgot-password: SMTP не настроен, ссылка для %s: %s", req.Email, resetURL)
+	} else {
+		log.Printf("forgot-password: SMTP не настроен, письмо для %s не отправлено", req.Email)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "sent"})
@@ -148,6 +155,9 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	if h.tooManyAttempts(w, r, "reset", 10, 15*time.Minute) {
+		return
+	}
 	hash := sha256Hex(req.Token)
 	var userID string
 	var expires time.Time
@@ -162,7 +172,10 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	newHash, _ := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
 	_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.users SET password_hash = $1 WHERE id = $2`, string(newHash), userID)
-	_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.password_reset_tokens SET used_at = now() WHERE token_hash = $1`, hash)
+	_, _ = h.dbOf(ctx).Exec(ctx, `
+		UPDATE core.password_reset_tokens SET used_at = now()
+		WHERE user_id = $1::uuid AND used_at IS NULL
+	`, userID)
 
 	if _, err := h.dbOf(ctx).Exec(ctx, `
 		DELETE FROM core.user_sessions WHERE user_id = $1::uuid

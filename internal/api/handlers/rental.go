@@ -331,7 +331,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.whmcsOrdersOnly(r.Context()) {
-		writeCodedError(w, http.StatusConflict, "orders_in_whmcs", "серверы заказываются через биллинг WHMCS")
+		writeCodedError(w, http.StatusConflict, "orders_in_whmcs", "Серверы заказываются через биллинг WHMCS")
 		return
 	}
 	if h.refuseUnidentified(r.Context(), w, claims.UserID, claims.Role) {
@@ -367,7 +367,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.nodeInMaintenance(r.Context(), nodeID) {
 		writeCodedError(w, http.StatusConflict, "node_maintenance",
-			"на этой локации идут технические работы, выберите другую")
+			"На этой локации идут технические работы, выберите другую")
 		return
 	}
 	if reason := h.nodeCapacityReason(r.Context(), nodeID, body.GameID); reason != "" {
@@ -383,19 +383,19 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 	gameID, gameOK := resolveGameSlug(r.Context(), h, body.GameID)
 	if !gameOK {
 		writeCodedError(w, http.StatusBadRequest, "game_unknown",
-			"игра не найдена в каталоге")
+			"Игра не найдена в каталоге")
 		return
 	}
 
 	if body.TariffID == "" {
 		writeCodedError(w, http.StatusBadRequest, "tariff_required",
-			"выберите тариф: без него нельзя определить ни цену, ни ресурсы сервера")
+			"Выберите тариф: без него нельзя определить ни цену, ни ресурсы сервера")
 		return
 	}
 
 	tariffJSON, loadErr := h.loadTariffLegacyJSON(r.Context(), body.TariffID)
 	if loadErr != nil {
-		writeCodedError(w, http.StatusBadRequest, "tariff_unknown", "тариф не найден")
+		writeCodedError(w, http.StatusBadRequest, "tariff_unknown", "Тариф не найден")
 		return
 	}
 	if msg := h.rentTariffRefusal(r.Context(), tariffJSON, body.TariffID, nodeID, gameID, periodDays); msg != "" {

@@ -34,8 +34,7 @@ func SyncCron(ctx context.Context, serverID string, jobs []CronJob) error {
 		jobs[i].Command = cmd
 	}
 
-	statePath := filepath.Join(serverDataDir(serverID), ".vortanix_cron.json")
-	if err := writeJSONFile(statePath, map[string]any{"jobs": jobs}); err != nil {
+	if err := writeStateFile(serverID, stateCronFile, map[string]any{"jobs": jobs}); err != nil {
 		return err
 	}
 
@@ -122,21 +121,6 @@ func cronComment(id string) string {
 		}
 	}
 	return b.String()
-}
-
-func writeJSONFile(path string, v any) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	tmp := path + ".tmp"
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(tmp, b, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
 }
 
 func DecodeCronJobs(raw any) ([]CronJob, error) {

@@ -93,7 +93,7 @@ func (h *Handler) AdminWebhookCreate(w http.ResponseWriter, r *http.Request) {
 	target := strings.TrimSpace(body.URL)
 	parsed, err := url.Parse(target)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		writeError(w, http.StatusBadRequest, "нужен полный адрес вида https://example.com/hook")
+		writeError(w, http.StatusBadRequest, "Нужен полный адрес вида https://example.com/hook")
 		return
 	}
 
@@ -105,19 +105,19 @@ func (h *Handler) AdminWebhookCreate(w http.ResponseWriter, r *http.Request) {
 	for _, e := range body.Events {
 		e = strings.TrimSpace(e)
 		if !known[e] {
-			writeError(w, http.StatusBadRequest, "неизвестное событие: "+e)
+			writeError(w, http.StatusBadRequest, "Неизвестное событие: "+e)
 			return
 		}
 		events = append(events, e)
 	}
 	if len(events) == 0 {
-		writeError(w, http.StatusBadRequest, "выберите хотя бы одно событие")
+		writeError(w, http.StatusBadRequest, "Выберите хотя бы одно событие")
 		return
 	}
 
 	raw := make([]byte, 24)
 	if _, err := rand.Read(raw); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось создать секрет")
+		writeError(w, http.StatusInternalServerError, "Не удалось создать секрет")
 		return
 	}
 	secret := hex.EncodeToString(raw)
@@ -161,7 +161,7 @@ func (h *Handler) AdminWebhookUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, e := range body.Events {
 			if !known[strings.TrimSpace(e)] {
-				writeError(w, http.StatusBadRequest, "неизвестное событие: "+e)
+				writeError(w, http.StatusBadRequest, "Неизвестное событие: "+e)
 				return
 			}
 		}
@@ -181,7 +181,7 @@ func (h *Handler) AdminWebhookUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "вебхук не найден")
+		writeError(w, http.StatusNotFound, "Вебхук не найден")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
@@ -201,7 +201,7 @@ func (h *Handler) AdminWebhookDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "вебхук не найден")
+		writeError(w, http.StatusNotFound, "Вебхук не найден")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "webhook.delete", "webhook:"+id, nil)
@@ -263,7 +263,7 @@ func (h *Handler) AdminWebhookTest(w http.ResponseWriter, r *http.Request) {
 	if h.dbOf(r.Context()).QueryRow(r.Context(), `
 		SELECT EXISTS(SELECT 1 FROM core.webhooks WHERE id = $1)
 	`, id).Scan(&exists) != nil || !exists {
-		writeError(w, http.StatusNotFound, "вебхук не найден")
+		writeError(w, http.StatusNotFound, "Вебхук не найден")
 		return
 	}
 	payload, _ := json.Marshal(map[string]any{

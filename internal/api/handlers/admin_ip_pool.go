@@ -83,11 +83,11 @@ func (h *Handler) AdminNodeIPAdd(w http.ResponseWriter, r *http.Request) {
 
 	addresses, invalid := parseAddressList(body.Addresses)
 	if len(invalid) > 0 {
-		writeError(w, http.StatusBadRequest, "не адреса: "+strings.Join(invalid, ", "))
+		writeError(w, http.StatusBadRequest, "Не адреса: "+strings.Join(invalid, ", "))
 		return
 	}
 	if len(addresses) == 0 {
-		writeError(w, http.StatusBadRequest, "не указано ни одного адреса")
+		writeError(w, http.StatusBadRequest, "Не указано ни одного адреса")
 		return
 	}
 
@@ -153,7 +153,7 @@ func (h *Handler) AdminNodeIPDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusConflict, "адрес выдан серверу — сначала освободите его")
+		writeError(w, http.StatusConflict, "Адрес выдан серверу — сначала освободите его")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "node.ip.delete", "ip:"+ipID, nil)
@@ -242,7 +242,7 @@ func (h *Handler) AdminServerAssignIP(w http.ResponseWriter, r *http.Request) {
 		RETURNING host(address)
 	`, body.IPID, serverID, nodeID).Scan(&address)
 	if err != nil {
-		writeError(w, http.StatusConflict, "адрес занят, не найден или принадлежит другой локации")
+		writeError(w, http.StatusConflict, "Адрес занят, не найден или принадлежит другой локации")
 		return
 	}
 
@@ -260,7 +260,7 @@ func (h *Handler) AdminServerAssignIP(w http.ResponseWriter, r *http.Request) {
 	if gameID != "" && gameID != "test" {
 		port, err = portalloc.AssignOn(ctx, tx, nodeID, serverID, gameID, address)
 		if err != nil {
-			writeError(w, http.StatusConflict, "не удалось выдать порт на этом адресе: "+err.Error())
+			writeError(w, http.StatusConflict, "Не удалось выдать порт на этом адресе: "+err.Error())
 			return
 		}
 	}
@@ -309,7 +309,7 @@ func (h *Handler) AdminServerReleaseIP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusConflict, "у сервера нет выделенного адреса")
+		writeError(w, http.StatusConflict, "У сервера нет выделенного адреса")
 		return
 	}
 
@@ -329,7 +329,7 @@ func (h *Handler) AdminServerReleaseIP(w http.ResponseWriter, r *http.Request) {
 	if gameID != "" && gameID != "test" {
 		port, err = portalloc.AssignOn(ctx, tx, nodeID, serverID, gameID, "")
 		if err != nil {
-			writeError(w, http.StatusConflict, "не удалось выдать порт на общем адресе: "+err.Error())
+			writeError(w, http.StatusConflict, "Не удалось выдать порт на общем адресе: "+err.Error())
 			return
 		}
 	}

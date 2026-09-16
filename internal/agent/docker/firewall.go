@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -23,8 +21,7 @@ func SyncFirewall(ctx context.Context, serverID string, rules []FirewallRule) er
 		return err
 	}
 
-	statePath := filepath.Join(serverDataDir(serverID), ".vortanix_firewall.json")
-	if err := writeJSONFile(statePath, map[string]any{"rules": rules}); err != nil {
+	if err := writeStateFile(serverID, stateFirewallFile, map[string]any{"rules": rules}); err != nil {
 		return err
 	}
 
@@ -156,19 +153,11 @@ func FirewallChainForServer(serverID string) string {
 }
 
 func ReadFirewallState(serverID string) ([]FirewallRule, error) {
-	path := filepath.Join(serverDataDir(serverID), ".vortanix_firewall.json")
-	b, err := os.ReadFile(path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
 	var state struct {
 		Rules []FirewallRule `json:"rules"`
 	}
-	if err := json.Unmarshal(b, &state); err != nil {
-		return nil, err
+	if !readStateFile(serverID, stateFirewallFile, &state) {
+		return nil, nil
 	}
 	return state.Rules, nil
 }

@@ -67,7 +67,7 @@ func (h *Handler) AdminNodeBulkAction(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = h.dbOf(ctx).QueryRow(ctx, countQuery, nodeID).Scan(&affected)
 	if affected == 0 {
-		writeError(w, http.StatusConflict, "на локации нет подходящих серверов")
+		writeError(w, http.StatusConflict, "На локации нет подходящих серверов")
 		return
 	}
 

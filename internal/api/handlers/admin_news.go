@@ -167,7 +167,7 @@ func (h *Handler) UpdateNews(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusNotFound, "новость не найдена")
+		writeError(w, http.StatusNotFound, "Новость не найдена")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "news.update", "news:"+id, nil)
@@ -190,16 +190,16 @@ func (h *Handler) UploadNewsImage(w http.ResponseWriter, r *http.Request) {
 	var slug string
 	if err := h.dbOf(r.Context()).QueryRow(r.Context(),
 		`SELECT slug FROM core.news WHERE id = $1::uuid`, id).Scan(&slug); err != nil {
-		writeError(w, http.StatusNotFound, "новость не найдена")
+		writeError(w, http.StatusNotFound, "Новость не найдена")
 		return
 	}
 	if err := r.ParseMultipartForm(8 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "не удалось разобрать форму")
+		writeError(w, http.StatusBadRequest, "Не удалось разобрать форму")
 		return
 	}
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "файл изображения обязателен")
+		writeError(w, http.StatusBadRequest, "Файл изображения обязателен")
 		return
 	}
 	defer file.Close()
@@ -217,7 +217,7 @@ func (h *Handler) UploadNewsImage(w http.ResponseWriter, r *http.Request) {
 		case strings.HasSuffix(lower, ".gif"):
 			ext = ".gif"
 		default:
-			writeError(w, http.StatusUnprocessableEntity, "изображение должно быть jpg, png, webp или gif")
+			writeError(w, http.StatusUnprocessableEntity, "Изображение должно быть jpg, png, webp или gif")
 			return
 		}
 	}
@@ -235,7 +235,7 @@ func (h *Handler) UploadNewsImage(w http.ResponseWriter, r *http.Request) {
 	`, id, rel).Scan(&imageID)
 	if err != nil {
 		_ = h.deleteCatalogFile(rel)
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить изображение: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить изображение: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{
@@ -258,7 +258,7 @@ func (h *Handler) DeleteNewsImage(w http.ResponseWriter, r *http.Request) {
 		WHERE id = $1::uuid AND news_id = $2::uuid
 		RETURNING path
 	`, imageID, newsID).Scan(&rel); err != nil {
-		writeError(w, http.StatusNotFound, "изображение не найдено")
+		writeError(w, http.StatusNotFound, "Изображение не найдено")
 		return
 	}
 	_ = h.deleteCatalogFile(rel)
@@ -300,8 +300,8 @@ func (h *Handler) ServeNewsImage(w http.ResponseWriter, r *http.Request) {
 	case ".gif":
 		w.Header().Set("Content-Type", "image/gif")
 	}
+	setUploadHeaders(w, "")
 	w.Header().Set("Cache-Control", "public, max-age=300")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeFile(w, r, abs)
 }
 

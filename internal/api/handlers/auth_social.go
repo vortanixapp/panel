@@ -28,14 +28,20 @@ const (
 	socialIntentLink  = "link"
 )
 
+const oauthStateTTL = 30 * time.Minute
+
 type oauthState struct {
 	Intent     string `json:"intent"`
 	TenantSlug string `json:"tenant_slug"`
 	ReturnPath string `json:"return_path"`
 	UserID     string `json:"user_id"`
+	Exp        int64  `json:"exp"`
 }
 
 func (h *Handler) encodeOAuthState(st oauthState) string {
+	if st.Exp == 0 {
+		st.Exp = time.Now().Add(oauthStateTTL).Unix()
+	}
 	raw, _ := json.Marshal(st)
 	payload := base64.RawURLEncoding.EncodeToString(raw)
 	mac := hmac.New(sha256.New, []byte(h.jwtSecret))
@@ -62,6 +68,9 @@ func (h *Handler) decodeOAuthState(state string) (oauthState, error) {
 	var st oauthState
 	if err := json.Unmarshal(raw, &st); err != nil {
 		return oauthState{}, err
+	}
+	if st.Exp > 0 && time.Now().Unix() > st.Exp {
+		return oauthState{}, fmt.Errorf("state expired")
 	}
 	return st, nil
 }
@@ -163,6 +172,18 @@ func (h *Handler) socialExchange(w http.ResponseWriter, r *http.Request, forcedI
 func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, tenantSlug, providerKey string, profile oauth.Profile) {
 	ctx := r.Context()
 
+	if blocked, reason := h.ipBlocked(ctx, clientIP(r)); blocked {
+		msg := "Доступ с этого адреса заблокирован"
+		if reason != "" {
+			msg += ": " + reason
+		}
+		writeError(w, http.StatusForbidden, msg)
+		return
+	}
+	if h.tooManyAttempts(w, r, "social", 20, 15*time.Minute) {
+		return
+	}
+
 	var userID, email, role string
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT u.id::text, u.email, u.role
@@ -172,6 +193,15 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 	`, providerKey, profile.ProviderUserID).Scan(&userID, &email, &role)
 	if err != nil {
 		email = strings.ToLower(strings.TrimSpace(profile.Email))
+		if email != "" && !profile.EmailVerified {
+			h.recordLoginAttempt(ctx, r, "", email, "соцвход: почта не подтверждена у провайдера", false)
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok": false,
+				"message": "Провайдер не подтвердил email этого аккаунта. Подтвердите почту у провайдера " +
+					"или войдите по паролю и привяжите соцсеть в настройках.",
+			})
+			return
+		}
 		if email != "" {
 			_ = h.dbOf(ctx).QueryRow(ctx, `
 				SELECT id::text, email, role FROM core.users
@@ -179,6 +209,19 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 			`, email).Scan(&userID, &email, &role)
 		}
 		if userID == "" {
+			var taken bool
+			if email != "" {
+				_ = h.dbOf(ctx).QueryRow(ctx, `
+					SELECT EXISTS(SELECT 1 FROM core.users WHERE email = $1)
+				`, email).Scan(&taken)
+			}
+			if taken {
+				writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+					"ok":      false,
+					"message": "Учётная запись с этим email недоступна для входа. Обратитесь в поддержку.",
+				})
+				return
+			}
 			userID, email, role, err = h.createSocialUser(ctx, email, profile)
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "failed to create user")
@@ -200,6 +243,12 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 	_ = h.dbOf(ctx).QueryRow(ctx, `
 		SELECT COALESCE(two_factor_enabled, false) FROM core.users WHERE id = $1::uuid
 	`, userID).Scan(&twoFAEnabled)
+	if !twoFAEnabled && isStaffRole(role) && h.staffRequires2FA(ctx) {
+		h.recordLoginAttempt(ctx, r, userID, email, "соцвход: требуется 2FA", false)
+		writeError(w, http.StatusForbidden,
+			"Для сотрудников включена обязательная двухфакторная аутентификация — обратитесь к владельцу панели, чтобы её настроить")
+		return
+	}
 	if twoFAEnabled {
 		challenge := randomToken(16)
 		_ = h.cache.SetJSON(ctx, "2fa:"+challenge, map[string]string{
@@ -250,12 +299,16 @@ func (h *Handler) createSocialUser(ctx context.Context, email string, profile oa
 
 func (h *Handler) linkSocialAccount(w http.ResponseWriter, r *http.Request, st oauthState, providerKey string, profile oauth.Profile) {
 	claims, ok := tenantClaims(r.Context())
-	userID := st.UserID
-	if ok {
-		userID = claims.UserID
+	if !ok || claims.UserID == "" {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
 	}
-	if userID == "" {
-		writeError(w, http.StatusUnauthorized, "link session expired")
+	userID := claims.UserID
+	if st.UserID != userID {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+			"ok":      false,
+			"message": "Ссылка привязки выдана другому аккаунту — начните привязку заново из настроек.",
+		})
 		return
 	}
 	ctx := r.Context()

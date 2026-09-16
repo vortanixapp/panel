@@ -209,11 +209,11 @@ func (h *Handler) AdminLanguageCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	code := normalizeLanguageCode(body.Code)
 	if !languageCodePattern.MatchString(code) {
-		writeError(w, http.StatusUnprocessableEntity, "код языка — две-три латинские буквы, можно с регионом: uk, kk, pt-br")
+		writeError(w, http.StatusUnprocessableEntity, "Код языка — две-три латинские буквы, можно с регионом: uk, kk, pt-br")
 		return
 	}
 	if isBuiltinLanguage(code) {
-		writeError(w, http.StatusConflict, "язык с таким кодом уже есть")
+		writeError(w, http.StatusConflict, "Язык с таким кодом уже есть")
 		return
 	}
 	name := ""
@@ -229,7 +229,7 @@ func (h *Handler) AdminLanguageCreate(w http.ResponseWriter, r *http.Request) {
 		base = *body.Base
 	}
 	if !isBuiltinLanguage(base) {
-		writeError(w, http.StatusUnprocessableEntity, "недостающие фразы можно брать только из русского или английского")
+		writeError(w, http.StatusUnprocessableEntity, "Недостающие фразы можно брать только из русского или английского")
 		return
 	}
 	enabled := body.Enabled == nil || *body.Enabled
@@ -238,11 +238,11 @@ func (h *Handler) AdminLanguageCreate(w http.ResponseWriter, r *http.Request) {
 		ON CONFLICT (code) DO NOTHING
 	`, code, name, base, enabled)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось добавить язык")
+		writeError(w, http.StatusInternalServerError, "Не удалось добавить язык")
 		return
 	}
 	if tag.RowsAffected() == 0 {
-		writeError(w, http.StatusConflict, "язык с таким кодом уже есть")
+		writeError(w, http.StatusConflict, "Язык с таким кодом уже есть")
 		return
 	}
 	i18n.Invalidate()
@@ -263,7 +263,7 @@ func (h *Handler) AdminLanguageUpdate(w http.ResponseWriter, r *http.Request) {
 	list := h.loadLanguages(ctx, false)
 	lang, found := findLanguage(list, code)
 	if !found {
-		writeError(w, http.StatusNotFound, "язык не найден")
+		writeError(w, http.StatusNotFound, "Язык не найден")
 		return
 	}
 	var body languageInput
@@ -280,11 +280,11 @@ func (h *Handler) AdminLanguageUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Base != nil && *body.Base != lang.Base {
 		if lang.Builtin {
-			writeError(w, http.StatusUnprocessableEntity, "у встроенного языка нельзя сменить основу")
+			writeError(w, http.StatusUnprocessableEntity, "У встроенного языка нельзя сменить основу")
 			return
 		}
 		if !isBuiltinLanguage(*body.Base) {
-			writeError(w, http.StatusUnprocessableEntity, "недостающие фразы можно брать только из русского или английского")
+			writeError(w, http.StatusUnprocessableEntity, "Недостающие фразы можно брать только из русского или английского")
 			return
 		}
 		lang.Base = *body.Base
@@ -294,7 +294,7 @@ func (h *Handler) AdminLanguageUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	isDefault := body.Default || defaultLanguage(list, h.tenantSettingString(ctx, defaultLocaleSetting)) == code
 	if isDefault && !lang.Enabled {
-		writeError(w, http.StatusUnprocessableEntity, "язык по умолчанию нельзя выключить — сначала назначьте другой")
+		writeError(w, http.StatusUnprocessableEntity, "Язык по умолчанию нельзя выключить — сначала назначьте другой")
 		return
 	}
 	if _, err := h.dbOf(ctx).Exec(ctx, `
@@ -302,7 +302,7 @@ func (h *Handler) AdminLanguageUpdate(w http.ResponseWriter, r *http.Request) {
 		ON CONFLICT (code) DO UPDATE
 		SET name = EXCLUDED.name, base = EXCLUDED.base, enabled = EXCLUDED.enabled, updated_at = now()
 	`, lang.Code, lang.Name, lang.Base, lang.Enabled); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить язык")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить язык")
 		return
 	}
 	if body.Default {
@@ -326,22 +326,22 @@ func (h *Handler) AdminLanguageDelete(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	code := normalizeLanguageCode(chi.URLParam(r, "code"))
 	if isBuiltinLanguage(code) {
-		writeError(w, http.StatusUnprocessableEntity, "встроенный язык можно только выключить")
+		writeError(w, http.StatusUnprocessableEntity, "Встроенный язык можно только выключить")
 		return
 	}
 	list := h.loadLanguages(ctx, false)
 	if _, found := findLanguage(list, code); !found {
-		writeError(w, http.StatusNotFound, "язык не найден")
+		writeError(w, http.StatusNotFound, "Язык не найден")
 		return
 	}
 	def := defaultLanguage(list, h.tenantSettingString(ctx, defaultLocaleSetting))
 	if def == code {
-		writeError(w, http.StatusUnprocessableEntity, "это язык по умолчанию — сначала назначьте другой")
+		writeError(w, http.StatusUnprocessableEntity, "Это язык по умолчанию — сначала назначьте другой")
 		return
 	}
 	tx, err := h.dbOf(ctx).Begin(ctx)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось удалить язык")
+		writeError(w, http.StatusInternalServerError, "Не удалось удалить язык")
 		return
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -355,12 +355,12 @@ func (h *Handler) AdminLanguageDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, step := range steps {
 		if _, err := tx.Exec(ctx, step.sql, step.args...); err != nil {
-			writeError(w, http.StatusInternalServerError, "не удалось удалить язык")
+			writeError(w, http.StatusInternalServerError, "Не удалось удалить язык")
 			return
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось удалить язык")
+		writeError(w, http.StatusInternalServerError, "Не удалось удалить язык")
 		return
 	}
 	i18n.Invalidate()
@@ -375,7 +375,7 @@ func (h *Handler) AdminLanguageMessages(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 	code := normalizeLanguageCode(chi.URLParam(r, "code"))
 	if _, found := findLanguage(h.loadLanguages(ctx, false), code); !found {
-		writeError(w, http.StatusNotFound, "язык не найден")
+		writeError(w, http.StatusNotFound, "Язык не найден")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -392,7 +392,7 @@ func (h *Handler) AdminLanguageMessagesSave(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	code := normalizeLanguageCode(chi.URLParam(r, "code"))
 	if _, found := findLanguage(h.loadLanguages(ctx, false), code); !found {
-		writeError(w, http.StatusNotFound, "язык не найден")
+		writeError(w, http.StatusNotFound, "Язык не найден")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, translationBodyLimit)
@@ -403,14 +403,14 @@ func (h *Handler) AdminLanguageMessagesSave(w http.ResponseWriter, r *http.Reque
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
-			writeError(w, http.StatusRequestEntityTooLarge, "фраз слишком много для одного сохранения")
+			writeError(w, http.StatusRequestEntityTooLarge, "Фраз слишком много для одного сохранения")
 			return
 		}
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 	if len(body.Messages) > translationBatchLimit {
-		writeError(w, http.StatusUnprocessableEntity, "за один раз можно сохранить не больше 20000 фраз")
+		writeError(w, http.StatusUnprocessableEntity, "За один раз можно сохранить не больше 20000 фраз")
 		return
 	}
 
@@ -419,15 +419,15 @@ func (h *Handler) AdminLanguageMessagesSave(w http.ResponseWriter, r *http.Reque
 	cleared := []string{}
 	for key, value := range body.Messages {
 		if !translationKeyPattern.MatchString(key) {
-			writeError(w, http.StatusUnprocessableEntity, "в ключах фраз допустимы только латиница, цифры, точка, дефис и подчёркивание")
+			writeError(w, http.StatusUnprocessableEntity, "В ключах фраз допустимы только латиница, цифры, точка, дефис и подчёркивание")
 			return
 		}
 		if strings.ContainsRune(value, 0) {
-			writeError(w, http.StatusUnprocessableEntity, "фраза "+key+" содержит недопустимые символы")
+			writeError(w, http.StatusUnprocessableEntity, "Фраза "+key+" содержит недопустимые символы")
 			return
 		}
 		if utf8.RuneCountInString(value) > translationValueLimit {
-			writeError(w, http.StatusUnprocessableEntity, "фраза "+key+" длиннее 10000 символов")
+			writeError(w, http.StatusUnprocessableEntity, "Фраза "+key+" длиннее 10000 символов")
 			return
 		}
 		if strings.TrimSpace(value) == "" {
@@ -440,7 +440,7 @@ func (h *Handler) AdminLanguageMessagesSave(w http.ResponseWriter, r *http.Reque
 
 	tx, err := h.dbOf(ctx).Begin(ctx)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить фразы")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить фразы")
 		return
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -460,7 +460,7 @@ func (h *Handler) AdminLanguageMessagesSave(w http.ResponseWriter, r *http.Reque
 		err = tx.Commit(ctx)
 	}
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "не удалось сохранить фразы")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить фразы")
 		return
 	}
 
