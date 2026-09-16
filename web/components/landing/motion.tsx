@@ -2,31 +2,18 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  LazyMotion,
-  MotionConfig,
   animate,
-  domMax,
   m,
   useInView,
   useMotionValue,
   useReducedMotionConfig,
   useSpring,
-  type Transition,
 } from "motion/react";
+import { EASE_OUT } from "@/components/motion-root";
 import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-export const EASE_OUT: Transition["ease"] = [0.22, 1, 0.36, 1];
-
-export function MotionRoot({ children }: { children: ReactNode }) {
-  return (
-    <LazyMotion features={domMax} strict>
-      <MotionConfig reducedMotion="user" transition={{ duration: 0.6, ease: EASE_OUT }}>
-        {children}
-      </MotionConfig>
-    </LazyMotion>
-  );
-}
+export { EASE_OUT, MotionRoot } from "@/components/motion-root";
 
 export function Reveal({
   children,

@@ -223,7 +223,7 @@ type apiKeyContextKeyType struct{}
 var apiKeyContextKey apiKeyContextKeyType
 
 func (h *Handler) authWithAPIKey(next http.Handler) http.Handler {
-	jwtChain := AuthMiddleware(h.tokens)(next)
+	jwtChain := AuthMiddleware(h.tokens)(h.withLiveAccount(next))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw := strings.TrimSpace(r.Header.Get("X-API-Key"))
 		if raw == "" {

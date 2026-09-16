@@ -299,6 +299,7 @@ export const adminInfra = {
   "admin.setup.subtitle":
     "SSH-настройка игровой ноды · Control plane на k3s · Agent → relay",
   "admin.setup.step_done": "Шаг установки завершён",
+  "admin.setup.step_failed": "Шаг установки не выполнен, причина в логе",
   "admin.setup.status_failed": "Ошибка статуса",
   "admin.setup.fill_ssh": "заполните host / user / password",
   "admin.setup.then_test": "и нажмите «Проверить SSH».",

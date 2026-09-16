@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
+import { m } from "motion/react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -75,7 +76,21 @@ export function NavGroup({ title, items }: NavGroupProps) {
 }
 
 function NavBadge({ children }: { children: ReactNode }) {
-  return <Badge className="rounded-full px-1 py-0 text-xs">{children}</Badge>;
+  return <Badge className="relative rounded-full px-1 py-0 text-xs">{children}</Badge>;
+}
+
+const ITEM_MOTION =
+  "relative overflow-visible group-data-[collapsible=icon]:overflow-hidden data-[active=true]:bg-transparent [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:scale-110";
+
+function ActiveGlow({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <m.span
+      layoutId="sidebar-active"
+      className="absolute inset-0 rounded-md bg-sidebar-accent"
+      transition={{ type: "spring", stiffness: 420, damping: 36 }}
+    />
+  );
 }
 
 function SidebarMenuLink({
@@ -86,17 +101,20 @@ function SidebarMenuLink({
   pathname: string;
 }) {
   const { setOpenMobile } = useSidebar();
+  const active = checkIsActive(pathname, item);
 
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
-        isActive={checkIsActive(pathname, item)}
+        isActive={active}
         tooltip={item.title}
+        className={ITEM_MOTION}
       >
         <Link href={item.url} onClick={() => setOpenMobile(false)}>
-          {item.icon && <item.icon />}
-          <span>{item.title}</span>
+          <ActiveGlow active={active} />
+          {item.icon && <item.icon className="relative" />}
+          <span className="relative">{item.title}</span>
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
         </Link>
       </SidebarMenuButton>
@@ -121,7 +139,7 @@ function SidebarMenuCollapsible({
     >
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title}>
+          <SidebarMenuButton tooltip={item.title} className="[&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg:first-child]:scale-110">
             {item.icon && <item.icon />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
@@ -130,23 +148,28 @@ function SidebarMenuCollapsible({
         </CollapsibleTrigger>
         <CollapsibleContent className="CollapsibleContent">
           <SidebarMenuSub>
-            {item.items.map((subItem) => (
-              <SidebarMenuSubItem key={subItem.title}>
-                <SidebarMenuSubButton
-                  asChild
-                  isActive={checkIsActive(pathname, subItem)}
-                >
-                  <Link
-                    href={subItem.url}
-                    onClick={() => setOpenMobile(false)}
+            {item.items.map((subItem) => {
+              const active = checkIsActive(pathname, subItem);
+              return (
+                <SidebarMenuSubItem key={subItem.title}>
+                  <SidebarMenuSubButton
+                    asChild
+                    isActive={active}
+                    className="relative data-[active=true]:bg-transparent"
                   >
-                    {subItem.icon && <subItem.icon />}
-                    <span>{subItem.title}</span>
-                    {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
-                  </Link>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
+                    <Link
+                      href={subItem.url}
+                      onClick={() => setOpenMobile(false)}
+                    >
+                      <ActiveGlow active={active} />
+                      {subItem.icon && <subItem.icon className="relative" />}
+                      <span className="relative">{subItem.title}</span>
+                      {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              );
+            })}
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>

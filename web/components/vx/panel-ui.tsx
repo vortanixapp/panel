@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+import { m } from "motion/react";
 import { cn } from "@/lib/utils";
 
 export const VX_PAGE_BG = "var(--vx-bg)";
@@ -43,7 +45,7 @@ const SIZE: Record<BtnSize, string> = {
 
 export function btnClass(tone: BtnTone = "default", size: BtnSize = "md") {
   return cn(
-    "inline-flex shrink-0 items-center justify-center gap-2 border font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-55",
+    "inline-flex shrink-0 items-center justify-center gap-2 border font-medium whitespace-nowrap transition-[color,background-color,border-color,transform] duration-150 disabled:cursor-not-allowed disabled:opacity-55 active:[transform:scale(0.97)] disabled:active:[transform:none]",
     TONE[tone],
     SIZE[size]
   );
@@ -78,7 +80,7 @@ export function Panel({
   flush?: boolean;
 }) {
   return (
-    <div className={cn("overflow-hidden rounded-[14px]", VX_CARD, className)}>
+    <div data-spotlight className={cn("relative isolate overflow-hidden rounded-[14px]", VX_CARD, className)}>
       {(title || aside) && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--vx-border)] px-[18px] py-[13px]">
           <span className="text-[12.5px] font-medium">{title}</span>
@@ -109,6 +111,7 @@ export function SubTabs({
   onSelect: (id: string) => void;
   className?: string;
 }) {
+  const groupId = useId();
   if (items.length < 2) return null;
   return (
     <div
@@ -128,15 +131,22 @@ export function SubTabs({
             aria-selected={on}
             onClick={() => onSelect(item.id)}
             className={cn(
-              "inline-flex h-[26px] shrink-0 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] transition-colors",
+              "relative inline-flex h-[26px] shrink-0 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] transition-colors",
               on
-                ? "bg-[var(--vx-tint)] font-medium text-[var(--vx-fg-strong)]"
+                ? "font-medium text-[var(--vx-fg-strong)]"
                 : "text-[var(--vx-muted)] hover:text-[var(--vx-fg)]"
             )}
           >
-            {item.title}
+            {on && (
+              <m.span
+                layoutId={`sub-tabs-${groupId}`}
+                className="absolute inset-0 rounded-[7px] bg-[var(--vx-tint)]"
+                transition={{ type: "spring", stiffness: 500, damping: 38 }}
+              />
+            )}
+            <span className="relative">{item.title}</span>
             {item.badge ? (
-              <span className="inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[var(--vx-fg-strong)] px-1 font-mono text-[9.5px] leading-none text-[var(--vx-on-fill)]">
+              <span className="relative inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[var(--vx-fg-strong)] px-1 font-mono text-[9.5px] leading-none text-[var(--vx-on-fill)]">
                 {item.badge}
               </span>
             ) : null}
@@ -187,7 +197,7 @@ export function Toggle({
     >
       <span
         className={cn(
-          "h-[15px] w-[15px] rounded-full transition-[margin] duration-150",
+          "h-[15px] w-[15px] rounded-full transition-[margin,background-color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
           checked ? "ml-[15px] bg-[var(--vx-bg)]" : "ml-0 bg-[var(--vx-muted)]"
         )}
       />
@@ -255,7 +265,7 @@ export function Bar({
   return (
     <div className={cn("h-[3px] overflow-hidden rounded-full bg-[var(--vx-inset)]", className)}>
       <div
-        className={cn("h-full bg-[var(--vx-muted)] transition-[width] duration-500", barClassName)}
+        className={cn("vx-grow-x h-full bg-[var(--vx-muted)] transition-[width] duration-500", barClassName)}
         style={{ width: `${width}%` }}
       />
     </div>
@@ -274,7 +284,7 @@ export function Tile({
   pct: number;
 }) {
   return (
-    <div className={cn("rounded-[14px] px-[18px] py-4", VX_CARD)}>
+    <div data-spotlight className={cn("relative isolate rounded-[14px] px-[18px] py-4", VX_CARD)}>
       <div className={cn(VX_MONO_LABEL, "tracking-[0.09em]")}>{label}</div>
       <div className="mt-2.5 font-mono text-[24px] font-medium tracking-[-0.02em] text-[var(--vx-fg)]">
         {value}

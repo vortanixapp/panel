@@ -407,3 +407,33 @@ func AuthMiddleware(tokens *paneljwt.Manager) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+func (h *Handler) withLiveAccount(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := tenantClaims(r.Context())
+		if !ok || claims.UserID == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		ctx := r.Context()
+		var email, role, status string
+		err := h.dbOf(ctx).QueryRow(ctx, `
+			SELECT email, role, status FROM core.users WHERE id = $1
+		`, claims.UserID).Scan(&email, &role, &status)
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && status != "active") {
+			writeError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		if role != claims.Role || email != claims.Email {
+			live := *claims
+			live.Role = role
+			live.Email = email
+			ctx = context.WithValue(ctx, authContextKey, &live)
+		}
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

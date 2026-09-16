@@ -28,7 +28,7 @@ export function StatCell({
   note?: string;
 }) {
   return (
-    <div className="bg-card px-5 py-[18px]">
+    <div data-spotlight className="relative isolate bg-card px-5 py-[18px]">
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         {icon}
         {label}
@@ -91,7 +91,7 @@ export function UsageBar({
       ) : (
         <div className="mt-2 h-1 overflow-hidden rounded-full bg-border">
           <span
-            className={cn("block h-1", warn ? "bg-[var(--vx-warn)]" : "bg-primary")}
+            className={cn("vx-grow-x block h-1 transition-[width] duration-500", warn ? "bg-[var(--vx-warn)]" : "bg-primary")}
             style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
           />
         </div>
@@ -101,10 +101,10 @@ export function UsageBar({
 }
 
 export const btnPrimary =
-  "inline-flex items-center justify-center gap-2 rounded-[9px] bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-foreground disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-[9px] bg-primary px-4 text-[13px] font-semibold text-primary-foreground transition-[color,background-color,transform] duration-150 hover:bg-foreground disabled:opacity-50 active:[transform:scale(0.97)] disabled:active:[transform:none]";
 
 export const btnGhost =
-  "inline-flex items-center justify-center gap-[7px] rounded-[9px] border border-input bg-transparent px-4 text-[12.5px] text-foreground transition-colors hover:bg-accent disabled:opacity-50";
+  "inline-flex items-center justify-center gap-[7px] rounded-[9px] border border-input bg-transparent px-4 text-[12.5px] text-foreground transition-[color,background-color,transform] duration-150 hover:bg-accent disabled:opacity-50 active:[transform:scale(0.97)] disabled:active:[transform:none]";
 
 export const fieldClass =
   "h-[38px] w-full rounded-[9px] border border-input bg-background px-3 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-ring";

@@ -886,18 +886,19 @@ func (h *Handler) GetAdminLocationSetupStatus(w http.ResponseWriter, r *http.Req
 	logText := ""
 	completed := false
 	component := ""
+	status := ""
 	if progress != nil {
 		logText, _ = progress["log"].(string)
 		completed, _ = progress["completed"].(bool)
 		component, _ = progress["component"].(string)
 	}
 	if component != "" {
-		st := h.setupComponentStatus(r, id, component, meta)
-		if st == "installed" || st == "failed" {
+		status = h.setupComponentStatus(r, id, component, meta)
+		if status == "installed" || status == "failed" {
 			completed = true
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"log": logText, "completed": completed, "component": component})
+	writeJSON(w, http.StatusOK, map[string]any{"log": logText, "completed": completed, "component": component, "status": status})
 }
 
 func (h *Handler) RunAdminLocationSetupStep(w http.ResponseWriter, r *http.Request) {

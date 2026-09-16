@@ -72,7 +72,8 @@ function TicketCard({
   return (
     <Link
       href={`/support/${ticket.id}`}
-      className="flex flex-col gap-3 rounded-2xl border border-border bg-card px-5 py-[18px] transition-colors hover:border-[var(--vx-panel-hover-line)]"
+      data-spotlight
+      className="relative isolate flex flex-col gap-3 rounded-2xl border border-border bg-card px-5 py-[18px] transition-colors hover:border-[var(--vx-panel-hover-line)]"
     >
       <div className="flex flex-wrap items-center gap-[10px]">
         <PriorityDot priority={ticket.priority} />
@@ -284,7 +285,7 @@ export function SupportPageContent() {
           </div>
         )}
 
-        <div className="flex flex-col gap-2.5">
+        <div className="vx-stagger flex flex-col gap-2.5">
           {visible.map((t) => (
             <TicketCard key={t.id} ticket={t} departments={departments} />
           ))}

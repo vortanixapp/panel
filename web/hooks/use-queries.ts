@@ -68,6 +68,7 @@ export function useMe() {
       return failureCount < 1;
     },
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }
 
@@ -91,6 +92,7 @@ export function useCreateUser() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.users });
       void qc.invalidateQueries({ queryKey: ["admin-users"] });
+      void qc.invalidateQueries({ queryKey: queryKeys.adminGroups });
     },
   });
 }
@@ -138,6 +140,7 @@ export function useUpdateAdminUser(id: string) {
       void qc.invalidateQueries({ queryKey: queryKeys.adminUserEdit(id) });
       void qc.invalidateQueries({ queryKey: ["admin-users"] });
       void qc.invalidateQueries({ queryKey: queryKeys.users });
+      void qc.invalidateQueries({ queryKey: queryKeys.adminGroups });
     },
   });
 }

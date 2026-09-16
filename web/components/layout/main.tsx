@@ -1,3 +1,7 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 type MainProps = React.HTMLAttributes<HTMLElement> & {
@@ -6,7 +10,20 @@ type MainProps = React.HTMLAttributes<HTMLElement> & {
   ref?: React.Ref<HTMLElement>
 }
 
+let lastSection: string | null = null
+
+function sectionOf(pathname: string) {
+  return pathname.match(/^(\/(?:admin\/)?servers\/[^/]+)\//)?.[1] ?? pathname
+}
+
 export function Main({ fixed, className, fluid = true, ...props }: MainProps) {
+  const section = sectionOf(usePathname())
+  const [enter] = useState(() => section !== lastSection)
+
+  useEffect(() => {
+    lastSection = section
+  }, [section])
+
   return (
     <main
       data-layout={fixed ? 'fixed' : 'auto'}
@@ -17,6 +34,7 @@ export function Main({ fixed, className, fluid = true, ...props }: MainProps) {
 
         !fluid &&
           '@7xl/content:mx-auto @7xl/content:w-full @7xl/content:max-w-7xl',
+        enter && 'vx-enter',
         className
       )}
       {...props}

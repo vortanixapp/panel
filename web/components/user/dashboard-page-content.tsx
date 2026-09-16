@@ -19,6 +19,7 @@ import { localeTag, t } from "@/lib/i18n";
 import { getServerStatus } from "@/lib/server-status";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
+import { AnimatedNumber } from "@/components/vx/motion";
 
 const EMPTY: DashboardData = {
   balance: 0,
@@ -33,9 +34,9 @@ const EMPTY: DashboardData = {
   news: [],
 };
 
-const CARD = "rounded-[22px] border border-[var(--vx-panel-line)] bg-[var(--vx-panel-card)]";
+const CARD = "relative isolate rounded-[22px] border border-[var(--vx-panel-line)] bg-[var(--vx-panel-card)]";
 const CARD_RAISED =
-  "rounded-[22px] border border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-card)]";
+  "relative isolate rounded-[22px] border border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-card)]";
 const CARD_LABEL =
   "text-[13px] font-semibold tracking-[0.02em] text-muted-foreground";
 
@@ -315,8 +316,8 @@ export function DashboardPageContent() {
   return (
     <PageShell variant="user">
       <div className="font-panel">
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-6">
-          <div
+        <div className="vx-stagger grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-6">
+          <div data-spotlight
             className={cn(
               CARD_RAISED,
               "flex flex-col p-[26px] sm:col-span-2 lg:row-span-2"
@@ -327,9 +328,11 @@ export function DashboardPageContent() {
               <i className="ri-wallet-3-line text-lg" />
             </div>
             <div className="mt-[26px] flex items-baseline gap-2">
-              <span className="text-[46px] leading-none font-semibold tracking-[-0.045em] sm:text-[54px]">
-                {formatAmount(d.balance, 0)}
-              </span>
+              <AnimatedNumber
+                value={Number(d.balance) || 0}
+                format={(value) => formatAmount(value, 0)}
+                className="text-[46px] leading-none font-semibold tracking-[-0.045em] sm:text-[54px]"
+              />
               <span className="text-[17px] font-medium text-[var(--vx-ink-faint)]">
                 {d.balance_currency === "RUB" ? "₽" : d.balance_currency}
               </span>
@@ -367,7 +370,7 @@ export function DashboardPageContent() {
             <div className="flex-1" />
             <div className="mt-6 h-[5px] overflow-hidden rounded-[3px] bg-[var(--vx-panel-track)]">
               <div
-                className="h-[5px] bg-[var(--vx-panel-ink)]"
+                className="vx-grow-x h-[5px] bg-[var(--vx-panel-ink)] transition-[width] duration-700"
                 style={{ width: `${balancePct}%` }}
               />
             </div>
@@ -387,7 +390,7 @@ export function DashboardPageContent() {
             </div>
           </div>
 
-          <div className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-4")}>
+          <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-4")}>
             <div className="flex flex-wrap items-center gap-3.5">
               <span className="text-base font-semibold">{t("dashboard.servers.title")}</span>
               <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
@@ -401,10 +404,10 @@ export function DashboardPageContent() {
               <div className="flex-1" />
               <Link
                 href="/servers"
-                className="flex items-center gap-[7px] text-[13px] font-medium text-primary"
+                className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
               >
                 {t("common.all")}
-                <ArrowIcon className="size-3.5" />
+                <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
               </Link>
             </div>
 
@@ -442,8 +445,9 @@ export function DashboardPageContent() {
                     <Link
                       key={s.id}
                       href={`/servers/${s.id}`}
+                      data-spotlight
                       className={cn(
-                        "rounded-2xl border p-[18px] transition-colors hover:border-[var(--vx-panel-hover-line)]",
+                        "relative isolate rounded-2xl border p-[18px] transition-[border-color,transform] duration-300 hover:-translate-y-0.5 hover:border-[var(--vx-panel-hover-line)]",
                         i === 0
                           ? "border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-card)]"
                           : "border-[var(--vx-panel-line)] bg-[var(--vx-panel-card-2)]"
@@ -452,8 +456,8 @@ export function DashboardPageContent() {
                       <div className="flex items-center gap-2.5">
                         <span
                           className={cn(
-                            "size-[7px] flex-shrink-0 rounded-full",
-                            running ? "bg-[var(--vx-panel-fill)]" : "bg-[var(--vx-panel-fill-muted)]"
+                            "relative size-[7px] flex-shrink-0 rounded-full",
+                            running ? "vx-live bg-[var(--vx-panel-fill)]" : "bg-[var(--vx-panel-fill-muted)]"
                           )}
                         />
                         <span className="truncate text-sm font-semibold tracking-[-0.01em]">
@@ -472,10 +476,13 @@ export function DashboardPageContent() {
                             <div
                               key={k}
                               className={cn(
-                                "flex-1 rounded-[2px]",
+                                "vx-grow-y flex-1 rounded-[2px]",
                                 active ? "bg-[var(--vx-panel-fill)]" : "bg-[var(--vx-panel-track)]"
                               )}
-                              style={{ height: active ? `${45 + ((k * 13) % 55)}%` : "18%" }}
+                              style={{
+                                height: active ? `${45 + ((k * 13) % 55)}%` : "18%",
+                                animationDelay: `${200 + k * 25}ms`,
+                              }}
                             />
                           );
                         })}
@@ -537,7 +544,7 @@ export function DashboardPageContent() {
             )}
           </div>
 
-          <div
+          <div data-spotlight
             className={cn(
               d.expiring_soon_count > 0 ? CARD_RAISED : CARD,
               "px-6 py-[22px] sm:col-span-1 lg:col-span-2"
@@ -585,7 +592,7 @@ export function DashboardPageContent() {
             </div>
           </div>
 
-          <div className={cn(CARD, "flex flex-col px-6 py-[22px] sm:col-span-1 lg:col-span-2")}>
+          <div data-spotlight className={cn(CARD, "flex flex-col px-6 py-[22px] sm:col-span-1 lg:col-span-2")}>
             <div className="flex items-center justify-between">
               <span className={CARD_LABEL}>{t("dashboard.support.title")}</span>
               <i
@@ -618,16 +625,16 @@ export function DashboardPageContent() {
             <div className="flex-1" />
             <Link
               href={d.open_support_tickets_count > 0 ? "/support" : "/support/create"}
-              className="mt-4 flex items-center gap-[7px] text-[13px] font-semibold text-primary"
+              className="group mt-4 flex items-center gap-[7px] text-[13px] font-semibold text-primary"
             >
               {d.open_support_tickets_count > 0
                 ? t("dashboard.support.open_tickets")
                 : t("dashboard.support.write")}
-              <ArrowIcon className="size-3.5" />
+              <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
             </Link>
           </div>
 
-          <div className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-4")}>
+          <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-4")}>
             <div className="flex flex-wrap items-center gap-3.5">
               <span className="text-base font-semibold">{t("dashboard.spend.title")}</span>
               <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
@@ -657,15 +664,17 @@ export function DashboardPageContent() {
                   })}
                 >
                   <div
-                    className="flex-1 rounded-t-[3px] bg-[var(--vx-panel-fill)]"
+                    className="vx-grow-y flex-1 rounded-t-[3px] bg-[var(--vx-panel-fill)]"
                     style={{
                       height: `${Math.max(day.debit > 0 ? 4 : 2, (day.debit / spend.peak) * 100)}%`,
+                      animationDelay: `${150 + i * 14}ms`,
                     }}
                   />
                   <div
-                    className="flex-1 rounded-t-[3px] bg-[var(--vx-panel-fill-muted)]"
+                    className="vx-grow-y flex-1 rounded-t-[3px] bg-[var(--vx-panel-fill-muted)]"
                     style={{
                       height: `${Math.max(day.credit > 0 ? 4 : 2, (day.credit / spend.peak) * 100)}%`,
+                      animationDelay: `${190 + i * 14}ms`,
                     }}
                   />
                 </div>
@@ -683,7 +692,7 @@ export function DashboardPageContent() {
             )}
           </div>
 
-          <div className={cn(CARD_RAISED, "flex flex-col px-6 py-[22px] sm:col-span-2")}>
+          <div data-spotlight className={cn(CARD_RAISED, "flex flex-col px-6 py-[22px] sm:col-span-2")}>
             <div className="flex items-center justify-between">
               <span className="text-[13px] font-semibold tracking-[0.02em] text-[var(--vx-warn)]">
                 {t("billing.bonus.title")}
@@ -715,16 +724,16 @@ export function DashboardPageContent() {
             </button>
           </div>
 
-          <div className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-3")}>
+          <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-3")}>
             <div className="flex items-center">
               <span className="text-base font-semibold">{t("dashboard.recent.title")}</span>
               <div className="flex-1" />
               <Link
                 href="/activity"
-                className="flex items-center gap-[7px] text-[13px] font-medium text-primary"
+                className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
               >
                 {t("dashboard.recent.journal")}
-                <ArrowIcon className="size-3.5" />
+                <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
               </Link>
             </div>
             {d.recent_transactions.length === 0 ? (
@@ -779,7 +788,7 @@ export function DashboardPageContent() {
             )}
           </div>
 
-          <div className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-3")}>
+          <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-3")}>
             <div className="text-base font-semibold">{t("dashboard.next_steps.title")}</div>
             <div className="mt-4 flex flex-col gap-2.5">
               {nextSteps.map((n) => (
@@ -787,7 +796,7 @@ export function DashboardPageContent() {
                   key={n.titleKey}
                   href={n.href}
                   className={cn(
-                    "flex items-center gap-3.5 rounded-[14px] border px-4 py-3.5 transition-colors hover:border-[var(--vx-panel-hover-line)]",
+                    "group flex items-center gap-3.5 rounded-[14px] border px-4 py-3.5 transition-colors hover:border-[var(--vx-panel-hover-line)]",
                     n.raised
                       ? "border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-card)]"
                       : "border-[var(--vx-panel-line)] bg-[var(--vx-panel-card-2)]"
@@ -812,7 +821,7 @@ export function DashboardPageContent() {
                       {t(n.subKey, n.subParams)}
                     </div>
                   </div>
-                  <ArrowIcon className="size-[15px] flex-shrink-0 text-[var(--vx-ink-ghost)]" />
+                  <ArrowIcon className="size-[15px] flex-shrink-0 text-[var(--vx-ink-ghost)] transition-[transform,color] duration-300 group-hover:translate-x-0.5 group-hover:text-[var(--vx-panel-ink)]" />
                 </Link>
               ))}
             </div>
@@ -820,16 +829,16 @@ export function DashboardPageContent() {
         </div>
 
         {d.news.length > 0 && (
-          <div className={cn(CARD, "mt-3.5 px-[26px] py-6")}>
+          <div data-spotlight className={cn(CARD, "mt-3.5 px-[26px] py-6")}>
             <div className="flex items-center">
               <span className="text-base font-semibold">{t("news.title")}</span>
               <div className="flex-1" />
               <Link
                 href="/news"
-                className="flex items-center gap-[7px] text-[13px] font-medium text-primary"
+                className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
               >
                 {t("news.all")}
-                <ArrowIcon className="size-3.5" />
+                <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
               </Link>
             </div>
             <div className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">

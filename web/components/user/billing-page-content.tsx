@@ -313,13 +313,14 @@ export function BillingPageContent() {
 
         <IdentificationNotice className="mb-3.5" />
 
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="vx-stagger grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((c) => (
             <div
               key={c.label}
+              data-spotlight
               className={cn(
                 c.tone === "warn" ? CARD_WARN : c.raised ? CARD_RAISED : CARD,
-                "px-6 py-[22px]"
+                "relative isolate px-6 py-[22px]"
               )}
             >
               <div className="flex items-center justify-between">

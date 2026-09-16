@@ -91,6 +91,9 @@
   --vx-info: #2a6099;
 
   --vx-violet: #6d43b8;
+
+  --vx-spotlight: rgba(10, 11, 13, 0.045);
+  --vx-shimmer: rgba(255, 255, 255, 0.65);
 }
 
 .dark {
@@ -128,6 +131,9 @@
   --vx-danger: #e07a7a;
   --vx-info: #7bb3e8;
   --vx-violet: #b98bf0;
+
+  --vx-spotlight: rgba(255, 255, 255, 0.055);
+  --vx-shimmer: rgba(255, 255, 255, 0.06);
 }
 
 :root {
@@ -232,6 +238,142 @@ html[data-theme-locked] .vx-theme-switch {
 
 .vx-display {
   font-family: var(--font-display, var(--font-sans));
+}
+
+@keyframes vx-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes vx-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes vx-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes vx-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes vx-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes vx-live {
+  0% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  80%,
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+.vx-enter > * {
+  animation: vx-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.vx-stagger > * {
+  animation: vx-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.vx-stagger > :nth-child(2) { animation-delay: 40ms; }
+.vx-stagger > :nth-child(3) { animation-delay: 80ms; }
+.vx-stagger > :nth-child(4) { animation-delay: 120ms; }
+.vx-stagger > :nth-child(5) { animation-delay: 160ms; }
+.vx-stagger > :nth-child(6) { animation-delay: 200ms; }
+.vx-stagger > :nth-child(7) { animation-delay: 240ms; }
+.vx-stagger > :nth-child(8) { animation-delay: 280ms; }
+.vx-stagger > :nth-child(9) { animation-delay: 320ms; }
+.vx-stagger > :nth-child(10) { animation-delay: 360ms; }
+.vx-stagger > :nth-child(n + 11) { animation-delay: 400ms; }
+
+.vx-fade-in {
+  animation: vx-fade 0.35s ease both;
+}
+
+.vx-grow-x {
+  transform-origin: left center;
+  animation: vx-grow-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.vx-grow-y {
+  transform-origin: center bottom;
+  animation: vx-grow-y 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.vx-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--vx-shimmer), transparent);
+  animation: vx-shimmer 1.6s ease-in-out infinite;
+}
+
+.vx-live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: inherit;
+  animation: vx-live 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+[data-spotlight]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    380px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    var(--vx-spotlight),
+    transparent 70%
+  );
+  transition: opacity 0.35s ease;
+}
+
+[data-spotlight]:hover::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vx-enter > *,
+  .vx-stagger > *,
+  .vx-fade-in,
+  .vx-grow-x,
+  .vx-grow-y,
+  .vx-shimmer::after,
+  .vx-live::after {
+    animation: none;
+  }
 }
 
 .font-panel {

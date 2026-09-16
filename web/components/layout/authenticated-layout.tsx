@@ -7,6 +7,8 @@ import { SearchProvider } from "@/context/search-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SkipToMain } from "@/components/skip-to-main";
+import { MotionRoot } from "@/components/motion-root";
+import { useSpotlight } from "@/components/vx/motion";
 import type { PanelVariant } from "@/lib/panel-paths";
 
 type AuthenticatedLayoutProps = {
@@ -23,24 +25,27 @@ export function AuthenticatedLayout({
   variant = "user",
 }: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie("sidebar_state") !== "false";
+  useSpotlight();
 
   return (
-    <SearchProvider>
-      <LayoutProvider>
-        <SidebarProvider defaultOpen={defaultOpen}>
-          <SkipToMain />
-          <AppSidebar email={email} role={role} variant={variant} />
-          <SidebarInset
-            className={cn(
-              "@container/content min-w-0",
-              "has-data-[layout=fixed]:h-svh has-data-[layout=fixed]:overflow-hidden",
-              "peer-data-[variant=inset]:has-data-[layout=fixed]:h-[calc(100svh-(var(--spacing)*4))]"
-            )}
-          >
-            {children}
-          </SidebarInset>
-        </SidebarProvider>
-      </LayoutProvider>
-    </SearchProvider>
+    <MotionRoot>
+      <SearchProvider>
+        <LayoutProvider>
+          <SidebarProvider defaultOpen={defaultOpen}>
+            <SkipToMain />
+            <AppSidebar email={email} role={role} variant={variant} />
+            <SidebarInset
+              className={cn(
+                "@container/content min-w-0",
+                "has-data-[layout=fixed]:h-svh has-data-[layout=fixed]:overflow-hidden",
+                "peer-data-[variant=inset]:has-data-[layout=fixed]:h-[calc(100svh-(var(--spacing)*4))]"
+              )}
+            >
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
+        </LayoutProvider>
+      </SearchProvider>
+    </MotionRoot>
   );
 }

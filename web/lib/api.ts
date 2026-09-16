@@ -3042,7 +3042,7 @@ export async function fetchAdminLocationSetup(id: string) {
 }
 
 export async function fetchAdminLocationSetupStatus(id: string) {
-  return apiFetch<{ log: string; completed: boolean; component?: string }>(
+  return apiFetch<{ log: string; completed: boolean; component?: string; status?: string }>(
     `/v1/admin/locations/${id}/setup/status`
   );
 }

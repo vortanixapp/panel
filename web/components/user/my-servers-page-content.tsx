@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { fetchMyServers, powerServer, type DashboardServer } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
+import { AnimatedNumber } from "@/components/vx/motion";
 import { localeTag } from "@/lib/i18n";
 import {
   canStartServer,
@@ -171,7 +172,7 @@ export function MyServersPageContent() {
           </div>
         ) : (
           <>
-            <div className="grid gap-px overflow-hidden rounded-2xl border bg-border [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+            <div className="vx-stagger grid gap-px overflow-hidden rounded-2xl border bg-border [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
               <StatTile
                 label={t("servers.list.stat_total")}
                 value={total}
@@ -270,7 +271,7 @@ export function MyServersPageContent() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <div className="flex min-w-[1040px] flex-col">
+                  <div className="vx-stagger flex min-w-[1040px] flex-col">
                     <div
                       className={cn(
                         "grid gap-3.5 border-b bg-muted/40 py-3 pr-5 pl-6 font-mono text-[11px] tracking-wider text-muted-foreground uppercase",
@@ -363,7 +364,7 @@ function ServerRow({
                   : "text-muted-foreground"
           )}
         >
-          <span className={cn("size-1.5 rounded-full", dot)} />
+          <span className={cn("relative size-1.5 rounded-full", dot, st.category === "running" && "vx-live")} />
           {st.label}
         </span>
         {server.is_blocked && (
@@ -499,7 +500,7 @@ function Meter({ label, value }: { label: string; value?: number }) {
       <span className="h-[3px] flex-1 overflow-hidden rounded-sm bg-muted">
         {known && (
           <span
-            className={cn("block h-full", tone.bar)}
+            className={cn("vx-grow-x block h-full transition-[width] duration-500", tone.bar)}
             style={{ width: `${pct}%` }}
           />
         )}
@@ -523,21 +524,20 @@ function StatTile({
   tone?: "emerald" | "amber" | "rose";
 }) {
   return (
-    <div className="flex flex-col gap-2 bg-card px-5 py-4">
+    <div data-spotlight className="relative isolate flex flex-col gap-2 bg-card px-5 py-4">
       <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
         {label}
       </span>
       <span className="flex items-baseline gap-2">
-        <span
+        <AnimatedNumber
+          value={value}
           className={cn(
             "text-[26px] leading-none font-semibold tracking-tight",
             tone === "emerald" && "text-emerald-500",
             tone === "amber" && "text-amber-500",
             tone === "rose" && "text-rose-500"
           )}
-        >
-          {value}
-        </span>
+        />
         <span className="text-xs text-muted-foreground">{note}</span>
       </span>
     </div>

@@ -80,7 +80,11 @@ export function LocationSetupContent() {
         if (status.completed) {
           stopPolling();
           void refetch();
-          toast.success(t("admin.setup.step_done"));
+          if (status.status === "failed") {
+            toast.error(t("admin.setup.step_failed"));
+          } else {
+            toast.success(t("admin.setup.step_done"));
+          }
         }
       } catch (e) {
         stopPolling();

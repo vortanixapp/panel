@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
+import { m } from "motion/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/servers/confirm-dialog";
@@ -199,8 +200,10 @@ export function ServerTabShell({
                 >
                   <span
                     className={cn(
-                      "h-1.5 w-1.5 rounded-full bg-current",
-                      transitioning && "animate-pulse"
+                      "relative h-1.5 w-1.5 rounded-full bg-current",
+                      transitioning
+                        ? "animate-pulse"
+                        : ["running", "active"].includes(st.category) && "vx-live"
                     )}
                   />
                   {statusLabel}
@@ -297,13 +300,20 @@ export function ServerTabShell({
                     href={serverPath(basePath, id, tab.suffix)}
                     className={cn(
                       base,
-                      "inline-flex items-center",
+                      "relative inline-flex items-center border-transparent",
                       active
-                        ? "border-[var(--vx-border-strong)] bg-[var(--vx-tint)] text-[var(--vx-fg-strong)]"
-                        : "border-transparent text-[var(--vx-muted)] hover:text-[var(--vx-fg)]"
+                        ? "text-[var(--vx-fg-strong)]"
+                        : "text-[var(--vx-muted)] hover:text-[var(--vx-fg)]"
                     )}
                   >
-                    {tab.label}
+                    {active && (
+                      <m.span
+                        layoutId={`server-tab-${id}`}
+                        className="absolute -inset-px rounded-[8px] border border-[var(--vx-border-strong)] bg-[var(--vx-tint)]"
+                        transition={{ type: "spring", stiffness: 480, damping: 38 }}
+                      />
+                    )}
+                    <span className="relative">{tab.label}</span>
                   </Link>
                 );
               })}
@@ -352,7 +362,7 @@ export function ServerTabShell({
           <Notice>{t("servers.shell.install_failed_notice")}</Notice>
         )}
 
-        {children}
+        <div className="vx-fade-in flex flex-col gap-[18px]">{children}</div>
       </div>
     </PageShell>
   );

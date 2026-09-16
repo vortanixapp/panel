@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Shield, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isAdminRole } from "@/lib/rbac";
+import { isStaffRole } from "@/lib/rbac";
 import { isAdminSection } from "@/lib/panel-paths";
 import { useT } from "@/hooks/use-translations";
 
@@ -17,7 +17,7 @@ export function SectionSwitcher({ role, className }: SectionSwitcherProps) {
   const t = useT();
   const pathname = usePathname();
 
-  if (!isAdminRole(role)) return null;
+  if (!isStaffRole(role)) return null;
 
   const inAdmin = isAdminSection(pathname);
   const targetLabel = inAdmin ? t("common.user") : t("layout.section.admin");
