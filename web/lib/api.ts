@@ -3197,13 +3197,18 @@ export async function fetchAdminLocationSetup(id: string) {
     location: Record<string, unknown>;
     statuses: Record<string, string>;
     checks: { key: string; label: string; ok: boolean; hint?: string }[];
+    active_component?: string;
   }>(`/v1/admin/locations/${id}/setup`);
 }
 
 export async function fetchAdminLocationSetupStatus(id: string) {
-  return apiFetch<{ log: string; completed: boolean; component?: string; status?: string }>(
-    `/v1/admin/locations/${id}/setup/status`
-  );
+  return apiFetch<{
+    log: string;
+    completed: boolean;
+    component?: string;
+    status?: string;
+    active_component?: string;
+  }>(`/v1/admin/locations/${id}/setup/status`);
 }
 
 export async function runAdminLocationSetupStep(id: string, step: string) {

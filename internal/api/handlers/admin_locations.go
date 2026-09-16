@@ -942,9 +942,10 @@ func (h *Handler) GetAdminLocationSetup(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"location": locationMapFromRow(loc, false),
-		"statuses": statuses,
-		"checks":   checks,
+		"location":         locationMapFromRow(loc, false),
+		"statuses":         statuses,
+		"checks":           checks,
+		"active_component": h.activeSetupStep(r, id),
 	})
 }
 
@@ -986,7 +987,15 @@ func (h *Handler) locationSetupStatus(r *http.Request, id string) (map[string]an
 			completed = true
 		}
 	}
-	return map[string]any{"log": logText, "completed": completed, "component": component, "status": status}, true
+	active := h.activeSetupStep(r, id)
+	if active == "" && status == "installing" {
+		completed = true
+		status = "stalled"
+	}
+	return map[string]any{
+		"log": logText, "completed": completed, "component": component,
+		"status": status, "active_component": active,
+	}, true
 }
 
 func (h *Handler) RunAdminLocationSetupStep(w http.ResponseWriter, r *http.Request) {
@@ -1227,6 +1236,23 @@ func (h *Handler) setupComponentStatus(r *http.Request, nodeID, component string
 	return statuses[component]
 }
 
+func (h *Handler) activeSetupStep(r *http.Request, nodeID string) string {
+	var component string
+	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
+		SELECT COALESCE(payload->>'component', '')
+		FROM core.jobs
+		WHERE type = 'node_setup'
+		  AND status IN ('pending', 'running')
+		  AND payload->>'node_id' = $1
+		ORDER BY created_at
+		LIMIT 1
+	`, nodeID).Scan(&component)
+	if err != nil {
+		return ""
+	}
+	return component
+}
+
 func (h *Handler) ensureSetupOrder(r *http.Request, nodeID, component string, meta map[string]any) string {
 	idx := -1
 	for i, s := range setupOrder {
@@ -1238,12 +1264,10 @@ func (h *Handler) ensureSetupOrder(r *http.Request, nodeID, component string, me
 	if idx < 0 {
 		return "Unknown setup component."
 	}
-	statuses := h.loadSetupStatuses(r, nodeID, meta)
-	for _, st := range statuses {
-		if st == "installing" {
-			return "Установка уже выполняется. Дождитесь завершения текущего шага."
-		}
+	if running := h.activeSetupStep(r, nodeID); running != "" {
+		return fmt.Sprintf("Идёт шаг %q — дождитесь его завершения.", running)
 	}
+	statuses := h.loadSetupStatuses(r, nodeID, meta)
 	for i := 0; i < idx; i++ {
 		req := setupOrder[i]
 		if statuses[req] != "installed" {

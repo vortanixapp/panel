@@ -171,6 +171,31 @@ func lastLines(s string, n int) string {
 	return strings.Join(lines, "\n")
 }
 
+func Probe(cfg Config, command string) (string, error) {
+	if cfg.Host == "" || cfg.User == "" || !cfg.hasAuth() {
+		return "", fmt.Errorf("ssh host, user and password are required")
+	}
+	client, err := cfg.dial()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return "", err
+	}
+	defer session.Close()
+
+	var buf bytes.Buffer
+	session.Stdout = &buf
+	session.Stderr = &buf
+	if err := runSession(session, command, cfg.execTimeout()); err != nil {
+		return buf.String(), err
+	}
+	return buf.String(), nil
+}
+
 func RunCapture(cfg Config, command string) (string, error) {
 	if cfg.Host == "" || cfg.User == "" || !cfg.hasAuth() {
 		return "", fmt.Errorf("ssh host, user and password are required")

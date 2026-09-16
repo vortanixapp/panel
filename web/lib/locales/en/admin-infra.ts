@@ -303,6 +303,9 @@ export const adminInfra = {
   "admin.setup.subtitle":
     "SSH setup of the game node · Control plane on k3s · Agent → relay",
   "admin.setup.step_done": "The setup step finished",
+  "admin.setup.run_again": "Run again",
+  "admin.setup.run_again_confirm": "This step is already done. Run it again on this location?",
+  "admin.setup.status_stalled": "Interrupted",
   "admin.setup.step_failed": "The setup step failed, see the log for the reason",
   "admin.setup.status_failed": "Status error",
   "admin.setup.fill_ssh": "fill in host / user / password",

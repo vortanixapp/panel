@@ -7,7 +7,6 @@ import (
 	"html"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,7 +18,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/mail"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/secretbox"
-	"golang.org/x/crypto/ssh"
+	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 const maskedFTPPassword = "__VTX_MASKED_FTP_PASSWORD__"
@@ -69,6 +68,7 @@ func (h *Handler) UpdateAdminSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	form := r.MultipartForm.Value
+	h.forgetSFTPHostKeyOnMove(ctx, form)
 	for formKey, settingKey := range adminSettingsFormToDotKey() {
 		if vals, ok := form[formKey]; ok && len(vals) > 0 {
 			h.setTenantSettingString(ctx, settingKey, vals[0])
@@ -195,10 +195,20 @@ func (h *Handler) AdminSettingsTestFilesStorage(w http.ResponseWriter, r *http.R
 	driver := strings.ToLower(strings.TrimSpace(fmt.Sprint(in["files_storage_driver"])))
 	switch driver {
 	case "sftp":
-		if err := testSFTPConnection(in, h.resolveMaskedFTPPassword(r.Context(), fmt.Sprint(in["files_storage_sftp_password"]))); err != nil {
-			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "message": "Ошибка подключения: " + err.Error()})
+		fingerprint, err := h.testSFTPConnection(r.Context(),
+			in, h.resolveMaskedFTPPassword(r.Context(), fmt.Sprint(in["files_storage_sftp_password"])))
+		if err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok": false, "message": "Ошибка подключения: " + err.Error(),
+				"host_key_changed": sshclient.IsHostKeyError(err),
+			})
 			return
 		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok": true, "message": "Подключение к файловому хранилищу успешно.",
+			"host_key": fingerprint,
+		})
+		return
 	case "s3":
 		if err := testS3Storage(in); err != nil {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "message": "Ошибка подключения: " + err.Error()})
@@ -501,36 +511,59 @@ func (h *Handler) telegramSendMessage(token, chatID, text string) error {
 	return nil
 }
 
-func testSFTPConnection(in map[string]any, password string) error {
-	host := fmt.Sprint(in["files_storage_sftp_host"])
-	port := fmt.Sprint(in["files_storage_sftp_port"])
-	if port == "" {
-		port = "22"
+const sftpHostKeySetting = "files.storage.sftp.host_key"
+
+func (h *Handler) forgetSFTPHostKeyOnMove(ctx context.Context, form map[string][]string) {
+	changed := false
+	for formKey, settingKey := range map[string]string{
+		"files_storage_sftp_host": "files.storage.sftp.host",
+		"files_storage_sftp_port": "files.storage.sftp.port",
+	} {
+		vals, ok := form[formKey]
+		if !ok || len(vals) == 0 {
+			continue
+		}
+		if strings.TrimSpace(vals[0]) != strings.TrimSpace(h.tenantSettingString(ctx, settingKey)) {
+			changed = true
+		}
 	}
-	user := fmt.Sprint(in["files_storage_sftp_username"])
+	if changed {
+		h.setTenantSettingString(ctx, sftpHostKeySetting, "")
+	}
+}
+
+func (h *Handler) testSFTPConnection(ctx context.Context, in map[string]any, password string) (string, error) {
+	host := fmt.Sprint(in["files_storage_sftp_host"])
+	port := 22
+	if p, err := strconv.Atoi(strings.TrimSpace(fmt.Sprint(in["files_storage_sftp_port"]))); err == nil && p > 0 {
+		port = p
+	}
 	timeout := 30 * time.Second
 	if t := fmt.Sprint(in["files_storage_sftp_timeout"]); t != "" {
 		if sec, err := strconv.Atoi(t); err == nil && sec > 0 {
 			timeout = time.Duration(sec) * time.Second
 		}
 	}
-	cfg := &ssh.ClientConfig{
-		User:            user,
-		Auth:            []ssh.AuthMethod{ssh.Password(password)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         timeout,
+
+	known := h.tenantSettingString(ctx, sftpHostKeySetting)
+	fingerprint := known
+	cfg := sshclient.Config{
+		Host:         host,
+		Port:         port,
+		User:         fmt.Sprint(in["files_storage_sftp_username"]),
+		Password:     password,
+		Timeout:      timeout,
+		ExecTimeout:  timeout,
+		KnownHostKey: known,
+		OnHostKey:    func(fp string) { fingerprint = fp },
 	}
-	client, err := ssh.Dial("tcp", net.JoinHostPort(host, port), cfg)
-	if err != nil {
-		return err
+	if _, err := sshclient.Probe(cfg, "echo vtx-test"); err != nil {
+		return fingerprint, err
 	}
-	defer client.Close()
-	sess, err := client.NewSession()
-	if err != nil {
-		return err
+	if known == "" && fingerprint != "" {
+		h.setTenantSettingString(ctx, sftpHostKeySetting, fingerprint)
 	}
-	defer sess.Close()
-	return sess.Run("echo vtx-test")
+	return fingerprint, nil
 }
 
 func adminSettingsFormToDotKey() map[string]string {

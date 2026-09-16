@@ -44,6 +44,8 @@ export function LocationSetupContent() {
     enabled: !!id,
   });
 
+  const runningStep = data?.active_component ?? "";
+
   useEffect(() => {
     return () => {
       if (pollTimer) window.clearInterval(pollTimer);
@@ -100,18 +102,17 @@ export function LocationSetupContent() {
 
   useEffect(() => {
     if (resumedRef.current || !data) return;
-    const installing = Object.entries(data.statuses ?? {}).find(
-      ([, value]) => value === "installing"
-    );
-    if (!installing) return;
+    const active = data.active_component ?? "";
+    if (!active) return;
     resumedRef.current = true;
     setRunning(true);
-    setActiveComponent(installing[0]);
+    setActiveComponent(active);
     pollStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  async function runStep(component: string, endpoint: string) {
+  async function runStep(component: string, endpoint: string, installed = false) {
+    if (installed && !window.confirm(t("admin.setup.run_again_confirm"))) return;
     setRunning(true);
     setActiveComponent(component);
     setLog("");
@@ -254,8 +255,8 @@ export function LocationSetupContent() {
             {LOCATION_SETUP_STEPS.map((step) => {
               const st = statuses[step.component];
               const busy =
-                (running && activeComponent === step.component) ||
-                st === "installing";
+                (running || runningStep !== "") && activeComponent === step.component;
+              const stalled = st === "installing" && !busy;
               const installed = st === "installed";
               const failed = st === "failed";
               return (
@@ -285,7 +286,7 @@ export function LocationSetupContent() {
                           STATUS_CLASSES.pending
                       )}
                     >
-                      {setupStatusLabel(t, st)}
+                      {stalled ? t("admin.setup.status_stalled") : setupStatusLabel(t, st)}
                     </span>
                   </div>
                   {busy ? (
@@ -302,12 +303,12 @@ export function LocationSetupContent() {
                     <Button
                       variant={installed ? "outline" : "default"}
                       className="h-[34px] w-full text-[13px]"
-                      disabled={running || installed || !sshReady}
-                      onClick={() => runStep(step.component, step.endpoint)}
+                      disabled={running || !sshReady}
+                      onClick={() => runStep(step.component, step.endpoint, installed)}
                     >
                       {installed
-                        ? t("common.done")
-                        : failed
+                        ? t("admin.setup.run_again")
+                        : failed || stalled
                           ? t("common.retry")
                           : t("common.start")}
                     </Button>
