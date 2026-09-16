@@ -19,6 +19,8 @@ const (
 	KindServerRenewed   Kind = "server.renewed"
 	KindServerDeleted   Kind = "server.deleted"
 	KindServerMigrated  Kind = "server.migrated"
+	KindServerOwner     Kind = "server.owner_changed"
+	KindServerExtended  Kind = "server.extended"
 	KindBackupReady     Kind = "backup.ready"
 	KindBackupFailed    Kind = "backup.failed"
 
@@ -92,6 +94,10 @@ var defs = map[Kind]Def{
 	KindServerDeleted: {Group: GroupServers, Icon: "ri-delete-bin-line", Severity: SeverityWarning,
 		Channels: []Channel{ChannelEmail}},
 	KindServerMigrated: {Group: GroupServers, Icon: "ri-server-line", Severity: SeverityInfo,
+		Channels: []Channel{ChannelEmail}, Digest: true},
+	KindServerOwner: {Group: GroupServers, Icon: "ri-user-shared-line", Severity: SeverityInfo,
+		Channels: []Channel{ChannelEmail}},
+	KindServerExtended: {Group: GroupServers, Icon: "ri-calendar-check-line", Severity: SeverityInfo,
 		Channels: []Channel{ChannelEmail}, Digest: true},
 	KindBackupReady: {Group: GroupServers, Icon: "ri-archive-line", Severity: SeverityInfo,
 		Digest: true},

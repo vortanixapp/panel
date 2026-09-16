@@ -78,4 +78,9 @@ export const nav = {
   "server.tab.maps": "Maps",
   "server.tab.copies": "Backups",
   "server.tab.friends": "Friends",
+  "server.tab.rent": "Rental",
+  "server.tab.owner": "Owner",
+  "server.tab.tech": "Technical",
+  "server.tab.audit": "Activity",
+  "server.tab.notes": "Notes",
 };

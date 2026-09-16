@@ -1,5 +1,5 @@
-import { ServerDetailContent } from "@/components/servers/server-detail-content";
+import { AdminServerDetailContent } from "@/components/admin/servers/admin-server-tab-content";
 
 export default function AdminServerDetailPage() {
-  return <ServerDetailContent variant="admin" />;
+  return <AdminServerDetailContent />;
 }

@@ -66,7 +66,7 @@ func (h *Handler) UpdateServerGame(w http.ResponseWriter, r *http.Request) {
 			"агент на ноде устарел и не умеет обновлять игру — обновите его на странице ноды")
 		return
 	}
-	audit(ctx, h.dbOf(ctx), claims.UserID, "server.update", serverID, nil)
+	audit(ctx, h.dbOf(ctx), claims.UserID, "server.update", "server:"+serverID, nil)
 	writeJSON(w, http.StatusOK, map[string]any{"status": "updating", "result": result})
 }
 
@@ -115,6 +115,6 @@ func (h *Handler) ReinstallServer(w http.ResponseWriter, r *http.Request) {
 		VALUES ( 'provision_server', 'pending', $1::jsonb)
 	`, mustJSON(map[string]string{"server_id": serverID}))
 	jobwake.Notify("provision_server")
-	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.reinstall", serverID, nil)
+	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.reinstall", "server:"+serverID, nil)
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "reinstalling", "command_id": cmdID})
 }

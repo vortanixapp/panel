@@ -1,5 +1,5 @@
-import { ServerConsoleContent } from "@/components/servers/server-console-content";
+import { AdminServerConsoleContent } from "@/components/admin/servers/admin-server-tab-content";
 
 export default function AdminServerConsolePage() {
-  return <ServerConsoleContent variant="admin" />;
+  return <AdminServerConsoleContent />;
 }

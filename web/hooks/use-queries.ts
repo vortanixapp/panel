@@ -5,8 +5,6 @@ import {
   apiFetch,
   createNode,
   createPanelUser,
-  createServer,
-  fetchAdminServers,
   deleteNode,
   deletePanelUser,
   deleteServer,
@@ -55,7 +53,6 @@ import {
   type Node,
   type DashboardServer,
   type Server,
-  adminToggleServerBlock,
 } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -211,17 +208,6 @@ export function useServers() {
   });
 }
 
-export function useAdminServers(enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.adminServers,
-    queryFn: async () => {
-      const res = await fetchAdminServers();
-      return res.servers;
-    },
-    enabled,
-  });
-}
-
 export function useServer(id: string) {
   return useQuery({
     queryKey: queryKeys.server(id),
@@ -257,11 +243,11 @@ export function useServerDetail(id: string) {
   });
 }
 
-export function useServerMetrics(id: string) {
+export function useServerMetrics(id: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.metrics(id),
     queryFn: () => fetchServerMetrics(id),
-    enabled: !!id,
+    enabled: !!id && enabled,
     refetchInterval: 15_000,
   });
 }
@@ -292,22 +278,6 @@ export function useDeleteNode() {
 export function useNodeInstall() {
   return useMutation({
     mutationFn: (id: string) => fetchNodeInstall(id),
-  });
-}
-
-export function useCreateServer() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      nodeId,
-      name,
-      gameId = "test",
-    }: {
-      nodeId: string;
-      name: string;
-      gameId?: string;
-    }) => createServer(nodeId, name, gameId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.servers }),
   });
 }
 
@@ -360,25 +330,6 @@ export function usePowerServer() {
       qc.invalidateQueries({ queryKey: queryKeys.server(id) });
       qc.invalidateQueries({ queryKey: queryKeys.serverStatus(id) });
       qc.invalidateQueries({ queryKey: queryKeys.serverDetail(id) });
-    },
-  });
-}
-
-export function useAdminToggleServerBlock() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      blocked,
-      reason,
-    }: {
-      id: string;
-      blocked: boolean;
-      reason?: string;
-    }) => adminToggleServerBlock(id, blocked, reason),
-    onSettled: () => {
-      void qc.invalidateQueries({ queryKey: queryKeys.adminServers });
-      void qc.invalidateQueries({ queryKey: queryKeys.servers });
     },
   });
 }

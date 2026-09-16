@@ -25,7 +25,13 @@ import type { PanelVariant } from "@/lib/panel-paths";
 import { serversListPath, variantToBasePath } from "@/lib/panel-paths";
 import { cn } from "@/lib/utils";
 
-export function ServerSettingsContent({ variant = "user" }: { variant?: PanelVariant }) {
+export function ServerSettingsBody({
+  variant = "user",
+  dangerZone = true,
+}: {
+  variant?: PanelVariant;
+  dangerZone?: boolean;
+}) {
   const t = useT();
   const basePath = variantToBasePath(variant);
   const router = useRouter();
@@ -111,129 +117,129 @@ export function ServerSettingsContent({ variant = "user" }: { variant?: PanelVar
   }
 
   return (
-    <ServerTabShell variant={variant} activeTab="settings">
-      <div className="flex flex-col gap-[18px]">
-        {schema.isLoading ? (
-          <Panel title={t("server.tab.settings")}>
-            <VxInlineLoader />
+    <div className="flex flex-col gap-[18px]">
+      {schema.isLoading ? (
+        <Panel title={t("server.tab.settings")}>
+          <VxInlineLoader />
+        </Panel>
+      ) : schema.isError ? (
+        <Panel title={t("server.tab.settings")}>
+          <Notice>{t("servers.settings.load_failed")}</Notice>
+        </Panel>
+      ) : !schema.data?.supported ? (
+        <Panel title={t("server.tab.settings")}>
+          <EmptyState>
+            {schema.data?.reason ?? t("servers.settings.unsupported")}
+          </EmptyState>
+        </Panel>
+      ) : (
+        <>
+          {schema.data.warnings?.map((text) => (
+            <Notice key={text} tone="warn">
+              {text}
+            </Notice>
+          ))}
+
+          {lastSave && (
+            <SettingsRestartPrompt
+              result={lastSave}
+              canRestart={perms?.can_restart !== false}
+              restarting={power.isPending}
+              onRestart={() => {
+                power.mutate(
+                  { id, action: "restart" },
+                  {
+                    onSuccess: () => {
+                      toast.success(t("servers.settings.restarting"));
+                      setLastSave(null);
+                    },
+                  }
+                );
+              }}
+              onDismiss={() => setLastSave(null)}
+            />
+          )}
+
+          <Panel
+            title={t("servers.settings.title")}
+            aside={
+              activeId !== SECTION_RAW && activeId !== SECTION_STARTUP ? (
+                <span className="flex items-center gap-2.5">
+                  {dirty.size > 0 && (
+                    <span className="text-[11.5px] text-[var(--vx-warn)]">
+                      {t("servers.settings.dirty_count", { count: dirty.size })}
+                    </span>
+                  )}
+                  <Btn
+                    size="sm"
+                    tone="primary"
+                    disabled={!canEdit || dirty.size === 0 || save.isPending}
+                    onClick={() => save.mutate()}
+                  >
+                    {save.isPending ? t("common.saving") : t("common.save")}
+                  </Btn>
+                </span>
+              ) : undefined
+            }
+          >
+            <div className="flex flex-col gap-4">
+              <SubTabs items={tabs} active={activeId} onSelect={setActive} />
+
+              {schema.data.note && (
+                <p className="m-0 text-[12px] leading-[1.5] text-[var(--vx-faint)]">
+                  {schema.data.note}
+                </p>
+              )}
+
+              {activeId === SECTION_RAW ? (
+                <SettingsRawTab serverId={id} files={schema.data.files} canEdit={canEdit} />
+              ) : activeId === SECTION_STARTUP ? (
+                <SettingsStartupTab
+                  serverId={id}
+                  initial={server?.startup_params ?? ""}
+                  canEdit={canEdit}
+                />
+              ) : activeSection ? (
+                <SettingsSectionForm
+                  section={activeSection}
+                  values={values}
+                  dirty={dirty}
+                  disabled={!canEdit}
+                  onChange={(key, value) => {
+                    setDraft((prev) => ({ ...prev, [key]: value }));
+                    setDirty((prev) => {
+                      const next = new Set(prev);
+                      if (value === (schema.data?.values?.[key] ?? "")) next.delete(key);
+                      else next.add(key);
+                      return next;
+                    });
+                  }}
+                />
+              ) : (
+                <EmptyState>{t("servers.settings.no_fields")}</EmptyState>
+              )}
+            </div>
           </Panel>
-        ) : schema.isError ? (
-          <Panel title={t("server.tab.settings")}>
-            <Notice>{t("servers.settings.load_failed")}</Notice>
-          </Panel>
-        ) : !schema.data?.supported ? (
-          <Panel title={t("server.tab.settings")}>
-            <EmptyState>
-              {schema.data?.reason ?? t("servers.settings.unsupported")}
-            </EmptyState>
-          </Panel>
-        ) : (
-          <>
-            {schema.data.warnings?.map((text) => (
-              <Notice key={text} tone="warn">
-                {text}
-              </Notice>
-            ))}
+        </>
+      )}
 
-            {lastSave && (
-              <SettingsRestartPrompt
-                result={lastSave}
-                canRestart={perms?.can_restart !== false}
-                restarting={power.isPending}
-                onRestart={() => {
-                  power.mutate(
-                    { id, action: "restart" },
-                    {
-                      onSuccess: () => {
-                        toast.success(t("servers.settings.restarting"));
-                        setLastSave(null);
-                      },
-                    }
-                  );
-                }}
-                onDismiss={() => setLastSave(null)}
-              />
-            )}
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={t("servers.settings.delete_title")}
+        description={t("servers.settings.delete_desc", {
+          name: server?.name ?? "",
+        })}
+        confirmLabel={t("servers.settings.delete_confirm_label")}
+        requirePhrase={server?.name}
+        pending={deleteServer.isPending}
+        onConfirm={() => {
+          setConfirmDelete(false);
+          void onDelete();
+        }}
+      />
 
-            <Panel
-              title={t("servers.settings.title")}
-              aside={
-                activeId !== SECTION_RAW && activeId !== SECTION_STARTUP ? (
-                  <span className="flex items-center gap-2.5">
-                    {dirty.size > 0 && (
-                      <span className="text-[11.5px] text-[var(--vx-warn)]">
-                        {t("servers.settings.dirty_count", { count: dirty.size })}
-                      </span>
-                    )}
-                    <Btn
-                      size="sm"
-                      tone="primary"
-                      disabled={!canEdit || dirty.size === 0 || save.isPending}
-                      onClick={() => save.mutate()}
-                    >
-                      {save.isPending ? t("common.saving") : t("common.save")}
-                    </Btn>
-                  </span>
-                ) : undefined
-              }
-            >
-              <div className="flex flex-col gap-4">
-                <SubTabs items={tabs} active={activeId} onSelect={setActive} />
-
-                {schema.data.note && (
-                  <p className="m-0 text-[12px] leading-[1.5] text-[var(--vx-faint)]">
-                    {schema.data.note}
-                  </p>
-                )}
-
-                {activeId === SECTION_RAW ? (
-                  <SettingsRawTab serverId={id} files={schema.data.files} canEdit={canEdit} />
-                ) : activeId === SECTION_STARTUP ? (
-                  <SettingsStartupTab
-                    serverId={id}
-                    initial={server?.startup_params ?? ""}
-                    canEdit={canEdit}
-                  />
-                ) : activeSection ? (
-                  <SettingsSectionForm
-                    section={activeSection}
-                    values={values}
-                    dirty={dirty}
-                    disabled={!canEdit}
-                    onChange={(key, value) => {
-                      setDraft((prev) => ({ ...prev, [key]: value }));
-                      setDirty((prev) => {
-                        const next = new Set(prev);
-                        if (value === (schema.data?.values?.[key] ?? "")) next.delete(key);
-                        else next.add(key);
-                        return next;
-                      });
-                    }}
-                  />
-                ) : (
-                  <EmptyState>{t("servers.settings.no_fields")}</EmptyState>
-                )}
-              </div>
-            </Panel>
-          </>
-        )}
-
-        <ConfirmDialog
-          open={confirmDelete}
-          onOpenChange={setConfirmDelete}
-          title={t("servers.settings.delete_title")}
-          description={t("servers.settings.delete_desc", {
-            name: server?.name ?? "",
-          })}
-          confirmLabel={t("servers.settings.delete_confirm_label")}
-          requirePhrase={server?.name}
-          pending={deleteServer.isPending}
-          onConfirm={() => {
-            setConfirmDelete(false);
-            void onDelete();
-          }}
-        />
-
+      {dangerZone && (
         <div
           className={cn(
             "flex flex-wrap items-center justify-between gap-4 rounded-[14px] px-5 py-[18px]",
@@ -254,7 +260,15 @@ export function ServerSettingsContent({ variant = "user" }: { variant?: PanelVar
               : t("servers.settings.delete_confirm_label")}
           </Btn>
         </div>
-      </div>
+      )}
+    </div>
+  );
+}
+
+export function ServerSettingsContent({ variant = "user" }: { variant?: PanelVariant }) {
+  return (
+    <ServerTabShell variant={variant} activeTab="settings">
+      <ServerSettingsBody variant={variant} />
     </ServerTabShell>
   );
 }

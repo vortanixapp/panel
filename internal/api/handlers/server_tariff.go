@@ -175,7 +175,7 @@ func (h *Handler) ServerTariffChange(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
-	audit(ctx, h.dbOf(ctx), claims.UserID, "server.tariff_change", serverID, map[string]any{
+	audit(ctx, h.dbOf(ctx), claims.UserID, "server.tariff_change", "server:"+serverID, map[string]any{
 		"from_tariff_id": row.tariffID, "to_tariff_id": newTariffID, "delta": delta,
 	})
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -352,7 +352,7 @@ func (h *Handler) ServerTariffResources(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
-	audit(ctx, h.dbOf(ctx), claims.UserID, "server.tariff_resources", serverID, map[string]any{"delta": delta})
+	audit(ctx, h.dbOf(ctx), claims.UserID, "server.tariff_resources", "server:"+serverID, map[string]any{"delta": delta})
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":           "updated",
 		"charged":          delta,

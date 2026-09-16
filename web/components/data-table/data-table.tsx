@@ -14,6 +14,7 @@ import {
   type DataTableFeatures,
   dataTableFeatures,
 } from "@/components/data-table/features";
+import { type ReactTable } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import {
@@ -34,6 +35,7 @@ type DataTableProps<TData extends object> = {
   searchKey?: string;
   filters?: DataTableToolbarProps<TData>["filters"];
   emptyMessage?: string;
+  bulkActions?: (table: ReactTable<DataTableFeatures, TData>) => React.ReactNode;
 };
 
 export function DataTable<TData extends object>({
@@ -43,6 +45,7 @@ export function DataTable<TData extends object>({
   searchKey,
   filters,
   emptyMessage,
+  bulkActions,
 }: DataTableProps<TData>) {
   const t = useT();
   const emptyText = emptyMessage ?? t("layout.table.no_data");
@@ -152,6 +155,7 @@ export function DataTable<TData extends object>({
         </Table>
       </div>
       <DataTablePagination table={table} className="mt-auto" />
+      {bulkActions?.(table)}
     </div>
   );
 }

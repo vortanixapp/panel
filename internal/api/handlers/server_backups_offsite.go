@@ -45,13 +45,13 @@ func (h *Handler) enqueueBackupUpload(ctx context.Context, serverID, backupID, f
 }
 
 func (h *Handler) ServerRemoteBackupList(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
+	claims, ok := tenantClaims(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	serverID := chi.URLParam(r, "id")
-	if !h.requireServerTenant(w, r, serverID) {
+	if !h.authorizeServerAction(w, r, claims, serverID, "files_list") {
 		return
 	}
 	ctx := r.Context()
@@ -108,7 +108,7 @@ func (h *Handler) ServerRemoteBackupRestore(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	serverID := chi.URLParam(r, "id")
-	if !h.requireServerTenant(w, r, serverID) {
+	if !h.authorizeServerAction(w, r, claims, serverID, "backup_restore") {
 		return
 	}
 	var body remoteBackupBody
@@ -159,7 +159,7 @@ func (h *Handler) ServerRemoteBackupDelete(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	serverID := chi.URLParam(r, "id")
-	if !h.requireServerTenant(w, r, serverID) {
+	if !h.authorizeServerAction(w, r, claims, serverID, "files_delete") {
 		return
 	}
 	var body remoteBackupBody

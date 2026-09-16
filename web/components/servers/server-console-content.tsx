@@ -33,7 +33,7 @@ const STATUS_DOT: Record<ConsoleStatus, string> = {
   error: "bg-[var(--vx-danger)]",
 };
 
-export function ServerConsoleContent({ variant = "user" }: { variant?: PanelVariant }) {
+export function ServerConsolePanel() {
   const t = useT();
   const { id } = useParams<{ id: string }>();
   const consoleRef = useRef<ServerConsoleHandle>(null);
@@ -51,45 +51,51 @@ export function ServerConsoleContent({ variant = "user" }: { variant?: PanelVari
   }
 
   return (
-    <ServerTabShell variant={variant} activeTab="console">
-      <Panel
-        title={t("server.tab.console")}
-        aside={
-          <span className={cn("inline-flex items-center gap-[7px] font-mono text-[11px]", VX_MUTED)}>
-            <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[status])} />
-            {statusText(t)[status]}
-          </span>
-        }
-      >
-        <ServerConsole
-          ref={consoleRef}
-          serverId={id}
-          onStatusChange={setStatus}
-          className="h-[min(60vh,420px)]"
+    <Panel
+      title={t("server.tab.console")}
+      aside={
+        <span className={cn("inline-flex items-center gap-[7px] font-mono text-[11px]", VX_MUTED)}>
+          <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[status])} />
+          {statusText(t)[status]}
+        </span>
+      }
+    >
+      <ServerConsole
+        ref={consoleRef}
+        serverId={id}
+        onStatusChange={setStatus}
+        className="h-[min(60vh,420px)]"
+      />
+      <div className="mt-3 flex gap-2">
+        <input
+          className={cn(VX_INPUT_MONO, "h-9 flex-1")}
+          value={command}
+          onChange={(e) => setCommand(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder={t("servers.console.command_placeholder")}
         />
-        <div className="mt-3 flex gap-2">
-          <input
-            className={cn(VX_INPUT_MONO, "h-9 flex-1")}
-            value={command}
-            onChange={(e) => setCommand(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                send();
-              }
-            }}
-            placeholder={t("servers.console.command_placeholder")}
-          />
-          <Btn
-            tone="primary"
-            className="h-9 px-[18px]"
-            onClick={send}
-            disabled={status !== "connected"}
-          >
-            {t("common.send")}
-          </Btn>
-        </div>
-      </Panel>
+        <Btn
+          tone="primary"
+          className="h-9 px-[18px]"
+          onClick={send}
+          disabled={status !== "connected"}
+        >
+          {t("common.send")}
+        </Btn>
+      </div>
+    </Panel>
+  );
+}
+
+export function ServerConsoleContent({ variant = "user" }: { variant?: PanelVariant }) {
+  return (
+    <ServerTabShell variant={variant} activeTab="console">
+      <ServerConsolePanel />
     </ServerTabShell>
   );
 }

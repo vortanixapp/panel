@@ -1,5 +1,5 @@
-import { ServersPageContent } from "@/components/servers/servers-page-content";
+import { AdminServersPageContent } from "@/components/admin/servers/admin-servers-page-content";
 
 export default function AdminServersPage() {
-  return <ServersPageContent variant="admin" />;
+  return <AdminServersPageContent />;
 }

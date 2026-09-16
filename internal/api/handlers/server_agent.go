@@ -67,33 +67,6 @@ func (h *Handler) ensureServerForTenant(w http.ResponseWriter, r *http.Request, 
 	return claims, true
 }
 
-func (h *Handler) verifyServerTenant(ctx context.Context, serverID string) error {
-	var ok bool
-	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM core.servers WHERE id = $1)
-	`, serverID).Scan(&ok)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return pgx.ErrNoRows
-	}
-	return nil
-}
-
-func (h *Handler) requireServerTenant(w http.ResponseWriter, r *http.Request, serverID string) bool {
-	err := h.verifyServerTenant(r.Context(), serverID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "server not found")
-		} else {
-			writeError(w, http.StatusInternalServerError, "database error")
-		}
-		return false
-	}
-	return true
-}
-
 func (h *Handler) agentCommandForServer(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -213,6 +186,8 @@ func agentActionPermission(action string) string {
 		return "can_stop"
 	case "power_restart":
 		return "can_restart"
+	case "metrics":
+		return "can_view_metrics"
 	case "settings_read":
 		return "can_view_settings"
 	case "settings_write", "settings_raw_write":

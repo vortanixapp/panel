@@ -25,12 +25,10 @@ func (h *Handler) ServerMysqlInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ServerMysqlResetPassword(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+	serverID := chi.URLParam(r, "id")
+	if _, ok := h.authorizeServerTab(w, r, serverID, "mysql_create_db"); !ok {
 		return
 	}
-	serverID := chi.URLParam(r, "id")
 	var body struct {
 		MysqlInstanceKey string `json:"mysql_instance_key"`
 	}

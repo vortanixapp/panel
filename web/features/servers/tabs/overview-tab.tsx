@@ -125,7 +125,10 @@ export function ServerOverviewTab() {
   const queryClient = useQueryClient();
   const { data: server } = useServerDetail(id);
   const { data: me } = useMe();
-  const { data: metrics = [], isLoading: metricsLoading } = useServerMetrics(id);
+  const { data: metrics = [], isLoading: metricsLoading } = useServerMetrics(
+    id,
+    !!server && server.viewer_permissions?.can_view_metrics !== false
+  );
 
   const [renewOpen, setRenewOpen] = useState(false);
   const [renewPeriod, setRenewPeriod] = useState(30);
@@ -489,6 +492,7 @@ export function ServerOverviewTab() {
                     disabled={
                       lifecycleMutation.isPending ||
                       !canSwitchVersion(server) ||
+                      perms.can_reinstall === false ||
                       !effectiveVersionId ||
                       effectiveVersionId === currentVersionId
                     }

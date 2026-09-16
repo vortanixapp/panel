@@ -87,22 +87,11 @@ func (h *Handler) CreateConsoleTicket(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetServerMetrics(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
 	serverID := chi.URLParam(r, "id")
-	ctx := r.Context()
-
-	var exists bool
-	_ = h.dbOf(ctx).QueryRow(ctx, `
-		SELECT EXISTS(SELECT 1 FROM core.servers WHERE id = $1)
-	`, serverID).Scan(&exists)
-	if !exists {
-		writeError(w, http.StatusNotFound, "server not found")
+	if _, ok := h.authorizeServerTab(w, r, serverID, "metrics"); !ok {
 		return
 	}
+	ctx := r.Context()
 
 	hours := 0
 	if v := r.URL.Query().Get("hours"); v != "" {

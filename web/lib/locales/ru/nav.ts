@@ -78,4 +78,9 @@ export const nav = {
   "server.tab.maps": "Карты",
   "server.tab.copies": "Копии",
   "server.tab.friends": "Друзья",
+  "server.tab.rent": "Аренда",
+  "server.tab.owner": "Владелец",
+  "server.tab.tech": "Техданные",
+  "server.tab.audit": "Журнал",
+  "server.tab.notes": "Заметки",
 };

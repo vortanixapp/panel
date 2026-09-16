@@ -3,10 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
+
+var mapNamePattern = regexp.MustCompile(`^[^\s;"'\\/]{1,64}$`)
 
 func (h *Handler) ServerConsoleCommand(w http.ResponseWriter, r *http.Request) {
 	serverID := chi.URLParam(r, "id")
@@ -72,12 +75,14 @@ func (h *Handler) ServerMapChangeByName(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "map required")
 		return
 	}
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+	if _, ok := h.authorizeServerTab(w, r, serverID, "maps_apply"); !ok {
 		return
 	}
 	mapName := strings.TrimSpace(body.Map)
+	if !mapNamePattern.MatchString(mapName) {
+		writeError(w, http.StatusBadRequest, "недопустимое название карты")
+		return
+	}
 	_, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		UPDATE core.servers SET config = jsonb_set(
 			COALESCE(config, '{}'::jsonb),

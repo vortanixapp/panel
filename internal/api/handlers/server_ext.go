@@ -10,23 +10,43 @@ import (
 )
 
 func (h *Handler) PatchServer(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
+	serverID := chi.URLParam(r, "id")
+	claims, ok := h.authorizeServerTab(w, r, serverID, "settings_write")
 	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	var body map[string]any
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	cfg, _ := json.Marshal(body["config"])
-	lim, _ := json.Marshal(body["limits"])
-	_, err := h.dbOf(r.Context()).Exec(r.Context(), `
+
+	var cfg, lim []byte
+	fields := []string{}
+	if v, has := body["name"]; has && v != nil {
+		fields = append(fields, "name")
+	}
+	if v, has := body["config"]; has {
+		cfg, _ = json.Marshal(v)
+		fields = append(fields, "config")
+	}
+	if v, has := body["limits"]; has {
+		if !isStaffRole(claims.Role) {
+			writeError(w, http.StatusForbidden, "изменение лимитов доступно только сотрудникам")
+			return
+		}
+		lim, _ = json.Marshal(v)
+		fields = append(fields, "limits")
+	}
+
+	ctx := r.Context()
+	_, err := h.dbOf(ctx).Exec(ctx, `
 		UPDATE core.servers SET config = COALESCE($2::jsonb, config), limits = COALESCE($3::jsonb, limits), name = COALESCE($4, name)
 		WHERE id = $1
-	`, chi.URLParam(r, "id"), cfg, lim, body["name"])
+	`, serverID, cfg, lim, body["name"])
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
+	audit(ctx, h.dbOf(ctx), claims.UserID, "server.patch", "server:"+serverID,
+		map[string]any{"fields": fields})
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
@@ -679,13 +699,13 @@ func truthy(v any) bool {
 const backupsDir = "/backups"
 
 func (h *Handler) ServerBackupCreate(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
+	claims, ok := tenantClaims(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	id := chi.URLParam(r, "id")
-	if !h.requireServerTenant(w, r, id) {
+	if !h.authorizeServerAction(w, r, claims, id, "backup_create") {
 		return
 	}
 	var body struct {

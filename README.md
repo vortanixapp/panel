@@ -18,6 +18,11 @@ licence keys and activation are not part of it.
   the panel and hold it. No inbound port has to be opened on a node.
 - **Client area.** Console, file manager, backups, scheduled tasks, subusers
   with individual permissions, resource graphs.
+- **Server administration.** A page for every server with the client's tabs
+  plus rental, owner, technical data, an activity log and staff notes. Staff
+  add days without charging the balance, transfer a server to another client,
+  block it, move it to another node and assign IPs; the server list has
+  filters and bulk actions.
 - **Billing.** Tariffs, account balance, promotions, payment gateways,
   documents.
 - **Accounting.** Company details and taxes, 54-FZ fiscal receipts through

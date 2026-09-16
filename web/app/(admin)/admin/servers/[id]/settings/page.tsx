@@ -1,5 +1,5 @@
-import { ServerSettingsContent } from "@/components/servers/server-settings-content";
+import { AdminServerSettingsContent } from "@/components/admin/servers/admin-server-tab-content";
 
 export default function AdminServerSettingsPage() {
-  return <ServerSettingsContent variant="admin" />;
+  return <AdminServerSettingsContent />;
 }

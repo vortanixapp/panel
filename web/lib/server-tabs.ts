@@ -83,6 +83,61 @@ export function canViewServerTab(server: DashboardServer, tab: ServerTabKey, isO
   return value !== false;
 }
 
+export type AdminServerTabKey =
+  | ServerTabKey
+  | "rent"
+  | "owner"
+  | "tech"
+  | "audit"
+  | "notes";
+
+type AdminServerTabDef = { key: AdminServerTabKey; suffix: string; label: string };
+
+const ADMIN_SERVER_TAB_SUFFIXES: { key: AdminServerTabKey; suffix: string }[] = [
+  { key: "main", suffix: "" },
+  { key: "console", suffix: "/console" },
+  { key: "logs", suffix: "/logs" },
+  { key: "metrics", suffix: "/metrics" },
+  { key: "rent", suffix: "/rent" },
+  { key: "owner", suffix: "/owner" },
+  { key: "tech", suffix: "/tech" },
+  { key: "audit", suffix: "/audit" },
+  { key: "notes", suffix: "/notes" },
+  { key: "settings", suffix: "/settings" },
+  { key: "ftp", suffix: "/ftp" },
+  { key: "mysql", suffix: "/mysql" },
+  { key: "cron", suffix: "/cron" },
+  { key: "firewall", suffix: "/firewall" },
+  { key: "ports", suffix: "/ports" },
+  { key: "copies", suffix: "/copies" },
+  { key: "plugins", suffix: "/plugins" },
+  { key: "maps", suffix: "/maps" },
+];
+
+export function adminServerTabDefs(server?: DashboardServer): AdminServerTabDef[] {
+  return ADMIN_SERVER_TAB_SUFFIXES.filter(
+    (tab) => tab.key !== "maps" || !server || isCs16Server(server)
+  ).map(({ key, suffix }) => ({ key, suffix, label: t(`server.tab.${key}`) }));
+}
+
+const ADMIN_ALWAYS_OPEN: AdminServerTabKey[] = [
+  "main",
+  "logs",
+  "rent",
+  "owner",
+  "tech",
+  "audit",
+  "notes",
+];
+
+export function isAdminServerTabDisabled(
+  server: DashboardServer,
+  tab: AdminServerTabKey
+): boolean {
+  if (ADMIN_ALWAYS_OPEN.includes(tab)) return false;
+  return isServerProvisioning(server) || serverProvisioning(server) === "failed";
+}
+
 export function isServerTabDisabled(server: DashboardServer, tab: ServerTabKey): boolean {
   if (tab === "main") return false;
 

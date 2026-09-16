@@ -1,4 +1,4 @@
-import { ServerTabContent } from "@/components/servers/server-tab-content";
+import { AdminServerTabContent } from "@/components/admin/servers/admin-server-tab-content";
 
 export default async function AdminServerTabPage({
   params,
@@ -6,5 +6,5 @@ export default async function AdminServerTabPage({
   params: Promise<{ tab: string }>;
 }) {
   const { tab } = await params;
-  return <ServerTabContent tab={tab} variant="admin" />;
+  return <AdminServerTabContent tab={tab} />;
 }

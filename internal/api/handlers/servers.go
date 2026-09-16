@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -91,6 +93,10 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	if !isStaffRole(claims.Role) {
+		writeError(w, http.StatusForbidden, "серверы создаются через аренду")
+		return
+	}
 	var req createServerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
@@ -153,12 +159,10 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetServer(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+	id := chi.URLParam(r, "id")
+	if _, ok := h.authorizeServerTab(w, r, id, "settings_read"); !ok {
 		return
 	}
-	id := chi.URLParam(r, "id")
 	ctx := r.Context()
 	var s serverResponse
 	var cfg, lim []byte
@@ -268,31 +272,13 @@ type powerRequest struct {
 	Action string `json:"action"`
 }
 
-func (h *Handler) PowerServer(w http.ResponseWriter, r *http.Request) {
-	claims, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-	id := chi.URLParam(r, "id")
-	var req powerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid json")
-		return
-	}
-	action := req.Action
-	switch action {
-	case "start", "stop", "restart", "kill":
-	default:
-		writeError(w, http.StatusBadRequest, "action must be start, stop, restart or kill")
-		return
-	}
+var (
+	errServerNotFound   = errors.New("server not found")
+	errServerExpired    = errors.New("rent expired")
+	errAgentUnreachable = errors.New("agent unreachable")
+)
 
-	if !h.authorizeServerAction(w, r, claims, id, "power_"+action) {
-		return
-	}
-
-	ctx := r.Context()
+func (h *Handler) sendServerPower(ctx context.Context, actorID, id, action string) (string, string, error) {
 	var nodeID, name, gameID, status string
 	var limits []byte
 	var primaryPort int
@@ -306,16 +292,13 @@ func (h *Handler) PowerServer(w http.ResponseWriter, r *http.Request) {
 	`, id).Scan(&nodeID, &name, &gameID, &status, &limits, &primaryPort, &expired, &startupParams)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "server not found")
-			return
+			return "", "", errServerNotFound
 		}
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
+		return "", "", err
 	}
 
 	if expired && (action == "start" || action == "restart") {
-		writeError(w, http.StatusPaymentRequired, "оплаченный период закончился — продлите аренду, чтобы запустить сервер")
-		return
+		return "", "", errServerExpired
 	}
 
 	transient := map[string]string{"start": "starting", "stop": "stopping", "restart": "starting", "kill": "stopping"}[action]
@@ -350,22 +333,62 @@ func (h *Handler) PowerServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	cmdID := uuid.NewString()
-	err = h.relay.SendCommand(ctx, nodeID, relay.CommandRequest{
+	if err := h.relay.SendCommand(ctx, nodeID, relay.CommandRequest{
 		CommandID: cmdID,
 		Action:    "power",
 		ServerID:  id,
 		Payload:   payload,
-	})
-	if err != nil {
-		writeError(w, http.StatusBadGateway, "agent unreachable: "+err.Error())
+	}); err != nil {
+		return "", "", fmt.Errorf("%w: %v", errAgentUnreachable, err)
+	}
+
+	audit(ctx, h.dbOf(ctx), actorID, "server.power", "server:"+id, map[string]any{"action": action})
+	return transient, cmdID, nil
+}
+
+func (h *Handler) PowerServer(w http.ResponseWriter, r *http.Request) {
+	claims, ok := tenantClaims(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	id := chi.URLParam(r, "id")
+	var req powerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	action := req.Action
+	switch action {
+	case "start", "stop", "restart", "kill":
+	default:
+		writeError(w, http.StatusBadRequest, "action must be start, stop, restart or kill")
 		return
 	}
 
-	audit(ctx, h.dbOf(ctx), claims.UserID, "server.power", "server:"+id, map[string]any{"action": action})
+	if !h.authorizeServerAction(w, r, claims, id, "power_"+action) {
+		return
+	}
+
+	status, cmdID, err := h.sendServerPower(r.Context(), claims.UserID, id, action)
+	if err != nil {
+		switch {
+		case errors.Is(err, errServerNotFound):
+			writeError(w, http.StatusNotFound, "server not found")
+		case errors.Is(err, errServerExpired):
+			writeError(w, http.StatusPaymentRequired, "оплаченный период закончился — продлите аренду, чтобы запустить сервер")
+		case errors.Is(err, errAgentUnreachable):
+			writeError(w, http.StatusBadGateway, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "database error")
+		}
+		return
+	}
+
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"server_id":  id,
 		"action":     action,
-		"status":     transient,
+		"status":     status,
 		"command_id": cmdID,
 	})
 }

@@ -36,7 +36,7 @@ func (h *Handler) AdminLogs(w http.ResponseWriter, r *http.Request) {
 	`
 	args := []any{}
 	if action != "" {
-		q += ` AND action = $2`
+		q += ` AND action = $1`
 		args = append(args, action)
 	}
 	if search != "" {
@@ -91,7 +91,7 @@ func (h *Handler) adminLogsStream(w http.ResponseWriter, r *http.Request) {
 		      FROM core.audit_logs WHERE true`
 		args := []any{}
 		if since != "" {
-			q += ` AND created_at > $2::timestamptz`
+			q += ` AND created_at > $1::timestamptz`
 			args = append(args, since)
 		}
 		q += ` ORDER BY created_at ASC LIMIT 200`

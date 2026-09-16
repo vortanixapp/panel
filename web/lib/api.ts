@@ -726,13 +726,6 @@ export async function fetchServers() {
   return res.servers;
 }
 
-export async function createServer(nodeId: string, name: string, gameId = "test") {
-  return apiFetch<Server>("/v1/servers", {
-    method: "POST",
-    body: JSON.stringify({ node_id: nodeId, name, game_id: gameId }),
-  });
-}
-
 export async function deleteServer(id: string) {
   return apiFetch<{ status: string; cleanup?: "deferred" }>(`/v1/servers/${id}`, {
     method: "DELETE",
@@ -3639,15 +3632,46 @@ export async function adjustAdminUserBalance(
   );
 }
 
-export type AdminServerListItem = Server & {
-  owner_email?: string;
-  user_email?: string;
-  is_blocked?: boolean;
+export type AdminServerListItem = {
+  id: string;
+  name: string;
+  ip_address: string;
+  port: number;
+  status: string;
+  runtime_status: string;
+  provisioning_status: string;
+  provisioning_error?: string | null;
+  expires_at: string | null;
+  game: { name: string; slug: string; image: string | null } | null;
+  location: {
+    name: string;
+    country: string;
+    city: string;
+    maintenance?: { enabled: boolean; reason: string; until: string | null };
+  } | null;
+  tariff: { name: string } | null;
+  owner_email: string;
+  is_blocked: boolean;
   blocked_reason?: string | null;
+  node_id: string;
+  cpu_percent?: number;
+  ram_percent?: number;
+  mem_used_mb?: number;
+  mem_limit_mb?: number;
+  metrics_at?: string;
+};
+
+export type AdminServersResponse = {
+  servers: AdminServerListItem[];
+  total: number;
+  active_count: number;
+  expiring_soon: number;
+  blocked_count: number;
+  failed_count: number;
 };
 
 export async function fetchAdminServers() {
-  return apiFetch<{ servers: AdminServerListItem[] }>("/v1/admin/servers");
+  return apiFetch<AdminServersResponse>("/v1/admin/servers");
 }
 
 export async function adminToggleServerBlock(id: string, blocked: boolean, reason?: string) {
@@ -3655,6 +3679,169 @@ export async function adminToggleServerBlock(id: string, blocked: boolean, reaso
     method: "POST",
     body: JSON.stringify({ blocked, reason: reason ?? "" }),
   });
+}
+
+export type AdminServerOwner = {
+  id: string;
+  email: string;
+  status: string;
+  created_at: string | null;
+  balances: { currency: string; balance: number }[];
+  server_count: number;
+};
+
+export type AdminServerCard = {
+  id: string;
+  name: string;
+  created_at: string;
+  node: { id: string; name: string; fqdn: string; status: string };
+  container_id: string | null;
+  container_name: string | null;
+  provisioning_status: string;
+  provisioning_error: string | null;
+  limits: Record<string, unknown>;
+  config: Record<string, unknown>;
+  ports: unknown[];
+  is_blocked: boolean;
+  blocked_reason: string | null;
+  blocked_at: string | null;
+  suspended_at: string | null;
+  expires_at: string | null;
+  auto_renew: boolean;
+  auto_start: boolean;
+  is_trial: boolean;
+  steam_updatable: boolean;
+  dunning_stage: number;
+  dunning_for: string | null;
+  rental_period_days: number;
+  billing_source: string;
+  tariff: { id: string | null; name: string | null };
+  owner: AdminServerOwner | null;
+  counts: {
+    friends: number;
+    backups: number;
+    abuse_cases: number;
+    tickets: number;
+    ports: number;
+  };
+};
+
+export async function fetchAdminServerCard(id: string) {
+  return apiFetch<AdminServerCard>(`/v1/admin/servers/${id}`);
+}
+
+export type AdminServerAuditEntry = {
+  id: string;
+  action: string;
+  meta: Record<string, unknown>;
+  created_at: string;
+  actor_id: string | null;
+  actor_email: string | null;
+};
+
+export async function fetchAdminServerAudit(
+  id: string,
+  params: { action?: string; search?: string; limit?: number } = {}
+) {
+  const qs = new URLSearchParams();
+  if (params.action) qs.set("action", params.action);
+  if (params.search) qs.set("search", params.search);
+  if (params.limit) qs.set("limit", String(params.limit));
+  const tail = qs.toString() ? `?${qs}` : "";
+  return apiFetch<{
+    entries: AdminServerAuditEntry[];
+    actions: string[];
+    limit: number;
+    offset: number;
+  }>(`/v1/admin/servers/${id}/audit${tail}`);
+}
+
+export type AdminServerNote = {
+  id: string;
+  body: string;
+  created_at: string;
+  author: string | null;
+};
+
+export async function fetchAdminServerNotes(id: string) {
+  return apiFetch<{ notes: AdminServerNote[] }>(`/v1/admin/servers/${id}/notes`);
+}
+
+export async function createAdminServerNote(id: string, body: string) {
+  return apiFetch<AdminServerNote>(`/v1/admin/servers/${id}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
+}
+
+export async function deleteAdminServerNote(id: string, noteId: string) {
+  return apiFetch<{ status: string }>(`/v1/admin/servers/${id}/notes/${noteId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function setAdminServerOwner(
+  id: string,
+  target: { user_id?: string; email?: string }
+) {
+  return apiFetch<{ user_id: string; email: string }>(`/v1/admin/servers/${id}/owner`, {
+    method: "POST",
+    body: JSON.stringify(target),
+  });
+}
+
+export async function setAdminServerExpiry(
+  id: string,
+  payload: { days?: number; expires_at?: string }
+) {
+  return apiFetch<{ expires_at: string | null }>(`/v1/admin/servers/${id}/expiry`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type AdminServerBulkAction =
+  | "start"
+  | "stop"
+  | "restart"
+  | "kill"
+  | "block"
+  | "unblock";
+
+export async function adminServersBulk(
+  ids: string[],
+  action: AdminServerBulkAction,
+  reason = ""
+) {
+  return apiFetch<{ done: number; failures: { id: string; error: string }[] }>(
+    "/v1/admin/servers/bulk",
+    { method: "POST", body: JSON.stringify({ ids, action, reason }) }
+  );
+}
+
+export async function createAdminServer(payload: {
+  user_id?: string;
+  email?: string;
+  node_id: string;
+  game_id: string;
+  game_version_id?: string;
+  tariff_id?: string;
+  name: string;
+  period?: number;
+  slots?: number;
+  cpu_cores?: number;
+  ram_gb?: number;
+  disk_gb?: number;
+  antiddos_enabled?: boolean;
+}) {
+  return apiFetch<{
+    id: string;
+    server_id: string;
+    status: string;
+    period_days: number;
+    expires_at: string;
+    owner_email: string;
+  }>("/v1/admin/servers", { method: "POST", body: JSON.stringify(payload) });
 }
 
 export type AdminSupportTicket = SupportTicket & {

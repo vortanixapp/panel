@@ -273,7 +273,7 @@ func (h *Handler) ServerAutoRenew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	serverID := chi.URLParam(r, "id")
-	if !h.requireServerTenant(w, r, serverID) {
+	if !h.authorizeServerAction(w, r, claims, serverID, "renew") {
 		return
 	}
 	if h.refuseWHMCSBilled(r.Context(), w, serverID) {

@@ -54,6 +54,9 @@ func (h *Handler) ServerRenewPreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	serverID := chi.URLParam(r, "id")
+	if !h.authorizeServerAction(w, r, claims, serverID, "renew") {
+		return
+	}
 	var body struct {
 		Period    int    `json:"period"`
 		PromoCode string `json:"promo_code"`
@@ -151,7 +154,7 @@ func (h *Handler) ServerRenew(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "renew failed")
 		return
 	}
-	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.renew", serverID, map[string]any{"period": body.Period})
+	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.renew", "server:"+serverID, map[string]any{"period": body.Period})
 	writeJSON(w, http.StatusOK, map[string]string{"status": "renewed"})
 }
 
@@ -222,9 +225,8 @@ func (h *Handler) serverRenewPriceCtx(ctx context.Context, serverID string, peri
 }
 
 func (h *Handler) ServerAutoStart(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+	serverID := chi.URLParam(r, "id")
+	if _, ok := h.authorizeServerTab(w, r, serverID, "settings_write"); !ok {
 		return
 	}
 	var body struct {
@@ -234,7 +236,7 @@ func (h *Handler) ServerAutoStart(w http.ResponseWriter, r *http.Request) {
 	_, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		UPDATE core.servers SET auto_start = $2, config = config || jsonb_build_object('auto_start', $2)
 		WHERE id = $1
-	`, chi.URLParam(r, "id"), body.Enabled)
+	`, serverID, body.Enabled)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "update failed")
 		return
@@ -243,9 +245,8 @@ func (h *Handler) ServerAutoStart(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ServerStartupParams(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+	serverID := chi.URLParam(r, "id")
+	if _, ok := h.authorizeServerTab(w, r, serverID, "settings_write"); !ok {
 		return
 	}
 	var body map[string]any
@@ -262,7 +263,7 @@ func (h *Handler) ServerStartupParams(w http.ResponseWriter, r *http.Request) {
 	_, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		UPDATE core.servers SET config = config || jsonb_build_object('startup_params', to_jsonb($2::text))
 		WHERE id = $1
-	`, chi.URLParam(r, "id"), params)
+	`, serverID, params)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "update failed")
 		return
@@ -289,12 +290,10 @@ func (h *Handler) defaultStartupParams(ctx context.Context, gameID string) strin
 }
 
 func (h *Handler) ServerSwitchVersion(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
+	serverID := chi.URLParam(r, "id")
+	if _, ok := h.authorizeServerTab(w, r, serverID, "update"); !ok {
 		return
 	}
-	serverID := chi.URLParam(r, "id")
 	var body struct {
 		VersionID string `json:"version_id"`
 	}
@@ -503,8 +502,29 @@ func (h *Handler) AdminListServers(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	list := h.listEnrichedServers(r.Context(), "", true, 0)
-	writeJSON(w, http.StatusOK, map[string]any{"servers": list})
+	ctx := r.Context()
+	list := h.listEnrichedServers(ctx, "", true, 0)
+	h.attachServerLoad(ctx, list)
+
+	var total, active, expiringSoon, blocked, failed int
+	_ = h.readerOf(ctx).QueryRow(ctx, `
+		SELECT COUNT(*),
+		       COUNT(*) FILTER (WHERE status = 'running' OR runtime_status = 'running'),
+		       COUNT(*) FILTER (WHERE expires_at IS NOT NULL AND expires_at >= now()
+		                          AND expires_at < now() + interval '7 days'),
+		       COUNT(*) FILTER (WHERE is_blocked),
+		       COUNT(*) FILTER (WHERE provisioning_status = 'failed')
+		FROM core.servers
+	`).Scan(&total, &active, &expiringSoon, &blocked, &failed)
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"servers":       list,
+		"total":         total,
+		"active_count":  active,
+		"expiring_soon": expiringSoon,
+		"blocked_count": blocked,
+		"failed_count":  failed,
+	})
 }
 
 func (h *Handler) applyServerBlock(ctx context.Context, id string, blocked bool, reason string) (ownerID, name string, err error) {
