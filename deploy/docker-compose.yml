@@ -79,6 +79,8 @@ services:
       dockerfile: Dockerfile
       args:
         COMPONENT: vortanix-relay
+    ports:
+      - "${RELAY_TLS_PORT:-8443}:${RELAY_TLS_PORT:-8443}"
 
   console:
     <<: *panel

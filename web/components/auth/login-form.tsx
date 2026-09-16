@@ -10,8 +10,8 @@ import { z } from "zod";
 import {
   fetchSocialProviders,
   login,
-  getAccessToken,
-  setTokens,
+  adoptSession,
+  hasSession,
   socialRedirect,
   telegramLogin,
   tenantSlug,
@@ -65,7 +65,7 @@ export function LoginForm() {
   });
 
   useEffect(() => {
-    if (!addingAccount && getAccessToken()) router.replace("/dashboard");
+    if (!addingAccount && hasSession()) router.replace("/dashboard");
   }, [router, addingAccount]);
 
   useEffect(() => {
@@ -109,11 +109,11 @@ export function LoginForm() {
         );
         return;
       }
-      if (!res.access_token) {
+      queryClient.clear();
+      adoptSession();
+      if (!hasSession()) {
         throw new Error(t("auth.login.no_token"));
       }
-      queryClient.clear();
-      setTokens(res.access_token, res.refresh_token ?? "");
       router.push(postLoginPath(res.user?.role ?? "user"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.login.failed"));
@@ -141,11 +141,11 @@ export function LoginForm() {
     setError("");
     try {
       const res = await telegramLogin(tgUser, tenantSlug());
-      if (!res.access_token) {
+      queryClient.clear();
+      adoptSession();
+      if (!hasSession()) {
         throw new Error(t("auth.error.token_failed"));
       }
-      queryClient.clear();
-      setTokens(res.access_token, res.refresh_token ?? "");
       router.push(res.redirect ?? postLoginPath(res.user?.role ?? "user"));
     } catch (err) {
       setError(

@@ -1,91 +1,62 @@
-import {
-  API_URL,
-  clearAuthAndForget,
-  setTokens,
-} from "@/lib/api";
+import { forgetSavedAccount, savedAccounts, switchAccount } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
 import { t } from "@/lib/i18n";
-import {
-  findAccount,
-  forgetAccount,
-  listAccounts,
-  markNeedsSignIn,
-  type StoredAccount,
-} from "@/lib/accounts";
+import type { StoredAccount } from "@/lib/accounts";
 
 export type SwitchOutcome =
   | { ok: true; path: string }
   | { ok: false; reason: "needs-sign-in"; email: string }
   | { ok: false; reason: "error"; message: string };
 
-async function refreshForeignSession(
-  account: StoredAccount
-): Promise<{ access_token: string; refresh_token: string }> {
-  const res = await fetch(API_URL + "/v1/auth/refresh", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(account.tenantSlug ? { "X-Tenant-Slug": account.tenantSlug } : {}),
-    },
-    body: JSON.stringify({ refresh_token: account.refreshToken }),
-  });
-  const text = await res.text();
-  let data: { access_token?: string; refresh_token?: string; error?: string } = {};
-  if (text) {
-    try {
-      data = JSON.parse(text) as typeof data;
-    } catch {
-      data = {};
-    }
+export async function loadAccounts(): Promise<StoredAccount[]> {
+  try {
+    const res = await savedAccounts();
+    return res.accounts.map((a) => ({
+      id: a.id,
+      email: a.email,
+      role: a.role,
+      isCurrent: a.is_current,
+    }));
+  } catch {
+    return [];
   }
-  if (!res.ok || !data.access_token) {
-    throw new Error(data.error ?? "session expired");
-  }
-  return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token ?? "",
-  };
 }
 
-export async function prepareSwitch(id: string): Promise<SwitchOutcome> {
-  const account = findAccount(id);
-  if (!account) {
-    return { ok: false, reason: "error", message: t("layout.account.not_found") };
-  }
-  if (account.needsSignIn || !account.refreshToken) {
-    return { ok: false, reason: "needs-sign-in", email: account.email };
-  }
-
-  let tokens: { access_token: string; refresh_token: string };
+export async function prepareSwitch(id: string, email = ""): Promise<SwitchOutcome> {
   try {
-    tokens = await refreshForeignSession(account);
+    const res = await switchAccount(id);
+    return { ok: true, path: postLoginPath(res.user.role) };
   } catch (err) {
     const message = err instanceof Error ? err.message : "";
-    if (message === "session expired" || message === "сессия закрыта") {
-      markNeedsSignIn(id);
-      return { ok: false, reason: "needs-sign-in", email: account.email };
+    if (
+      message.includes("войдите в него заново") ||
+      message.includes("недоступна") ||
+      message.includes("sign in")
+    ) {
+      return { ok: false, reason: "needs-sign-in", email };
     }
     return {
       ok: false,
       reason: "error",
-      message: t("layout.account.server_unreachable"),
+      message: message || t("layout.account.server_unreachable"),
     };
   }
-
-  setTokens(tokens.access_token, tokens.refresh_token);
-
-  return { ok: true, path: postLoginPath(account.role) };
 }
 
 export function goToAccount(path: string) {
   window.location.replace(path);
 }
 
-export function nextAccountAfterLogout(currentId: string | null): StoredAccount | null {
-  return listAccounts().find((a) => a.id !== currentId && !a.needsSignIn) ?? null;
+export async function nextAccountAfterLogout(
+  currentId: string | null
+): Promise<StoredAccount | null> {
+  const list = await loadAccounts();
+  return list.find((a) => a.id !== currentId) ?? null;
 }
 
-export function forgetEveryAccount() {
-  for (const a of listAccounts()) forgetAccount(a.id);
-  clearAuthAndForget();
+export async function forgetEveryAccount() {
+  try {
+    await forgetSavedAccount({ all: true });
+  } catch {
+  }
 }

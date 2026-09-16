@@ -101,6 +101,8 @@ func (h *Handler) ImpersonateUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	h.startSession(w, r, id, email, role, access, refresh, 0)
+
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "user.impersonate", "user:"+id,
 		map[string]any{"email": email})
 

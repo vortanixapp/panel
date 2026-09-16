@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, setTokens } from "@/lib/api";
+import { adoptSession, apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,7 @@ export function TwoFactorChallengeForm() {
         "/v1/auth/2fa/challenge",
         { method: "POST", body: JSON.stringify({ code }) }
       );
-      setTokens(res.access_token, res.refresh_token);
+      adoptSession();
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.two_factor.invalid_code"));

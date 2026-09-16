@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -16,8 +18,8 @@ import (
 
 	"github.com/vortanixapp/panel/internal/api/jobwake"
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
-	"github.com/vortanixapp/panel/internal/api/sshclient"
 	"github.com/vortanixapp/panel/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 var setupOrder = []string{"packages", "docker", "mysql", "phpmyadmin", "ftp", "quota", "daemon", "images"}
@@ -40,6 +42,7 @@ type locationRow struct {
 	SSHUser           *string
 	SSHPort           int
 	SSHPassword       *string
+	SSHHostKey        string
 	SortOrder         int
 	IsActive          bool
 	Active            bool
@@ -75,7 +78,7 @@ func (h *Handler) loadLocationRow(r *http.Request, id string) (*locationRow, err
 		SELECT id::text, name, fqdn, COALESCE(agent_token, ''),
 			country, city, region, description, ip_address,
 			ssh_host, ssh_user, COALESCE(ssh_port, 22),
-			ssh_password_enc,
+			ssh_password_enc, COALESCE(ssh_host_key, ''),
 			COALESCE(sort_order, 0),
 			COALESCE(is_active, true), COALESCE(active, true),
 			COALESCE(docker_images, '[]'::jsonb), COALESCE(meta, '{}'::jsonb),
@@ -86,7 +89,7 @@ func (h *Handler) loadLocationRow(r *http.Request, id string) (*locationRow, err
 		&loc.ID, &loc.Name, &loc.FQDN, &loc.AgentToken,
 		&loc.Country, &loc.City, &loc.Region, &loc.Description, &loc.IPAddress,
 		&loc.SSHHost, &loc.SSHUser, &loc.SSHPort,
-		&sshPassEnc,
+		&sshPassEnc, &loc.SSHHostKey,
 		&loc.SortOrder, &loc.IsActive, &loc.Active,
 		&loc.DockerImages, &loc.Meta,
 		&loc.MaintenanceMode, &loc.MaintenanceReason, &loc.MaintenanceUntil,
@@ -210,6 +213,7 @@ func locationMapFromRow(loc *locationRow, includeSecrets bool) map[string]any {
 		"ip_address":          loc.IPAddress,
 		"ip_pool":             ipPool,
 		"ssh_host":            loc.SSHHost,
+		"ssh_host_key":        loc.SSHHostKey,
 		"ssh_user":            loc.SSHUser,
 		"ssh_port":            loc.SSHPort,
 		"sort_order":          loc.SortOrder,
@@ -512,7 +516,7 @@ func (h *Handler) saveAdminLocation(w http.ResponseWriter, r *http.Request, full
 		}
 	}
 	if v, ok := body["phpmyadmin_port"]; ok {
-		meta["phpmyadmin_port"] = locIntFromAny(v, 8081)
+		meta["phpmyadmin_port"] = locIntFromAny(v, 8444)
 	}
 	if di := parseDockerImagesInput(body["docker_images"]); body["docker_images"] != nil {
 		loc.DockerImages, _ = json.Marshal(di)
@@ -583,7 +587,12 @@ func (h *Handler) saveAdminLocation(w http.ResponseWriter, r *http.Request, full
 			ip_address = $7, ssh_host = $8, ssh_user = $9, ssh_port = $10,
 			ssh_password_enc = COALESCE($11, ssh_password_enc),
 			sort_order = $12, is_active = $13, active = $13,
-			docker_images = COALESCE($14, docker_images), meta = $15::jsonb
+			docker_images = COALESCE($14, docker_images), meta = $15::jsonb,
+			ssh_host_key = CASE
+				WHEN COALESCE(ssh_host, '') IS DISTINCT FROM COALESCE($8, '')
+				  OR COALESCE(ssh_port, 22) IS DISTINCT FROM $10 THEN NULL
+				ELSE ssh_host_key
+			END
 		WHERE id = $1
 	`, id, name, country, city, region, description,
 		ipAddress, sshHost, sshUser, sshPort, sshPassEnc,
@@ -594,6 +603,23 @@ func (h *Handler) saveAdminLocation(w http.ResponseWriter, r *http.Request, full
 	}
 	_ = h.cache.InvalidateTenantNodes(r.Context())
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": "updated"})
+}
+
+func (h *Handler) ResetAdminLocationHostKey(w http.ResponseWriter, r *http.Request) {
+	claims, id, loc, ok := h.adminLocationContext(w, r)
+	if !ok {
+		return
+	}
+	if _, err := h.dbOf(r.Context()).Exec(r.Context(), `
+		UPDATE core.nodes SET ssh_host_key = NULL WHERE id = $1
+	`, id); err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "location.ssh_host_key_reset", "node:"+id,
+		map[string]any{"previous": loc.SSHHostKey})
+	h.auditAlert(r.Context(), claims.UserID, claims.Email, "location.ssh_host_key_reset", loc.Name)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": "reset"})
 }
 
 func (h *Handler) ToggleAdminLocation(w http.ResponseWriter, r *http.Request) {
@@ -676,11 +702,9 @@ func (h *Handler) GetAdminLocationInstallScript(w http.ResponseWriter, r *http.R
 				"Без него команда установки увела бы ноду в никуда")
 		return
 	}
-	if !strings.HasPrefix(relayURL, "ws") {
-		relayURL = "wss://" + strings.TrimPrefix(strings.TrimPrefix(relayURL, "https://"), "http://")
-	}
-	connectURL := relayURL + "/v1/agent/connect"
-	envFile := "RELAY_URL=" + connectURL + "\nAGENT_TOKEN=" + token + "\nNODE_ID=" + id + "\n"
+	connectURL, relayPin := h.agentRelayTarget(r.Context(), relayURL)
+	envFile := "RELAY_URL=" + connectURL + "\nRELAY_PIN=" + relayPin +
+		"\nAGENT_TOKEN=" + token + "\nNODE_ID=" + id + "\n"
 	script := `sh <<'VORTANIX'
 set -eu
 IMAGE=` + agentImageRef() + `
@@ -708,6 +732,7 @@ VORTANIX`
 		"fqdn":        loc.FQDN,
 		"agent_token": token,
 		"relay_url":   connectURL,
+		"relay_pin":   relayPin,
 		"env_file":    envFile,
 		"script":      script,
 	})
@@ -760,20 +785,32 @@ func (h *Handler) TestAdminLocationSSH(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	meta := parseMetaMap(loc.Meta)
-	cfg, err := locationSSHConfig(loc, meta, "")
+	cfg, err := h.locationSSHConfigTOFU(loc, meta, "")
 	if err != nil {
 		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
+	}
+	fingerprint := cfg.KnownHostKey
+	if fingerprint == "" {
+		previous := cfg.OnHostKey
+		cfg.OnHostKey = func(fp string) {
+			fingerprint = fp
+			if previous != nil {
+				previous(fp)
+			}
+		}
 	}
 	out, runErr := sshclient.RunCapture(cfg, "echo OK && uname -sr")
 	if runErr != nil {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"ok": false, "error": runErr.Error(), "output": strings.TrimSpace(out),
+			"host_key_changed": sshclient.IsHostKeyError(runErr),
 		})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true, "output": strings.TrimSpace(out), "host": cfg.Host, "user": cfg.User,
+		"host_key": fingerprint,
 	})
 }
 
@@ -795,7 +832,11 @@ func (h *Handler) TestAdminLocationSSHBody(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "ssh_host, ssh_user и ssh_password обязательны")
 		return
 	}
-	cfg := sshclient.Config{Host: host, Port: port, User: user, Password: pass}
+	fingerprint := ""
+	cfg := sshclient.Config{
+		Host: host, Port: port, User: user, Password: pass,
+		OnHostKey: func(fp string) { fingerprint = fp },
+	}
 	out, runErr := sshclient.RunCapture(cfg, "echo OK && uname -sr")
 	if runErr != nil {
 		writeJSON(w, http.StatusOK, map[string]any{
@@ -805,6 +846,7 @@ func (h *Handler) TestAdminLocationSSHBody(w http.ResponseWriter, r *http.Reques
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok": true, "output": strings.TrimSpace(out), "host": host, "user": user,
+		"host_key": fingerprint,
 	})
 }
 
@@ -831,7 +873,43 @@ func locationSSHConfig(loc *locationRow, meta map[string]any, passwordOverride s
 	if port <= 0 {
 		port = 22
 	}
-	return sshclient.Config{Host: host, Port: port, User: user, Password: pass}, nil
+	return sshclient.Config{
+		Host: host, Port: port, User: user, Password: pass,
+		KnownHostKey: loc.SSHHostKey,
+	}, nil
+}
+
+func (h *Handler) rememberHostKey(cfg sshclient.Config, nodeID string) sshclient.Config {
+	if cfg.KnownHostKey != "" || nodeID == "" {
+		return cfg
+	}
+	cfg.OnHostKey = func(fingerprint string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if _, err := h.db.Exec(ctx, `
+			UPDATE core.nodes SET ssh_host_key = $2
+			WHERE id = $1 AND COALESCE(ssh_host_key, '') = ''
+		`, nodeID, fingerprint); err != nil {
+			log.Printf("отпечаток SSH ноды %s не сохранён: %v", nodeID, err)
+		}
+	}
+	return cfg
+}
+
+func (h *Handler) locationSSHConfigTOFU(loc *locationRow, meta map[string]any, passwordOverride string) (sshclient.Config, error) {
+	cfg, err := locationSSHConfig(loc, meta, passwordOverride)
+	if err != nil {
+		return cfg, err
+	}
+	return h.rememberHostKey(cfg, loc.ID), nil
+}
+
+func (h *Handler) nodeSSHConfigTOFU(loc *locationRow, meta map[string]any) (sshclient.Config, error) {
+	cfg, err := nodeSSHConfig(loc, meta)
+	if err != nil {
+		return cfg, err
+	}
+	return h.rememberHostKey(cfg, loc.ID), nil
 }
 
 func generateAgentToken() (string, error) {

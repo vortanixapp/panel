@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { acceptAccountLegal, clearAuth, fetchAccountLegal } from "@/lib/api";
+import { acceptAccountLegal, fetchAccountLegal, logout } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 
 const KEY = ["account-legal"];
@@ -77,7 +77,7 @@ export function LegalAcceptanceGate() {
           <Button
             variant="outline"
             onClick={() => {
-              clearAuth();
+              void logout();
               router.replace("/login");
             }}
           >

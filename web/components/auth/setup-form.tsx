@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
 import { AuthAside, AuthShell } from "@/components/auth/auth-shell";
-import { bootstrapPanel, setTokens } from "@/lib/api";
+import { adoptSession, bootstrapPanel } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
@@ -78,7 +78,7 @@ export function SetupForm() {
     try {
       const boot = await bootstrapPanel(values.email, values.password, values.panelName);
       queryClient.clear();
-      setTokens(boot.access_token, boot.refresh_token);
+      adoptSession();
       window.location.replace(postLoginPath("owner"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.setup.failed"));

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  clearAuth,
+  logout,
   deleteOwnAccount,
   downloadAccountData,
   fetchAccountIdentification,
@@ -38,7 +38,7 @@ export function AccountData() {
     mutationFn: () => deleteOwnAccount(confirmEmail.trim()),
     onSuccess: () => {
       toast.success(t("settings.data.deleted"));
-      clearAuth();
+      void logout();
       router.replace("/");
     },
     onError: (e: Error) => toast.error(e.message || t("settings.data.delete_failed")),

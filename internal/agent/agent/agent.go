@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/subtle"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -22,10 +25,12 @@ import (
 	"github.com/vortanixapp/panel/internal/agent/selfupdate"
 	"github.com/vortanixapp/panel/pkg/buildinfo"
 	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/relaytls"
 )
 
 type Agent struct {
 	relayURL            string
+	relayPin            string
 	token               string
 	nodeID              string
 	version             string
@@ -71,6 +76,7 @@ type binaryWritePending struct {
 func New() *Agent {
 	return &Agent{
 		relayURL:            os.Getenv("RELAY_URL"),
+		relayPin:            strings.TrimSpace(os.Getenv("RELAY_PIN")),
 		token:               os.Getenv("AGENT_TOKEN"),
 		nodeID:              os.Getenv("NODE_ID"),
 		version:             buildinfo.Current(),
@@ -103,6 +109,9 @@ func (a *Agent) connect() error {
 	header := http.Header{}
 	header.Set("Authorization", "Bearer "+a.token)
 	dialer := &websocket.Dialer{HandshakeTimeout: handshakeTimeout}
+	if a.relayPin != "" {
+		dialer.TLSClientConfig = pinnedTLSConfig(a.relayPin)
+	}
 	conn, resp, err := dialer.Dial(a.relayURL, header)
 	if err != nil {
 		if resp != nil {
@@ -141,6 +150,27 @@ func (a *Agent) connect() error {
 
 	log.Printf("connected to relay as node=%s", a.nodeID)
 	return nil
+}
+
+func pinnedTLSConfig(pin string) *tls.Config {
+	want := strings.TrimSpace(pin)
+	return &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true,
+		VerifyPeerCertificate: func(rawCerts [][]byte, _ [][]*x509.Certificate) error {
+			for _, raw := range rawCerts {
+				cert, err := x509.ParseCertificate(raw)
+				if err != nil {
+					continue
+				}
+				got := relaytls.PinOf(cert)
+				if subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1 {
+					return nil
+				}
+			}
+			return fmt.Errorf("сертификат relay не совпал с отпечатком из установки")
+		},
+	}
 }
 
 func (a *Agent) loop() {

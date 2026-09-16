@@ -10,8 +10,7 @@ import {
   deleteServer,
   changePassword,
   fetchMe,
-  getAccessToken,
-  getRefreshToken,
+  hasSession,
   fetchNodeInstall,
   fetchNodes,
   fetchServerDetail,
@@ -60,7 +59,7 @@ export function useMe() {
   return useQuery({
     queryKey: queryKeys.me,
     queryFn: fetchMe,
-    enabled: typeof window !== "undefined" && !!(getAccessToken() || getRefreshToken()),
+    enabled: typeof window !== "undefined" && hasSession(),
     retry: (failureCount, error) => {
       if (error instanceof Error && error.message === "Session expired") {
         return false;

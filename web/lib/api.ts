@@ -4,7 +4,7 @@ import type {
   ServerSettingsSchema,
   SettingsFileContent,
 } from "@/lib/game-settings/types";
-import { decodeAccess, forgetAccount, markNeedsSignIn, rememberTokens } from "@/lib/accounts";
+import { csrfToken, currentAccount } from "@/lib/accounts";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { t, type BaseLocale } from "@/lib/i18n";
 import type {
@@ -23,75 +23,82 @@ export function tenantSlug(): string {
   return TENANT_SLUG;
 }
 
-const ACCESS_TOKEN_KEY = "vortanix_access_token";
-const REFRESH_TOKEN_KEY = "vortanix_refresh_token";
+let refreshLoopTimer: ReturnType<typeof setInterval> | null = null;
+let sessionExpiresAt = 0;
 
-export function getAccessToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+export function hasSession(): boolean {
+  return currentAccount() !== null;
 }
 
-export function setTokens(access: string, refresh: string) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, access);
-  if (refresh) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-  } else {
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-  }
-  rememberTokens(access, refresh);
-  startAuthRefreshLoop();
+export function activeAccountId(): string | null {
+  return currentAccount()?.user_id ?? null;
 }
 
-function decodeJwtExp(token: string): number | null {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = JSON.parse(atob(normalized)) as { exp?: number };
-    return typeof decoded.exp === "number" ? decoded.exp : null;
-  } catch {
-    return null;
-  }
-}
-
-function accessTokenExpiresSoon(thresholdMs = 5 * 60 * 1000): boolean {
-  const access = getAccessToken();
-  if (!access) return true;
-  const exp = decodeJwtExp(access);
+function accessExpiresSoon(thresholdMs = 5 * 60 * 1000): boolean {
+  const exp = currentAccount()?.exp ?? sessionExpiresAt;
   if (!exp) return false;
   return exp * 1000 - Date.now() < thresholdMs;
 }
 
 export async function ensureValidSession(): Promise<boolean> {
-  const refresh = getRefreshToken();
-  if (!refresh) {
-    return !!getAccessToken();
+  if (!hasSession()) return false;
+  if (!accessExpiresSoon()) return true;
+  try {
+    await refreshSession();
+    return true;
+  } catch {
+    dropSession();
+    redirectToLogin();
+    return false;
   }
-  if (!getAccessToken() || accessTokenExpiresSoon()) {
-    try {
-      const refreshed = await refreshTokens();
-      setTokens(refreshed.access_token, refreshed.refresh_token);
-      return true;
-    } catch {
-      clearAuth();
-      redirectToLogin();
-      return false;
-    }
-  }
-  return true;
 }
 
-let refreshLoopTimer: ReturnType<typeof setInterval> | null = null;
+const LEGACY_KEYS = ["vortanix_access_token", "vortanix_refresh_token", "vortanix_accounts"];
+
+function dropLegacyStorage() {
+  try {
+    for (const key of LEGACY_KEYS) localStorage.removeItem(key);
+  } catch {
+  }
+}
+
+export async function migrateLegacySession(): Promise<void> {
+  if (typeof window === "undefined") return;
+  let refresh = "";
+  try {
+    refresh = localStorage.getItem("vortanix_refresh_token") ?? "";
+  } catch {
+    return;
+  }
+  if (!refresh || hasSession()) {
+    dropLegacyStorage();
+    return;
+  }
+  try {
+    await apiFetch(
+      "/v1/auth/refresh",
+      { method: "POST", body: JSON.stringify({ refresh_token: refresh }) },
+      "api",
+      true
+    );
+  } catch {
+  }
+  dropLegacyStorage();
+}
+
+export function adoptSession() {
+  if (typeof window === "undefined") return;
+  sessionExpiresAt = currentAccount()?.exp ?? 0;
+  startAuthRefreshLoop();
+}
 
 export function startAuthRefreshLoop() {
   if (typeof window === "undefined") return;
   if (refreshLoopTimer) clearInterval(refreshLoopTimer);
-  if (!getRefreshToken()) return;
-  void ensureValidSession();
+  if (!hasSession()) return;
   refreshLoopTimer = setInterval(() => {
-    if (!getRefreshToken()) {
-      if (refreshLoopTimer) clearInterval(refreshLoopTimer);
-      refreshLoopTimer = null;
+    if (!hasSession()) {
+      stopAuthRefreshLoop();
       return;
     }
     void ensureValidSession();
@@ -105,32 +112,9 @@ export function stopAuthRefreshLoop() {
   }
 }
 
-export function adoptActiveSession() {
-  const access = getAccessToken();
-  if (!access) return;
-  rememberTokens(access, getRefreshToken() ?? "");
-}
-
-export function activeAccountId(): string | null {
-  const token = getAccessToken();
-  if (!token) return null;
-  return decodeAccess(token)?.user_id ?? null;
-}
-
-export function clearAuth() {
-  const id = activeAccountId();
-  if (id) markNeedsSignIn(id);
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+function dropSession() {
   stopAuthRefreshLoop();
-}
-
-export function clearAuthAndForget() {
-  const id = activeAccountId();
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  stopAuthRefreshLoop();
-  if (id) forgetAccount(id);
+  sessionExpiresAt = 0;
 }
 
 export function redirectToLogin() {
@@ -139,35 +123,57 @@ export function redirectToLogin() {
   window.location.replace("/login");
 }
 
-export function getRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-}
+let refreshPromise: Promise<void> | null = null;
 
-let refreshPromise: Promise<{ access_token: string; refresh_token: string }> | null =
-  null;
-
-async function refreshTokens() {
+async function refreshSession(): Promise<void> {
   if (refreshPromise) return refreshPromise;
-  const refresh = getRefreshToken();
-  if (!refresh) throw new Error("Session expired");
-  refreshPromise = apiFetch<{ access_token: string; refresh_token: string }>(
+  refreshPromise = apiFetch<{ access_token?: string }>(
     "/v1/auth/refresh",
-    { method: "POST", body: JSON.stringify({ refresh_token: refresh }) },
+    { method: "POST", body: JSON.stringify({}) },
     "api",
     true
-  ).finally(() => {
-    refreshPromise = null;
-  });
+  )
+    .then(() => {
+      sessionExpiresAt = currentAccount()?.exp ?? 0;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
   return refreshPromise;
+}
+
+export async function savedAccounts() {
+  return apiFetch<{
+    accounts: { id: string; email: string; role: string; is_current: boolean }[];
+    current_id: string;
+  }>("/v1/auth/accounts");
+}
+
+export async function switchAccount(userId: string) {
+  return apiFetch<{ ok: boolean; user: { id: string; email: string; role: string } }>(
+    "/v1/auth/switch",
+    { method: "POST", body: JSON.stringify({ user_id: userId }) }
+  );
+}
+
+export async function forgetSavedAccount(body: { user_id?: string; all?: boolean }) {
+  return apiFetch<{ ok: boolean }>("/v1/auth/forget", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function logout() {
   try {
     await apiFetch<{ status: string }>("/v1/auth/logout", { method: "POST" });
   } finally {
-    clearAuthAndForget();
+    dropSession();
   }
+}
+
+export function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const csrf = csrfToken();
+  return { ...(csrf ? { "X-CSRF-Token": csrf } : {}), ...extra };
 }
 
 export async function apiFetch<T>(
@@ -181,14 +187,10 @@ export async function apiFetch<T>(
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
-  if (base === "api" && path !== "/v1/auth/refresh" && getRefreshToken()) {
-    await ensureValidSession();
-  }
-  const token = getAccessToken();
-  if (token && base === "api") {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  const res = await fetch(url, { ...options, headers });
+  const csrf = csrfToken();
+  if (csrf) headers["X-CSRF-Token"] = csrf;
+
+  const res = await fetch(url, { ...options, headers, credentials: "include" });
   let data: { error?: string; message?: string } = {};
   const text = await res.text();
   if (text) {
@@ -198,13 +200,12 @@ export async function apiFetch<T>(
       data = {};
     }
   }
-  if (res.status === 401 && base === "api" && !retried && getRefreshToken()) {
+  if (res.status === 401 && base === "api" && !retried && path !== "/v1/auth/refresh") {
     try {
-      const refreshed = await refreshTokens();
-      setTokens(refreshed.access_token, refreshed.refresh_token);
+      await refreshSession();
       return apiFetch<T>(path, options, base, true);
     } catch {
-      clearAuth();
+      dropSession();
       redirectToLogin();
       throw new Error(data.error ?? data.message ?? "Session expired");
     }
@@ -361,12 +362,9 @@ export async function resendEmailVerification() {
 }
 
 export async function verifyEmailURL(verifyURL: string) {
-  const token = getAccessToken();
   const res = await fetch(verifyURL, {
-    headers: {
-      Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: authHeaders({ Accept: "application/json" }),
+    credentials: "include",
   });
   const data = await res.json();
   if (!res.ok) {
@@ -694,8 +692,18 @@ export async function regenerateAdminLocationAgentToken(id: string) {
 }
 
 export async function testAdminLocationSSH(id: string) {
-  return apiFetch<{ ok: boolean; output?: string; error?: string }>(
-    `/v1/admin/locations/${id}/ssh/test`,
+  return apiFetch<{
+    ok: boolean;
+    output?: string;
+    error?: string;
+    host_key?: string;
+    host_key_changed?: boolean;
+  }>(`/v1/admin/locations/${id}/ssh/test`, { method: "POST" });
+}
+
+export async function resetAdminLocationHostKey(id: string) {
+  return apiFetch<{ ok: boolean; status: string }>(
+    `/v1/admin/locations/${id}/ssh/host-key/reset`,
     { method: "POST" }
   );
 }
@@ -706,7 +714,7 @@ export async function testAdminLocationSSHBody(body: {
   ssh_password: string;
   ssh_port?: number;
 }) {
-  return apiFetch<{ ok: boolean; output?: string; error?: string }>(
+  return apiFetch<{ ok: boolean; output?: string; error?: string; host_key?: string }>(
     "/v1/admin/locations/ssh/test",
     { method: "POST", body: JSON.stringify(body) }
   );
@@ -908,10 +916,8 @@ export async function uploadAccountAvatar(file: File) {
   const form = new FormData();
   form.append("avatar", file);
   const url = API_URL + "/v1/account/avatar";
-  const headers: Record<string, string> = {};
-  const token = getAccessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, { method: "POST", headers, body: form });
+  const headers = authHeaders();
+  const res = await fetch(url, { method: "POST", headers, credentials: "include", body: form });
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.error ?? "Upload failed");
@@ -1130,10 +1136,10 @@ export async function fetchActivity(params: ActivityQuery = {}) {
 }
 
 export async function downloadActivityCsv(params: ActivityQuery = {}) {
-  if (getRefreshToken()) await ensureValidSession();
-  const token = getAccessToken();
+  await ensureValidSession();
   const res = await fetch(`${API_URL}/v1/activity/export.csv${activityQueryString(params)}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authHeaders(),
+    credentials: "include",
   });
   if (!res.ok) throw new Error(t("errors.activity.export_failed"));
 
@@ -1341,11 +1347,10 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
       const startedAt = Date.now();
       let received = false;
       try {
-        if (getRefreshToken()) await ensureValidSession();
-        const token = getAccessToken();
-        if (!token) return;
+        if (!(await ensureValidSession())) return;
         const res = await fetch(`${API_URL}/v1/notifications/stream`, {
-          headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
+          headers: authHeaders({ Accept: "text/event-stream" }),
+          credentials: "include",
           cache: "no-store",
           signal: controller.signal,
         });
@@ -1718,14 +1723,14 @@ export async function replySupportTicket(id: string, body: string) {
 }
 
 export async function uploadSupportAttachment(ticketId: string, file: File | File[]) {
-  const token = getAccessToken();
   const form = new FormData();
   for (const f of Array.isArray(file) ? file : [file]) {
     form.append("file", f);
   }
   const res = await fetch(`${API_URL}/v1/support/${ticketId}/attachments`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authHeaders(),
+    credentials: "include",
     body: form,
   });
   const text = await res.text();
@@ -1755,10 +1760,9 @@ export async function downloadSupportAttachment(
   messageId: string,
   fallbackName: string
 ) {
-  const token = getAccessToken();
   const res = await fetch(
     `${API_URL}/v1/support/${ticketId}/attachments/${messageId}`,
-    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+    { headers: authHeaders(), credentials: "include" }
   );
   if (!res.ok) {
     throw new Error(t("errors.support.attachment_download_failed"));
@@ -2950,14 +2954,16 @@ export async function uploadServerFile(
   onProgress?: (percent: number) => void
 ) {
   const url = `${API_URL}/v1/servers/${serverId}/files/upload`;
-  const token = getAccessToken();
   const form = new FormData();
   form.append("path", path);
   form.append("file", file);
   return new Promise<{ status: string; path?: string; size_bytes?: number }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
-    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.withCredentials = true;
+    for (const [key, value] of Object.entries(authHeaders())) {
+      xhr.setRequestHeader(key, value);
+    }
     xhr.upload.onprogress = (evt) => {
       if (!evt.lengthComputable || !onProgress) return;
       const percent = Math.max(0, Math.min(100, Math.round((evt.loaded / evt.total) * 100)));
@@ -2982,10 +2988,10 @@ export async function uploadServerFile(
 }
 
 export async function downloadServerFile(serverId: string, path: string, fallbackName?: string) {
-  const token = getAccessToken();
   const url = `${API_URL}/v1/servers/${serverId}/files/download?path=${encodeURIComponent(path)}`;
   const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authHeaders(),
+    credentials: "include",
   });
   if (!res.ok) {
     let errMsg = "Download failed";
@@ -3649,10 +3655,8 @@ export async function fetchAdminMaps() {
 }
 
 async function uploadAdminFile<T>(path: string, form: FormData): Promise<T> {
-  const headers: Record<string, string> = {};
-  const token = getAccessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(API_URL + path, { method: "POST", headers, body: form });
+  const headers = authHeaders();
+  const res = await fetch(API_URL + path, { method: "POST", headers, credentials: "include", body: form });
   const text = await res.text();
   let data: Record<string, unknown> = {};
   if (text) {
@@ -4220,10 +4224,8 @@ export async function fetchAdminSettings() {
 
 export async function saveAdminSettings(form: FormData) {
   const url = API_URL + "/v1/admin/settings";
-  const headers: Record<string, string> = {};
-  const token = getAccessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(url, { method: "POST", headers, body: form });
+  const headers = authHeaders();
+  const res = await fetch(url, { method: "POST", headers, credentials: "include", body: form });
   const data = await res.json();
   if (!res.ok) {
     throw new Error(data.message ?? data.error ?? "Request failed");
@@ -4319,12 +4321,10 @@ export async function uploadAdminAppearanceAsset(
 ) {
   const form = new FormData();
   form.append("file", file);
-  const headers: Record<string, string> = {};
-  const token = getAccessToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const headers = authHeaders();
   const res = await fetch(
     `${API_URL}/v1/admin/settings/appearance/assets/${kind}`,
-    { method: "POST", headers, body: form }
+    { method: "POST", headers, credentials: "include", body: form }
   );
   const data = (await res.json().catch(() => ({}))) as {
     appearance?: AdminAppearance;
@@ -4455,9 +4455,9 @@ export function subscribeAdminLogs(
       try {
         const qs = new URLSearchParams({ stream: "1" });
         if (since) qs.set("since", since);
-        const token = getAccessToken();
-        const res = await fetch(`${API_URL}/v1/admin/logs?${qs.toString()}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+              const res = await fetch(`${API_URL}/v1/admin/logs?${qs.toString()}`, {
+          headers: authHeaders(),
+    credentials: "include",
           signal: controller.signal,
         });
         if (!res.ok || !res.body) {
@@ -5422,9 +5422,9 @@ export async function fetchAdminAnalytics(days: number) {
 }
 
 export async function downloadAdminAnalyticsCsv(days: number) {
-  const token = getAccessToken();
   const res = await fetch(`${API_URL}/v1/admin/analytics/export.csv?days=${days}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authHeaders(),
+    credentials: "include",
   });
   if (!res.ok) throw new Error(t("errors.analytics.export_failed"));
   const blob = await res.blob();
@@ -5497,9 +5497,9 @@ export function paymentReceiptUrl(paymentId: string): string {
 }
 
 export async function openPaymentReceipt(paymentId: string) {
-  const token = getAccessToken();
   const res = await fetch(paymentReceiptUrl(paymentId), {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authHeaders(),
+    credentials: "include",
   });
   if (!res.ok) {
     const text = await res.text();
@@ -5556,9 +5556,9 @@ function documentQuery(params: Record<string, string>) {
 
 async function authorizedResponse(path: string, fallback: string) {
   await ensureValidSession();
-  const token = getAccessToken();
   const res = await fetch(API_URL + path, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authHeaders(),
+    credentials: "include",
   });
   if (!res.ok) {
     let message = fallback;
@@ -5950,12 +5950,12 @@ export type BankStatementLine = {
 
 export async function previewBankStatement(file: File) {
   await ensureValidSession();
-  const token = getAccessToken();
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_URL}/v1/admin/accounting/bank-statement/preview`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authHeaders(),
+    credentials: "include",
     body: form,
   });
   const data = (await res.json().catch(() => ({}))) as {
@@ -6271,9 +6271,9 @@ export async function fetchAdminWhmcsServices() {
 
 export async function downloadWhmcsModule() {
   await ensureValidSession();
-  const token = getAccessToken();
   const res = await fetch(API_URL + "/v1/admin/settings/whmcs/module.zip", {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: authHeaders(),
+    credentials: "include",
   });
   if (!res.ok) {
     let message = t("admin.integrations.whmcs.download_failed");

@@ -80,13 +80,7 @@ func (r *Runner) processFTPAccount(ctx context.Context) bool {
 		return true
 	}
 
-	cfg := sshclient.Config{
-		Host:     node.SSHHost,
-		Port:     node.SSHPort,
-		User:     node.SSHUser,
-		Password: node.SSHPassword,
-		Timeout:  45 * time.Second,
-	}
+	cfg := r.sshConfig(node, 0)
 
 	script := ""
 	switch pl.Action {

@@ -146,6 +146,7 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
+	h.startSession(w, r, userID, req.OwnerEmail, "owner", access, refresh, rememberRefreshTTL)
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"access_token":  access,
@@ -241,6 +242,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
+	h.startSession(w, r, userID, req.Email, role, access, refresh, refreshTTLForRemember(req.Remember))
 
 	h.recordLoginAttempt(ctx, r, userID, req.Email, "", true)
 	h.notifyNewLogin(ctx, r, userID, req.Email)
@@ -374,6 +376,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
+	h.startSession(w, r, userID, email, "user", access, refresh, 0)
 
 	h.maybeSendVerificationEmail(userID, email)
 
@@ -408,14 +411,25 @@ const authContextKey contextKey = "auth"
 func AuthMiddleware(tokens *paneljwt.Manager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			header := r.Header.Get("Authorization")
-			if !strings.HasPrefix(header, "Bearer ") {
+			raw := ""
+			fromCookie := false
+			if header := r.Header.Get("Authorization"); strings.HasPrefix(header, "Bearer ") {
+				raw = strings.TrimPrefix(header, "Bearer ")
+			} else if value := cookieValue(r, accessCookie); value != "" {
+				raw, fromCookie = value, true
+			}
+			if raw == "" {
 				writeError(w, http.StatusUnauthorized, "missing bearer token")
 				return
 			}
-			claims, err := tokens.ParseAccess(strings.TrimPrefix(header, "Bearer "))
+			claims, err := tokens.ParseAccess(raw)
 			if err != nil {
 				writeError(w, http.StatusUnauthorized, "invalid token")
+				return
+			}
+			if fromCookie && !csrfValid(r) {
+				writeCodedError(w, http.StatusForbidden, "csrf_failed",
+					"Запрос отклонён: не совпал защитный ключ формы. Обновите страницу и повторите")
 				return
 			}
 			ctx := context.WithValue(r.Context(), authContextKey, claims)

@@ -2,8 +2,11 @@ package sshclient
 
 import (
 	"bytes"
+	"crypto/subtle"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"time"
 
@@ -11,13 +14,51 @@ import (
 )
 
 type Config struct {
-	Host        string
-	Port        int
-	User        string
-	Password    string
-	PrivateKey  string
-	Timeout     time.Duration
-	ExecTimeout time.Duration
+	Host         string
+	Port         int
+	User         string
+	Password     string
+	PrivateKey   string
+	Timeout      time.Duration
+	ExecTimeout  time.Duration
+	KnownHostKey string
+	OnHostKey    func(fingerprint string)
+}
+
+type HostKeyError struct {
+	Host     string
+	Expected string
+	Got      string
+}
+
+func (e *HostKeyError) Error() string {
+	return fmt.Sprintf(
+		"ключ SSH у %s изменился: панель помнит %s, а нода представилась %s. "+
+			"Так выглядит и переустановка ноды, и подмена в сети. Если ноду переставляли, "+
+			"сбросьте отпечаток на её странице и повторите",
+		e.Host, e.Expected, e.Got)
+}
+
+func IsHostKeyError(err error) bool {
+	var hk *HostKeyError
+	return errors.As(err, &hk)
+}
+
+func (c Config) hostKeyCallback() ssh.HostKeyCallback {
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		fingerprint := ssh.FingerprintSHA256(key)
+		known := strings.TrimSpace(c.KnownHostKey)
+		if known != "" {
+			if subtle.ConstantTimeCompare([]byte(known), []byte(fingerprint)) != 1 {
+				return &HostKeyError{Host: c.Host, Expected: known, Got: fingerprint}
+			}
+			return nil
+		}
+		if c.OnHostKey != nil {
+			c.OnHostKey(fingerprint)
+		}
+		return nil
+	}
 }
 
 const defaultExecTimeout = 10 * time.Minute
@@ -80,7 +121,7 @@ func (c Config) dial() (*ssh.Client, error) {
 	cfg := &ssh.ClientConfig{
 		User:            c.User,
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: c.hostKeyCallback(),
 		Timeout:         c.Timeout,
 	}
 	return ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), cfg)

@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -20,6 +22,8 @@ import (
 	"github.com/vortanixapp/panel/pkg/httplog"
 	"github.com/vortanixapp/panel/pkg/httpprom"
 	"github.com/vortanixapp/panel/pkg/netaddr"
+	"github.com/vortanixapp/panel/pkg/relaytls"
+	"github.com/vortanixapp/panel/pkg/secretbox"
 )
 
 func main() {
@@ -65,12 +69,61 @@ func main() {
 		}
 	}()
 
+	tlsSrv := startAgentTLS(ctx, pool, h)
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutdownCtx)
+	if tlsSrv != nil {
+		_ = tlsSrv.Shutdown(shutdownCtx)
+	}
+}
+
+func startAgentTLS(ctx context.Context, pool *pgxpool.Pool, h *handlers.Handler) *http.Server {
+	port := env("RELAY_TLS_PORT", "8443")
+	if port == "0" || strings.EqualFold(port, "off") {
+		return nil
+	}
+	hosts := relaytls.HostsFrom(
+		env("RELAY_TLS_HOSTS", ""),
+		env("RELAY_PUBLIC_URL", ""),
+		env("FRONTEND_URL", ""),
+		env("SITE_ADDRESS", ""),
+	)
+	if len(hosts) == 0 {
+		log.Printf("relay: защищённый порт для агентов не поднят — неизвестен внешний адрес (RELAY_PUBLIC_URL)")
+		return nil
+	}
+	box, err := secretbox.New(env("SECRETS_KEY", ""))
+	if err != nil {
+		log.Printf("relay: ключ шифрования недоступен: %v", err)
+		box = nil
+	}
+	material, err := relaytls.Ensure(ctx, pool, box, hosts)
+	if err != nil {
+		log.Printf("relay: сертификат для агентов не готов: %v", err)
+		return nil
+	}
+
+	mux := chi.NewRouter()
+	mux.Get("/health", h.Health)
+	mux.Get("/v1/agent/connect", h.AgentConnect)
+
+	srv := &http.Server{
+		Addr:      netaddr.Listen(port),
+		Handler:   mux,
+		TLSConfig: &tls.Config{Certificates: []tls.Certificate{material.Certificate}, MinVersion: tls.VersionTLS12},
+	}
+	go func() {
+		log.Printf("agent-relay tls listening on :%s (%s, отпечаток %s)", port, strings.Join(material.Hosts, ", "), material.Pin)
+		if err := srv.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			log.Printf("relay tls: %v", err)
+		}
+	}()
+	return srv
 }
 
 func env(key, fallback string) string {

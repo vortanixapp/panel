@@ -19,6 +19,10 @@ import (
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	claims, ok := tenantClaims(r.Context())
+	h.clearAuthCookies(w, r)
+	if ok {
+		h.forgetLogin(w, r, claims.UserID)
+	}
 	if ok && claims.SessionID != "" {
 		if _, err := h.dbOf(r.Context()).Exec(r.Context(),
 			`DELETE FROM core.user_sessions WHERE id = $1 AND user_id = $2`,
@@ -40,13 +44,19 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	userID, sessionID, expiresAt, err := h.tokens.ParseRefreshDetails(req.RefreshToken)
+	token := strings.TrimSpace(req.RefreshToken)
+	if token == "" {
+		token = cookieValue(r, refreshCookie)
+	}
+	userID, sessionID, expiresAt, err := h.tokens.ParseRefreshDetails(token)
 	if err != nil {
+		h.clearAuthCookies(w, r)
 		writeError(w, http.StatusUnauthorized, "invalid refresh token")
 		return
 	}
 	remaining := time.Until(expiresAt)
 	if remaining <= 0 {
+		h.clearAuthCookies(w, r)
 		writeError(w, http.StatusUnauthorized, "invalid refresh token")
 		return
 	}
@@ -54,6 +64,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if sessionID == "" {
+		h.clearAuthCookies(w, r)
 		writeError(w, http.StatusUnauthorized, "invalid refresh token")
 		return
 	}
@@ -62,6 +73,8 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		`SELECT EXISTS(SELECT 1 FROM core.user_sessions WHERE id = $1 AND user_id = $2)`,
 		sessionID, userID,
 	).Scan(&alive); err != nil || !alive {
+		h.clearAuthCookies(w, r)
+		h.forgetLogin(w, r, userID)
 		writeError(w, http.StatusUnauthorized, "Сессия закрыта")
 		return
 	}
@@ -72,6 +85,8 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		WHERE u.id = $1 AND u.status = 'active'
 	`, userID).Scan(&email, &role)
 	if err != nil {
+		h.clearAuthCookies(w, r)
+		h.forgetLogin(w, r, userID)
 		writeError(w, http.StatusUnauthorized, "user not found")
 		return
 	}
@@ -80,6 +95,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
+	h.startSession(w, r, userID, email, role, access, refresh, refreshTTL)
 	writeJSON(w, http.StatusOK, map[string]string{
 		"access_token":  access,
 		"refresh_token": refresh,

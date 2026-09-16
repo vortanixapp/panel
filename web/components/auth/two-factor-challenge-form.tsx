@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { AuthError, AuthField, AuthHeading, AuthSubmit, AuthSwitch } from "@/components/auth/auth-kit";
-import { challenge2FA, setTokens } from "@/lib/api";
+import { adoptSession, challenge2FA } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
 import { useQueryClient } from "@tanstack/react-query";
 import { useT } from "@/hooks/use-translations";
@@ -45,7 +45,7 @@ export function TwoFactorChallengeForm() {
     try {
       const res = await challenge2FA(twoFactorToken, values.code);
       queryClient.clear();
-      setTokens(res.access_token, res.refresh_token);
+      adoptSession();
       router.push(postLoginPath(res.user?.role ?? "user"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.two_factor.invalid_code"));

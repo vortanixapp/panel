@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { exchangeWhmcsSSO, setTokens } from "@/lib/api";
+import { adoptSession, exchangeWhmcsSSO } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 
 function WhmcsProgress() {
@@ -53,7 +53,7 @@ function WhmcsSignInContent() {
     }
     exchangeWhmcsSSO(token)
       .then((res) => {
-        setTokens(res.access_token, res.refresh_token ?? "");
+        adoptSession();
         router.replace(res.redirect || "/servers");
       })
       .catch((err: unknown) => {

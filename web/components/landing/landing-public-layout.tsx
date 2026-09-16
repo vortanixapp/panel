@@ -10,7 +10,7 @@ import { landingFontVariables } from "@/components/landing/fonts";
 import { landingFooterCols, landingNav } from "@/components/landing/landing-content";
 import { EASE_OUT, MotionRoot } from "@/components/landing/motion";
 import { useBrand } from "@/context/brand-provider";
-import { getAccessToken } from "@/lib/api";
+import { hasSession } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -88,7 +88,7 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
   const contacts = footerContacts(t, links);
 
   useEffect(() => {
-    setLoggedIn(!!getAccessToken());
+    setLoggedIn(hasSession());
   }, []);
 
   useEffect(() => {

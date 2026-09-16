@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useLocale } from "@/context/locale-provider";
-import { getAccessToken, updateAccount } from "@/lib/api";
+import { hasSession, updateAccount } from "@/lib/api";
 import { setAccountPreferences } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
@@ -23,7 +23,7 @@ export function LanguageSwitch() {
   function choose(next: string) {
     if (next === locale) return;
     setAccountPreferences({ language: next });
-    if (!getAccessToken()) return;
+    if (!hasSession()) return;
     void updateAccount({ locale: next }).catch((err: unknown) =>
       toast.error(
         t("layout.language_save_failed", {

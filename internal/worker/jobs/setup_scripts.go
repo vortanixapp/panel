@@ -9,7 +9,7 @@ import (
 
 const defaultAgentImage = "ghcr.io/vortanixapp/vortanix-agent:latest"
 
-func setupCommands(component string, meta map[string]any, agentToken, nodeID, relayURL string) ([]string, error) {
+func setupCommands(component string, meta map[string]any, agentToken, nodeID, relayURL, relayPin string) ([]string, error) {
 	switch component {
 	case "packages":
 		return []string{
@@ -30,13 +30,15 @@ func setupCommands(component string, meta map[string]any, agentToken, nodeID, re
 	case "quota":
 		return diskQuotaCommands(meta), nil
 	case "daemon":
-		return daemonAgentCommands(agentToken, nodeID, relayURL, ""), nil
+		return daemonAgentCommands(agentToken, nodeID, relayURL, relayPin, ""), nil
 	default:
 		return nil, fmt.Errorf("unknown setup component: %s", component)
 	}
 }
 
 const mysqlNetwork = "vortanix-mysql"
+
+const defaultPhpMyAdminPort = 8444
 
 func mysqlInstanceList(meta map[string]any) []map[string]any {
 	raw := defaultMySQLInstances()
@@ -166,19 +168,35 @@ func phpMyAdminCommands(meta map[string]any) []string {
 			" -e PMA_PORTS=" + shellQuote(strings.Join(ports, ",")) +
 			" -e PMA_VERBOSES=" + shellQuote(strings.Join(names, ","))
 	}
-	run += " -p 8081:80 " + image
+	run += " -p 127.0.0.1:8081:80 " + image
 
+	port := phpMyAdminPortOf(meta)
+	proxy := mirrored("caddy:2-alpine")
 	cmds := append([]string{"sudo systemctl start docker || true"}, mysqlNetworkCommands(instances)...)
 	return append(cmds,
 		"sudo docker rm -f vortanix-phpmyadmin 2>/dev/null || true",
-		"sudo mkdir -p /opt/vortanix/phpmyadmin",
+		"sudo mkdir -p /opt/vortanix/phpmyadmin /opt/vortanix/phpmyadmin-tls",
 		fmt.Sprintf("sudo docker pull %s", image),
 		run,
-		"sudo ufw allow 8081/tcp || true",
+		fmt.Sprintf("sudo docker pull %s", proxy),
+		"sudo docker rm -f vortanix-phpmyadmin-tls 2>/dev/null || true",
+		fmt.Sprintf("sudo docker run -d --name vortanix-phpmyadmin-tls --restart unless-stopped --network %s "+
+			"-p %d:%d -v /opt/vortanix/phpmyadmin-tls:/data %s "+
+			"caddy reverse-proxy --internal-certs --from https://:%d --to vortanix-phpmyadmin:80",
+			mysqlNetwork, port, port, proxy, port),
+		fmt.Sprintf("sudo ufw allow %d/tcp >/dev/null 2>&1 || true", port),
+		"sudo ufw delete allow 8081/tcp >/dev/null 2>&1 || true",
 	)
 }
 
-func daemonAgentCommands(agentToken, nodeID, relayURL, version string) []string {
+func phpMyAdminPortOf(meta map[string]any) int {
+	if port := intFromJSONNumber(meta["phpmyadmin_port"]); port > 0 && port != 8081 {
+		return port
+	}
+	return defaultPhpMyAdminPort
+}
+
+func daemonAgentCommands(agentToken, nodeID, relayURL, relayPin, version string) []string {
 	if relayURL == "" {
 		relayURL = "ws://127.0.0.1:8082/v1/agent/connect"
 	}
@@ -188,8 +206,8 @@ func daemonAgentCommands(agentToken, nodeID, relayURL, version string) []string 
 		"sudo mkdir -p /var/lib/vortanix/servers /opt/vortanix/plugin-cache",
 		fmt.Sprintf("sudo docker pull %s", image),
 		"sudo docker rm -f vortanix-agent 2>/dev/null || true",
-		fmt.Sprintf("sudo docker run -d --name vortanix-agent --restart unless-stopped --user 0:0 --cap-add SYS_ADMIN -e RELAY_URL=%q -e AGENT_TOKEN=%q -e NODE_ID=%q -e VORTANIX_VERSION=%q -e VORTANIX_DATA_DIR=/var/lib/vortanix/servers -v /var/run/docker.sock:/var/run/docker.sock -v /dev:/dev -v /var/lib/vortanix/servers:/var/lib/vortanix/servers -v /opt/vortanix:/opt/vortanix %s",
-			relayURL, agentToken, nodeID, versionLabelOf(image, version), image),
+		fmt.Sprintf("sudo docker run -d --name vortanix-agent --restart unless-stopped --user 0:0 --cap-add SYS_ADMIN -e RELAY_URL=%q -e RELAY_PIN=%q -e AGENT_TOKEN=%q -e NODE_ID=%q -e VORTANIX_VERSION=%q -e VORTANIX_DATA_DIR=/var/lib/vortanix/servers -v /var/run/docker.sock:/var/run/docker.sock -v /dev:/dev -v /var/lib/vortanix/servers:/var/lib/vortanix/servers -v /opt/vortanix:/opt/vortanix %s",
+			relayURL, relayPin, agentToken, nodeID, versionLabelOf(image, version), image),
 	}
 }
 

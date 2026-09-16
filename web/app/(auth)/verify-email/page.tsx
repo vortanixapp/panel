@@ -15,7 +15,7 @@ import {
 import {
   resendEmailVerification,
   verifyEmailURL,
-  getAccessToken,
+  hasSession,
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 
@@ -31,7 +31,7 @@ function VerifyEmailContent() {
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
-    setLoggedIn(!!getAccessToken());
+    setLoggedIn(hasSession());
   }, []);
 
   useEffect(() => {

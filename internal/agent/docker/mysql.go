@@ -101,6 +101,71 @@ func mysqlEscapeIdent(s string) string {
 	return strings.ReplaceAll(s, "`", "``")
 }
 
+var mysqlLocalHosts = []string{
+	"localhost",
+	"127.0.0.1",
+	"10.0.0.0/255.0.0.0",
+	"172.16.0.0/255.240.0.0",
+	"192.168.0.0/255.255.0.0",
+}
+
+func mysqlUserHosts() []string {
+	return append([]string{"%"}, mysqlLocalHosts...)
+}
+
+func mysqlSupportsTLS(ctx context.Context, inst mysqlInstance) bool {
+	lines, err := mysqlQueryLines(ctx, inst, "SHOW GLOBAL VARIABLES LIKE 'ssl_cert';")
+	if err != nil {
+		return false
+	}
+	for _, line := range lines {
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func mysqlRequireClause(host string, tls bool) string {
+	if host == "%" && tls {
+		return " REQUIRE SSL"
+	}
+	return ""
+}
+
+func mysqlCreateUserSQL(username, password string, hosts []string, tls bool) string {
+	userEsc := mysqlEscapeString(username)
+	passEsc := mysqlEscapeString(password)
+	var b strings.Builder
+	for _, host := range hosts {
+		hostEsc := mysqlEscapeString(host)
+		require := mysqlRequireClause(host, tls)
+		fmt.Fprintf(&b, "CREATE USER IF NOT EXISTS '%s'@'%s' IDENTIFIED BY '%s'%s;", userEsc, hostEsc, passEsc, require)
+		fmt.Fprintf(&b, "ALTER USER '%s'@'%s' IDENTIFIED BY '%s'%s;", userEsc, hostEsc, passEsc, require)
+	}
+	return b.String()
+}
+
+func mysqlGrantSQL(database, username string, hosts []string) string {
+	dbIdent := mysqlEscapeIdent(database)
+	userEsc := mysqlEscapeString(username)
+	var b strings.Builder
+	for _, host := range hosts {
+		fmt.Fprintf(&b, "GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%s';", dbIdent, userEsc, mysqlEscapeString(host))
+	}
+	return b.String()
+}
+
+func mysqlDropUserSQL(username string, hosts []string) string {
+	userEsc := mysqlEscapeString(username)
+	var b strings.Builder
+	for _, host := range hosts {
+		fmt.Fprintf(&b, "DROP USER IF EXISTS '%s'@'%s';", userEsc, mysqlEscapeString(host))
+	}
+	return b.String()
+}
+
 func mysqlEscapeString(s string) string {
 	return strings.ReplaceAll(s, "'", "''")
 }
@@ -117,17 +182,13 @@ func MySQLCreateDB(ctx context.Context, payload map[string]any) error {
 		return fmt.Errorf("database, username and password required")
 	}
 
-	dbIdent := mysqlEscapeIdent(database)
-	userEsc := mysqlEscapeString(username)
-	passEsc := mysqlEscapeString(password)
-	sql := fmt.Sprintf(
-		"CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"+
-			"CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s';"+
-			"ALTER USER '%s'@'%%' IDENTIFIED BY '%s';"+
-			"GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%%';"+
-			"FLUSH PRIVILEGES;",
-		dbIdent, userEsc, passEsc, userEsc, passEsc, dbIdent, userEsc,
-	)
+	hosts := mysqlUserHosts()
+	tls := mysqlSupportsTLS(ctx, inst)
+	sql := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+		mysqlEscapeIdent(database))
+	sql += mysqlCreateUserSQL(username, password, hosts, tls)
+	sql += mysqlGrantSQL(database, username, hosts)
+	sql += "FLUSH PRIVILEGES;"
 	return mysqlExec(ctx, inst, sql)
 }
 
@@ -141,11 +202,9 @@ func MySQLDeleteDB(ctx context.Context, payload map[string]any) error {
 	if database == "" {
 		return fmt.Errorf("database required")
 	}
-	dbIdent := mysqlEscapeIdent(database)
-	userEsc := mysqlEscapeString(username)
-	sql := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`;", dbIdent)
+	sql := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`;", mysqlEscapeIdent(database))
 	if username != "" {
-		sql += fmt.Sprintf("DROP USER IF EXISTS '%s'@'%%';", userEsc)
+		sql += mysqlDropUserSQL(username, mysqlUserHosts())
 	}
 	sql += "FLUSH PRIVILEGES;"
 	return mysqlExec(ctx, inst, sql)
@@ -202,11 +261,10 @@ func MySQLCreateUser(ctx context.Context, payload map[string]any) error {
 			return err
 		}
 	}
-	userEsc := mysqlEscapeString(username)
-	passEsc := mysqlEscapeString(password)
-	sql := fmt.Sprintf("CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s';ALTER USER '%s'@'%%' IDENTIFIED BY '%s';", userEsc, passEsc, userEsc, passEsc)
+	hosts := mysqlUserHosts()
+	sql := mysqlCreateUserSQL(username, password, hosts, mysqlSupportsTLS(ctx, inst))
 	if database != "" {
-		sql += fmt.Sprintf("GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%%';", mysqlEscapeIdent(database), userEsc)
+		sql += mysqlGrantSQL(database, username, hosts)
 	}
 	sql += "FLUSH PRIVILEGES;"
 	return mysqlExec(ctx, inst, sql)
@@ -224,7 +282,7 @@ func MySQLDeleteUser(ctx context.Context, payload map[string]any) error {
 	if err := guardMySQLUser(username); err != nil {
 		return err
 	}
-	sql := fmt.Sprintf("DROP USER IF EXISTS '%s'@'%%';FLUSH PRIVILEGES;", mysqlEscapeString(username))
+	sql := mysqlDropUserSQL(username, mysqlUserHosts()) + "FLUSH PRIVILEGES;"
 	return mysqlExec(ctx, inst, sql)
 }
 
@@ -241,7 +299,8 @@ func MySQLResetUserPassword(ctx context.Context, payload map[string]any) error {
 	if err := guardMySQLUser(username); err != nil {
 		return err
 	}
-	sql := fmt.Sprintf("ALTER USER '%s'@'%%' IDENTIFIED BY '%s';FLUSH PRIVILEGES;", mysqlEscapeString(username), mysqlEscapeString(password))
+	sql := mysqlCreateUserSQL(username, password, mysqlUserHosts(), mysqlSupportsTLS(ctx, inst)) +
+		"FLUSH PRIVILEGES;"
 	return mysqlExec(ctx, inst, sql)
 }
 
@@ -323,16 +382,11 @@ func MySQLMigrateDB(ctx context.Context, serverID string, payload map[string]any
 	}
 
 	dbIdent := mysqlEscapeIdent(database)
-	userEsc := mysqlEscapeString(username)
-	passEsc := mysqlEscapeString(password)
-	createSQL := fmt.Sprintf(
-		"CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"+
-			"CREATE USER IF NOT EXISTS '%s'@'%%' IDENTIFIED BY '%s';"+
-			"ALTER USER '%s'@'%%' IDENTIFIED BY '%s';"+
-			"GRANT ALL PRIVILEGES ON `%s`.* TO '%s'@'%%';"+
-			"FLUSH PRIVILEGES;",
-		dbIdent, userEsc, passEsc, userEsc, passEsc, dbIdent, userEsc,
-	)
+	dstHosts := mysqlUserHosts()
+	createSQL := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", dbIdent) +
+		mysqlCreateUserSQL(username, password, dstHosts, mysqlSupportsTLS(ctx, dst)) +
+		mysqlGrantSQL(database, username, dstHosts) +
+		"FLUSH PRIVILEGES;"
 	if err := mysqlExec(ctx, dst, createSQL); err != nil {
 		return err
 	}
@@ -365,7 +419,8 @@ func MySQLMigrateDB(ctx context.Context, serverID string, payload map[string]any
 		}
 	}
 	if deleteSource {
-		dropSQL := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`;DROP USER IF EXISTS '%s'@'%%';FLUSH PRIVILEGES;", dbIdent, userEsc)
+		dropSQL := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`;", dbIdent) +
+			mysqlDropUserSQL(username, mysqlUserHosts()) + "FLUSH PRIVILEGES;"
 		_ = mysqlExec(ctx, src, dropSQL)
 	}
 	return nil

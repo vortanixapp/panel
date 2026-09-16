@@ -11,7 +11,7 @@ import { PanelSection } from "@/components/landing/sections/panel";
 import { PricingSection } from "@/components/landing/sections/pricing";
 import { StepsSection } from "@/components/landing/sections/steps";
 import { useBrand } from "@/context/brand-provider";
-import { getAccessToken } from "@/lib/api";
+import { hasSession } from "@/lib/api";
 
 const ORDER = ["hero", "games", "steps", "hardware", "panel", "locations", "pricing", "faq", "cta"] as const;
 
@@ -22,7 +22,7 @@ export function LandingBody() {
   const [loggedIn, setLoggedIn] = useState(false);
 
   useEffect(() => {
-    setLoggedIn(!!getAccessToken());
+    setLoggedIn(hasSession());
   }, []);
 
   const visible = ORDER.filter((name) => blocks[name] !== false);

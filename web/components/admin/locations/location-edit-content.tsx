@@ -70,7 +70,7 @@ export function LocationEditContent() {
     is_active: true,
     mysql_instances: "",
     docker_images: "",
-    phpmyadmin_port: 8081,
+    phpmyadmin_port: 8444,
   });
 
   const { data, isLoading } = useQuery({
@@ -108,7 +108,7 @@ export function LocationEditContent() {
       docker_images: Array.isArray(l.docker_images)
         ? JSON.stringify(l.docker_images, null, 2)
         : "",
-      phpmyadmin_port: Number(l.phpmyadmin_port ?? 8081),
+      phpmyadmin_port: Number(l.phpmyadmin_port ?? 8444),
     });
   }, [data]);
 

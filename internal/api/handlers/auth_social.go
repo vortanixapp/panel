@@ -268,6 +268,7 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
+	h.startSession(w, r, userID, email, role, access, refresh, rememberRefreshTTL)
 	h.recordLoginAttempt(ctx, r, userID, email, "вход через "+providerKey, true)
 	redirect := "/dashboard"
 	if isStaffRole(role) {

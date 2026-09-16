@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CONSOLE_URL, getAccessToken } from "@/lib/api";
+import { CONSOLE_URL, hasSession } from "@/lib/api";
 
 export type TenantEvent = {
   type: string;
@@ -18,12 +18,9 @@ export function useLiveDashboard(onEvent: (ev: TenantEvent) => void) {
   cb.current = onEvent;
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
+    if (!hasSession()) return;
 
-    const ws = new WebSocket(
-      `${CONSOLE_URL}/v1/dashboard/stream?token=${encodeURIComponent(token)}`
-    );
+    const ws = new WebSocket(`${CONSOLE_URL}/v1/dashboard/stream`);
 
     ws.onmessage = (msg) => {
       try {

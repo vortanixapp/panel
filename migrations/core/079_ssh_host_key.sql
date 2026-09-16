@@ -1,0 +1,1 @@
+ALTER TABLE core.nodes ADD COLUMN IF NOT EXISTS ssh_host_key TEXT;

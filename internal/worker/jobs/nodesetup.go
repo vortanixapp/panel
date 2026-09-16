@@ -99,7 +99,7 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 		return true
 	}
 
-	relayURL := relayWebsocketURL(envOr("RELAY_PUBLIC_URL", envOr("RELAY_URL", "")))
+	relayURL, relayPin := r.relayTarget(ctx)
 
 	progress := r.newSetupProgressWriter(ctx, pl.NodeID, pl.Component)
 	defer progress.Close()
@@ -117,7 +117,7 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 		return true
 	}
 
-	commands, cmdErr := setupCommands(pl.Component, node.Meta, node.AgentToken, node.ID, relayURL)
+	commands, cmdErr := setupCommands(pl.Component, node.Meta, node.AgentToken, node.ID, relayURL, relayPin)
 	if cmdErr != nil {
 		r.failNodeSetup(ctx, jobID, pl.NodeID, pl.Component, cmdErr.Error(), progress)
 		return true
@@ -127,13 +127,7 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 		dockerHubLoginCommands(pl.Component, hubUser, hubToken)...)
 	commands = append(logins, commands...)
 
-	cfg := sshclient.Config{
-		Host:     node.SSHHost,
-		Port:     node.SSHPort,
-		User:     node.SSHUser,
-		Password: node.SSHPassword,
-		Timeout:  60 * time.Second,
-	}
+	cfg := r.sshConfig(node, 0)
 	if err := sshclient.Run(cfg, commands, progress); err != nil {
 		r.failNodeSetup(ctx, jobID, pl.NodeID, pl.Component, err.Error(), progress)
 		return true
@@ -159,9 +153,9 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 	if pl.Component == "phpmyadmin" {
 		_, _ = r.db.Exec(ctx, `
 			UPDATE core.nodes
-			SET meta = jsonb_set(COALESCE(meta, '{}'::jsonb), '{phpmyadmin_port}', '8081'::jsonb, true)
+			SET meta = jsonb_set(COALESCE(meta, '{}'::jsonb), '{phpmyadmin_port}', to_jsonb($2::int), true)
 			WHERE id = $1
-		`, pl.NodeID)
+		`, pl.NodeID, phpMyAdminPortOf(node.Meta))
 	}
 
 	result, _ := json.Marshal(map[string]any{"ok": true, "log": fullLog})
@@ -176,6 +170,7 @@ type nodeSSH struct {
 	SSHUser     string
 	SSHPort     int
 	SSHPassword string
+	SSHHostKey  string
 	Meta        map[string]any
 }
 
@@ -184,9 +179,10 @@ func (r *Runner) loadNodeSSH(ctx context.Context, q dbExec, nodeID string) (*nod
 	var sshHost, sshUser, sshPassEnc *string
 	var meta []byte
 	err := q.QueryRow(ctx, `
-		SELECT id::text, agent_token, ssh_host, ssh_user, COALESCE(ssh_port, 22), ssh_password_enc, COALESCE(meta, '{}')
+		SELECT id::text, agent_token, ssh_host, ssh_user, COALESCE(ssh_port, 22), ssh_password_enc,
+		       COALESCE(ssh_host_key, ''), COALESCE(meta, '{}')
 		FROM core.nodes WHERE id = $1
-	`, nodeID).Scan(&n.ID, &n.AgentToken, &sshHost, &sshUser, &n.SSHPort, &sshPassEnc, &meta)
+	`, nodeID).Scan(&n.ID, &n.AgentToken, &sshHost, &sshUser, &n.SSHPort, &sshPassEnc, &n.SSHHostKey, &meta)
 	if err != nil {
 		return nil, fmt.Errorf("node not found")
 	}
@@ -210,6 +206,25 @@ func (r *Runner) loadNodeSSH(ctx context.Context, q dbExec, nodeID string) (*nod
 		return nil, fmt.Errorf("ssh password not set")
 	}
 	return &n, nil
+}
+
+func (r *Runner) sshConfig(node *nodeSSH, execTimeout time.Duration) sshclient.Config {
+	cfg := sshConfigFor(node, execTimeout)
+	if node.SSHHostKey != "" {
+		return cfg
+	}
+	nodeID := node.ID
+	cfg.OnHostKey = func(fingerprint string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if _, err := r.db.Exec(ctx, `
+			UPDATE core.nodes SET ssh_host_key = $2
+			WHERE id = $1 AND COALESCE(ssh_host_key, '') = ''
+		`, nodeID, fingerprint); err != nil {
+			log.Printf("отпечаток SSH ноды %s не сохранён: %v", nodeID, err)
+		}
+	}
+	return cfg
 }
 
 type setupProgressWriter struct {

@@ -247,6 +247,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Get("/locations/{id}/install", h.GetAdminLocationInstallScript)
 			r.Post("/locations/{id}/agent-token/regenerate", h.RegenerateAdminLocationAgentToken)
 			r.Post("/locations/{id}/ssh/test", h.TestAdminLocationSSH)
+			r.Post("/locations/{id}/ssh/host-key/reset", h.ResetAdminLocationHostKey)
 			r.Put("/locations/{id}", h.PutAdminLocation)
 			r.Patch("/locations/{id}", h.PatchAdminLocation)
 			r.Patch("/locations/{id}/toggle", h.ToggleAdminLocation)
@@ -487,6 +488,9 @@ func (h *Handler) mountPublicMonitoring(r chi.Router) {
 
 func (h *Handler) mountPublicAuth(r chi.Router) {
 	r.Post("/v1/auth/refresh", h.Refresh)
+	r.Get("/v1/auth/accounts", h.SavedAccounts)
+	r.Post("/v1/auth/switch", h.SwitchAccount)
+	r.Post("/v1/auth/forget", h.ForgetAccount)
 	r.Post("/v1/auth/forgot-password", h.ForgotPassword)
 	r.Post("/v1/auth/reset-password", h.ResetPassword)
 	r.Post("/v1/auth/2fa/challenge", h.Challenge2FA)

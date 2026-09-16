@@ -25,6 +25,7 @@ import {
   fetchAdminLocation,
   fetchNodeCapacity,
   pullAdminLocationDaemon,
+  resetAdminLocationHostKey,
   testAdminLocationSSH,
   type AdminLocationListItem,
 } from "@/lib/api";
@@ -209,8 +210,21 @@ export function LocationDetailContent() {
   const sshTestMut = useMutation({
     mutationFn: () => testAdminLocationSSH(id),
     onSuccess: (res) => {
-      if (res.ok) toast.success(res.output ? `SSH OK: ${res.output}` : "SSH OK");
-      else toast.error(res.error || t("admin.location.svc.ssh_error"));
+      if (res.ok) {
+        toast.success(res.output ? `SSH OK: ${res.output}` : "SSH OK");
+        void queryClient.invalidateQueries({ queryKey: queryKeys.adminLocation(id) });
+      } else {
+        toast.error(res.error || t("admin.location.svc.ssh_error"));
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const hostKeyResetMut = useMutation({
+    mutationFn: () => resetAdminLocationHostKey(id),
+    onSuccess: () => {
+      toast.success(t("admin.location.host_key_reset_done"));
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminLocation(id) });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -280,11 +294,12 @@ export function LocationDetailContent() {
   const awaitingSync = metricsStale || isFetching || pullMut.isPending;
   const pmaHost = String(location.ip_address || location.ssh_host || "");
   const pmaPort = Number(location.phpmyadmin_port ?? 0);
-  const pmaUrl = pmaHost && pmaPort > 0 ? `http://${pmaHost}:${pmaPort}` : "";
+  const pmaUrl = pmaHost && pmaPort > 0 ? `https://${pmaHost}:${pmaPort}` : "";
   const daemon = (data?.daemon ?? {}) as Record<string, unknown>;
   const isOnline = Boolean(daemon.is_online ?? daemon.status === "online");
   const isActive = Boolean(location.is_active);
   const sshUser = String(location.ssh_user || "");
+  const hostKey = String(location.ssh_host_key || "");
   const sshPort = Number(location.ssh_port || 22);
   const playersIp = String(location.ip_address || "");
   const maintenance = Boolean(location.maintenance_mode);
@@ -577,6 +592,13 @@ export function LocationDetailContent() {
                 <Row label={t("common.password")}>
                   {location.ssh_password ? "••••••••" : t("admin.location.not_set")}
                 </Row>
+                <Row label={t("admin.location.host_key")}>
+                  {hostKey ? (
+                    <span className="font-mono text-[11px] break-all">{hostKey}</span>
+                  ) : (
+                    t("admin.location.host_key_empty")
+                  )}
+                </Row>
               </div>
               {sshHost && sshUser ? (
                 <div className="flex flex-col gap-2.5">
@@ -594,6 +616,22 @@ export function LocationDetailContent() {
                       ? t("admin.settings.storage.testing")
                       : t("admin.location.test_ssh")}
                   </Button>
+                  {hostKey && (
+                    <div className="flex flex-col gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-fit text-xs"
+                        disabled={hostKeyResetMut.isPending}
+                        onClick={() => hostKeyResetMut.mutate()}
+                      >
+                        {t("admin.location.host_key_reset")}
+                      </Button>
+                      <p className="text-[11px] text-muted-foreground">
+                        {t("admin.location.host_key_hint")}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-xs text-amber-500">

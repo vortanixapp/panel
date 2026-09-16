@@ -1,9 +1,6 @@
 export const layout = {
   "layout.account.session_expired": "Сессия {email} истекла — нужен пароль",
-  "layout.account.admin_missing": "Аккаунт администратора больше не сохранён",
-  "layout.account.return_to": "Вернуться в {email}",
   "layout.account.others": "Другие аккаунты",
-  "layout.account.needs_password": "Нужен пароль",
   "layout.account.add": "Добавить аккаунт",
   "layout.account.not_found": "Аккаунт не найден",
   "layout.account.server_unreachable": "Не удалось связаться с сервером",

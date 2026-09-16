@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { clearAuth } from "@/lib/api";
+import { logout } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 
 interface SignOutDialogProps {
@@ -15,7 +15,7 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
   const router = useRouter();
 
   const handleSignOut = () => {
-    clearAuth();
+    void logout();
     onOpenChange(false);
     router.replace("/login");
   };

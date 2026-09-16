@@ -381,12 +381,13 @@ func (r *Runner) migrationBytes(ctx context.Context, migrationID string, total i
 
 func sshConfigFor(n *nodeSSH, execTimeout time.Duration) sshclient.Config {
 	return sshclient.Config{
-		Host:        n.SSHHost,
-		Port:        n.SSHPort,
-		User:        n.SSHUser,
-		Password:    n.SSHPassword,
-		Timeout:     60 * time.Second,
-		ExecTimeout: execTimeout,
+		Host:         n.SSHHost,
+		Port:         n.SSHPort,
+		User:         n.SSHUser,
+		Password:     n.SSHPassword,
+		Timeout:      60 * time.Second,
+		ExecTimeout:  execTimeout,
+		KnownHostKey: n.SSHHostKey,
 	}
 }
 

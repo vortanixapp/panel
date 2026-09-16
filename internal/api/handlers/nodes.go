@@ -29,6 +29,7 @@ type Handler struct {
 	jwtSecret        string
 	telegramBotToken string
 	uploadDir        string
+	accessTTLMin     int
 	secrets          *secretbox.Box
 
 	tgBotMu       sync.Mutex
@@ -51,7 +52,7 @@ func New(db, readDB *pgxpool.Pool, tokens *paneljwt.Manager, c *cache.Cache, rel
 		db: db, readDB: readDB, tokens: tokens, cache: c, relay: relayClient, eggCDN: eggCDN,
 		oauth: deps.OAuth, mail: deps.Mail, frontendURL: deps.FrontendURL, apiPublicURL: deps.APIPublicURL,
 		jwtSecret: deps.JWTSecret, telegramBotToken: deps.TelegramBotToken, uploadDir: deps.UploadDir,
-		secrets: deps.Secrets,
+		accessTTLMin: deps.AccessTTLMin, secrets: deps.Secrets,
 	}
 }
 
@@ -63,6 +64,7 @@ type HandlerDeps struct {
 	JWTSecret        string
 	TelegramBotToken string
 	UploadDir        string
+	AccessTTLMin     int
 	Secrets          *secretbox.Box
 }
 

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { getAccessToken, getRefreshToken, clearAuth, ensureValidSession } from "@/lib/api";
+import { ensureValidSession, hasSession, logout } from "@/lib/api";
 import { useMe } from "@/hooks/use-queries";
 import { queryKeys } from "@/lib/query-keys";
 import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
@@ -14,7 +14,7 @@ import { VxPageLoader } from "@/components/vx/loader";
 import { useT } from "@/hooks/use-translations";
 
 function hasStoredSession() {
-  return !!(getAccessToken() || getRefreshToken());
+  return hasSession();
 }
 
 export function DashboardLayout({
@@ -40,8 +40,8 @@ export function DashboardLayout({
   useEffect(() => {
     if (!isError) return;
     const message = error instanceof Error ? error.message : "";
-    if (message === "Session expired" || !getRefreshToken()) {
-      clearAuth();
+    if (message === "Session expired" || !hasSession()) {
+      void logout();
       router.replace("/login");
       return;
     }
@@ -49,7 +49,7 @@ export function DashboardLayout({
       if (ok) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.me });
       } else {
-        clearAuth();
+        void logout();
         router.replace("/login");
       }
     });

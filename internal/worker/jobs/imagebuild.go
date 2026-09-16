@@ -80,14 +80,7 @@ func (r *Runner) buildNodeImages(ctx context.Context, jobID string, node *nodeSS
 		r.markImageState(ctx, node.ID, t, "queued", "", ref)
 	}
 
-	cfg := sshclient.Config{
-		Host:        node.SSHHost,
-		Port:        node.SSHPort,
-		User:        node.SSHUser,
-		Password:    node.SSHPassword,
-		Timeout:     60 * time.Second,
-		ExecTimeout: imageBuildTimeout,
-	}
+	cfg := r.sshConfig(node, imageBuildTimeout)
 
 	hubUser, hubToken := r.dockerHubCreds(ctx)
 	prepare := append(registryLoginCommands("images", r.licenseKey(ctx)),

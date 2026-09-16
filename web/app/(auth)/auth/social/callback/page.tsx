@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { setTokens, socialExchange } from "@/lib/api";
+import { adoptSession, hasSession, socialExchange } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
 import { useT } from "@/hooks/use-translations";
 
@@ -53,10 +53,11 @@ function SocialCallbackContent() {
           router.replace(res.redirect ?? "/settings/account");
           return;
         }
-        if (!res.access_token) {
+        adoptSession();
+        if (!hasSession()) {
           throw new Error(t("auth.error.token_failed"));
         }
-        setTokens(res.access_token, res.refresh_token ?? "");
+        adoptSession();
         router.replace(
           res.redirect ?? postLoginPath(res.user?.role ?? "user")
         );

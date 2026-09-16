@@ -24,10 +24,11 @@ import {
   AccountSwitchItems,
   ActiveAccountCheck,
 } from "@/components/layout/account-switch-items";
-import { accountInitials, listAccounts } from "@/lib/accounts";
+import { accountInitials } from "@/lib/accounts";
 import {
   forgetEveryAccount,
   goToAccount,
+  loadAccounts,
   nextAccountAfterLogout,
   prepareSwitch,
 } from "@/lib/account-switch";
@@ -50,17 +51,17 @@ export function NavUser({ email, role = "user" }: NavUserProps) {
 
   useEffect(() => {
     const id = activeAccountId();
-    setHasOthers(listAccounts().some((a) => a.id !== id));
+    void loadAccounts().then((list) => setHasOthers(list.some((a) => a.id !== id)));
   }, []);
 
   async function logout() {
-    const next = nextAccountAfterLogout(activeAccountId());
+    const next = await nextAccountAfterLogout(activeAccountId());
     try {
       await apiLogout();
     } finally {
       queryClient.clear();
       if (next) {
-        const outcome = await prepareSwitch(next.id);
+        const outcome = await prepareSwitch(next.id, next.email);
         if (outcome.ok) {
           goToAccount(outcome.path);
           return;
@@ -74,7 +75,7 @@ export function NavUser({ email, role = "user" }: NavUserProps) {
     try {
       await apiLogout();
     } finally {
-      forgetEveryAccount();
+      await forgetEveryAccount();
       queryClient.clear();
       router.replace("/login");
     }

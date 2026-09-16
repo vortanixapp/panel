@@ -60,11 +60,13 @@ if [ "$MODE" = "ip" ]; then
   SITE_ADDRESS="http://$ADDRESS"
   BASE="http://$ADDRESS"
   WS="ws://$ADDRESS"
+  RELAY_NOTE="по IP панель работает без шифрования, но ноды подключаются к relay по TLS: сертификат выдаётся сам, а ноды сверяют его отпечаток"
 else
   ADDRESS="$DOMAIN"
   SITE_ADDRESS="$DOMAIN"
   BASE="https://$DOMAIN"
   WS="wss://$DOMAIN"
+  RELAY_NOTE=""
 fi
 
 if [ ! -f "$DST" ]; then
@@ -120,6 +122,11 @@ else
   echo "  sh scripts/init-env.sh panel.example.com"
 fi
 echo
+if [ -n "$RELAY_NOTE" ]; then
+  echo "$RELAY_NOTE."
+  echo "Для этого на хосте нужен свободный порт 8443 — его слушает relay."
+  echo
+fi
 echo "Секреты не печатаются — они в deploy/.env, права 600."
 echo "Сохраните SECRETS_KEY отдельно: им зашифрованы ключи платёжных шлюзов"
 echo "и пароли нод, без него резервная копия базы наполовину бесполезна."

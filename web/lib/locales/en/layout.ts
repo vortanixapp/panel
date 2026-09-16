@@ -1,10 +1,7 @@
 export const layout = {
   "layout.account.session_expired":
     "Your {email} session has expired — sign in again",
-  "layout.account.admin_missing": "The administrator account is no longer saved",
-  "layout.account.return_to": "Back to {email}",
   "layout.account.others": "Other accounts",
-  "layout.account.needs_password": "Sign-in required",
   "layout.account.add": "Add account",
   "layout.account.not_found": "Account not found",
   "layout.account.server_unreachable": "Could not reach the server",

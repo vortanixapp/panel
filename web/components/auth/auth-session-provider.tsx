@@ -2,18 +2,14 @@
 
 import { useEffect } from "react";
 import {
-  adoptActiveSession,
-  getRefreshToken,
-  startAuthRefreshLoop,
+  adoptSession,
+  migrateLegacySession,
   stopAuthRefreshLoop,
 } from "@/lib/api";
 
 export function AuthSessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    adoptActiveSession();
-    if (getRefreshToken()) {
-      startAuthRefreshLoop();
-    }
+    void migrateLegacySession().finally(() => adoptSession());
     return () => stopAuthRefreshLoop();
   }, []);
 

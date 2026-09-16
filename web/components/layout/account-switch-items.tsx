@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, CornerUpLeft, Loader2, Plus } from "lucide-react";
+import { Check, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,8 +13,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { accountInitials, listAccounts, type StoredAccount } from "@/lib/accounts";
-import { goToAccount, prepareSwitch } from "@/lib/account-switch";
+import { accountInitials, type StoredAccount } from "@/lib/accounts";
+import { goToAccount, loadAccounts, prepareSwitch } from "@/lib/account-switch";
 import { activeAccountId } from "@/lib/api";
 import { roleLabel } from "@/lib/rbac";
 import { cn } from "@/lib/utils";
@@ -30,17 +30,12 @@ export function AccountSwitchItems() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const reload = useCallback(() => {
-    setAccounts(listAccounts());
     setCurrentId(activeAccountId());
+    void loadAccounts().then(setAccounts);
   }, []);
 
   useEffect(() => {
     reload();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === null || e.key === "vortanix_accounts") reload();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
   }, [reload]);
 
   const current = accounts.find((a) => a.id === currentId);
@@ -49,7 +44,7 @@ export function AccountSwitchItems() {
   async function switchTo(account: StoredAccount) {
     if (busy) return;
     setBusy(account.id);
-    const outcome = await prepareSwitch(account.id);
+    const outcome = await prepareSwitch(account.id, account.email);
     if (outcome.ok) {
       queryClient.clear();
       goToAccount(outcome.path);
@@ -67,30 +62,6 @@ export function AccountSwitchItems() {
 
   return (
     <>
-      {current?.viaEmail && (
-        <>
-          <DropdownMenuItem
-            disabled={!!busy}
-            onSelect={(e) => {
-              e.preventDefault();
-              const via = accounts.find((a) => a.id === current.viaId);
-              if (via) void switchTo(via);
-              else toast.error(t("layout.account.admin_missing"));
-            }}
-          >
-            {busy === current.viaId ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <CornerUpLeft className="size-4" />
-            )}
-            <span className="truncate">
-              {t("layout.account.return_to", { email: current.viaEmail })}
-            </span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-        </>
-      )}
-
       {others.length > 0 && (
         <>
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
@@ -113,17 +84,8 @@ export function AccountSwitchItems() {
               </Avatar>
               <div className="grid min-w-0 flex-1 leading-tight">
                 <span className="truncate text-[13px]">{account.email}</span>
-                <span
-                  className={cn(
-                    "truncate text-[11px]",
-                    account.needsSignIn
-                      ? "text-[var(--vx-warn)]"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {account.needsSignIn
-                    ? t("layout.account.needs_password")
-                    : roleLabel(account.role)}
+                <span className="truncate text-[11px] text-muted-foreground">
+                  {roleLabel(account.role)}
                 </span>
               </div>
               {busy === account.id && (

@@ -86,20 +86,18 @@ func filterOwnedUsers(serverID string, raw any) []map[string]string {
 	if !ok {
 		return out
 	}
+	seen := map[string]bool{}
 	for _, item := range items {
 		m, ok := item.(map[string]any)
 		if !ok {
 			continue
 		}
 		username, _ := m["username"].(string)
-		if !ownsMysqlName(serverID, username) {
+		if !ownsMysqlName(serverID, username) || seen[username] {
 			continue
 		}
-		host, _ := m["host"].(string)
-		if host == "" {
-			host = "%"
-		}
-		out = append(out, map[string]string{"username": username, "host": host})
+		seen[username] = true
+		out = append(out, map[string]string{"username": username, "host": "%"})
 	}
 	return out
 }

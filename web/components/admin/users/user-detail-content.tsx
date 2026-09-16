@@ -12,11 +12,8 @@ import { cn } from "@/lib/utils";
 import {
   deletePanelUser,
   downloadAdminUserData,
-  getAccessToken,
   setAdminUserIdentification,
-  setTokens,
 } from "@/lib/api";
-import { decodeAccess, markEnteredVia } from "@/lib/accounts";
 import { isOwnerRole, roleLabel } from "@/lib/rbac";
 import {
   useAdminUser,
@@ -128,12 +125,6 @@ export function UserDetailContent() {
       if (!token) {
         toast.error(t("admin.users.impersonate_failed"));
         return;
-      }
-      const admin = decodeAccess(getAccessToken() ?? "");
-      setTokens(token, res.refresh_token ?? "");
-      const entered = decodeAccess(token);
-      if (admin && entered) {
-        markEnteredVia(entered.user_id, { id: admin.user_id, email: admin.email });
       }
       window.location.href = "/dashboard";
     } catch (e) {

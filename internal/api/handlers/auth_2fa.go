@@ -64,6 +64,7 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
+	h.startSession(w, r, pending["user_id"], pending["email"], pending["role"], access, refresh, rememberRefreshTTL)
 	audit(ctx, h.dbOf(ctx), pending["user_id"], "auth.2fa", "login", nil)
 	h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "", true)
 	h.notifyNewLogin(ctx, r, pending["user_id"], pending["email"])

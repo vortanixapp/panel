@@ -107,6 +107,11 @@ func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {
 		token = r.URL.Query().Get("token")
 	}
 	if token == "" {
+		if c, err := r.Cookie("vtx_access"); err == nil && c != nil {
+			token = strings.TrimSpace(c.Value)
+		}
+	}
+	if token == "" {
 		writeError(w, http.StatusUnauthorized, "missing token")
 		return
 	}

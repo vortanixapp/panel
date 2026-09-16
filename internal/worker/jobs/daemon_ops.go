@@ -118,7 +118,7 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 		_ = tx.Commit(ctx)
 		return true
 	}
-	cfg := sshclient.Config{Host: node.SSHHost, Port: node.SSHPort, User: node.SSHUser, Password: node.SSHPassword, Timeout: 30 * time.Second}
+	cfg := r.sshConfig(node, 0)
 
 	var execErr error
 	var out bytes.Buffer
@@ -126,8 +126,8 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 	case "restart":
 		_, execErr = sshclient.RunCapture(cfg, "sudo docker restart vortanix-agent 2>/dev/null || true")
 	case "install":
-		relayURL := relayWebsocketURL(envOr("RELAY_PUBLIC_URL", envOr("RELAY_URL", "")))
-		cmds, cmdErr := setupCommands("daemon", node.Meta, node.AgentToken, node.ID, relayURL)
+		relayURL, relayPin := r.relayTarget(ctx)
+		cmds, cmdErr := setupCommands("daemon", node.Meta, node.AgentToken, node.ID, relayURL, relayPin)
 		if cmdErr != nil {
 			execErr = cmdErr
 			break
@@ -135,8 +135,8 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 		execErr = sshclient.Run(cfg, r.withRegistryLogin(ctx, cmds), &out)
 	case "update":
 		version, _ := pl.Params["version"].(string)
-		relayURL := relayWebsocketURL(envOr("RELAY_PUBLIC_URL", envOr("RELAY_URL", "")))
-		cmds := daemonAgentCommands(node.AgentToken, node.ID, relayURL, version)
+		relayURL, relayPin := r.relayTarget(ctx)
+		cmds := daemonAgentCommands(node.AgentToken, node.ID, relayURL, relayPin, version)
 		execErr = sshclient.Run(cfg, r.withRegistryLogin(ctx, cmds), &out)
 	case "refresh":
 		execErr = r.collectNodeMetrics(ctx, tx, pl.NodeID, node)
@@ -211,7 +211,7 @@ func (r *Runner) processDaemonPull(ctx context.Context) bool {
 }
 
 func (r *Runner) collectNodeMetrics(ctx context.Context, tx pgx.Tx, nodeID string, node *nodeSSH) error {
-	cfg := sshclient.Config{Host: node.SSHHost, Port: node.SSHPort, User: node.SSHUser, Password: node.SSHPassword, Timeout: 45 * time.Second}
+	cfg := r.sshConfig(node, 0)
 
 	script := `
 set +e

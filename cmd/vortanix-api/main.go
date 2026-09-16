@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
@@ -104,6 +105,7 @@ func main() {
 		JWTSecret:        cfg.JWTSecret,
 		TelegramBotToken: cfg.TelegramBotToken,
 		UploadDir:        cfg.UploadDir,
+		AccessTTLMin:     cfg.AccessTokenTTLMin,
 		Secrets:          secrets,
 	})
 
@@ -123,12 +125,16 @@ func main() {
 	r.Use(httplog.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
+	namedOrigins := !slices.Contains(cfg.CORSOrigins, "*")
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.CORSOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Tenant-Slug"},
-		AllowCredentials: false,
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Tenant-Slug", "X-API-Key", "X-CSRF-Token"},
+		AllowCredentials: namedOrigins,
 	}))
+	if !namedOrigins {
+		log.Printf("CORS_ORIGINS не задан: вход по cookie работает только с того же адреса, что и API")
+	}
 
 	r.Handle("/metrics", httpprom.MetricsHandler())
 	r.Mount("/", h.Routes())

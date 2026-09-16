@@ -175,6 +175,7 @@ func (h *Handler) WHMCSSSOExchange(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
+	h.startSession(w, r, userID, email, role, access, refresh, 0)
 	h.recordLoginAttempt(ctx, r, userID, email, "", true)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"access_token":  access,

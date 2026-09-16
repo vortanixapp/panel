@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanixapp/panel/internal/api/sshclient"
+	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 const agentContainerName = "vortanix-agent"
@@ -146,7 +146,7 @@ func (h *Handler) GetAdminAgentLogs(w http.ResponseWriter, r *http.Request) {
 			tail = n
 		}
 	}
-	cfg, err := nodeSSHConfig(loc, meta)
+	cfg, err := h.nodeSSHConfigTOFU(loc, meta)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -238,7 +238,7 @@ func (h *Handler) PostAdminAgentExec(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "SSH is not configured for this location")
 		return
 	}
-	cfg, err := nodeSSHConfig(loc, meta)
+	cfg, err := h.nodeSSHConfigTOFU(loc, meta)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -402,6 +402,7 @@ func nodeSSHConfig(loc *locationRow, meta map[string]any) (sshclient.Config, err
 	}
 	return sshclient.Config{
 		Host: *loc.SSHHost, Port: loc.SSHPort, User: *loc.SSHUser, Password: pass,
+		KnownHostKey: loc.SSHHostKey,
 	}, nil
 }
 

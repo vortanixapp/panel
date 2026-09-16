@@ -9,7 +9,8 @@ import { z } from "zod";
 import {
   fetchSocialProviders,
   register as registerUser,
-  setTokens,
+  adoptSession,
+  hasSession,
   socialRedirect,
   telegramLogin,
   tenantSlug,
@@ -99,7 +100,7 @@ export function RegisterForm() {
         { name: values.name, lastName: values.lastName },
         { terms: acceptTerms, personalData: acceptPersonalData }
       );
-      setTokens(res.access_token, res.refresh_token);
+      adoptSession();
       router.push(postLoginPath(res.user?.role ?? "user"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.register.failed"));
@@ -128,10 +129,10 @@ export function RegisterForm() {
     setError("");
     try {
       const res = await telegramLogin(tgUser, tenantSlug());
-      if (!res.access_token) {
+      adoptSession();
+      if (!hasSession()) {
         throw new Error(t("auth.error.token_failed"));
       }
-      setTokens(res.access_token, res.refresh_token ?? "");
       router.push(res.redirect ?? postLoginPath(res.user?.role ?? "user"));
     } catch (err) {
       setError(
