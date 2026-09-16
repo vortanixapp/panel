@@ -398,6 +398,9 @@ export function LocationDetailContent() {
               </Link>
             </Button>
             <Button variant="outline" asChild className="h-9 text-[13px]">
+              <Link href={`/admin/images?node=${id}`}>{t("admin.images.title")}</Link>
+            </Button>
+            <Button variant="outline" asChild className="h-9 text-[13px]">
               <Link href={`/admin/locations/${id}/edit`}>
                 {t("common.edit")}
               </Link>

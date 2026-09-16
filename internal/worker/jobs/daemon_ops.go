@@ -127,7 +127,7 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 		_, execErr = sshclient.RunCapture(cfg, "sudo docker restart vortanix-agent 2>/dev/null || true")
 	case "install":
 		relayURL := relayWebsocketURL(envOr("RELAY_PUBLIC_URL", envOr("RELAY_URL", "")))
-		cmds, cmdErr := setupCommands("daemon", node.Meta, node.AgentToken, node.ID, relayURL, nil)
+		cmds, cmdErr := setupCommands("daemon", node.Meta, node.AgentToken, node.ID, relayURL)
 		if cmdErr != nil {
 			execErr = cmdErr
 			break

@@ -3695,6 +3695,44 @@ export async function uploadAdminMapArchive(id: string, file: File) {
   );
 }
 
+export type AdminImageStatus = "queued" | "building" | "ready" | "failed";
+
+export type AdminImageState = {
+  status: AdminImageStatus;
+  error?: string;
+  image?: string;
+  recipe_ref?: string;
+  outdated?: boolean;
+  interrupted?: boolean;
+  queued_at?: string;
+  started_at?: string;
+  built_at?: string;
+  updated_at?: string;
+};
+
+export type AdminImageStates = Record<string, AdminImageState>;
+
+export type AdminImageNode = {
+  id: string;
+  name: string;
+  code: string;
+  country: string;
+  active: boolean;
+  online: boolean;
+  can_build: boolean;
+  reason?: "inactive" | "ssh" | "docker";
+  building: boolean;
+};
+
+export type AdminRuntimeImage = {
+  key: string;
+  kind: string;
+  image: string;
+  games: number;
+  enabled_games: number;
+  states: AdminImageStates;
+};
+
 export type AdminImageItem = {
   game: string;
   name: string;
@@ -3702,19 +3740,23 @@ export type AdminImageItem = {
   docker_image: string;
   repository: string;
   tag: string;
-  default_tag: string;
-  image_env: string;
+  runtime: string;
+  shared_with: string[];
   enabled: boolean;
   in_catalog: boolean;
   build_image: boolean;
-  build_ready: number;
-  build_failed: number;
-  building: number;
-  build_nodes: number;
+  states: AdminImageStates;
+};
+
+export type AdminImagesData = {
+  ref: string;
+  nodes: AdminImageNode[];
+  runtimes: AdminRuntimeImage[];
+  images: AdminImageItem[];
 };
 
 export async function fetchAdminImages() {
-  return apiFetch<{ images: AdminImageItem[] }>("/v1/admin/images");
+  return apiFetch<AdminImagesData>("/v1/admin/images");
 }
 
 export async function setAdminImageTag(payload: { game_slug: string; tag: string }) {
@@ -3731,11 +3773,24 @@ export async function setAdminImageBuild(payload: { game_slug: string; build: bo
   );
 }
 
-export async function buildAdminImages(payload: { node_id?: string } = {}) {
-  return apiFetch<{ ok: boolean; nodes: number }>("/v1/admin/images/build", {
+export type AdminImageBuildResult = {
+  ok: boolean;
+  images: number;
+  queued: { node_id: string; name: string }[];
+  skipped: { node_id: string; name: string; reason: string }[];
+};
+
+export async function buildAdminImages(payload: { node_ids?: string[]; images?: string[] } = {}) {
+  return apiFetch<AdminImageBuildResult>("/v1/admin/images/build", {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function fetchAdminImageLog(nodeId: string) {
+  return apiFetch<{ log: string; completed: boolean; component: string; status: string }>(
+    `/v1/admin/images/log?node_id=${encodeURIComponent(nodeId)}`
+  );
 }
 
 export type AdminPayment = {

@@ -9,7 +9,7 @@ import (
 
 const defaultAgentImage = "ghcr.io/vortanixapp/vortanix-agent:latest"
 
-func setupCommands(component string, meta map[string]any, agentToken, nodeID, relayURL string, images []string) ([]string, error) {
+func setupCommands(component string, meta map[string]any, agentToken, nodeID, relayURL string) ([]string, error) {
 	switch component {
 	case "packages":
 		return []string{
@@ -31,8 +31,6 @@ func setupCommands(component string, meta map[string]any, agentToken, nodeID, re
 		return diskQuotaCommands(meta), nil
 	case "daemon":
 		return daemonAgentCommands(agentToken, nodeID, relayURL, ""), nil
-	case "images":
-		return gameBuildCommands(images)
 	default:
 		return nil, fmt.Errorf("unknown setup component: %s", component)
 	}

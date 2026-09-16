@@ -81,8 +81,9 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 	}
 
 	var pl struct {
-		NodeID    string `json:"node_id"`
-		Component string `json:"component"`
+		NodeID    string   `json:"node_id"`
+		Component string   `json:"component"`
+		Images    []string `json:"images"`
 	}
 	_ = json.Unmarshal(payload, &pl)
 	if pl.NodeID == "" || pl.Component == "" {
@@ -111,11 +112,12 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 		return true
 	}
 
-	var images []string
 	if pl.Component == "images" {
-		images = r.gamesToBuild(ctx)
+		r.buildNodeImages(ctx, jobID, node, pl.Images, progress)
+		return true
 	}
-	commands, cmdErr := setupCommands(pl.Component, node.Meta, node.AgentToken, node.ID, relayURL, images)
+
+	commands, cmdErr := setupCommands(pl.Component, node.Meta, node.AgentToken, node.ID, relayURL)
 	if cmdErr != nil {
 		r.failNodeSetup(ctx, jobID, pl.NodeID, pl.Component, cmdErr.Error(), progress)
 		return true
@@ -132,18 +134,9 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 		Password: node.SSHPassword,
 		Timeout:  60 * time.Second,
 	}
-	if pl.Component == "images" {
-		r.markImagesBuilding(ctx, pl.NodeID, images)
-	}
 	if err := sshclient.Run(cfg, commands, progress); err != nil {
-		if pl.Component == "images" {
-			r.markImagesResult(ctx, pl.NodeID, images, err.Error())
-		}
 		r.failNodeSetup(ctx, jobID, pl.NodeID, pl.Component, err.Error(), progress)
 		return true
-	}
-	if pl.Component == "images" {
-		r.markImagesResult(ctx, pl.NodeID, images, "")
 	}
 
 	if pl.Component == "mysql" {

@@ -875,11 +875,21 @@ func (h *Handler) GetAdminLocationSetupStatus(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	id := chi.URLParam(r, "id")
-	loc, err := h.loadLocationRow(r, id)
-	if err != nil {
+	payload, found := h.locationSetupStatus(r, chi.URLParam(r, "id"))
+	if !found {
 		writeError(w, http.StatusNotFound, "location not found")
 		return
+	}
+	writeJSON(w, http.StatusOK, payload)
+}
+
+func (h *Handler) locationSetupStatus(r *http.Request, id string) (map[string]any, bool) {
+	if id == "" {
+		return nil, false
+	}
+	loc, err := h.loadLocationRow(r, id)
+	if err != nil {
+		return nil, false
 	}
 	meta := parseMetaMap(loc.Meta)
 	progress, _ := meta["setup_progress"].(map[string]any)
@@ -898,7 +908,7 @@ func (h *Handler) GetAdminLocationSetupStatus(w http.ResponseWriter, r *http.Req
 			completed = true
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"log": logText, "completed": completed, "component": component, "status": status})
+	return map[string]any{"log": logText, "completed": completed, "component": component, "status": status}, true
 }
 
 func (h *Handler) RunAdminLocationSetupStep(w http.ResponseWriter, r *http.Request) {

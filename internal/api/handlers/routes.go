@@ -279,6 +279,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/images", h.SetNodeImageTag)
 			r.Post("/images/build-flag", h.SetImageBuildFlag)
 			r.Post("/images/build", h.BuildNodeImages)
+			r.Get("/images/log", h.ImageBuildLog)
 			r.Get("/jobs", h.AdminJobsList)
 			r.Post("/jobs/retry-failed", h.AdminJobsRetryFailed)
 			r.Post("/jobs/cleanup", h.AdminJobsCleanup)
