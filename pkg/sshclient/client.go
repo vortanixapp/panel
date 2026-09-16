@@ -102,20 +102,32 @@ func Run(cfg Config, commands []string, log io.Writer) error {
 	}
 	defer session.Close()
 
-	var stdout, stderr bytes.Buffer
-	session.Stdout = io.MultiWriter(log, &stdout)
-	session.Stderr = io.MultiWriter(log, &stderr)
+	var tail limitedBuffer
+	session.Stdout = io.MultiWriter(log, &tail)
+	session.Stderr = io.MultiWriter(log, &tail)
 
 	script := strings.Join(commands, "\n")
 	wrapped := "set -e\nexport DEBIAN_FRONTEND=noninteractive\n" + script + "\n"
 	if err := runSession(session, "/bin/bash -lc "+shellQuote(wrapped), cfg.execTimeout()); err != nil {
-		msg := strings.TrimSpace(stderr.String())
-		if msg == "" {
-			msg = err.Error()
+		if msg := lastLines(tail.String(), 10); msg != "" {
+			return fmt.Errorf("%s", msg)
 		}
-		return fmt.Errorf("%s", msg)
+		return err
 	}
 	return nil
+}
+
+func lastLines(s string, n int) string {
+	var lines []string
+	for _, line := range strings.Split(s, "\n") {
+		if line = strings.TrimRight(line, "\r "); strings.TrimSpace(line) != "" {
+			lines = append(lines, line)
+		}
+	}
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n")
 }
 
 func RunCapture(cfg Config, command string) (string, error) {

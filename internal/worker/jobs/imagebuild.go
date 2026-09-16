@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
@@ -45,20 +46,17 @@ func gameBuildCommands(games []string) ([]string, error) {
 		)
 	}
 
-	if len(games) > 0 {
-		cmds = append(cmds, fmt.Sprintf("echo 'Отдельных образов игр: %d шт.'", len(games)))
+	builds := gameImageBuilds(games)
+	if len(builds) > 0 {
+		cmds = append(cmds, fmt.Sprintf("echo 'Отдельных образов игр: %d шт.'", len(builds)))
 	}
 
-	for _, game := range games {
-		dir := root + "/deploy/images/" + game
-		image := gamecatalog.ImageWithTag(game, gamecatalog.DefaultTag(game))
-		if image == "" {
-			image = "vortanix/" + game + ":latest"
-		}
+	for _, b := range builds {
+		dir := root + "/deploy/images/" + b.recipe
 		cmds = append(cmds,
-			fmt.Sprintf("echo '--- %s -> %s ---'", game, image),
-			fmt.Sprintf("test -f %s/Dockerfile || { echo 'нет рецепта для %s'; exit 1; }", dir, game),
-			fmt.Sprintf("sudo docker build -t %s %s", image, dir),
+			fmt.Sprintf("echo '--- %s -> %s ---'", strings.Join(b.games, ", "), b.image),
+			fmt.Sprintf("test -f %s/Dockerfile || { echo 'нет рецепта %s для %s' >&2; exit 1; }", dir, b.recipe, strings.Join(b.games, ", ")),
+			fmt.Sprintf("sudo docker build -t %s %s", b.image, dir),
 		)
 	}
 	cmds = append(cmds,
@@ -66,6 +64,32 @@ func gameBuildCommands(games []string) ([]string, error) {
 		"sudo docker builder prune -f >/dev/null 2>&1 || true",
 	)
 	return cmds, nil
+}
+
+type gameImageBuild struct {
+	image  string
+	recipe string
+	games  []string
+}
+
+func gameImageBuilds(games []string) []gameImageBuild {
+	var out []gameImageBuild
+	index := map[string]int{}
+	for _, game := range games {
+		image := gamecatalog.ImageWithTag(game, gamecatalog.DefaultTag(game))
+		recipe := path.Base(gamecatalog.Repository(game))
+		if image == "" || recipe == "." || recipe == "/" {
+			image = "vortanix/" + game + ":latest"
+			recipe = game
+		}
+		if i, ok := index[image]; ok {
+			out[i].games = append(out[i].games, game)
+			continue
+		}
+		index[image] = len(out)
+		out = append(out, gameImageBuild{image: image, recipe: recipe, games: []string{game}})
+	}
+	return out
 }
 
 func (r *Runner) markImagesBuilding(ctx context.Context, nodeID string, games []string) {

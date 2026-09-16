@@ -146,9 +146,6 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 
 	if execErr != nil {
 		msg := execErr.Error()
-		if tail := lastLines(out.String(), 12); tail != "" {
-			msg = msg + "\n" + tail
-		}
 		result, _ := json.Marshal(map[string]string{"error": msg})
 		_, _ = tx.Exec(ctx, `UPDATE core.jobs SET status = 'failed', result = $2::jsonb WHERE id = $1`, jobID, result)
 		_ = tx.Commit(ctx)
@@ -160,19 +157,6 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 	_, _ = tx.Exec(ctx, `UPDATE core.jobs SET status = 'completed', result = $2::jsonb WHERE id = $1`, jobID, result)
 	_ = tx.Commit(ctx)
 	return true
-}
-
-func lastLines(s string, n int) string {
-	lines := []string{}
-	for _, line := range strings.Split(s, "\n") {
-		if line = strings.TrimRight(line, "\r "); strings.TrimSpace(line) != "" {
-			lines = append(lines, line)
-		}
-	}
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
-	}
-	return strings.Join(lines, "\n")
 }
 
 func (r *Runner) withRegistryLogin(ctx context.Context, cmds []string) []string {
