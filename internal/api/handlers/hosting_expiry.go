@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/vortanixapp/panel/internal/api/hosting"
@@ -48,7 +49,7 @@ func (h *Handler) suspendExpiredHosting(ctx context.Context) {
 		)
 		RETURNING ha.id::text, COALESCE(ha.user_id::text, ''),
 		          COALESCE(ha.panel_account_id, ha.username), ha.username,
-		          ha.hosting_server_id::text
+		          ha.hosting_server_id::text, ha.expires_at
 	`)
 	if err != nil {
 		log.Printf("hosting expiry: query: %v", err)
@@ -56,11 +57,12 @@ func (h *Handler) suspendExpiredHosting(ctx context.Context) {
 	}
 	type expiredAccount struct {
 		id, userID, panelID, username, serverID string
+		expiresAt                               time.Time
 	}
 	var list []expiredAccount
 	for rows.Next() {
 		var a expiredAccount
-		if rows.Scan(&a.id, &a.userID, &a.panelID, &a.username, &a.serverID) == nil {
+		if rows.Scan(&a.id, &a.userID, &a.panelID, &a.username, &a.serverID, &a.expiresAt) == nil {
 			list = append(list, a)
 		}
 	}
@@ -81,7 +83,7 @@ func (h *Handler) suspendExpiredHosting(ctx context.Context) {
 				Body:      i18n.Key("notify.hosting_suspended.body", i18n.Params{"account": a.username}),
 				Action:    h.panelAction("notify.action.renew", "/hosting/"+a.id),
 				Meta:      map[string]any{"hosting_id": a.id},
-				DedupeKey: "hosting.suspended:" + a.id,
+				DedupeKey: "hosting.suspended:" + a.id + ":" + strconv.FormatInt(a.expiresAt.Unix(), 10),
 			})
 		}
 

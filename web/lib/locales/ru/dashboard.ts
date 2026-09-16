@@ -119,37 +119,6 @@ export const dashboard = {
   "dashboard.activity.shown": "Показано {shown} из {total} · {range}",
   "dashboard.activity.show_more": "Показать ещё {count}",
 
-  "dashboard.notifications.title": "Оповещения",
-  "dashboard.notifications.subtitle": "Серверы, деньги, поддержка и безопасность",
-  "dashboard.notifications.mark_all": "Прочитать все",
-  "dashboard.notifications.marked_all": "Все оповещения прочитаны",
-  "dashboard.notifications.cleared": "Убрано прочитанных: {count}",
-  "dashboard.notifications.clear_empty": "Прочитанных оповещений нет",
-  "dashboard.notifications.clear_failed": "Не удалось убрать прочитанные",
-  "dashboard.notifications.clear_read": "Убрать прочитанные",
-  "dashboard.notifications.channels_updated": "Каналы доставки обновлены",
-  "dashboard.notifications.channels_failed": "Не удалось обновить каналы",
-  "dashboard.notifications.unread_label": "Непрочитанных:",
-  "dashboard.notifications.filter_unread": "Непрочитанные",
-  "dashboard.notifications.load_failed_title": "Не удалось загрузить оповещения",
-  "dashboard.notifications.load_failed_text":
-    "Проверьте соединение и попробуйте обновить.",
-  "dashboard.notifications.all_read_title": "Всё прочитано",
-  "dashboard.notifications.all_read_text":
-    "Новые события появятся здесь автоматически.",
-  "dashboard.notifications.empty_title": "Оповещений пока нет",
-  "dashboard.notifications.empty_text":
-    "Здесь появятся события по серверам, платежам и обращениям.",
-  "dashboard.notifications.more": "Ещё",
-  "dashboard.notifications.channels_title": "Каналы доставки",
-  "dashboard.notifications.channels_hint": "Куда дублировать важные события",
-  "dashboard.notifications.configure": "Настроить →",
-  "dashboard.notifications.read": "Прочитано",
-  "dashboard.notifications.remove": "Убрать",
-  "dashboard.notifications.remove_aria": "Убрать оповещение",
-  "dashboard.notifications.channel_not_configured":
-    "Канал включён, но адрес доставки не указан — оповещения не придут",
-
   "monitoring.title": "Мониторинг",
   "monitoring.subtitle": "Статус игровых серверов · обновление каждые 15 с",
   "monitoring.subtitle_short": "Статус игровых серверов",

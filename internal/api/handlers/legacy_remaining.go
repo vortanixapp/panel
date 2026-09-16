@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -596,7 +597,7 @@ func (h *Handler) AdminToggleServerBlock(w http.ResponseWriter, r *http.Request)
 			Title:     i18n.Key("notify.server_blocked.title"),
 			Body:      i18n.Key("notify.server_blocked.body", i18n.Params{"name": name, "reason": reason}),
 			Meta:      map[string]any{"server_id": id},
-			DedupeKey: "server.blocked:" + id,
+			DedupeKey: "server.blocked:" + id + ":" + strconv.FormatInt(time.Now().Unix(), 10),
 		}
 		if !body.Blocked {
 			event = notify.Event{
@@ -604,7 +605,7 @@ func (h *Handler) AdminToggleServerBlock(w http.ResponseWriter, r *http.Request)
 				Title:     i18n.Key("notify.server_unblocked.title"),
 				Body:      i18n.Key("notify.server_unblocked.body", i18n.Params{"name": name}),
 				Meta:      map[string]any{"server_id": id},
-				DedupeKey: "server.unblocked:" + id,
+				DedupeKey: "server.unblocked:" + id + ":" + strconv.FormatInt(time.Now().Unix(), 10),
 			}
 		}
 		h.notifyUser(ctx, ownerID, event)

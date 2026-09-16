@@ -457,7 +457,7 @@ func (h *Handler) AdminRefundRequestReject(w http.ResponseWriter, r *http.Reques
 	}
 	audit(ctx, db, claims.UserID, "refund.request.reject", "refund_request:"+q.ID, map[string]any{"note": note})
 	h.notifyUser(ctx, q.UserID, notify.Event{
-		Kind:  notify.KindAnnounce,
+		Kind:  notify.KindRefundRejected,
 		Title: i18n.Key("notify.refund_request_rejected.title"),
 		Body: i18n.Key("notify.refund_request_rejected.body", i18n.Params{
 			"number": strconv.FormatInt(q.Number, 10), "reason": note,

@@ -469,11 +469,10 @@ func (h *Handler) Disable2FA(w http.ResponseWriter, r *http.Request) {
 	_, _ = h.dbOf(ctx).Exec(ctx, `DELETE FROM core.two_factor_secrets WHERE user_id = $1`, claims.UserID)
 	audit(ctx, h.dbOf(ctx), claims.UserID, "user.2fa_disable", "user:"+claims.UserID, nil)
 	h.notifyUser(r.Context(), claims.UserID, notify.Event{
-		Kind:     notify.KindTwoFactor,
-		Severity: notify.SeverityCritical,
-		Title:    i18n.Key("notify.twofactor_disabled.title"),
-		Body:     i18n.Key("notify.twofactor_disabled.body"),
-		Action:   h.panelAction("notify.action.security", "/settings"),
+		Kind:   notify.KindTwoFactor,
+		Title:  i18n.Key("notify.twofactor_disabled.title"),
+		Body:   i18n.Key("notify.twofactor_disabled.body"),
+		Action: h.panelAction("notify.action.security", "/settings"),
 	})
 	writeJSON(w, http.StatusOK, map[string]string{"status": "disabled"})
 }

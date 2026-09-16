@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"mime"
 	"net/http"
@@ -113,36 +114,60 @@ func sendTelegram(ctx context.Context, cfg Config, d Delivery) error {
 		return fmt.Errorf("%w: не задан токен бота Telegram", ErrChannelUnavailable)
 	}
 
-	text := severityPrefix(DefFor(d.Kind).Severity) + d.Subject
-	if d.Body != "" {
-		text += "\n\n" + d.Body
+	text := "<b>" + html.EscapeString(severityPrefix(DefFor(d.Kind).Severity)+d.Subject) + "</b>"
+	if body := strings.TrimSpace(d.Body); body != "" {
+		text += "\n\n" + html.EscapeString(truncateRunes(body, 3500))
 	}
 
 	form := url.Values{}
 	form.Set("chat_id", d.Target)
-	form.Set("text", text)
+	form.Set("parse_mode", "HTML")
 	form.Set("disable_web_page_preview", "true")
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://api.telegram.org/bot"+token+"/sendMessage",
-		strings.NewReader(form.Encode()))
-	if err != nil {
-		return err
+	if d.ActionLabel != "" && d.ActionHref != "" {
+		if strings.HasPrefix(d.ActionHref, "https://") {
+			markup, err := json.Marshal(map[string]any{
+				"inline_keyboard": [][]map[string]string{{{"text": d.ActionLabel, "url": d.ActionHref}}},
+			})
+			if err != nil {
+				return err
+			}
+			form.Set("reply_markup", string(markup))
+		} else {
+			text += "\n\n" + html.EscapeString(d.ActionLabel+": "+d.ActionHref)
+		}
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	return doAndCheck(cfg.client(), req, "Telegram")
+	form.Set("text", text)
+
+	return telegramCall(ctx, cfg.client(), token, "sendMessage", form, nil)
 }
 
 func sendDiscord(ctx context.Context, cfg Config, d Delivery) error {
-	if !isDiscordWebhook(d.Target) {
+	if !IsDiscordWebhook(d.Target) {
 		return fmt.Errorf("%w: адрес не похож на вебхук Discord", ErrChannelUnavailable)
 	}
 
-	content := severityPrefix(DefFor(d.Kind).Severity) + "**" + d.Subject + "**"
-	if d.Body != "" {
-		content += "\n" + d.Body
+	severity := DefFor(d.Kind).Severity
+	embed := map[string]any{
+		"title": truncateRunes(severityPrefix(severity)+d.Subject, 256),
+		"color": severityColor(severity),
 	}
-	payload, err := json.Marshal(map[string]any{"content": content})
+	description := strings.TrimSpace(d.Body)
+	if d.ActionLabel != "" && d.ActionHref != "" {
+		if strings.HasPrefix(d.ActionHref, "https://") || strings.HasPrefix(d.ActionHref, "http://") {
+			embed["url"] = d.ActionHref
+			link := "[" + d.ActionLabel + "](" + d.ActionHref + ")"
+			if description != "" {
+				description += "\n\n"
+			}
+			description += link
+		}
+	}
+	if description != "" {
+		embed["description"] = truncateRunes(description, 4000)
+	}
+
+	payload, err := json.Marshal(map[string]any{"embeds": []any{embed}})
 	if err != nil {
 		return err
 	}
@@ -158,7 +183,7 @@ func sendDiscord(ctx context.Context, cfg Config, d Delivery) error {
 func doAndCheck(client *http.Client, req *http.Request, who string) error {
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("%s: %w", who, err)
+		return fmt.Errorf("%s: %w", who, withoutURL(err))
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {

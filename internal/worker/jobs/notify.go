@@ -3,21 +3,29 @@ package jobs
 import (
 	"context"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
+const notifyCleanupInterval = 6 * time.Hour
+
 func (r *Runner) notifyConfig(ctx context.Context) notify.Config {
+	m := r.mailConfig(ctx)
+	token := strings.TrimSpace(r.tenantSettingString(ctx, "telegram.notifications.bot_token"))
+	if token == "" {
+		token = strings.TrimSpace(r.telegramBotToken)
+	}
 	return notify.Config{
-		SMTPHost:         r.mail.Host,
-		SMTPPort:         r.mail.Port,
-		SMTPUser:         r.mail.User,
-		SMTPPass:         r.mail.Pass,
-		MailFrom:         r.mail.From,
+		SMTPHost:         m.Host,
+		SMTPPort:         m.Port,
+		SMTPUser:         m.User,
+		SMTPPass:         m.Pass,
+		MailFrom:         m.From,
 		Brand:            r.mailBrand(ctx),
-		TelegramBotToken: r.telegramBotToken,
+		TelegramBotToken: token,
 	}
 }
 
@@ -29,6 +37,12 @@ func (r *Runner) notifyUser(ctx context.Context, userID string, e notify.Event) 
 	}
 	if _, err := notify.Dispatch(ctx, r.db, rec, e); err != nil {
 		log.Printf("оповещение %s пользователю %s: %v", e.Kind, userID, err)
+	}
+}
+
+func (r *Runner) notifyStaff(ctx context.Context, e notify.Event) {
+	if _, err := notify.DispatchStaff(ctx, r.db, notify.StaffAdmins, "", e); err != nil {
+		log.Printf("оповещение %s персоналу: %v", e.Kind, err)
 	}
 }
 
@@ -49,19 +63,52 @@ func (r *Runner) panelAction(labelKey, path string) *notify.Action {
 func (r *Runner) NotifyDeliveryLoop(ctx context.Context) {
 	ticker := time.NewTicker(20 * time.Second)
 	defer ticker.Stop()
+	var cleaned time.Time
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			r.heartbeat.Beat(LoopNotifyDelivery)
-			sent, failed, err := notify.Drain(ctx, r.db, r.notifyConfig(ctx), 50)
-			if err != nil {
-				log.Printf("доставка оповещений: %v", err)
+			if r.deliveriesDue(ctx) {
+				sent, failed, err := notify.Drain(ctx, r.db, r.notifyConfig(ctx), 50)
+				if err != nil {
+					log.Printf("доставка оповещений: %v", err)
+				}
+				if sent > 0 || failed > 0 {
+					log.Printf("доставка оповещений: отправлено %d, не удалось %d", sent, failed)
+				}
 			}
-			if sent > 0 || failed > 0 {
-				log.Printf("доставка оповещений: отправлено %d, не удалось %d", sent, failed)
+			if time.Since(cleaned) >= notifyCleanupInterval {
+				cleaned = time.Now()
+				r.cleanupNotifications(ctx)
 			}
 		}
+	}
+}
+
+func (r *Runner) deliveriesDue(ctx context.Context) bool {
+	var due bool
+	if err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM core.notification_deliveries
+			WHERE status = 'queued' AND next_attempt_at <= now()
+		)
+	`).Scan(&due); err != nil {
+		return true
+	}
+	return due
+}
+
+func (r *Runner) cleanupNotifications(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+	removed, err := notify.Cleanup(ctx, r.db)
+	if err != nil {
+		log.Printf("очистка оповещений: %v", err)
+		return
+	}
+	if removed > 0 {
+		log.Printf("очистка оповещений: удалено старых %d", removed)
 	}
 }

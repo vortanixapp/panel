@@ -48,25 +48,12 @@ func (h *Handler) auditAlert(ctx context.Context, actorID, actorEmail, action, r
 	title := i18n.Key("notify.audit.title", params)
 	body := i18n.Key("notify.audit.body", params)
 
-	rows, err := h.dbOf(ctx).Query(ctx, `
-		SELECT id::text FROM core.users
-		WHERE role IN ('admin', 'owner') AND status = 'active'
-		  AND ($1 = '' OR id::text <> $1)
-	`, actorID)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var adminID string
-			if rows.Scan(&adminID) == nil {
-				h.notifyUser(ctx, adminID, notify.Event{
-					Kind:  notify.KindAnnounce,
-					Title: title,
-					Body:  body,
-					Meta:  map[string]any{"action": action, "resource": resource},
-				})
-			}
-		}
-	}
+	h.notifyStaff(ctx, notify.StaffAdmins, actorID, notify.Event{
+		Kind:  notify.KindStaffAudit,
+		Title: title,
+		Body:  body,
+		Meta:  map[string]any{"action": action, "resource": resource},
+	})
 
 	l := i18n.For(ctx, h.dbOf(ctx), "")
 	h.telegramAdminAlert(ctx, "<b>"+html.EscapeString(l.Text(title))+"</b>\n"+html.EscapeString(l.Text(body)))

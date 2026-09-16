@@ -42,8 +42,10 @@ func (h *Handler) mountProtected(r chi.Router) {
 
 		r.Get("/v1/notifications", h.ListNotifications)
 		r.Get("/v1/notifications/unread-count", h.NotificationsUnreadCount)
+		r.Get("/v1/notifications/stream", h.NotificationsStream)
 		r.Post("/v1/notifications/read-all", h.NotificationsReadAll)
 		r.Post("/v1/notifications/{id}/read", h.NotificationRead)
+		r.Post("/v1/notifications/{id}/unread", h.NotificationUnread)
 		r.Delete("/v1/notifications/read", h.NotificationsClearRead)
 		r.Delete("/v1/notifications/{id}", h.NotificationDelete)
 
@@ -105,6 +107,9 @@ func (h *Handler) mountProtected(r chi.Router) {
 		r.Get("/v1/activity/export.csv", h.ExportActivityCSV)
 		r.Get("/v1/notifications/channels", h.NotificationChannelsShow)
 		r.Put("/v1/notifications/channels", h.NotificationChannelsUpdate)
+		r.Post("/v1/notifications/channels/test", h.NotificationChannelTest)
+		r.Post("/v1/notifications/telegram/link", h.NotificationTelegramLink)
+		r.Post("/v1/notifications/telegram/link/check", h.NotificationTelegramLinkCheck)
 
 		r.Get("/v1/hosting/my", h.MyHosting)
 		r.Get("/v1/hosting/rent", h.HostingRentForm)

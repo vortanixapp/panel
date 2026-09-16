@@ -21,6 +21,7 @@ import {
   type BonusPrize,
   type DailyBonusSpinResponse,
 } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
@@ -81,8 +82,8 @@ export function DailyBonusPageContent() {
         );
         void queryClient.invalidateQueries({ queryKey: ["daily-bonus"] });
         void queryClient.invalidateQueries({ queryKey: ["billing"] });
-        void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-        void queryClient.invalidateQueries({ queryKey: ["notifications-unread"] });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.notificationsFeeds });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.notificationsUnread });
       }, SPIN_DURATION_MS);
     },
     onError: (err) => {

@@ -172,28 +172,6 @@ func (r *Runner) checkNodeDiskSpace(ctx context.Context) {
 	}
 }
 
-func (r *Runner) notifyStaff(ctx context.Context, e notify.Event) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id::text FROM core.users
-		WHERE role IN ('owner', 'admin')
-	`)
-	if err != nil {
-		log.Printf("оповещение %s: персонал не найден: %v", e.Kind, err)
-		return
-	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if rows.Scan(&id) == nil {
-			ids = append(ids, id)
-		}
-	}
-	for _, id := range ids {
-		r.notifyUser(ctx, id, e)
-	}
-}
-
 func parseSizeBytes(s string) (float64, bool) {
 	s = strings.TrimSpace(strings.ToUpper(s))
 	if s == "" {

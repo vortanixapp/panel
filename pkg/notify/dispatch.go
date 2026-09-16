@@ -12,6 +12,13 @@ import (
 	"github.com/vortanixapp/panel/pkg/i18n"
 )
 
+const LiveChannel = "vx_notifications"
+
+var (
+	StaffSupport = []string{"support", "admin", "owner"}
+	StaffAdmins  = []string{"admin", "owner"}
+)
+
 type DB interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
@@ -65,27 +72,26 @@ func Dispatch(ctx context.Context, db DB, r Recipient, e Event) (Result, error) 
 	if err != nil {
 		return Result{}, err
 	}
+	publish(ctx, db, r.UserID+":"+id)
 
-	channels := channelsFor(e, r)
-	if len(channels) == 0 {
+	routes := routesFor(e, r)
+	if len(routes) == 0 {
 		return Result{NotificationID: id}, nil
 	}
 
-	subject, text := render(title, body, label, href)
-	for _, c := range channels {
-		target, ok := r.Target(c)
-		if !ok {
-			continue
-		}
+	subject, text := render(title, body)
+	channels := make([]Channel, 0, len(routes))
+	for _, rt := range routes {
 		if _, err := db.Exec(ctx, `
 			INSERT INTO core.notification_deliveries
 				( user_id, notification_id, kind, channel, target,
 				 subject, body, action_label, action_href)
 			VALUES ( $1, $2::uuid, $3, $4, $5, $6, $7, $8, $9)
-		`, r.UserID, id, string(e.Kind), string(c), target,
+		`, r.UserID, id, string(e.Kind), string(rt.channel), rt.target,
 			subject, text, label, href); err != nil {
-			return Result{NotificationID: id}, err
+			return Result{NotificationID: id, Channels: channels}, err
 		}
+		channels = append(channels, rt.channel)
 	}
 	return Result{NotificationID: id, Channels: channels}, nil
 }
@@ -108,8 +114,25 @@ func DispatchMany(ctx context.Context, db DB, rs []Recipient, e Event) (int, err
 	return sent, firstErr
 }
 
+func DispatchStaff(ctx context.Context, db DB, roles []string, exclude string, e Event) (int, error) {
+	rs, err := LoadStaff(ctx, db, roles, exclude)
+	if err != nil {
+		return 0, err
+	}
+	return DispatchMany(ctx, db, rs, e)
+}
+
+func PublishSync(ctx context.Context, db DB, userID string) {
+	publish(ctx, db, userID+":sync")
+}
+
+func publish(ctx context.Context, db DB, payload string) {
+	_, _ = db.Exec(ctx, `SELECT pg_notify($1, $2)`, LiveChannel, payload)
+}
+
 func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error) {
 	r := Recipient{UserID: userID, Prefs: Prefs{Email: true}}
+	var routes []byte
 	err := db.QueryRow(ctx, `
 		SELECT u.email,
 		       COALESCE(p.locale, ''),
@@ -117,7 +140,8 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		       COALESCE(c.telegram_enabled, false),
 		       COALESCE(c.discord_enabled, false),
 		       COALESCE(c.telegram_chat_id, ''),
-		       COALESCE(c.discord_webhook, '')
+		       COALESCE(c.discord_webhook, ''),
+		       COALESCE(c.routes, '{}'::jsonb)
 		FROM core.users u
 		LEFT JOIN core.user_profiles p
 		       ON p.user_id = u.id
@@ -125,10 +149,11 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		       ON c.user_id = u.id
 		WHERE u.id = $1
 	`, userID).Scan(&r.Email, &r.Locale, &r.Prefs.Email, &r.Prefs.Telegram,
-		&r.Prefs.Discord, &r.Prefs.TelegramChatID, &r.Prefs.DiscordWebhook)
+		&r.Prefs.Discord, &r.Prefs.TelegramChatID, &r.Prefs.DiscordWebhook, &routes)
 	if err != nil {
 		return Recipient{}, err
 	}
+	r.Prefs.Routes = ParseRoutes(routes)
 	return r, nil
 }
 
@@ -142,6 +167,39 @@ func LoadServerOwner(ctx context.Context, db DB, serverID string) (Recipient, er
 		return Recipient{}, err
 	}
 	return LoadRecipient(ctx, db, userID)
+}
+
+func LoadStaff(ctx context.Context, db DB, roles []string, exclude string) ([]Recipient, error) {
+	rows, err := db.Query(ctx, `
+		SELECT id::text FROM core.users
+		WHERE role = ANY($1::text[]) AND status = 'active'
+		  AND ($2 = '' OR id::text <> $2)
+		ORDER BY created_at
+	`, roles, exclude)
+	if err != nil {
+		return nil, err
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if rows.Scan(&id) == nil {
+			ids = append(ids, id)
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	out := make([]Recipient, 0, len(ids))
+	for _, id := range ids {
+		r, err := LoadRecipient(ctx, db, id)
+		if err != nil {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out, nil
 }
 
 func orEmpty(m map[string]any) map[string]any {

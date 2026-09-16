@@ -1147,7 +1147,11 @@ export async function downloadActivityCsv(params: ActivityQuery = {}) {
   URL.revokeObjectURL(url);
 }
 
-export type Notification = {
+export type NotificationTone = "info" | "ok" | "warn" | "bad";
+
+export type NotificationSeverity = "info" | "success" | "warning" | "critical";
+
+export type PanelNotification = {
   id: string;
   type: string;
   title: string;
@@ -1155,20 +1159,14 @@ export type Notification = {
   group: string;
   category: string;
   icon: string;
-  tone: "info" | "ok" | "warn" | "bad";
+  severity: NotificationSeverity;
+  tone: NotificationTone;
+  quiet: boolean;
   action: string;
   href: string;
   unread: boolean;
   read_at: string;
   created_at: string;
-};
-
-export type NotificationChannels = {
-  email: boolean;
-  telegram: boolean;
-  discord: boolean;
-  telegram_chat_id: string;
-  discord_webhook: string;
 };
 
 export type NotificationGroup = {
@@ -1178,67 +1176,221 @@ export type NotificationGroup = {
   unread: number;
 };
 
-export type NotificationsResponse = {
-  notifications: Notification[];
+export type NotificationsPage = {
+  notifications: PanelNotification[];
+  next_cursor: string;
   unread: number;
   groups: NotificationGroup[];
-  has_more: boolean;
-  channels: NotificationChannels;
-  error?: string;
 };
 
 export type NotificationsQuery = {
   group?: string;
   unread?: boolean;
-  offset?: number;
+  q?: string;
+  before?: string;
   limit?: number;
+};
+
+export type NotificationChange = {
+  status: string;
+  affected: number;
+  unread: number;
+  deleted?: number;
 };
 
 export async function fetchNotifications(q: NotificationsQuery = {}) {
   const params = new URLSearchParams();
   if (q.group) params.set("group", q.group);
   if (q.unread) params.set("unread", "1");
-  if (q.offset) params.set("offset", String(q.offset));
+  if (q.q) params.set("q", q.q);
+  if (q.before) params.set("before", q.before);
   if (q.limit) params.set("limit", String(q.limit));
   const suffix = params.toString();
-  return apiFetch<NotificationsResponse>("/v1/notifications" + (suffix ? "?" + suffix : ""));
-}
-
-export async function deleteNotification(id: string) {
-  return apiFetch<{ status: string }>(`/v1/notifications/${id}`, { method: "DELETE" });
-}
-
-export async function clearReadNotifications() {
-  return apiFetch<{ status: string; deleted: number }>("/v1/notifications/read", {
-    method: "DELETE",
-  });
+  return apiFetch<NotificationsPage>("/v1/notifications" + (suffix ? "?" + suffix : ""));
 }
 
 export async function fetchNotificationsUnreadCount() {
   return apiFetch<{ count: number }>("/v1/notifications/unread-count");
 }
 
-export async function markAllNotificationsRead() {
-  return apiFetch<{ status: string }>("/v1/notifications/read-all", {
-    method: "POST",
-  });
-}
-
 export async function markNotificationRead(id: string) {
-  return apiFetch<{ status: string }>(`/v1/notifications/${id}/read`, {
-    method: "POST",
+  return apiFetch<NotificationChange>(`/v1/notifications/${id}/read`, { method: "POST" });
+}
+
+export async function markNotificationUnread(id: string) {
+  return apiFetch<NotificationChange>(`/v1/notifications/${id}/unread`, { method: "POST" });
+}
+
+export async function markAllNotificationsRead(group?: string) {
+  const suffix = group ? "?group=" + encodeURIComponent(group) : "";
+  return apiFetch<NotificationChange>("/v1/notifications/read-all" + suffix, { method: "POST" });
+}
+
+export async function deleteNotification(id: string) {
+  return apiFetch<NotificationChange>(`/v1/notifications/${id}`, { method: "DELETE" });
+}
+
+export async function clearReadNotifications() {
+  return apiFetch<NotificationChange>("/v1/notifications/read", { method: "DELETE" });
+}
+
+export type NotificationChannel = "email" | "telegram" | "discord";
+
+export type NotificationChannels = {
+  email: boolean;
+  telegram: boolean;
+  discord: boolean;
+  telegram_chat_id: string;
+  discord_webhook: string;
+};
+
+export type NotificationGroupPrefs = {
+  id: string;
+  label: string;
+  channels: NotificationChannel[];
+  locked: NotificationChannel[];
+  routes: Partial<Record<NotificationChannel, boolean>>;
+};
+
+export type NotificationPrefs = {
+  channels: NotificationChannels;
+  groups: NotificationGroupPrefs[];
+  telegram: { available: boolean; bot_username: string };
+};
+
+export type NotificationPrefsUpdate = Partial<NotificationChannels> & {
+  routes?: Record<string, Partial<Record<NotificationChannel, boolean>>>;
+};
+
+export async function fetchNotificationPrefs() {
+  return apiFetch<NotificationPrefs>("/v1/notifications/channels");
+}
+
+export async function updateNotificationPrefs(payload: NotificationPrefsUpdate) {
+  return apiFetch<NotificationPrefs>("/v1/notifications/channels", {
+    method: "PUT",
+    body: JSON.stringify(payload),
   });
 }
 
-export async function fetchNotificationChannels() {
-  return apiFetch<{ channels: NotificationChannels }>("/v1/notifications/channels");
+export async function testNotificationChannel(channel: NotificationChannel) {
+  return apiFetch<{ ok: boolean }>("/v1/notifications/channels/test", {
+    method: "POST",
+    body: JSON.stringify({ channel }),
+  });
 }
 
-export async function updateNotificationChannels(payload: Partial<NotificationChannels>) {
-  return apiFetch<{ ok: boolean; channels: NotificationChannels }>(
-    "/v1/notifications/channels",
-    { method: "PUT", body: JSON.stringify(payload) }
+export async function startTelegramLink() {
+  return apiFetch<{ code: string; url: string; expires_at: string }>(
+    "/v1/notifications/telegram/link",
+    { method: "POST" }
   );
+}
+
+export async function checkTelegramLink(code: string) {
+  return apiFetch<{
+    status: "pending" | "linked" | "expired" | "unavailable";
+    chat?: string;
+    reason?: string;
+  }>("/v1/notifications/telegram/link/check", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+}
+
+export type NotificationStreamHandlers = {
+  onHello?: (unread: number) => void;
+  onSync?: (unread: number) => void;
+  onNotification?: (item: PanelNotification, unread: number) => void;
+};
+
+export function subscribeNotifications(handlers: NotificationStreamHandlers): () => void {
+  const controller = new AbortController();
+  let stopped = false;
+  let delay = 1_000;
+
+  const wait = (ms: number) =>
+    new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      controller.signal.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        { once: true }
+      );
+    });
+
+  const dispatch = (event: string, data: string) => {
+    let payload: { unread?: number; item?: PanelNotification };
+    try {
+      payload = JSON.parse(data) as { unread?: number; item?: PanelNotification };
+    } catch {
+      return;
+    }
+    const unread = typeof payload.unread === "number" ? payload.unread : 0;
+    if (event === "hello") handlers.onHello?.(unread);
+    else if (event === "sync") handlers.onSync?.(unread);
+    else if (event === "notification" && payload.item) handlers.onNotification?.(payload.item, unread);
+  };
+
+  const run = async () => {
+    while (!stopped) {
+      const startedAt = Date.now();
+      let received = false;
+      try {
+        if (getRefreshToken()) await ensureValidSession();
+        const token = getAccessToken();
+        if (!token) return;
+        const res = await fetch(`${API_URL}/v1/notifications/stream`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!res.ok || !res.body) throw new Error(String(res.status));
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let sep = buffer.indexOf("\n\n");
+          while (sep >= 0) {
+            const chunk = buffer.slice(0, sep);
+            buffer = buffer.slice(sep + 2);
+            let event = "message";
+            const data: string[] = [];
+            for (const line of chunk.split("\n")) {
+              if (line.startsWith("event: ")) event = line.slice(7).trim();
+              else if (line.startsWith("data: ")) data.push(line.slice(6));
+            }
+            if (data.length > 0) {
+              received = true;
+              dispatch(event, data.join("\n"));
+            }
+            sep = buffer.indexOf("\n\n");
+          }
+        }
+      } catch {
+        if (stopped || controller.signal.aborted) return;
+      }
+      if (stopped) return;
+      if (received && Date.now() - startedAt > 5_000) {
+        delay = 1_000;
+        continue;
+      }
+      await wait(delay);
+      delay = Math.min(delay * 2, 30_000);
+    }
+  };
+
+  void run();
+  return () => {
+    stopped = true;
+    controller.abort();
+  };
 }
 
 export type BonusPrize = {

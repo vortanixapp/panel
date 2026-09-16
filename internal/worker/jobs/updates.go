@@ -11,6 +11,8 @@ import (
 
 	"github.com/vortanixapp/panel/internal/worker/relay"
 	"github.com/vortanixapp/panel/pkg/buildinfo"
+	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/protocol"
 	"github.com/vortanixapp/panel/pkg/updates"
 )
@@ -18,13 +20,15 @@ import (
 const (
 	updatesInterval        = 5 * time.Minute
 	releaseRecheckInterval = 30 * time.Minute
+	releaseNotifyInterval  = 6 * time.Hour
 	agentRetryAfter        = 6 * time.Hour
 	agentUpdatesPerTick    = 5
 )
 
 type updateLoopState struct {
-	release   *updates.Release
-	checkedAt time.Time
+	release    *updates.Release
+	checkedAt  time.Time
+	notifiedAt time.Time
 }
 
 func (r *Runner) UpdatesLoop(ctx context.Context) {
@@ -39,6 +43,7 @@ func (r *Runner) UpdatesLoop(ctx context.Context) {
 		}
 		r.heartbeat.Beat(LoopUpdates)
 		r.autoUpdatePanel(ctx, state)
+		r.notifyPanelRelease(ctx, state)
 		r.autoUpdateAgents(ctx)
 		timer.Reset(updatesInterval)
 	}
@@ -121,6 +126,7 @@ func (r *Runner) autoUpdatePanel(ctx context.Context, state *updateLoopState) {
 			return
 		case "failed":
 			r.storeUpdateSetting(ctx, updates.SettingPanelSkipVersion, rel.Version)
+			r.notifyPanelUpdateFailed(ctx, rel.Version, job.Error)
 			log.Printf("автообновление панели до %s не удалось, повторять не буду: %s", rel.Version, job.Error)
 			return
 		}
@@ -134,6 +140,58 @@ func (r *Runner) autoUpdatePanel(ctx context.Context, state *updateLoopState) {
 		return
 	}
 	log.Printf("автообновление панели: %s → %s", current, rel.Version)
+}
+
+func (r *Runner) notifyPanelRelease(ctx context.Context, state *updateLoopState) {
+	now := time.Now()
+	if now.Sub(state.notifiedAt) < releaseNotifyInterval {
+		return
+	}
+	state.notifiedAt = now
+
+	current := buildinfo.Current()
+	if !updates.IsSemver(current) {
+		return
+	}
+	rel := state.release
+	if rel == nil || now.Sub(state.checkedAt) >= releaseRecheckInterval {
+		repo := updates.Repo()
+		if repo == "" {
+			return
+		}
+		fresh, err := updates.LatestRelease(ctx, repo)
+		if err != nil {
+			return
+		}
+		state.release, state.checkedAt, rel = fresh, now, fresh
+	}
+	if rel.Prerelease || !updates.IsNewer(rel.Version, current) {
+		return
+	}
+
+	r.notifyStaff(ctx, notify.Event{
+		Kind:      notify.KindPanelUpdate,
+		Title:     i18n.Key("notify.panel_update.title", i18n.Params{"version": rel.Version}),
+		Body:      i18n.Key("notify.panel_update.body", i18n.Params{"version": rel.Version, "current": current}),
+		Action:    r.panelAction("notify.action.updates", "/admin/updates"),
+		Meta:      map[string]any{"version": rel.Version},
+		DedupeKey: "panel.update:" + rel.Version,
+	})
+}
+
+func (r *Runner) notifyPanelUpdateFailed(ctx context.Context, version, reason string) {
+	why := i18n.Raw(strings.TrimSpace(reason))
+	if why.Raw == "" {
+		why = i18n.Key("notify.panel_update_failed.no_reason")
+	}
+	r.notifyStaff(ctx, notify.Event{
+		Kind:      notify.KindPanelUpdateFailed,
+		Title:     i18n.Key("notify.panel_update_failed.title", i18n.Params{"version": version}),
+		Body:      i18n.Key("notify.panel_update_failed.body", i18n.Params{"version": version, "reason": why}),
+		Action:    r.panelAction("notify.action.updates", "/admin/updates"),
+		Meta:      map[string]any{"version": version},
+		DedupeKey: "panel.update_failed:" + version,
+	})
 }
 
 func (r *Runner) markAgentUpdate(ctx context.Context, nodeID, status, target, from, errMsg string) {

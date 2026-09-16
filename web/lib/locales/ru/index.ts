@@ -9,6 +9,7 @@ import { landing } from "./landing";
 import { layout } from "./layout";
 import { nav } from "./nav";
 import { news } from "./news";
+import { notifications } from "./notifications";
 import { servers } from "./servers";
 import { settings } from "./settings";
 import { support } from "./support";
@@ -24,6 +25,7 @@ export const RU = {
   ...billing,
   ...support,
   ...news,
+  ...notifications,
   ...settings,
   ...dashboard,
   ...adminInfra,

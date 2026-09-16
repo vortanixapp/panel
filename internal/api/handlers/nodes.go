@@ -34,6 +34,13 @@ type Handler struct {
 	tgBotMu       sync.Mutex
 	tgBotUsername string
 	tgBotUntil    time.Time
+
+	notifyBotMu    sync.Mutex
+	notifyBotToken string
+	notifyBotName  string
+	notifyBotUntil time.Time
+
+	live *notifyLive
 }
 
 func New(db, readDB *pgxpool.Pool, tokens *paneljwt.Manager, c *cache.Cache, relayClient *relay.Client, eggCDN *storage.EggCDN, deps HandlerDeps) *Handler {

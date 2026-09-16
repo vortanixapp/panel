@@ -139,10 +139,23 @@ func (h *Handler) AgentConnect(w http.ResponseWriter, r *http.Request) {
 		Send: make(chan hub.OutboundMessage, 64),
 	}
 	h.hub.Register(agent)
-	if _, err := db.Exec(ctx, `
-		UPDATE core.nodes SET status = 'online', last_seen_at = now() WHERE id = $1
-	`, nodeID); err != nil {
+	var prevStatus, nodeName string
+	if err := db.QueryRow(ctx, `
+		WITH prev AS (
+			SELECT status FROM core.nodes WHERE id = $1
+		)
+		UPDATE core.nodes n SET status = 'online', last_seen_at = now()
+		FROM prev
+		WHERE n.id = $1
+		RETURNING COALESCE(prev.status, ''), COALESCE(n.fqdn, '')
+	`, nodeID).Scan(&prevStatus, &nodeName); err != nil {
 		log.Printf("relay: статус узла %s не записан: %v", nodeID, err)
+	} else if prevStatus == "offline" {
+		go func() {
+			recoverCtx, cancel := context.WithTimeout(context.Background(), time.Minute)
+			defer cancel()
+			h.notifyNodeRecovered(recoverCtx, db, nodeID, nodeName)
+		}()
 	}
 	if _, err := db.Exec(ctx, `
 		INSERT INTO core.node_daemons ( node_id, status, last_seen_at)
@@ -167,11 +180,12 @@ func (h *Handler) readPump(c *hub.AgentConn) {
 		}
 		ctx := context.Background()
 		var nodeName string
+		var lastSeen *time.Time
 		if c.DB.QueryRow(ctx, `
 			UPDATE core.nodes SET status = 'offline' WHERE id = $1 AND status <> 'offline'
-			RETURNING COALESCE(fqdn, '')
-		`, c.NodeID).Scan(&nodeName) == nil {
-			h.notifyNodeOwners(ctx, c.DB, c.NodeID, nodeName)
+			RETURNING COALESCE(fqdn, ''), last_seen_at
+		`, c.NodeID).Scan(&nodeName, &lastSeen) == nil {
+			h.scheduleNodeOffline(c.DB, c.NodeID, nodeName, lastSeen)
 			emitWebhook(ctx, c.DB, "node.offline", map[string]any{
 				"node_id":   c.NodeID,
 				"node_name": nodeName,

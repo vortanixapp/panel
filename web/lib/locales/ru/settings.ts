@@ -5,9 +5,6 @@ export const settings = {
   "settings.appearance.section_desc": "Тема и шрифт панели",
   "settings.display.section_title": "Отображение",
   "settings.display.section_desc": "Какие разделы видны в боковом меню",
-  "settings.notifications.section_title": "Уведомления",
-  "settings.notifications.section_desc":
-    "Настройте, о каких событиях вы хотите получать уведомления",
 
   "settings.appearance.theme_title": "Тема",
   "settings.appearance.theme_hint": "Применяется сразу и хранится в этом браузере",
@@ -23,20 +20,6 @@ export const settings = {
     "Выберите разделы, которые будут видны в навигации. Настройка хранится в этом браузере",
   "settings.display.pick_one": "Выберите хотя бы один раздел",
   "settings.display.saved": "Настройки отображения сохранены",
-
-  "settings.notifications.channels_title": "Каналы",
-  "settings.notifications.channels_hint": "Для Telegram нужен chat id, для Discord — webhook",
-  "settings.notifications.email_desc":
-    "События по серверам, заказам и поддержке на адрес учётной записи",
-  "settings.notifications.telegram_desc": "Доставка через бота панели в указанный чат",
-  "settings.notifications.discord_desc": "Доставка сообщением в канал через webhook",
-  "settings.notifications.chat_id_max": "Не более 64 символов",
-  "settings.notifications.webhook_max": "Не более 300 символов",
-  "settings.notifications.chat_id_required": "Укажите chat id — иначе уведомления не дойдут",
-  "settings.notifications.webhook_required": "Укажите webhook — иначе уведомления не дойдут",
-  "settings.notifications.saved": "Каналы доставки сохранены",
-  "settings.notifications.load_failed":
-    "Не удалось загрузить каналы доставки. Обновите страницу.",
 
   "settings.account.tab_profile": "Аккаунт",
   "settings.account.tab_contacts": "Контакты",

@@ -118,6 +118,9 @@ func (h *Handler) CreateSupportTicket(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO core.support_messages (ticket_id, user_id, message, body)
 		SELECT $1::uuid, $2::uuid, $3, $3 FROM core.support_tickets WHERE id = $1::uuid
 	`, id, claims.UserID, body.Body)
+	if id != "" {
+		h.notifyStaffTicketNew(r.Context(), id, claims.UserID, claims.Email, body.Subject, body.Body)
+	}
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id})
 }
 
@@ -223,6 +226,8 @@ func (h *Handler) ReplySupportTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	if staff {
 		h.notifySupportReply(ctx, ticketID, body.Body)
+	} else {
+		h.notifyStaffTicketReply(ctx, ticketID, claims.UserID, body.Body)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

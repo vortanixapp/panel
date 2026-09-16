@@ -11,6 +11,11 @@ export const queryKeys = {
     ["billing", walletId ?? "default"] as const,
   billingTopup: () => ["billing-topup"] as const,
   billingPayment: (id: string) => ["billing-payment", id] as const,
+  notificationsFeeds: ["notifications-feed"] as const,
+  notificationsFeed: (group: string, unread: boolean, q: string, limit: number) =>
+    ["notifications-feed", group, unread, q, limit] as const,
+  notificationsUnread: ["notifications-unread"] as const,
+  notificationPrefs: ["notification-prefs"] as const,
   supportTickets: ["support-tickets"] as const,
   supportCreateForm: ["support-create-form"] as const,
   kbArticles: (category?: string, q?: string) => ["kb-articles", category ?? "", q ?? ""] as const,

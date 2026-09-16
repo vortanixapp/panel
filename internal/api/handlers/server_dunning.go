@@ -104,7 +104,7 @@ func (h *Handler) remindStage(ctx context.Context, stage int) {
 			}),
 			Action:    h.serverAction("notify.action.renew", d.id, "/tariff"),
 			Meta:      map[string]any{"server_id": d.id, "days": stage},
-			DedupeKey: fmt.Sprintf("server.expiring:%s:%d", d.id, stage),
+			DedupeKey: fmt.Sprintf("server.expiring:%s:%d:%d", d.id, stage, d.expiresAt.Unix()),
 		})
 	}
 }

@@ -275,7 +275,7 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.notifyUser(ctx, c.UserID, notify.Event{
-			Kind:      notify.KindAnnounce,
+			Kind:      notify.KindAbuseNotice,
 			Title:     i18n.Key("notify.abuse.title", i18n.Params{"number": number}),
 			Body:      i18n.Key("notify.abuse.body", i18n.Params{"message": message}),
 			Meta:      map[string]any{"abuse_case_id": c.ID},
@@ -305,7 +305,7 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 				Title:     i18n.Key("notify.server_blocked.title"),
 				Body:      i18n.Key("notify.server_blocked.body", i18n.Params{"name": name, "reason": i18n.Raw(reason)}),
 				Meta:      map[string]any{"server_id": c.ServerID, "abuse_case_id": c.ID},
-				DedupeKey: "server.blocked:" + c.ServerID,
+				DedupeKey: "server.blocked:" + c.ServerID + ":" + strconv.FormatInt(time.Now().Unix(), 10),
 			}
 			if !blocked {
 				event = notify.Event{
@@ -313,7 +313,7 @@ func (h *Handler) AdminAbuseCaseAction(w http.ResponseWriter, r *http.Request) {
 					Title:     i18n.Key("notify.server_unblocked.title"),
 					Body:      i18n.Key("notify.server_unblocked.body", i18n.Params{"name": name}),
 					Meta:      map[string]any{"server_id": c.ServerID, "abuse_case_id": c.ID},
-					DedupeKey: "server.unblocked:" + c.ServerID,
+					DedupeKey: "server.unblocked:" + c.ServerID + ":" + strconv.FormatInt(time.Now().Unix(), 10),
 				}
 			}
 			h.notifyUser(ctx, ownerID, event)

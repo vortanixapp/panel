@@ -242,6 +242,9 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusInternalServerError, "failed")
 		return
 	}
+	if !isStaff {
+		h.notifyStaffTicketReply(ctx, ticketID, claims.UserID, label)
+	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"status":      "uploaded",

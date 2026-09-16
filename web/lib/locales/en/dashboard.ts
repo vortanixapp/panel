@@ -89,7 +89,6 @@ export const dashboard = {
   "dashboard.step.rent_more": "Rent another server",
   "dashboard.step.rent_more_sub": "up and running in about 40 seconds",
 
-
   "dashboard.activity.title": "Journal",
   "dashboard.activity.subtitle": "Everything that happens in your account: servers, billing, access",
   "dashboard.activity.export_csv": "Export CSV",
@@ -119,36 +118,6 @@ export const dashboard = {
   "dashboard.activity.records_many": "records",
   "dashboard.activity.shown": "Showing {shown} of {total} · {range}",
   "dashboard.activity.show_more": "Show {count} more",
-
-  "dashboard.notifications.title": "Alerts",
-  "dashboard.notifications.subtitle": "Servers, money, support and security",
-  "dashboard.notifications.mark_all": "Mark all read",
-  "dashboard.notifications.marked_all": "All alerts marked as read",
-  "dashboard.notifications.cleared": "Read alerts removed: {count}",
-  "dashboard.notifications.clear_empty": "There are no read alerts",
-  "dashboard.notifications.clear_failed": "Could not remove read alerts",
-  "dashboard.notifications.clear_read": "Remove read",
-  "dashboard.notifications.channels_updated": "Delivery channels updated",
-  "dashboard.notifications.channels_failed": "Could not update the channels",
-  "dashboard.notifications.unread_label": "Unread:",
-  "dashboard.notifications.filter_unread": "Unread",
-  "dashboard.notifications.load_failed_title": "Could not load the alerts",
-  "dashboard.notifications.load_failed_text":
-    "Check your connection and try refreshing.",
-  "dashboard.notifications.all_read_title": "Everything is read",
-  "dashboard.notifications.all_read_text": "New events will show up here automatically.",
-  "dashboard.notifications.empty_title": "No alerts yet",
-  "dashboard.notifications.empty_text":
-    "Events about servers, payments and tickets will show up here.",
-  "dashboard.notifications.more": "More",
-  "dashboard.notifications.channels_title": "Delivery channels",
-  "dashboard.notifications.channels_hint": "Where to mirror important events",
-  "dashboard.notifications.configure": "Configure →",
-  "dashboard.notifications.read": "Read",
-  "dashboard.notifications.remove": "Remove",
-  "dashboard.notifications.remove_aria": "Remove the alert",
-  "dashboard.notifications.channel_not_configured":
-    "The channel is on, but no delivery address is set — alerts will not arrive",
 
   "monitoring.title": "Monitoring",
   "monitoring.subtitle": "Game server status · refreshed every 15 s",

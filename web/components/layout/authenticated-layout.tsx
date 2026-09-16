@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SkipToMain } from "@/components/skip-to-main";
 import { MotionRoot } from "@/components/motion-root";
 import { useSpotlight } from "@/components/vx/motion";
+import { NotificationsLive } from "@/components/notifications/notifications-live";
 import type { PanelVariant } from "@/lib/panel-paths";
 
 type AuthenticatedLayoutProps = {
@@ -29,6 +30,7 @@ export function AuthenticatedLayout({
 
   return (
     <MotionRoot>
+      <NotificationsLive />
       <SearchProvider>
         <LayoutProvider>
           <SidebarProvider defaultOpen={defaultOpen}>

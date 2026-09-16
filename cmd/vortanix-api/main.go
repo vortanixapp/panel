@@ -103,6 +103,7 @@ func main() {
 	h.StartHostingExpirySweeper(samplerCtx)
 	h.StartServerDunningSweeper(samplerCtx)
 	h.StartReceiptOffsetSweeper(samplerCtx)
+	h.StartNotificationsLive(samplerCtx)
 
 	prom := httpprom.New("core-api")
 	r := chi.NewRouter()

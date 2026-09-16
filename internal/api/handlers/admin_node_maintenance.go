@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,6 +46,7 @@ func (h *Handler) SetNodeMaintenance(w http.ResponseWriter, r *http.Request) {
 
 	var nodeName string
 	var affected int
+	var startedAt *time.Time
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		UPDATE core.nodes SET
 			maintenance_mode       = $2,
@@ -56,8 +58,9 @@ func (h *Handler) SetNodeMaintenance(w http.ResponseWriter, r *http.Request) {
 				ELSE NULL
 			END
 		WHERE id = $1
-		RETURNING name, (SELECT COUNT(*)::int FROM core.servers s WHERE s.node_id = core.nodes.id)
-	`, nodeID, body.Enabled, strings.TrimSpace(body.Reason), until).Scan(&nodeName, &affected)
+		RETURNING name, (SELECT COUNT(*)::int FROM core.servers s WHERE s.node_id = core.nodes.id),
+		          maintenance_started_at
+	`, nodeID, body.Enabled, strings.TrimSpace(body.Reason), until).Scan(&nodeName, &affected, &startedAt)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "location not found")
 		return
@@ -65,7 +68,11 @@ func (h *Handler) SetNodeMaintenance(w http.ResponseWriter, r *http.Request) {
 
 	notified := 0
 	if body.Enabled && body.NotifyOwners {
-		notified = h.notifyNodeOwners(ctx, nodeID, nodeName, body.Reason, until)
+		episode := time.Now()
+		if startedAt != nil {
+			episode = *startedAt
+		}
+		notified = h.notifyNodeOwners(ctx, nodeID, nodeName, body.Reason, until, episode)
 	}
 
 	audit(ctx, h.dbOf(ctx), claims.UserID, "node.maintenance", "node:"+nodeID,
@@ -81,7 +88,7 @@ func (h *Handler) SetNodeMaintenance(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) notifyNodeOwners(ctx context.Context, nodeID, nodeName, reason string, until any) int {
+func (h *Handler) notifyNodeOwners(ctx context.Context, nodeID, nodeName, reason string, until any, episode time.Time) int {
 	rows, err := h.dbOf(ctx).Query(ctx, `
 		SELECT DISTINCT user_id::text FROM core.servers
 		WHERE node_id = $1 AND user_id IS NOT NULL
@@ -113,7 +120,7 @@ func (h *Handler) notifyNodeOwners(ctx context.Context, nodeID, nodeName, reason
 			Body:      i18n.Key("notify.node_maintenance.body", i18n.Params{"node": nodeName}),
 			Extra:     extra,
 			Meta:      map[string]any{"node_id": nodeID, "node_name": nodeName},
-			DedupeKey: "node.maintenance:" + nodeID,
+			DedupeKey: "node.maintenance:" + nodeID + ":" + strconv.FormatInt(episode.Unix(), 10),
 		})
 	}
 	return len(owners)

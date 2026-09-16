@@ -5,8 +5,6 @@ export const settings = {
   "settings.appearance.section_desc": "Panel theme and font",
   "settings.display.section_title": "Display",
   "settings.display.section_desc": "Which sections appear in the sidebar",
-  "settings.notifications.section_title": "Notifications",
-  "settings.notifications.section_desc": "Choose which events you want to be notified about",
 
   "settings.appearance.theme_title": "Theme",
   "settings.appearance.theme_hint": "Applies immediately and is stored in this browser",
@@ -22,19 +20,6 @@ export const settings = {
     "Choose the sections visible in navigation. The setting is stored in this browser",
   "settings.display.pick_one": "Select at least one section",
   "settings.display.saved": "Display settings saved",
-
-  "settings.notifications.channels_title": "Channels",
-  "settings.notifications.channels_hint": "Telegram needs a chat id, Discord needs a webhook",
-  "settings.notifications.email_desc":
-    "Server, order and support events sent to your account address",
-  "settings.notifications.telegram_desc": "Delivered by the panel bot to the chat you specify",
-  "settings.notifications.discord_desc": "Delivered as a channel message through a webhook",
-  "settings.notifications.chat_id_max": "No more than 64 characters",
-  "settings.notifications.webhook_max": "No more than 300 characters",
-  "settings.notifications.chat_id_required": "Enter a chat id, or notifications will not arrive",
-  "settings.notifications.webhook_required": "Enter a webhook, or notifications will not arrive",
-  "settings.notifications.saved": "Delivery channels saved",
-  "settings.notifications.load_failed": "Could not load delivery channels. Refresh the page.",
 
   "settings.account.tab_profile": "Account",
   "settings.account.tab_contacts": "Contacts",
