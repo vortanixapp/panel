@@ -28,6 +28,7 @@ const STATUS_LABEL_KEYS: Record<string, string> = {
 export function LocationIPsCard({ locationId }: { locationId: string }) {
   const t = useT();
   const qc = useQueryClient();
+  const [formOpen, setFormOpen] = useState(false);
   const [addresses, setAddresses] = useState("");
   const [label, setLabel] = useState("");
 
@@ -51,6 +52,7 @@ export function LocationIPsCard({ locationId }: { locationId: string }) {
           : t("admin.ips.added", { count: res.added })
       );
       setAddresses("");
+      setFormOpen(false);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message || t("admin.ips.add_failed")),
@@ -79,30 +81,91 @@ export function LocationIPsCard({ locationId }: { locationId: string }) {
     onError: (e: Error) => toast.error(e.message || t("common.delete_failed")),
   });
 
-  if (isLoading) return <Skeleton className="h-[220px] w-full rounded-2xl" />;
+  if (isLoading) return <Skeleton className="h-[160px] w-full rounded-2xl" />;
 
   const list = data?.addresses ?? [];
 
   return (
     <section className="flex flex-col gap-4 rounded-2xl border bg-card px-5 py-5 sm:px-6">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold">{t("admin.ips.title")}</h2>
-        <Badge variant="secondary">
-          {t("admin.ips.free_of", {
-            free: data?.free ?? 0,
-            total: list.length,
-          })}
-        </Badge>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h2 className="text-[15px] leading-none font-semibold">
+            {t("admin.ips.title")}
+          </h2>
+          <Badge variant="secondary">
+            {t("admin.ips.free_of", {
+              free: data?.free ?? 0,
+              total: list.length,
+            })}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => importMut.mutate()}
+            disabled={importMut.isPending}
+          >
+            {t("admin.ips.import")}
+          </Button>
+          <Button
+            variant={formOpen ? "outline" : "default"}
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => setFormOpen((v) => !v)}
+          >
+            {formOpen ? t("common.cancel") : t("admin.ips.add_addresses")}
+          </Button>
+        </div>
       </div>
 
-      <p className="text-sm text-muted-foreground">{t("admin.ips.hint")}</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        {t("admin.ips.hint")}
+      </p>
+
+      {formOpen && (
+        <div className="flex flex-col gap-3 rounded-xl border bg-muted/20 p-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs">{t("admin.ips.new_addresses")}</Label>
+            <Textarea
+              value={addresses}
+              onChange={(e) => setAddresses(e.target.value)}
+              placeholder={"203.0.113.10\n203.0.113.11"}
+              rows={3}
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("admin.ips.paste_hint")}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[200px] flex-1 space-y-1.5">
+              <Label className="text-xs">{t("admin.ips.label")}</Label>
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder={t("admin.ips.label_placeholder")}
+              />
+            </div>
+            <Button
+              onClick={() => addMut.mutate()}
+              disabled={addMut.isPending || !addresses.trim()}
+            >
+              {t("common.add")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {list.length === 0 ? (
-        <div className="rounded-lg border p-6 text-center text-sm text-muted-foreground">
-          {t("admin.ips.empty")}
-        </div>
+        !formOpen && (
+          <div className="rounded-xl border border-dashed px-4 py-3.5 text-center text-[13px] text-muted-foreground">
+            {t("admin.ips.empty")}
+          </div>
+        )
       ) : (
-        <div className="divide-y rounded-lg border">
+        <div className="divide-y rounded-xl border">
           {list.map((ip: NodeIPAddress) => (
             <div
               key={ip.id}
@@ -130,6 +193,7 @@ export function LocationIPsCard({ locationId }: { locationId: string }) {
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="h-7 text-xs"
                     onClick={() => {
                       if (
                         !confirm(
@@ -149,42 +213,6 @@ export function LocationIPsCard({ locationId }: { locationId: string }) {
           ))}
         </div>
       )}
-
-      <div className="space-y-2 border-t pt-4">
-        <Label className="text-xs">{t("admin.ips.new_addresses")}</Label>
-        <Textarea
-          value={addresses}
-          onChange={(e) => setAddresses(e.target.value)}
-          placeholder={"203.0.113.10\n203.0.113.11"}
-          rows={3}
-        />
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="flex-1 space-y-1">
-            <Label className="text-xs">{t("admin.ips.label")}</Label>
-            <Input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder={t("admin.ips.label_placeholder")}
-            />
-          </div>
-          <Button
-            onClick={() => addMut.mutate()}
-            disabled={addMut.isPending || !addresses.trim()}
-          >
-            {t("common.add")}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => importMut.mutate()}
-            disabled={importMut.isPending}
-          >
-            {t("admin.ips.import")}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {t("admin.ips.paste_hint")}
-        </p>
-      </div>
     </section>
   );
 }

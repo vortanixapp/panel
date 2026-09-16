@@ -175,6 +175,16 @@ export const adminInfra = {
   "admin.settings.storage.test_hint":
     "Проверка записывает и удаляет тестовый файл в корне",
 
+  "admin.location.load": "Нагрузка",
+  "admin.location.kpi.disk": "Диск",
+  "admin.location.kpi.servers": "Серверы",
+  "admin.location.kpi.avg": "в среднем {value}",
+  "admin.location.kpi.disk_of": "{used} из {total}",
+  "admin.location.kpi.servers_limit": "лимит {max}",
+  "admin.location.kpi.ram_of": "из {total}",
+  "admin.location.maintenance_until": "до {date}",
+  "admin.ips.add_addresses": "Добавить адреса",
+  "admin.capacity.settings_title": "Распределение ресурсов",
   "admin.location.not_found": "Локация не найдена",
   "admin.location.sync_started": "Синхронизация с нодой запущена",
   "admin.location.sync_banner":
@@ -196,7 +206,7 @@ export const adminInfra = {
   "admin.location.info.disk_total": "Дисковое пространство",
   "admin.location.info.disk_used": "Использовано диска",
   "admin.location.info.disk_free": "Доступно диска",
-  "admin.location.info.uptime": "Uptime",
+  "admin.location.info.uptime": "Время работы",
   "admin.location.uptime.days": "{d} д {h} ч",
   "admin.location.uptime.hours": "{h} ч {m} мин",
   "admin.location.uptime.minutes": "{m} мин",
@@ -212,8 +222,8 @@ export const adminInfra = {
   "admin.location.mysql_hide": "Скрыть",
   "admin.location.mysql_copy": "Копировать пароль",
   "admin.location.mysql_copied": "Пароль скопирован",
-  "admin.location.cpu_load": "CPU нагрузка",
-  "admin.location.ram_load": "RAM нагрузка",
+  "admin.location.cpu_load": "Загрузка CPU",
+  "admin.location.ram_load": "Загрузка RAM",
   "admin.location.svc.active": "Запущен",
   "admin.location.svc.stopped": "Остановлен",
   "admin.location.svc.ssh_error": "Ошибка SSH",
@@ -268,13 +278,13 @@ export const adminInfra = {
   "admin.agent_setup.copied": "{label} скопировано",
   "admin.agent_setup.token_regenerated":
     "Токен агента обновлён — выполните команду установки на игровой ноде заново",
-  "admin.agent_setup.show": "Показать credentials",
-  "admin.agent_setup.hide": "Скрыть credentials",
+  "admin.agent_setup.show": "Показать данные подключения",
+  "admin.agent_setup.hide": "Скрыть данные подключения",
   "admin.agent_setup.regen_confirm":
     "Старый токен перестанет работать. Сгенерировать новый?",
   "admin.agent_setup.generating": "Генерация…",
   "admin.agent_setup.new_token": "Новый токен",
-  "admin.agent_setup.press_show": "Нажмите «Показать credentials»",
+  "admin.agent_setup.press_show": "Нажмите «Показать данные подключения»",
   "admin.agent_setup.command_title":
     "Выполните на игровой ноде от root. Повторный запуск переустанавливает агента",
   "admin.agent_setup.copy_command": "Копировать команду",
@@ -495,7 +505,7 @@ export const adminInfra = {
 
   "admin.integrations.title": "Интеграции",
   "admin.integrations.subtitle":
-    "Ключи для внешнего доступа к административному API и вебхуки: панель уведомляет ваши сервисы о событиях без опроса с их стороны",
+    "Подключение биллинга WHMCS, ключи для внешнего доступа к административному API и вебхуки о событиях панели",
   "admin.integrations.keys_title": "Ключи API",
   "admin.integrations.key_once": "Скопируйте ключ — он показывается один раз",
   "admin.integrations.key_hash_hint":
@@ -510,8 +520,6 @@ export const adminInfra = {
   "admin.integrations.keys_empty": "Ключей нет",
   "admin.integrations.key_active": "активен",
   "admin.integrations.key_revoked_badge": "отозван",
-  "admin.integrations.key_meta":
-    "{scopes} прав · создан {created} · последний запрос {used}",
   "admin.integrations.revoke": "Отозвать",
   "admin.integrations.revoke_confirm": "Отозвать ключ «{name}»?",
   "admin.integrations.key_revoked": "Ключ отозван",
@@ -529,7 +537,6 @@ export const adminInfra = {
   "admin.integrations.hook_on": "включён",
   "admin.integrations.hook_off": "выключен",
   "admin.integrations.hook_errors": "ошибок: {count}",
-  "admin.integrations.hook_meta": "{events} событий · последняя отправка {sent}",
   "admin.integrations.hook_test": "Проверить",
   "admin.integrations.hook_history": "История",
   "admin.integrations.hook_delete_confirm": "Удалить вебхук?",
@@ -545,6 +552,21 @@ export const adminInfra = {
   "admin.integrations.delivery_failed": "ошибка: {error}",
   "admin.integrations.delivery_queued": "в очереди",
 
+  "admin.integrations.keys_hint": "Ключи дают внешним системам доступ к административному API в пределах выбранных прав. В базе хранится только хеш ключа.",
+  "admin.integrations.hooks_hint": "Панель отправляет POST-запрос на ваш адрес, когда происходят выбранные события, — без опроса с вашей стороны.",
+  "admin.integrations.add_hook": "Добавить вебхук",
+  "admin.integrations.col_scopes": "Права",
+  "admin.integrations.col_created": "Создан",
+  "admin.integrations.col_used": "Последний запрос",
+  "admin.integrations.revoke_desc": "Системы, которые используют этот ключ, сразу потеряют доступ к API. Отменить отзыв нельзя.",
+  "admin.integrations.hook_last_sent": "Последняя отправка: {sent}",
+  "admin.integrations.sign_title": "Подпись запросов",
+  "admin.integrations.whmcs.setup_title": "Подключение",
+  "admin.integrations.whmcs.state_connected": "Подключён",
+  "admin.integrations.whmcs.state_not_connected": "Не подключён",
+  "admin.integrations.whmcs.not_set": "не задан",
+  "admin.integrations.whmcs.stat_keys": "Ключи WHMCS",
+  "admin.integrations.whmcs.services_short": "активных {active}, приостановлено {suspended}",
   "admin.integrations.whmcs.title": "WHMCS",
   "admin.integrations.whmcs.subtitle":
     "Модуль для WHMCS создаёт, приостанавливает, меняет и удаляет серверы по событиям биллинга, пускает клиентов в панель без пароля и показывает сервер в личном кабинете WHMCS",

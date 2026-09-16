@@ -174,6 +174,16 @@ export const adminInfra = {
   "admin.settings.storage.test_hint":
     "The test writes and removes a temporary file in the root",
 
+  "admin.location.load": "Load",
+  "admin.location.kpi.disk": "Disk",
+  "admin.location.kpi.servers": "Servers",
+  "admin.location.kpi.avg": "average {value}",
+  "admin.location.kpi.disk_of": "{used} of {total}",
+  "admin.location.kpi.servers_limit": "limit {max}",
+  "admin.location.kpi.ram_of": "of {total}",
+  "admin.location.maintenance_until": "until {date}",
+  "admin.ips.add_addresses": "Add addresses",
+  "admin.capacity.settings_title": "Resource allocation",
   "admin.location.not_found": "Location not found",
   "admin.location.sync_started": "Synchronization with the node started",
   "admin.location.sync_banner":
@@ -211,8 +221,8 @@ export const adminInfra = {
   "admin.location.mysql_hide": "Hide",
   "admin.location.mysql_copy": "Copy password",
   "admin.location.mysql_copied": "Password copied",
-  "admin.location.cpu_load": "CPU load",
-  "admin.location.ram_load": "RAM load",
+  "admin.location.cpu_load": "CPU usage",
+  "admin.location.ram_load": "RAM usage",
   "admin.location.svc.active": "Running",
   "admin.location.svc.stopped": "Stopped",
   "admin.location.svc.ssh_error": "SSH error",
@@ -496,7 +506,7 @@ export const adminInfra = {
 
   "admin.integrations.title": "Integrations",
   "admin.integrations.subtitle":
-    "Keys for external access to the admin API, and webhooks: the panel notifies your services about events without them polling",
+    "WHMCS billing connection, keys for external access to the admin API and webhooks about panel events",
   "admin.integrations.keys_title": "API keys",
   "admin.integrations.key_once": "Copy the key — it is shown only once",
   "admin.integrations.key_hash_hint":
@@ -511,8 +521,6 @@ export const adminInfra = {
   "admin.integrations.keys_empty": "No keys",
   "admin.integrations.key_active": "active",
   "admin.integrations.key_revoked_badge": "revoked",
-  "admin.integrations.key_meta":
-    "{scopes} permissions · created {created} · last request {used}",
   "admin.integrations.revoke": "Revoke",
   "admin.integrations.revoke_confirm": "Revoke the key “{name}”?",
   "admin.integrations.key_revoked": "Key revoked",
@@ -530,7 +538,6 @@ export const adminInfra = {
   "admin.integrations.hook_on": "enabled",
   "admin.integrations.hook_off": "disabled",
   "admin.integrations.hook_errors": "errors: {count}",
-  "admin.integrations.hook_meta": "{events} events · last sent {sent}",
   "admin.integrations.hook_test": "Test",
   "admin.integrations.hook_history": "History",
   "admin.integrations.hook_delete_confirm": "Delete this webhook?",
@@ -546,6 +553,21 @@ export const adminInfra = {
   "admin.integrations.delivery_failed": "error: {error}",
   "admin.integrations.delivery_queued": "queued",
 
+  "admin.integrations.keys_hint": "Keys give external systems access to the admin API within the selected scopes. Only a hash of the key is stored.",
+  "admin.integrations.hooks_hint": "The panel sends a POST request to your URL when the selected events happen, so you do not need to poll it.",
+  "admin.integrations.add_hook": "Add webhook",
+  "admin.integrations.col_scopes": "Scopes",
+  "admin.integrations.col_created": "Created",
+  "admin.integrations.col_used": "Last request",
+  "admin.integrations.revoke_desc": "Systems that use this key lose API access immediately. Revoking cannot be undone.",
+  "admin.integrations.hook_last_sent": "Last sent: {sent}",
+  "admin.integrations.sign_title": "Request signing",
+  "admin.integrations.whmcs.setup_title": "Setup",
+  "admin.integrations.whmcs.state_connected": "Connected",
+  "admin.integrations.whmcs.state_not_connected": "Not connected",
+  "admin.integrations.whmcs.not_set": "not set",
+  "admin.integrations.whmcs.stat_keys": "WHMCS keys",
+  "admin.integrations.whmcs.services_short": "{active} active, {suspended} suspended",
   "admin.integrations.whmcs.title": "WHMCS",
   "admin.integrations.whmcs.subtitle":
     "The WHMCS module creates, suspends, changes and deletes servers on billing events, signs clients in to the panel without a password and shows the server in the WHMCS client area",

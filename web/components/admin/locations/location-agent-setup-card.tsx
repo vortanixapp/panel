@@ -141,7 +141,7 @@ export function LocationAgentSetupCard({
         </div>
       </div>
 
-      <div className="grid gap-3.5 sm:grid-cols-2">
+      <div className={cn("grid gap-3.5 sm:grid-cols-2", !compact && "xl:grid-cols-3")}>
         <ValueBox label="NODE_ID" value={locationId}>
           <CopyButton onClick={() => copyText(t, locationId, "NODE_ID")} />
         </ValueBox>
@@ -154,7 +154,7 @@ export function LocationAgentSetupCard({
         />
         {!compact && (
           <ValueBox
-            className="sm:col-span-2"
+            className="sm:col-span-2 xl:col-span-1"
             label="AGENT_TOKEN"
             value={showSecrets ? token : MASKED_TOKEN}
             muted={!showSecrets}

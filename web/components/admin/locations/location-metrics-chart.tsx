@@ -29,6 +29,7 @@ type LocationMetricsChartProps = {
   title?: string;
   points: MetricPoint[];
   color?: string;
+  height?: number;
 };
 
 type TooltipContentProps = {
@@ -76,6 +77,7 @@ export function LocationMetricsChart({
   title,
   points,
   color = "var(--chart-1)",
+  height = 220,
 }: LocationMetricsChartProps) {
   const t = useT();
   const data = useMemo(() => toChartRows(points), [points]);
@@ -84,7 +86,7 @@ export function LocationMetricsChart({
     <div className="space-y-3">
       {title ? <p className="text-base font-semibold">{title}</p> : null}
       {data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={220}>
+        <ResponsiveContainer width="100%" height={height}>
           <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid
               vertical={false}
