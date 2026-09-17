@@ -110,7 +110,7 @@ function BreakdownTable({
           {emptyText}
         </div>
       ) : (
-        <table className="w-full text-sm">
+        <table className="vx-tbl vx-tbl-flat w-full text-sm">
           <thead>
             <tr className="text-xs text-muted-foreground">
               <th className="px-4 py-2 text-left font-normal">
@@ -127,9 +127,9 @@ function BreakdownTable({
           <tbody>
             {rows.map((row) => (
               <tr key={row.label} className="border-t">
-                <td className="px-4 py-2">{row.label}</td>
-                <td className="px-4 py-2 text-right font-mono">{row.servers}</td>
-                <td className="px-4 py-2 text-right font-mono">
+                <td className="px-4 py-2 font-medium" data-cell="full">{row.label}</td>
+                <td className="px-4 py-2 text-right font-mono" data-label={t("admin.analytics.col_servers")}>{row.servers}</td>
+                <td className="px-4 py-2 text-right font-mono" data-label={t("admin.analytics.col_per_month")}>
                   {money(row.monthly)}
                 </td>
               </tr>
@@ -325,7 +325,7 @@ export function AnalyticsPageContent() {
                   {t("admin.analytics.sources_empty")}
                 </div>
               ) : (
-                <table className="w-full text-sm">
+                <table className="vx-tbl vx-tbl-flat w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground">
                       <th className="px-4 py-2 text-left font-normal">
@@ -342,9 +342,9 @@ export function AnalyticsPageContent() {
                   <tbody>
                     {data.sources.map((s) => (
                       <tr key={s.source} className="border-t">
-                        <td className="px-4 py-2">{s.label}</td>
-                        <td className="px-4 py-2 text-right font-mono">{s.count}</td>
-                        <td className="px-4 py-2 text-right font-mono">
+                        <td className="px-4 py-2 font-medium" data-cell="full">{s.label}</td>
+                        <td className="px-4 py-2 text-right font-mono" data-label={t("admin.analytics.col_count")}>{s.count}</td>
+                        <td className="px-4 py-2 text-right font-mono" data-label={t("admin.analytics.col_amount")}>
                           {money(s.amount)}
                         </td>
                       </tr>

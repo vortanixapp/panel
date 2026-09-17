@@ -147,7 +147,7 @@ export function AgentUpdatesTab() {
         <p className="text-sm text-muted-foreground">{t("admin.updates.agents.empty")}</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-sm">
+          <table className="vx-tbl vx-tbl-flat w-full min-w-[680px] text-sm">
             <thead>
               <tr className="border-b text-left text-xs text-muted-foreground">
                 <th className="pe-4 pb-2 font-normal">{t("admin.updates.agents.col.location")}</th>
@@ -227,7 +227,7 @@ function AgentRow({
 
   return (
     <tr className="border-b align-top last:border-0">
-      <td className="py-3 pe-4">
+      <td className="py-3 pe-4" data-cell="full">
         <div className="flex items-center gap-2">
           <span
             className={cn(
@@ -241,21 +241,21 @@ function AgentRow({
           <div className="ms-4 font-mono text-xs text-muted-foreground">{node.code}</div>
         )}
       </td>
-      <td className="py-3 pe-4 font-mono">{node.version || "—"}</td>
-      <td className="py-3 pe-4">
+      <td className="py-3 pe-4 font-mono" data-label={t("admin.updates.agents.col.version")}>{node.version || "—"}</td>
+      <td className="py-3 pe-4" data-label={t("admin.updates.agents.col.state")}>
         {state}
         {failed && node.outdated && node.update?.error && (
           <div className="mt-1 max-w-[360px] text-xs text-destructive">{node.update.error}</div>
         )}
       </td>
-      <td className="py-3 pe-4">
+      <td className="py-3 pe-4" data-label={t("admin.updates.agents.col.auto")}>
         <Switch
           checked={node.auto_update}
           onCheckedChange={onAuto}
           className={cn(!autoEnabled && "opacity-50")}
         />
       </td>
-      <td className="py-3 text-end">
+      <td className="py-3 text-end" data-cell="actions">
         <Button variant="outline" size="sm" disabled={!canUpdate} onClick={onUpdate}>
           {t("admin.updates.agents.update")}
         </Button>

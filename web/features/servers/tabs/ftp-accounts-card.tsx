@@ -94,7 +94,7 @@ export function FtpAccountsCard({ serverId }: { serverId: string }) {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border text-sm">
+            <table className="vx-tbl min-w-full divide-y divide-border text-sm">
               <thead className="bg-muted/40">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">
@@ -114,8 +114,8 @@ export function FtpAccountsCard({ serverId }: { serverId: string }) {
               <tbody className="divide-y divide-border">
                 {accounts.map((a) => (
                   <tr key={a.id}>
-                    <td className="px-3 py-2 font-mono text-xs">{a.username}</td>
-                    <td className="px-3 py-2 font-mono text-xs">
+                    <td className="px-3 py-2 font-mono text-xs font-medium" data-cell="full">{a.username}</td>
+                    <td className="px-3 py-2 font-mono text-xs" data-label={t("common.password")}>
                       {revealed[a.id] ? (
                         <span className="break-all">{a.password}</span>
                       ) : (
@@ -127,13 +127,13 @@ export function FtpAccountsCard({ serverId }: { serverId: string }) {
                         </button>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-xs">
+                    <td className="px-3 py-2 text-xs" data-label={t("common.status")}>
                       {t(`servers.ftp.status.${a.status}`)}
                       {a.status === "failed" && a.error_message ? (
                         <div className="mt-1 text-[11px] text-destructive">{a.error_message}</div>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2" data-cell="actions">
                       <div className="flex justify-end gap-2">
                         <Button
                           size="sm"

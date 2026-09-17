@@ -362,7 +362,7 @@ function ServerTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left">
+      <table className="vx-tbl vx-tbl-flat w-full border-collapse text-left">
         <thead>
           <tr className="bg-[var(--vx-card-2)]">
             <th className={cn(MON_TH, "px-4")}>{t("monitoring.col.server")}</th>
@@ -380,7 +380,7 @@ function ServerTable({
         <tbody>
           {servers.map((s) => (
             <tr key={s.id} className={MON_ROW}>
-              <td className="px-4 py-3">
+              <td className="px-4 py-3" data-cell="full">
                 <div className="flex items-center gap-2.5">
                   <GameIcon gameId={s.game_id} className="h-7 w-7 p-1" />
                   <div className="min-w-0">
@@ -396,30 +396,30 @@ function ServerTable({
                   </div>
                 </div>
               </td>
-              <td className="p-3">
+              <td className="p-3" data-label={t("common.status")}>
                 <StatusPill status={s.status} />
               </td>
-              <td className="p-3">
+              <td className="p-3" data-label={t("monitoring.col.online")}>
                 <div className="font-mono text-[13px]">
                   {s.online} / {s.slots}
                 </div>
-                <LoadBar pct={loadPct(s.online, s.slots)} className="mt-1.5 w-[72px]" />
+                <LoadBar pct={loadPct(s.online, s.slots)} className="mt-1.5 w-[72px] max-md:ms-auto" />
               </td>
-              <td className="p-3">
+              <td className="p-3" data-label={t("monitoring.col.day")}>
                 <Sparkline values={s.spark} cap={s.slots} className="h-[30px] w-[96px]" />
               </td>
-              <td className="p-3 font-mono text-[12px] text-[var(--vx-dim)]">
+              <td className="p-3 font-mono text-[12px] text-[var(--vx-dim)]" data-label={t("monitoring.col.cpu_ram")}>
                 {s.status === "running" ? `${s.cpu}% / ${s.ram}%` : "— / —"}
               </td>
-              <td className="p-3 font-mono text-[12px]" style={{ color: pingColor(s.ping) }}>
+              <td className="p-3 font-mono text-[12px]" style={{ color: pingColor(s.ping) }} data-label={t("monitoring.col.ping")}>
                 {pingText(s.ping)}
               </td>
-              <td className="p-3 font-mono text-[12px] text-[var(--vx-dim)]">{tpsText(s.tps)}</td>
-              <td className="p-3 font-mono text-[12px] text-[var(--vx-dim)]">{uptimeText(s.uptime)}</td>
-              <td className="p-3">
+              <td className="p-3 font-mono text-[12px] text-[var(--vx-dim)]" data-label={t("monitoring.col.tps")}>{tpsText(s.tps)}</td>
+              <td className="p-3 font-mono text-[12px] text-[var(--vx-dim)]" data-label={t("monitoring.col.uptime")}>{uptimeText(s.uptime)}</td>
+              <td className="p-3" data-label={t("monitoring.col.address")}>
                 <CopyAddress address={s.ip} onCopied={onCopied} />
               </td>
-              <td className="whitespace-nowrap px-4 py-3 text-right">
+              <td className="whitespace-nowrap px-4 py-3 text-right" data-cell="actions">
                 <Link
                   href={`/monitoring/${s.id}`}
                   className="text-[12px] text-[var(--vx-muted)] hover:text-white"

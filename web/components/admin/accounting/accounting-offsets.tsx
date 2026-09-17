@@ -92,7 +92,7 @@ export function AccountingOffsets() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="vx-tbl-wrap rounded-lg border bg-card">
         {query.isLoading ? (
           <div className="p-4">
             <Skeleton className="h-32 w-full" />
@@ -101,7 +101,7 @@ export function AccountingOffsets() {
           <div className="p-8 text-center text-sm text-muted-foreground">{t("admin.accounting.offsets.empty")}</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="vx-tbl w-full text-sm">
               <thead>
                 <tr className="text-xs text-muted-foreground">
                   <th className="px-4 py-2 text-left font-normal">{t("admin.accounting.offsets.col_date")}</th>
@@ -117,15 +117,15 @@ export function AccountingOffsets() {
               <tbody>
                 {offsets.map((offset) => (
                   <tr key={offset.id} className="border-t align-top">
-                    <td className="px-4 py-2 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap" data-label={t("admin.accounting.offsets.col_date")}>
                       {new Date(offset.charged_at ?? offset.created_at).toLocaleDateString(localeTag())}
                     </td>
-                    <td className="px-4 py-2">{offset.user_email || "—"}</td>
-                    <td className="px-4 py-2 font-mono">{offset.invoice_no || "—"}</td>
-                    <td className="px-4 py-2">{offset.provider_name || "—"}</td>
-                    <td className="px-4 py-2">{offset.service}</td>
-                    <td className="px-4 py-2 text-right font-mono">{money(offset.amount)}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 font-medium" data-cell="full">{offset.user_email || "—"}</td>
+                    <td className="px-4 py-2 font-mono" data-label={t("admin.accounting.offsets.col_invoice")}>{offset.invoice_no || "—"}</td>
+                    <td className="px-4 py-2" data-label={t("admin.accounting.offsets.col_provider")}>{offset.provider_name || "—"}</td>
+                    <td className="px-4 py-2" data-label={t("admin.accounting.offsets.col_service")}>{offset.service}</td>
+                    <td className="px-4 py-2 text-right font-mono" data-label={t("admin.accounting.offsets.col_amount")}>{money(offset.amount)}</td>
+                    <td className="px-4 py-2" data-label={t("admin.accounting.offsets.col_status")}>
                       <Badge variant={statusVariant(offset.status)}>
                         {t(`admin.accounting.offsets.status.${offset.status}`)}
                       </Badge>
@@ -134,7 +134,7 @@ export function AccountingOffsets() {
                       ) : null}
                       {offset.error ? <div className="mt-1 text-xs text-destructive">{offset.error}</div> : null}
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2" data-cell="actions">
                       <div className="flex flex-wrap justify-end gap-2">
                         {offset.status === "failed" ? (
                           <Button

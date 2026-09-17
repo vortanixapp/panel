@@ -39,6 +39,7 @@ export function getUsersColumns(
       cell: ({ row }) => (
         <span className="font-medium">{row.getValue("email")}</span>
       ),
+      meta: { label: t("common.email"), mobile: "full" },
     },
     {
       accessorKey: "role",
@@ -48,6 +49,7 @@ export function getUsersColumns(
       cell: ({ row }) => (
         <Badge variant="secondary">{roleLabel(row.getValue("role"))}</Badge>
       ),
+      meta: { label: t("admin.users.role") },
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
     },
     {
@@ -63,6 +65,7 @@ export function getUsersColumns(
           </Badge>
         );
       },
+      meta: { label: t("common.status") },
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
     },
     {
@@ -75,6 +78,7 @@ export function getUsersColumns(
           {formatDate(row.getValue("created_at"))}
         </span>
       ),
+      meta: { label: t("common.created_at") },
     },
     {
       id: "actions",
@@ -96,6 +100,7 @@ export function getUsersColumns(
           </div>
         );
       },
+      meta: { mobile: "actions" },
       enableSorting: false,
       enableHiding: false,
     },

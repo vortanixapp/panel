@@ -99,13 +99,13 @@ export default function AdminMailingsPage() {
         </form>
       )}
 
-      <div className="rounded-lg border bg-card">
+      <div className="vx-tbl-wrap rounded-lg border bg-card">
         {isLoading ? <div className="p-6 text-sm">{t("common.loading")}</div> : mailings.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             {t("admin.mailings.empty")}
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="vx-tbl w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="px-4 py-2 text-left">{t("admin.mailings.subject")}</th>
@@ -116,9 +116,9 @@ export default function AdminMailingsPage() {
             <tbody>
               {mailings.map((m) => (
                 <tr key={m.id} className="border-b last:border-0">
-                  <td className="px-4 py-2">{m.subject}</td>
-                  <td className="px-4 py-2"><span className="rounded bg-muted px-2 py-0.5 text-xs">{m.status}</span></td>
-                  <td className="px-4 py-2 text-right space-x-2">
+                  <td className="px-4 py-2 font-medium" data-cell="full">{m.subject}</td>
+                  <td className="px-4 py-2" data-label={t("common.status")}><span className="rounded bg-muted px-2 py-0.5 text-xs">{m.status}</span></td>
+                  <td className="px-4 py-2 text-right space-x-2 max-md:space-x-0" data-cell="actions">
                     <Button size="sm" variant="secondary" onClick={() => sendMut.mutate(m.id)} disabled={sendMut.isPending || m.status === "queued" || m.status === "sent"}>
                       {t("common.send")}
                     </Button>

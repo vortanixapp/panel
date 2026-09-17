@@ -289,7 +289,7 @@ export function LocationEditContent() {
                   })}
                 </p>
                 <div className="w-full overflow-x-auto rounded-md border">
-                  <table className="min-w-[760px] w-full text-xs">
+                  <table className="vx-tbl vx-tbl-flat min-w-[760px] w-full text-xs">
                     <thead className="bg-muted/50">
                       <tr>
                         <th className="px-3 py-2 text-left">key</th>
@@ -310,12 +310,12 @@ export function LocationEditContent() {
                       ) : (
                         mysqlInstances.map((inst, i) => (
                           <tr key={i} className="border-t">
-                            <td className="px-3 py-2 font-mono">{inst.key}</td>
-                            <td className="px-3 py-2">{inst.engine}</td>
-                            <td className="px-3 py-2">{inst.version}</td>
-                            <td className="px-3 py-2">{inst.port}</td>
-                            <td className="px-3 py-2 font-mono">{inst.container}</td>
-                            <td className="px-3 py-2">{inst.enabled !== false ? "yes" : "no"}</td>
+                            <td className="px-3 py-2 font-mono font-medium" data-cell="full">{inst.key}</td>
+                            <td className="px-3 py-2" data-label="engine">{inst.engine}</td>
+                            <td className="px-3 py-2" data-label="version">{inst.version}</td>
+                            <td className="px-3 py-2" data-label="port">{inst.port}</td>
+                            <td className="px-3 py-2 font-mono" data-label="container">{inst.container}</td>
+                            <td className="px-3 py-2" data-label="enabled">{inst.enabled !== false ? "yes" : "no"}</td>
                           </tr>
                         ))
                       )}

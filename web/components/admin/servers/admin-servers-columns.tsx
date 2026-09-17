@@ -96,6 +96,7 @@ export function getAdminServersColumns(
           aria-label={t("servers.admin.list.select_row")}
         />
       ),
+      meta: { mobile: "lead" },
       enableSorting: false,
       enableHiding: false,
     },
@@ -129,6 +130,7 @@ export function getAdminServersColumns(
           </div>
         );
       },
+      meta: { label: t("common.name"), mobile: "full" },
     },
     {
       id: "game",
@@ -141,6 +143,7 @@ export function getAdminServersColumns(
           {row.original.game?.name ?? "—"}
         </span>
       ),
+      meta: { label: t("common.game") },
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
     },
     {
@@ -154,6 +157,7 @@ export function getAdminServersColumns(
           {row.original.owner_email || "—"}
         </span>
       ),
+      meta: { label: t("servers.admin.col_owner") },
     },
     {
       id: "location",
@@ -173,6 +177,7 @@ export function getAdminServersColumns(
           </div>
         );
       },
+      meta: { label: t("servers.admin.list.col_location") },
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
     },
     {
@@ -187,6 +192,7 @@ export function getAdminServersColumns(
         if (!address) return <span className="text-muted-foreground">—</span>;
         return <span className="font-mono text-xs">{address}</span>;
       },
+      meta: { label: t("servers.admin.list.col_address") },
     },
     {
       id: "tariff",
@@ -199,6 +205,7 @@ export function getAdminServersColumns(
           {row.original.tariff?.name ?? "—"}
         </span>
       ),
+      meta: { label: t("servers.admin.list.col_tariff") },
     },
     {
       id: "expires",
@@ -233,6 +240,7 @@ export function getAdminServersColumns(
           </div>
         );
       },
+      meta: { label: t("servers.admin.list.col_expires") },
     },
     {
       id: "load",
@@ -245,6 +253,7 @@ export function getAdminServersColumns(
           <LoadBar percent={row.original.ram_percent} />
         </div>
       ),
+      meta: { label: t("servers.admin.list.col_load") },
       enableSorting: false,
     },
     {
@@ -256,6 +265,7 @@ export function getAdminServersColumns(
         const st = getServerStatus(row.original);
         return <StatusBadge status={st.label} />;
       },
+      meta: { label: t("common.status") },
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
     },
     {
@@ -337,6 +347,7 @@ export function getAdminServersColumns(
           </div>
         );
       },
+      meta: { mobile: "actions" },
       enableSorting: false,
       enableHiding: false,
     },

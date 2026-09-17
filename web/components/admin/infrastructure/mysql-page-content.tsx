@@ -164,8 +164,8 @@ export function AdminMysqlPageContent() {
       {mysqlQuery.isLoading ? (
         <Skeleton className="h-64 w-full" />
       ) : (
-        <div className="overflow-auto rounded-2xl border bg-card">
-          <table className="w-full text-sm">
+        <div className="vx-tbl-wrap overflow-auto rounded-2xl border bg-card">
+          <table className="vx-tbl w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-3 py-2 text-left">{t("admin.mysql.node")}</th>
@@ -179,12 +179,12 @@ export function AdminMysqlPageContent() {
             <tbody>
               {instances.map((inst) => (
                 <tr key={`${inst.node_id}:${inst.key}`} className="border-t">
-                  <td className="px-3 py-2">{inst.node_name}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{inst.key}</td>
-                  <td className="px-3 py-2">{inst.container}</td>
-                  <td className="px-3 py-2">{inst.port}</td>
-                  <td className="px-3 py-2">{inst.name || "—"}</td>
-                  <td className="px-3 py-2">
+                  <td className="px-3 py-2 font-medium" data-cell="full">{inst.node_name}</td>
+                  <td className="px-3 py-2 font-mono text-xs" data-label="Key">{inst.key}</td>
+                  <td className="px-3 py-2" data-label="Container">{inst.container}</td>
+                  <td className="px-3 py-2" data-label="Port">{inst.port}</td>
+                  <td className="px-3 py-2" data-label="Name">{inst.name || "—"}</td>
+                  <td className="px-3 py-2" data-cell="actions">
                     <div className="flex gap-2">
                       <Button
                         size="sm"

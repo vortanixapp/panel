@@ -145,7 +145,7 @@ export function AdminServerTechTab() {
             <EmptyState>{t("servers.admin.tech.migrations_empty")}</EmptyState>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] border-collapse text-[12.5px]">
+              <table className="vx-tbl vx-tbl-flat w-full min-w-[560px] border-collapse text-[12.5px]">
                 <thead>
                   <tr className="border-b border-[var(--vx-border)] text-left text-[var(--vx-muted)]">
                     <th className="py-2 pr-3 font-medium">
@@ -164,14 +164,14 @@ export function AdminServerTechTab() {
                       key={migration.id}
                       className="border-b border-[var(--vx-elevated)]"
                     >
-                      <td className="py-2 pr-3 whitespace-nowrap text-[var(--vx-muted)]">
+                      <td className="py-2 pr-3 whitespace-nowrap text-[var(--vx-muted)]" data-label={t("servers.admin.audit.col_when")}>
                         {new Date(migration.created_at).toLocaleString(localeTag())}
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2 pr-3" data-label={t("servers.admin.tech.migration_route")}>
                         {migration.from_node || dash} → {migration.to_node || dash}
                       </td>
-                      <td className="py-2 pr-3">{migration.status}</td>
-                      <td className="py-2">
+                      <td className="py-2 pr-3" data-label={t("common.status")}>{migration.status}</td>
+                      <td className="py-2" data-label={t("servers.admin.tech.migration_stage")}>
                         {migration.error ? (
                           <span className="text-[var(--vx-danger)]">{migration.error}</span>
                         ) : (

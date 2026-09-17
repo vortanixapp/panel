@@ -312,7 +312,7 @@ export function WhmcsSection() {
           <EmptyBlock>{t("admin.integrations.whmcs.services_empty")}</EmptyBlock>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="vx-tbl vx-tbl-flat w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b text-left text-xs text-muted-foreground">
                   <th className="px-5 py-2.5 font-medium">
@@ -333,14 +333,14 @@ export function WhmcsSection() {
               <tbody>
                 {services.map((service) => (
                   <tr key={service.service_id} className="border-b last:border-0">
-                    <td className="px-5 py-2.5">
-                      <span className="font-mono">#{service.service_id}</span>
+                    <td className="px-5 py-2.5" data-cell="full">
+                      <span className="font-mono font-medium">#{service.service_id}</span>
                       {service.product ? (
                         <div className="text-xs text-muted-foreground">{service.product}</div>
                       ) : null}
                     </td>
-                    <td className="px-5 py-2.5">{service.email || `#${service.client_id}`}</td>
-                    <td className="px-5 py-2.5">
+                    <td className="px-5 py-2.5" data-label={t("admin.integrations.whmcs.col_client")}>{service.email || `#${service.client_id}`}</td>
+                    <td className="px-5 py-2.5" data-label={t("admin.integrations.whmcs.col_server")}>
                       {service.server_id ? (
                         <Link
                           href={`/admin/servers/${service.server_id}`}
@@ -354,12 +354,12 @@ export function WhmcsSection() {
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-2.5">
+                    <td className="px-5 py-2.5" data-label={t("common.status")}>
                       <Badge variant={statusVariant(service.status)}>
                         {t(`servers.whmcs.status_${service.status}`)}
                       </Badge>
                     </td>
-                    <td className="px-5 py-2.5 whitespace-nowrap">
+                    <td className="px-5 py-2.5 whitespace-nowrap" data-label={t("admin.integrations.whmcs.col_due")}>
                       {fmtDate(service.next_due_date)}
                     </td>
                   </tr>

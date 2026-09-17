@@ -78,7 +78,7 @@ export function AdminServerAuditTab() {
         <EmptyState>{t("servers.admin.audit.empty")}</EmptyState>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-[12.5px]">
+          <table className="vx-tbl vx-tbl-flat w-full min-w-[640px] border-collapse text-[12.5px]">
             <thead>
               <tr className="border-b border-[var(--vx-border)] text-left text-[var(--vx-muted)]">
                 <th className="py-2 pr-3 font-medium">{t("servers.admin.audit.col_when")}</th>
@@ -96,14 +96,14 @@ export function AdminServerAuditTab() {
                     key={entry.id}
                     className="border-b border-[var(--vx-elevated)] align-top"
                   >
-                    <td className="py-2 pr-3 whitespace-nowrap text-[var(--vx-muted)]">
+                    <td className="py-2 pr-3 whitespace-nowrap text-[var(--vx-muted)]" data-label={t("servers.admin.audit.col_when")}>
                       {new Date(entry.created_at).toLocaleString(localeTag())}
                     </td>
-                    <td className="py-2 pr-3">
+                    <td className="py-2 pr-3" data-label={t("servers.admin.audit.col_who")}>
                       {entry.actor_email ?? t("servers.admin.audit.system")}
                     </td>
-                    <td className="py-2 pr-3">{auditActionLabel(entry.action)}</td>
-                    <td className="py-2">
+                    <td className="py-2 pr-3" data-label={t("servers.admin.audit.col_action")}>{auditActionLabel(entry.action)}</td>
+                    <td className="py-2" data-cell="block" data-label={t("servers.admin.audit.col_details")}>
                       {hasMeta ? (
                         <>
                           <button

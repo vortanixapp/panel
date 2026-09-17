@@ -125,7 +125,8 @@ export function DataTableBulkActions<TData extends object>({
         onKeyDown={handleKeyDown}
         className={cn(
           'fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-xl',
-          'transition-all delay-100 duration-300 ease-out hover:scale-105',
+          'max-w-[calc(100vw-1.5rem)]',
+          'transition-all delay-100 duration-300 ease-out sm:hover:scale-105',
           'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
         )}
       >
@@ -134,7 +135,7 @@ export function DataTableBulkActions<TData extends object>({
             'p-2 shadow-xl',
             'rounded-xl border',
             'bg-background/95 backdrop-blur-lg supports-backdrop-filter:bg-background/60',
-            'flex items-center gap-x-2'
+            'flex flex-wrap items-center justify-center gap-x-2 gap-y-2'
           )}
         >
           <Tooltip>

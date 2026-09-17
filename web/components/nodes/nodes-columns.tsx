@@ -27,6 +27,7 @@ export function getNodesColumns(
       cell: ({ row }) => (
         <span className="font-medium">{row.getValue("name")}</span>
       ),
+      meta: { label: t("common.name"), mobile: "full" },
     },
     {
       accessorKey: "fqdn",
@@ -36,6 +37,7 @@ export function getNodesColumns(
       cell: ({ row }) => (
         <span className="text-muted-foreground">{row.getValue("fqdn")}</span>
       ),
+      meta: { label: t("admin.nodes.fqdn") },
     },
     {
       accessorKey: "status",
@@ -43,6 +45,7 @@ export function getNodesColumns(
         <DataTableColumnHeader column={column} title={t("common.status")} />
       ),
       cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+      meta: { label: t("common.status") },
       filterFn: (row, id, value: string[]) =>
         value.includes(row.getValue(id)),
     },
@@ -68,6 +71,7 @@ export function getNodesColumns(
           </Button>
         </div>
       ),
+      meta: { mobile: "actions" },
       enableSorting: false,
       enableHiding: false,
     },

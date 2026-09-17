@@ -11,5 +11,7 @@ declare module "@tanstack/react-table" {
     className?: string;
     tdClassName?: string;
     thClassName?: string;
+    label?: string;
+    mobile?: "lead" | "full" | "actions" | "block" | "hidden";
   }
 }

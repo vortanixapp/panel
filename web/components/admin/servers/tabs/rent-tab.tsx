@@ -172,7 +172,7 @@ export function AdminServerRentTab() {
             <EmptyState>{t("servers.admin.rent.charges_empty")}</EmptyState>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] border-collapse text-[12.5px]">
+              <table className="vx-tbl vx-tbl-flat w-full min-w-[520px] border-collapse text-[12.5px]">
                 <thead>
                   <tr className="border-b border-[var(--vx-border)] text-left text-[var(--vx-muted)]">
                     <th className="py-2 pr-3 font-medium">
@@ -193,12 +193,12 @@ export function AdminServerRentTab() {
                       key={`${charge.created_at}-${index}`}
                       className="border-b border-[var(--vx-elevated)]"
                     >
-                      <td className="py-2 pr-3 whitespace-nowrap text-[var(--vx-muted)]">
+                      <td className="py-2 pr-3 whitespace-nowrap text-[var(--vx-muted)]" data-label={t("servers.admin.audit.col_when")}>
                         {new Date(charge.created_at).toLocaleString(localeTag())}
                       </td>
-                      <td className="py-2 pr-3">{charge.source || "—"}</td>
-                      <td className="py-2 pr-3">{charge.description || "—"}</td>
-                      <td className="py-2 text-right font-mono tabular-nums">
+                      <td className="py-2 pr-3" data-label={t("servers.admin.rent.charge_source")}>{charge.source || "—"}</td>
+                      <td className="py-2 pr-3" data-label={t("common.description")}>{charge.description || "—"}</td>
+                      <td className="py-2 text-right font-mono tabular-nums" data-label={t("servers.admin.rent.charge_amount")}>
                         {charge.amount.toFixed(2)}
                       </td>
                     </tr>

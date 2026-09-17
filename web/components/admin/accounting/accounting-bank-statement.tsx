@@ -90,12 +90,12 @@ export function AccountingBankStatement() {
       </div>
 
       {summary ? (
-        <div className="rounded-lg border bg-card">
+        <div className="vx-tbl-wrap rounded-lg border bg-card">
           {lines.length === 0 ? (
             <div className="p-8 text-center text-sm text-muted-foreground">{t("admin.accounting.statement.empty")}</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="vx-tbl w-full text-sm">
                 <thead>
                   <tr className="text-xs text-muted-foreground">
                     <th className="px-4 py-2" />
@@ -109,7 +109,7 @@ export function AccountingBankStatement() {
                 <tbody>
                   {lines.map((line) => (
                     <tr key={line.fingerprint} className="border-t align-top">
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2" data-cell="lead">
                         {line.status === "match" ? (
                           <Checkbox
                             checked={Boolean(selected[line.fingerprint])}
@@ -119,17 +119,17 @@ export function AccountingBankStatement() {
                           />
                         ) : null}
                       </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap" data-label={t("admin.accounting.statement.col_date")}>
                         {line.date ? new Date(`${line.date}T00:00:00`).toLocaleDateString(localeTag()) : "—"}
                         <div className="font-mono text-xs text-muted-foreground">№ {line.number}</div>
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 font-medium" data-cell="full">
                         {line.payer_name || "—"}
                         {line.payer_inn ? <div className="font-mono text-xs text-muted-foreground">{line.payer_inn}</div> : null}
                       </td>
-                      <td className="px-4 py-2 text-right font-mono whitespace-nowrap">{money(line.amount)}</td>
-                      <td className="max-w-[360px] px-4 py-2 text-xs">{line.purpose}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 text-right font-mono whitespace-nowrap" data-label={t("admin.accounting.statement.col_amount")}>{money(line.amount)}</td>
+                      <td className="max-w-[360px] px-4 py-2 text-xs" data-cell="block" data-label={t("admin.accounting.statement.col_purpose")}>{line.purpose}</td>
+                      <td className="px-4 py-2" data-label={t("admin.accounting.statement.col_match")}>
                         <Badge variant={statusVariant(line.status)}>
                           {t(`admin.accounting.statement.status.${line.status}`, { invoice: line.invoice_no ?? "" })}
                         </Badge>

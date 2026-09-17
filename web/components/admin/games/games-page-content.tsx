@@ -67,7 +67,7 @@ export function GamesPageContent() {
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="vx-tbl-wrap rounded-lg border bg-card">
         {isLoading ? (
           <div className="space-y-3 p-6">
             <Skeleton className="h-8 w-full" />
@@ -82,7 +82,7 @@ export function GamesPageContent() {
           </div>
         ) : (
           <div className="w-full overflow-x-auto">
-            <table className="min-w-[920px] w-full text-sm">
+            <table className="vx-tbl min-w-[920px] w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40">
                   <th className="px-4 py-3 text-left font-medium">
@@ -106,15 +106,15 @@ export function GamesPageContent() {
               <tbody>
                 {games.map((g) => (
                   <tr key={g.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground" data-label={t("common.id")}>
                       {g.id.slice(0, 8)}
                     </td>
-                    <td className="px-4 py-3 font-medium">{g.name}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    <td className="px-4 py-3 font-medium" data-cell="full">{g.name}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground" data-label="Slug">
                       {g.slug}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-1">
+                    <td className="px-4 py-3" data-label={t("common.status")}>
+                      <div className="flex flex-wrap items-center gap-1 max-md:justify-end">
                         {g.is_active ? (
                           <Badge
                             variant="secondary"
@@ -137,13 +137,13 @@ export function GamesPageContent() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                    <td className="px-4 py-3 text-xs text-muted-foreground" data-label={t("admin.analytics.col_servers")}>
                       {t("admin.games.counts", {
                         servers: g.server_count ?? 0,
                         tariffs: g.tariff_count ?? 0,
                       })}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" data-cell="actions">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                           <Link

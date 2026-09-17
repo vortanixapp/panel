@@ -71,7 +71,7 @@ export function LegalConsents() {
         </Select>
       </div>
 
-      <div className="rounded-lg border bg-card">
+      <div className="vx-tbl-wrap rounded-lg border bg-card">
         {query.isLoading ? (
           <div className="p-4">
             <Skeleton className="h-32 w-full" />
@@ -82,7 +82,7 @@ export function LegalConsents() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="vx-tbl w-full text-sm">
               <thead>
                 <tr className="text-xs text-muted-foreground">
                   <th className="px-4 py-2 text-left font-normal">{t("admin.legal.col_date")}</th>
@@ -97,15 +97,15 @@ export function LegalConsents() {
               <tbody>
                 {(data?.consents ?? []).map((consent) => (
                   <tr key={consent.id} className="border-t" title={consent.user_agent}>
-                    <td className="px-4 py-2 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap" data-label={t("admin.legal.col_date")}>
                       {new Date(consent.created_at).toLocaleString(localeTag())}
                     </td>
-                    <td className="px-4 py-2">{consent.email}</td>
-                    <td className="px-4 py-2">{t(`admin.legal.kind.${consent.kind}`)}</td>
-                    <td className="px-4 py-2">{consent.version}</td>
-                    <td className="px-4 py-2">{t(`admin.legal.action.${consent.action}`)}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{consent.source}</td>
-                    <td className="px-4 py-2 font-mono text-xs">{consent.ip || "—"}</td>
+                    <td className="px-4 py-2 font-medium" data-cell="full">{consent.email}</td>
+                    <td className="px-4 py-2" data-label={t("admin.legal.col_document")}>{t(`admin.legal.kind.${consent.kind}`)}</td>
+                    <td className="px-4 py-2" data-label={t("admin.legal.col_version")}>{consent.version}</td>
+                    <td className="px-4 py-2" data-label={t("admin.legal.col_action")}>{t(`admin.legal.action.${consent.action}`)}</td>
+                    <td className="px-4 py-2 text-muted-foreground" data-label={t("admin.legal.col_source")}>{consent.source}</td>
+                    <td className="px-4 py-2 font-mono text-xs" data-label={t("admin.legal.col_ip")}>{consent.ip || "—"}</td>
                   </tr>
                 ))}
               </tbody>

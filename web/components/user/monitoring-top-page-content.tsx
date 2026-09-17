@@ -32,6 +32,16 @@ export function MonitoringTopPageContent() {
     refetchInterval: 60_000,
   });
 
+  const cols = {
+    server: t("monitoring.col.server"),
+    game: t("monitoring.col.game"),
+    online: t("monitoring.col.online"),
+    day: t("monitoring.col.day"),
+    uptime: t("monitoring.col.uptime"),
+    votes: t("monitoring.col.votes"),
+    address: t("monitoring.col.address"),
+  };
+
   const items = (data?.items ?? [])
     .map((t) => ({ ...t, spark: Array.isArray(t.spark) ? t.spark : [], tags: t.tags ?? [] }))
     .filter((t) => game === ALL_GAMES || t.game_name === game);
@@ -82,7 +92,7 @@ export function MonitoringTopPageContent() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left">
+              <table className="vx-tbl vx-tbl-flat w-full border-collapse text-left">
                 <thead>
                   <tr className="bg-[var(--vx-card-2)]">
                     <th className={cn(MON_TH, "w-14 px-4")}>#</th>
@@ -100,7 +110,7 @@ export function MonitoringTopPageContent() {
                 <tbody>
                   {items.map((t) => (
                     <tr key={t.server_id} className={MON_ROW}>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" data-cell="lead">
                         <span
                           className="inline-flex h-[26px] w-[26px] items-center justify-center rounded-[8px] font-mono text-[12px]"
                           style={{
@@ -111,7 +121,7 @@ export function MonitoringTopPageContent() {
                           {t.rank}
                         </span>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3" data-cell="full">
                         <div className="flex items-center gap-2.5">
                           <GameIcon gameId={t.game_id} className="h-[26px] w-[26px] p-1" />
                           <div>
@@ -125,11 +135,11 @@ export function MonitoringTopPageContent() {
                           </div>
                         </div>
                       </td>
-                      <td className="p-3 text-[12px] text-[var(--vx-dim)]">{t.game_name}</td>
-                      <td className="p-3 font-mono text-[13px]">
+                      <td className="p-3 text-[12px] text-[var(--vx-dim)]" data-label={cols.game}>{t.game_name}</td>
+                      <td className="p-3 font-mono text-[13px]" data-label={cols.online}>
                         {t.online} / {t.slots}
                       </td>
-                      <td className="p-3">
+                      <td className="p-3" data-label={cols.day}>
                         <Sparkline
                           values={t.spark}
                           cap={t.slots}
@@ -138,11 +148,11 @@ export function MonitoringTopPageContent() {
                           className="h-[26px] w-[96px]"
                         />
                       </td>
-                      <td className="p-3 font-mono text-[12px] text-[var(--vx-dim)]">
+                      <td className="p-3 font-mono text-[12px] text-[var(--vx-dim)]" data-label={cols.uptime}>
                         {uptimeText(t.uptime)}
                       </td>
-                      <td className="p-3 font-mono text-[12px] text-[var(--vx-muted)]">{t.votes}</td>
-                      <td className="px-4 py-3 text-right font-mono text-[11px] text-[var(--vx-muted)]">
+                      <td className="p-3 font-mono text-[12px] text-[var(--vx-muted)]" data-label={cols.votes}>{t.votes}</td>
+                      <td className="px-4 py-3 text-right font-mono text-[11px] text-[var(--vx-muted)]" data-label={cols.address}>
                         {t.ip || "—"}
                       </td>
                     </tr>

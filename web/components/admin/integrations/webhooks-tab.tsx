@@ -227,7 +227,7 @@ export function WebhooksTab() {
                         </div>
                       ) : (
                         <div className="overflow-x-auto">
-                          <table className="w-full min-w-[520px] text-xs">
+                          <table className="vx-tbl vx-tbl-flat w-full min-w-[520px] text-xs">
                             <thead>
                               <tr className="border-b bg-muted/30 text-left text-muted-foreground">
                                 <th className="px-3 py-2 font-medium">
@@ -245,12 +245,13 @@ export function WebhooksTab() {
                             <tbody>
                               {(deliveriesQuery.data?.deliveries ?? []).map((d, i) => (
                                 <tr key={`${d.event}-${i}`} className="border-b last:border-0">
-                                  <td className="px-3 py-2 font-mono">{d.event}</td>
+                                  <td className="px-3 py-2 font-mono font-medium" data-cell="full">{d.event}</td>
                                   <td
                                     className={cn(
                                       "px-3 py-2",
                                       d.status === "failed" && "text-destructive"
                                     )}
+                                    data-label={t("common.status")}
                                   >
                                     {d.status === "delivered"
                                       ? t("admin.integrations.delivered", {
@@ -262,8 +263,8 @@ export function WebhooksTab() {
                                           })
                                         : t("admin.integrations.delivery_queued")}
                                   </td>
-                                  <td className="px-3 py-2 tabular-nums">{d.attempts}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">
+                                  <td className="px-3 py-2 tabular-nums" data-label={t("admin.integrations.col_attempts")}>{d.attempts}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap" data-label={t("admin.integrations.col_when")}>
                                     {fmtDateTime(d.created_at)}
                                   </td>
                                 </tr>

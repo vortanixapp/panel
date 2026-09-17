@@ -280,7 +280,7 @@ export function SecurityPageContent() {
             {t("admin.security.log_empty")}
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="vx-tbl vx-tbl-flat w-full text-sm">
             <thead>
               <tr className="text-xs text-muted-foreground">
                 <th className="px-4 py-2 text-left font-normal">
@@ -298,10 +298,10 @@ export function SecurityPageContent() {
             <tbody>
               {attempts.map((a: LoginAttempt, i) => (
                 <tr key={`${a.created_at}-${i}`} className="border-t">
-                  <td className="px-4 py-2 whitespace-nowrap">{fmtDateTime(a.created_at)}</td>
-                  <td className="px-4 py-2">{a.email || "—"}</td>
-                  <td className="px-4 py-2 font-mono text-xs">{a.ip || "—"}</td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 whitespace-nowrap" data-label={t("admin.integrations.col_when")}>{fmtDateTime(a.created_at)}</td>
+                  <td className="px-4 py-2 font-medium" data-cell="full">{a.email || "—"}</td>
+                  <td className="px-4 py-2 font-mono text-xs" data-label="IP">{a.ip || "—"}</td>
+                  <td className="px-4 py-2" data-label={t("admin.security.col_result")}>
                     {a.success ? (
                       <Badge variant="secondary">
                         {t("admin.security.result_ok")}

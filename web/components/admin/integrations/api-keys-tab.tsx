@@ -120,7 +120,7 @@ export function ApiKeysTab() {
           <EmptyBlock>{t("admin.integrations.keys_empty")}</EmptyBlock>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-sm">
+            <table className="vx-tbl vx-tbl-flat w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="border-b text-left text-xs text-muted-foreground">
                   <th className="px-4 py-2.5 font-medium">{t("common.name")}</th>
@@ -140,14 +140,14 @@ export function ApiKeysTab() {
               <tbody>
                 {keys.map((key) => (
                   <tr key={key.id} className="border-b align-top last:border-0">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" data-cell="full">
                       <div className="font-medium">{key.name}</div>
                       <code className="font-mono text-xs text-muted-foreground">
                         {key.prefix}…
                       </code>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex max-w-[300px] flex-wrap gap-1">
+                    <td className="px-4 py-3" data-label={t("admin.integrations.col_scopes")}>
+                      <div className="flex max-w-[300px] flex-wrap gap-1 max-md:justify-end">
                         {key.scopes.slice(0, SCOPES_SHOWN).map((scope) => (
                           <Badge
                             key={scope}
@@ -167,13 +167,13 @@ export function ApiKeysTab() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground" data-label={t("admin.integrations.col_created")}>
                       {fmtDateTime(key.created_at)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground" data-label={t("admin.integrations.col_used")}>
                       {fmtDateTime(key.last_used_at)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" data-label={t("common.status")}>
                       {key.active ? (
                         <Badge variant="secondary">
                           {t("admin.integrations.key_active")}
@@ -184,7 +184,7 @@ export function ApiKeysTab() {
                         </Badge>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right" data-cell="actions">
                       {key.active ? (
                         <Button
                           variant="ghost"

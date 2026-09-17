@@ -90,8 +90,8 @@ export function DataTable<TData extends object>({
         searchKey={searchKey}
         filters={filters}
       />
-      <div className="overflow-hidden rounded-md border">
-        <Table>
+      <div className="rounded-md border max-md:rounded-none max-md:border-0 md:overflow-hidden">
+        <Table className="vx-tbl">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="group/row">
@@ -99,6 +99,7 @@ export function DataTable<TData extends object>({
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
+                    data-cell={header.column.columnDef.meta?.mobile}
                     className={cn(
                       "bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted",
                       header.column.columnDef.meta?.className,
@@ -124,21 +125,30 @@ export function DataTable<TData extends object>({
                   data-state={row.getIsSelected() && "selected"}
                   className="group/row"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={cn(
-                        "bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted",
-                        cell.column.columnDef.meta?.className,
-                        cell.column.columnDef.meta?.tdClassName
-                      )}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const meta = cell.column.columnDef.meta;
+                    const header = cell.column.columnDef.header;
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        data-cell={meta?.mobile}
+                        data-label={
+                          meta?.label ??
+                          (typeof header === "string" ? header : "")
+                        }
+                        className={cn(
+                          "bg-background group-hover/row:bg-muted group-data-[state=selected]/row:bg-muted",
+                          meta?.className,
+                          meta?.tdClassName
+                        )}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))
             ) : (

@@ -208,7 +208,7 @@ export function BillingTopupPageContent() {
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
+            <table className="vx-tbl vx-tbl-flat min-w-full divide-y divide-border">
               <thead className="bg-muted/30">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium tracking-wider text-muted-foreground uppercase">
@@ -240,12 +240,12 @@ export function BillingTopupPageContent() {
                 ) : (
                   payments.map((p) => (
                     <tr key={p.id} className="transition hover:bg-muted/30">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap" data-label={t("common.date")}>
                         <div className="text-sm text-foreground">
                           {formatBillingDate(p.created_at)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap" data-cell="full">
                         <Link
                           href={`/billing/topup/payment/${p.id}`}
                           className="inline-flex items-center gap-1 text-sm font-medium text-primary"
@@ -256,14 +256,14 @@ export function BillingTopupPageContent() {
                           <div className="text-xs text-muted-foreground">{p.provider_name}</div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap" data-label={t("common.status")}>
                         <span
                           className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${paymentStatusBadgeCls(p.status)}`}
                         >
                           {p.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap" data-label={t("common.amount")}>
                         <div className="text-sm font-semibold text-foreground">
                           {formatAmount(p.amount)} {(p.currency || "RUB").toUpperCase()}
                         </div>

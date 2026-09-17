@@ -40,8 +40,8 @@ export function DataTablePagination<TData extends object>({
       )}
       style={{ overflowClipMargin: 1 }}
     >
-      <div className='flex w-full items-center justify-between'>
-        <div className='flex w-25 items-center justify-center text-sm font-medium @2xl/content:hidden'>
+      <div className='flex w-full items-center justify-between gap-2'>
+        <div className='flex items-center justify-center text-sm font-medium @2xl/content:hidden'>
           {t('layout.table.page_of', { current: currentPage, total: totalPages })}
         </div>
         <div className='flex items-center gap-2 @max-2xl/content:flex-row-reverse'>
@@ -68,14 +68,14 @@ export function DataTablePagination<TData extends object>({
         </div>
       </div>
 
-      <div className='flex items-center sm:space-x-6 lg:space-x-8'>
+      <div className='flex items-center @max-2xl/content:w-full @max-2xl/content:justify-center sm:space-x-6 lg:space-x-8'>
         <div className='flex w-25 items-center justify-center text-sm font-medium @max-3xl/content:hidden'>
           {t('layout.table.page_of', { current: currentPage, total: totalPages })}
         </div>
-        <div className='flex items-center space-x-2'>
+        <div className='flex items-center gap-2'>
           <Button
             variant='outline'
-            className='size-8 p-0 @max-md/content:hidden'
+            className='size-8 p-0 max-sm:hidden @max-md/content:hidden'
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
@@ -84,7 +84,7 @@ export function DataTablePagination<TData extends object>({
           </Button>
           <Button
             variant='outline'
-            className='size-8 p-0'
+            className='size-8 p-0 max-sm:size-9'
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -93,7 +93,10 @@ export function DataTablePagination<TData extends object>({
           </Button>
 
           {pageNumbers.map((pageNumber, index) => (
-            <div key={`${pageNumber}-${index}`} className='flex items-center'>
+            <div
+              key={`${pageNumber}-${index}`}
+              className='flex items-center max-sm:hidden'
+            >
               {pageNumber === '...' ? (
                 <span className='px-1 text-sm text-muted-foreground'>...</span>
               ) : (
@@ -113,7 +116,7 @@ export function DataTablePagination<TData extends object>({
 
           <Button
             variant='outline'
-            className='size-8 p-0'
+            className='size-8 p-0 max-sm:size-9'
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -122,7 +125,7 @@ export function DataTablePagination<TData extends object>({
           </Button>
           <Button
             variant='outline'
-            className='size-8 p-0 @max-md/content:hidden'
+            className='size-8 p-0 max-sm:hidden @max-md/content:hidden'
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >

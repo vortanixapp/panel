@@ -308,7 +308,7 @@ function PlayersTab({ data }: { data: MonitoringServerDetail }) {
       </div>
 
       <div className="overflow-hidden rounded-[10px] border border-[var(--vx-border)]">
-        <table className="w-full border-collapse text-left">
+        <table className="vx-tbl vx-tbl-flat w-full border-collapse text-left">
           <thead>
             <tr className="bg-[var(--vx-card-2)]">
               <th className={cn(MON_TH, "px-3.5")}>{t("monitoring.players.col_nick")}</th>
@@ -329,7 +329,7 @@ function PlayersTab({ data }: { data: MonitoringServerDetail }) {
             ) : (
               players.map((p) => (
                 <tr key={p.name} className={MON_ROW}>
-                  <td className="px-3.5 py-2.5">
+                  <td className="px-3.5 py-2.5" data-cell="full">
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-6 w-6 items-center justify-center rounded-[6px] bg-[var(--vx-tint)] text-[10px] font-semibold text-[var(--vx-dim)]">
                         {initials(p.name)}
@@ -337,13 +337,14 @@ function PlayersTab({ data }: { data: MonitoringServerDetail }) {
                       <span className="text-[13px]">{p.name}</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 font-mono text-[12px]">{p.score}</td>
-                  <td className="px-3 py-2.5 font-mono text-[12px] text-[var(--vx-dim)]">
+                  <td className="px-3 py-2.5 font-mono text-[12px]" data-label={t("monitoring.players.col_frags")}>{p.score}</td>
+                  <td className="px-3 py-2.5 font-mono text-[12px] text-[var(--vx-dim)]" data-label={t("monitoring.players.col_session")}>
                     {p.duration_sec ? secondsToHms(p.duration_sec) : "—"}
                   </td>
                   <td
                     className="px-3.5 py-2.5 text-right font-mono text-[12px]"
                     style={{ color: pingColor(p.ping) }}
+                    data-label={t("monitoring.col.ping")}
                   >
                     {pingText(p.ping)}
                   </td>

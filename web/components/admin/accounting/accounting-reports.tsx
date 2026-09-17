@@ -229,7 +229,7 @@ export function AccountingReports() {
               <div className="p-6 text-center text-sm text-muted-foreground">{t("admin.accounting.no_data")}</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="vx-tbl vx-tbl-flat w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground">
                       <th className="px-4 py-2 text-left font-normal">{t("admin.accounting.col_month")}</th>
@@ -241,10 +241,10 @@ export function AccountingReports() {
                   <tbody>
                     {s.months.map((row) => (
                       <tr key={row.month} className="border-t">
-                        <td className="px-4 py-2">{monthTitle(row.month)}</td>
-                        <td className="px-4 py-2 text-right font-mono">{money(row.income)}</td>
-                        <td className="px-4 py-2 text-right font-mono">{money(row.refunds)}</td>
-                        <td className="px-4 py-2 text-right font-mono">{money(row.services)}</td>
+                        <td className="px-4 py-2 font-medium" data-cell="full">{monthTitle(row.month)}</td>
+                        <td className="px-4 py-2 text-right font-mono" data-label={t("admin.accounting.col_income")}>{money(row.income)}</td>
+                        <td className="px-4 py-2 text-right font-mono" data-label={t("admin.accounting.col_refunds")}>{money(row.refunds)}</td>
+                        <td className="px-4 py-2 text-right font-mono" data-label={t("admin.accounting.col_services")}>{money(row.services)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -259,7 +259,7 @@ export function AccountingReports() {
               <div className="p-6 text-center text-sm text-muted-foreground">{t("admin.accounting.no_data")}</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="vx-tbl vx-tbl-flat w-full text-sm">
                   <thead>
                     <tr className="text-xs text-muted-foreground">
                       <th className="px-4 py-2 text-left font-normal">{t("admin.accounting.col_provider")}</th>
@@ -271,10 +271,10 @@ export function AccountingReports() {
                   <tbody>
                     {s.providers.map((row) => (
                       <tr key={row.provider} className="border-t">
-                        <td className="px-4 py-2">{row.name}</td>
-                        <td className="px-4 py-2 text-right font-mono">{row.count}</td>
-                        <td className="px-4 py-2 text-right font-mono">{money(row.amount)}</td>
-                        <td className="px-4 py-2 text-right font-mono">{money(row.refunds)}</td>
+                        <td className="px-4 py-2 font-medium" data-cell="full">{row.name}</td>
+                        <td className="px-4 py-2 text-right font-mono" data-label={t("admin.accounting.col_count")}>{row.count}</td>
+                        <td className="px-4 py-2 text-right font-mono" data-label={t("admin.accounting.col_amount")}>{money(row.amount)}</td>
+                        <td className="px-4 py-2 text-right font-mono" data-label={t("admin.accounting.col_refunds")}>{money(row.refunds)}</td>
                       </tr>
                     ))}
                   </tbody>
