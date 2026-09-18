@@ -3,13 +3,10 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { fetchSite } from "@/lib/site/api";
 import {
   getSiteOverride,
   subscribeSiteOverride,
@@ -19,8 +16,7 @@ import type { SiteDocument, Viewer } from "@/lib/site/types";
 
 type SiteContextValue = {
   document: SiteDocument;
-  published: SiteDocument;
-  refreshed: boolean;
+  session: Viewer;
   inEditor: boolean;
   editing: boolean;
   mode: EditorMode;
@@ -29,11 +25,11 @@ type SiteContextValue = {
 };
 
 const EMPTY: SiteDocument = {};
+const GUEST: Viewer = { loggedIn: false, role: "" };
 
 const SiteContext = createContext<SiteContextValue>({
   document: EMPTY,
-  published: EMPTY,
-  refreshed: false,
+  session: GUEST,
   inEditor: false,
   editing: false,
   mode: "preview",
@@ -45,38 +41,28 @@ function serverOverride() {
   return null;
 }
 
-export function SiteProvider({ initial, children }: { initial: SiteDocument; children: ReactNode }) {
-  const [published, setPublished] = useState<SiteDocument>(initial);
-  const [refreshed, setRefreshed] = useState(false);
+export function SiteProvider({
+  initial,
+  session,
+  children,
+}: {
+  initial: SiteDocument;
+  session: Viewer;
+  children: ReactNode;
+}) {
   const override = useSyncExternalStore(subscribeSiteOverride, getSiteOverride, serverOverride);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchSite()
-      .then((doc) => {
-        if (!cancelled) setPublished(doc);
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setRefreshed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const value = useMemo<SiteContextValue>(
     () => ({
-      document: override?.document ?? published,
-      published,
-      refreshed: refreshed || override !== null,
+      document: override?.document ?? initial,
+      session,
       inEditor: override !== null,
       editing: override?.mode === "edit",
       mode: override?.mode ?? "preview",
       selected: override?.selected ?? null,
       viewer: override?.viewer ?? null,
     }),
-    [override, published, refreshed]
+    [override, initial, session]
   );
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;

@@ -1,12 +1,5 @@
 import { API_URL, apiFetch, authHeaders, ensureValidSession } from "@/lib/api";
-import { parseSitePayload } from "@/lib/site/parse";
 import type { SiteDocument, SiteMenu } from "@/lib/site/types";
-
-export async function fetchSite(): Promise<SiteDocument> {
-  const res = await fetch(`${API_URL}/v1/site`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Request failed");
-  return parseSitePayload(await res.json());
-}
 
 export type TemplateStatus = {
   revision: number;

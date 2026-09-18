@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CustomPageView } from "@/components/site/custom-page-view";
-import { LOCALE_COOKIE_NAME } from "@/lib/i18n";
-import { loadServerI18n } from "@/lib/i18n-server";
-import { loadServerSite } from "@/lib/site-server";
+import { USER_COOKIE } from "@/lib/accounts";
+import { loadRequestI18n } from "@/lib/i18n-server";
+import { loadServerSite, viewerFromCookie } from "@/lib/site-server";
 import { localized } from "@/lib/site/text";
 
 type Props = {
@@ -20,11 +20,7 @@ async function findPage(slug: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const store = await cookies();
-  const [page, i18n] = await Promise.all([
-    findPage(slug),
-    loadServerI18n(store.get(LOCALE_COOKIE_NAME)?.value),
-  ]);
+  const [page, { i18n }] = await Promise.all([findPage(slug), loadRequestI18n()]);
   if (!page) return {};
   const title = localized(page.title, i18n.locale, i18n.default_locale) || slug;
   const description = localized(page.description, i18n.locale, i18n.default_locale);
@@ -33,7 +29,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CustomPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const query = await searchParams;
-  if (query["vx-edit"] === undefined && !(await findPage(slug))) notFound();
-  return <CustomPageView slug={slug} />;
+  const preview = (await searchParams)["vx-edit"] !== undefined;
+  const page = await findPage(slug);
+  if (!preview) {
+    if (!page) notFound();
+    const { loggedIn } = viewerFromCookie((await cookies()).get(USER_COOKIE)?.value);
+    const audience = page.layout === "panel" ? "users" : (page.audience ?? "");
+    if (audience === "users" && !loggedIn) redirect("/login");
+    if (audience === "guests" && loggedIn) redirect("/dashboard");
+  }
+  return <CustomPageView slug={slug} initial={page} preview={preview} />;
 }

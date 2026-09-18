@@ -9,11 +9,13 @@ import {
   Outfit,
   Rubik,
 } from "next/font/google";
-import { LOCALE_COOKIE_NAME } from "@/lib/i18n";
-import { loadServerI18n } from "@/lib/i18n-server";
-import { loadServerSite } from "@/lib/site-server";
+import { USER_COOKIE } from "@/lib/accounts";
+import { bootScript } from "@/lib/appearance";
 import { DEFAULT_BRAND_MARK_URL } from "@/lib/brand";
-import { loadServerBrandName } from "@/lib/branding-server";
+import { brandTitle, loadServerBranding } from "@/lib/branding-server";
+import { loadRequestI18n } from "@/lib/i18n-server";
+import { serverRuntimeConfig } from "@/lib/runtime-config";
+import { loadServerSite, viewerFromCookie } from "@/lib/site-server";
 import { Providers } from "@/components/providers";
 import { NavigationProgress } from "@/components/navigation-progress";
 import "./globals.css";
@@ -71,12 +73,17 @@ const ibmPlexSans = IBM_Plex_Sans({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const brand = await loadServerBrandName();
+  const branding = await loadServerBranding();
+  const brand = brandTitle(branding);
   return {
     title: { default: brand, template: `%s — ${brand}` },
     description: "Game hosting control panel",
     icons: {
-      icon: [{ url: DEFAULT_BRAND_MARK_URL, type: "image/png" }],
+      icon: [
+        branding?.icon_url
+          ? { url: branding.icon_url }
+          : { url: DEFAULT_BRAND_MARK_URL, type: "image/png" },
+      ],
       apple: [{ url: "/apple-icon.png", type: "image/png" }],
     },
   };
@@ -88,18 +95,19 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const store = await cookies();
-  const cookieLocale = store.get(LOCALE_COOKIE_NAME)?.value;
-  const [i18n, site] = await Promise.all([loadServerI18n(cookieLocale), loadServerSite()]);
+  const [{ i18n, hasCookie }, site, branding] = await Promise.all([
+    loadRequestI18n(),
+    loadServerSite(),
+    loadServerBranding(),
+  ]);
+  const viewer = viewerFromCookie(store.get(USER_COOKIE)?.value);
 
   return (
     <html lang={i18n.locale} className="dark" suppressHydrationWarning>
       <head>
         <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=document.cookie.match(/(?:^|; )vite-ui-theme=([^;]*)/);var t=m?decodeURIComponent(m[1]):"dark";if(t==="system"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var r=document.documentElement;r.classList.remove("light","dark");r.classList.add(t);}catch(e){}})();`,
-          }}
+          dangerouslySetInnerHTML={{ __html: bootScript(serverRuntimeConfig(), branding) }}
         />
-        <script src="/api/config.js" />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css"
@@ -108,7 +116,13 @@ export default async function RootLayout({
       <body
         className={`${inter.variable} ${outfit.variable} ${dmMono.variable} ${manrope.variable} ${rubik.variable} ${montserrat.variable} ${ibmPlexSans.variable} font-sans`}
       >
-        <Providers i18n={i18n} hasLocaleCookie={Boolean(cookieLocale)} site={site}>
+        <Providers
+          i18n={i18n}
+          hasLocaleCookie={hasCookie}
+          site={site}
+          branding={branding}
+          viewer={viewer}
+        >
           <NavigationProgress />
           {children}
         </Providers>

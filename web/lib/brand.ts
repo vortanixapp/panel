@@ -1,9 +1,5 @@
 import { API_URL, fetchBranding, type Branding } from "@/lib/api";
-import {
-  applyAppearance,
-  injectedBranding,
-  rememberBranding,
-} from "@/lib/appearance";
+import { applyAppearance, rememberBranding } from "@/lib/appearance";
 import { runtimeConfig } from "@/lib/runtime-config";
 
 export const DEFAULT_BRAND = "VORTANIX";
@@ -17,20 +13,6 @@ export function normalizeBrandName(raw: string | undefined): string {
 export const BRAND_NAME = normalizeBrandName(runtimeConfig().brand_name);
 
 export const BRAND_LOGO_URL = runtimeConfig().brand_logo_url;
-
-export async function loadRuntimeBranding(): Promise<Branding | null> {
-  if (typeof window === "undefined") return null;
-  const injected = injectedBranding();
-  if (injected) return injected;
-  try {
-    const fresh = await fetchBranding();
-    rememberBranding(fresh);
-    applyAppearance(fresh);
-    return fresh;
-  } catch {
-    return null;
-  }
-}
 
 export async function reloadRuntimeBranding(): Promise<Branding | null> {
   try {

@@ -12,7 +12,7 @@ export type AccessClaims = {
   exp?: number;
 };
 
-const USER_COOKIE = "vtx_user";
+export const USER_COOKIE = "vtx_user";
 
 function readCookie(name: string): string {
   if (typeof document === "undefined") return "";
@@ -28,7 +28,10 @@ export function csrfToken(): string {
 }
 
 export function currentAccount(): AccessClaims | null {
-  const raw = readCookie(USER_COOKIE);
+  return parseAccountCookie(readCookie(USER_COOKIE));
+}
+
+export function parseAccountCookie(raw: string): AccessClaims | null {
   if (!raw) return null;
   try {
     const normalized = raw.replace(/-/g, "+").replace(/_/g, "/");

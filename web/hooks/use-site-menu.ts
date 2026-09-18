@@ -8,6 +8,7 @@ import { useSite } from "@/context/site-provider";
 import { useMe } from "@/hooks/use-queries";
 import { useViewer } from "@/hooks/use-site";
 import { useT } from "@/hooks/use-translations";
+import { hasSession } from "@/lib/api";
 import { sidebarGroups } from "@/lib/nav";
 import type { PanelVariant } from "@/lib/panel-paths";
 import { queryKeys } from "@/lib/query-keys";
@@ -20,18 +21,25 @@ function withMenu(doc: SiteDocument, name: MenuName, menu: SiteMenu | null | und
   return { ...doc, menus: { ...(doc.menus ?? {}), [name]: menu } };
 }
 
+export function useAdminSiteMenu(variant: PanelVariant) {
+  const { inEditor } = useSite();
+  const enabled = variant === "admin" && !inEditor && hasSession();
+  const query = useQuery({
+    queryKey: queryKeys.adminSiteMenu,
+    queryFn: fetchAdminSiteMenu,
+    enabled,
+    staleTime: 60_000,
+  });
+  return { enabled, menu: query.data?.menu, pending: enabled && query.isPending };
+}
+
 export function useSidebarGroups(variant: PanelVariant): NavGroup[] {
   const t = useT();
   const { locale, defaultLocale } = useLocale();
-  const { document, inEditor, viewer: forced } = useSite();
+  const { document, viewer: forced } = useSite();
   const { data: me } = useMe();
   const [prefsVersion, setPrefsVersion] = useState(0);
-  const adminMenu = useQuery({
-    queryKey: queryKeys.adminSiteMenu,
-    queryFn: fetchAdminSiteMenu,
-    enabled: variant === "admin" && !inEditor,
-    staleTime: 60_000,
-  });
+  const adminMenu = useAdminSiteMenu(variant);
 
   useEffect(() => {
     const onPrefs = () => setPrefsVersion((v) => v + 1);
@@ -41,11 +49,10 @@ export function useSidebarGroups(variant: PanelVariant): NavGroup[] {
 
   return useMemo(() => {
     void prefsVersion;
-    const doc =
-      variant === "admin" && !inEditor ? withMenu(document, "admin_sidebar", adminMenu.data?.menu) : document;
+    const doc = adminMenu.enabled ? withMenu(document, "admin_sidebar", adminMenu.menu) : document;
     const viewer: Viewer = forced ?? { loggedIn: true, role: me?.role ?? "" };
     return sidebarGroups(variant, doc, { t, locale, defaultLocale, viewer });
-  }, [variant, inEditor, document, adminMenu.data, forced, me?.role, t, locale, defaultLocale, prefsVersion]);
+  }, [variant, adminMenu.enabled, adminMenu.menu, document, forced, me?.role, t, locale, defaultLocale, prefsVersion]);
 }
 
 export function useSiteMenu(name: "site_header" | "site_footer"): ResolvedItem[] {

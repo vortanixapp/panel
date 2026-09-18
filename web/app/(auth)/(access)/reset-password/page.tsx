@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ResetPasswordPage() {
   return (
-    <BootstrappedGuard loaderClassName="min-h-[420px]">
+    <BootstrappedGuard>
       <Suspense fallback={<Skeleton className="h-64 w-full" />}>
         <ResetPasswordForm />
       </Suspense>

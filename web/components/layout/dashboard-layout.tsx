@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ensureValidSession, hasSession, logout } from "@/lib/api";
 import { useMe } from "@/hooks/use-queries";
+import { useAdminSiteMenu } from "@/hooks/use-site-menu";
 import { queryKeys } from "@/lib/query-keys";
 import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { LegalAcceptanceGate } from "@/components/legal/legal-acceptance-gate";
@@ -28,6 +29,7 @@ export function DashboardLayout({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: me, isError, isLoading, error } = useMe();
+  const adminMenu = useAdminSiteMenu(variant);
 
   useLiveSync();
 
@@ -55,7 +57,7 @@ export function DashboardLayout({
     });
   }, [isError, error, router, queryClient]);
 
-  if (!hasStoredSession() || isLoading || !me) {
+  if (!hasStoredSession() || isLoading || !me || adminMenu.pending) {
     return <VxPageLoader hint={t("layout.loader.checking_session")} />;
   }
 

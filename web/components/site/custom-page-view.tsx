@@ -9,27 +9,37 @@ import { SiteBlockList } from "@/components/site/block-renderer";
 import { VxPageLoader } from "@/components/vx/loader";
 import { useSite } from "@/context/site-provider";
 import { useSiteText, useViewer } from "@/hooks/use-site";
+import type { CustomPage } from "@/lib/site/types";
 
-export function CustomPageView({ slug }: { slug: string }) {
-  const { document, refreshed, inEditor } = useSite();
+export function CustomPageView({
+  slug,
+  initial,
+  preview,
+}: {
+  slug: string;
+  initial?: CustomPage;
+  preview: boolean;
+}) {
+  const { document, inEditor } = useSite();
   const viewer = useViewer();
   const router = useRouter();
   const text = useSiteText();
-  const page = document.custom_pages?.find((item) => item.slug === slug);
+  const found = document.custom_pages?.find((item) => item.slug === slug);
+  const page = inEditor ? found : (initial ?? found);
   const available = Boolean(page && (!page.hidden || inEditor));
   const audience = page?.layout === "panel" ? "users" : (page?.audience ?? "");
 
   useEffect(() => {
-    if (!available || inEditor || !viewer.ready) return;
+    if (!available || inEditor) return;
     if (audience === "users" && !viewer.loggedIn) {
       router.replace("/login");
     } else if (audience === "guests" && viewer.loggedIn) {
       router.replace("/dashboard");
     }
-  }, [available, inEditor, viewer.ready, viewer.loggedIn, audience, router]);
+  }, [available, inEditor, viewer.loggedIn, audience, router]);
 
   if (!page || !available) {
-    if (!refreshed) return <VxPageLoader />;
+    if (preview) return <VxPageLoader />;
     notFound();
   }
 

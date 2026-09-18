@@ -1,29 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useSite } from "@/context/site-provider";
 import { useLocale } from "@/context/locale-provider";
-import { hasSession } from "@/lib/api";
 import { currentAccount } from "@/lib/accounts";
 import { pageKeyOf } from "@/lib/site/pages";
 import { localized } from "@/lib/site/text";
 import type { LText, SitePage, Viewer } from "@/lib/site/types";
 
-export type ViewerState = Viewer & { ready: boolean };
-
-const GUEST: ViewerState = { loggedIn: false, role: "", ready: false };
-
-export function useViewer(): ViewerState {
-  const { viewer: forced } = useSite();
-  const [viewer, setViewer] = useState<ViewerState>(GUEST);
+export function useViewer(): Viewer {
+  const { viewer: forced, session } = useSite();
+  const [viewer, setViewer] = useState<Viewer>(session);
 
   useEffect(() => {
     const account = currentAccount();
-    setViewer({ loggedIn: hasSession(), role: account?.role ?? "", ready: true });
+    const loggedIn = account !== null;
+    const role = account?.role ?? "";
+    setViewer((current) =>
+      current.loggedIn === loggedIn && current.role === role ? current : { loggedIn, role }
+    );
   }, []);
 
-  return useMemo(() => (forced ? { ...forced, ready: true } : viewer), [forced, viewer]);
+  return forced ?? viewer;
 }
 
 export function useSiteText(): (value: LText | undefined) => string {

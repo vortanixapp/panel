@@ -9,8 +9,9 @@ import { BrandProvider } from "@/context/brand-provider";
 import { LocaleProvider } from "@/context/locale-provider";
 import { SiteProvider } from "@/context/site-provider";
 import { EditorBridgeLoader } from "@/components/site/editor-bridge/bridge-loader";
+import type { BrandingPayload } from "@/lib/appearance";
 import type { I18nPayload } from "@/lib/i18n";
-import type { SiteDocument } from "@/lib/site/types";
+import type { SiteDocument, Viewer } from "@/lib/site/types";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthSessionProvider } from "@/components/auth/auth-session-provider";
 import { CookieBanner } from "@/components/legal/cookie-banner";
@@ -21,11 +22,15 @@ export function Providers({
   i18n,
   hasLocaleCookie,
   site,
+  branding,
+  viewer,
 }: {
   children: React.ReactNode;
   i18n: I18nPayload;
   hasLocaleCookie: boolean;
   site: SiteDocument;
+  branding: BrandingPayload | null;
+  viewer: Viewer;
 }) {
   const [queryClient] = useState(
     () =>
@@ -46,8 +51,8 @@ export function Providers({
         <ThemeProvider defaultTheme="dark">
           <FontProvider>
             <DirectionProvider>
-              <BrandProvider>
-                <SiteProvider initial={site}>
+              <BrandProvider initial={branding}>
+                <SiteProvider initial={site} session={viewer}>
                   <EditorBridgeLoader />
                   <VxRouteProgress />
                   <AuthSessionProvider>{children}</AuthSessionProvider>

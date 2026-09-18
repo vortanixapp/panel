@@ -1,22 +1,31 @@
+import { parseAccountCookie } from "@/lib/accounts";
 import { serverApiURL } from "@/lib/runtime-config";
+import { cachedLoader } from "@/lib/server-cache";
 import { parseSitePayload } from "@/lib/site/parse";
-import type { SiteDocument } from "@/lib/site/types";
+import type { SiteDocument, Viewer } from "@/lib/site/types";
 
-const CACHE_TTL_MS = 15_000;
-let cache: { at: number; data: SiteDocument } | null = null;
+const CACHE_TTL_MS = 3_000;
+const site = cachedLoader<SiteDocument>(CACHE_TTL_MS, 1);
 
-export async function loadServerSite(fresh = false): Promise<SiteDocument> {
-  if (!fresh && cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.data;
-  let data: SiteDocument = cache?.data ?? {};
-  try {
-    const res = await fetch(`${serverApiURL()}/v1/site`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(1500),
-    });
-    if (res.ok) data = parseSitePayload(await res.json());
-  } catch {
-    data = cache?.data ?? data;
-  }
-  cache = { at: Date.now(), data };
-  return data;
+export function loadServerSite(fresh = false): Promise<SiteDocument> {
+  return site(
+    "",
+    async (previous) => {
+      try {
+        const res = await fetch(`${serverApiURL()}/v1/site`, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(1500),
+        });
+        return res.ok ? parseSitePayload(await res.json()) : previous ?? {};
+      } catch {
+        return previous ?? {};
+      }
+    },
+    fresh
+  );
+}
+
+export function viewerFromCookie(raw: string | undefined): Viewer {
+  const account = parseAccountCookie(raw ?? "");
+  return { loggedIn: account !== null, role: account?.role ?? "" };
 }

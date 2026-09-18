@@ -14,7 +14,6 @@ import { setFavicon } from "@/lib/appearance";
 import {
   BRAND_LOGO_URL,
   BRAND_NAME,
-  loadRuntimeBranding,
   normalizeBrandName,
   reloadRuntimeBranding,
 } from "@/lib/brand";
@@ -55,21 +54,30 @@ const BrandContext = createContext<BrandState>({
   refresh: async () => undefined,
 });
 
-export function BrandProvider({ children }: { children: ReactNode }) {
-  const [branding, setBranding] = useState<Branding | null>(null);
-  const [ready, setReady] = useState(false);
+export function BrandProvider({
+  initial,
+  children,
+}: {
+  initial: Branding | null;
+  children: ReactNode;
+}) {
+  const [loaded, setLoaded] = useState<Branding | null>(null);
+  const [attempted, setAttempted] = useState(false);
+  const branding = loaded ?? initial;
+  const ready = initial !== null || attempted;
 
   useEffect(() => {
+    if (initial) return;
     let cancelled = false;
-    void loadRuntimeBranding().then((loaded) => {
+    void reloadRuntimeBranding().then((fresh) => {
       if (cancelled) return;
-      setBranding(loaded);
-      setReady(true);
+      if (fresh) setLoaded(fresh);
+      setAttempted(true);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initial]);
 
   useEffect(() => {
     if (branding?.icon_url) setFavicon(branding.icon_url);
@@ -77,7 +85,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     const fresh = await reloadRuntimeBranding();
-    if (fresh) setBranding(fresh);
+    if (fresh) setLoaded(fresh);
   }, []);
 
   const value = useMemo<BrandState>(

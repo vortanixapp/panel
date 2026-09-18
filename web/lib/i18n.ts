@@ -172,19 +172,40 @@ export function getBaseLocale(): BaseLocale {
   return state.base;
 }
 
-export function browserLocale(
-  languages: LanguageInfo[] = state.languages,
-  fallback: string = state.defaultLocale
+export function pickLocale(
+  candidates: readonly string[],
+  languages: LanguageInfo[],
+  fallback: string
 ): string {
-  if (typeof navigator === "undefined") return fallback;
   const codes = new Set(languages.map((l) => l.code));
-  for (const candidate of navigator.languages ?? [navigator.language]) {
+  for (const candidate of candidates) {
     const tag = normalizeLocaleCode(candidate);
     if (codes.has(tag)) return tag;
     const primary = tag.split("-")[0];
     if (codes.has(primary)) return primary;
   }
   return fallback;
+}
+
+export function browserLocale(
+  languages: LanguageInfo[] = state.languages,
+  fallback: string = state.defaultLocale
+): string {
+  if (typeof navigator === "undefined") return fallback;
+  return pickLocale(navigator.languages ?? [navigator.language], languages, fallback);
+}
+
+export function acceptedLocales(header: string | null | undefined): string[] {
+  return (header ?? "")
+    .split(",")
+    .map((part, index) => {
+      const [tag, ...params] = part.split(";").map((item) => item.trim());
+      const weight = params.find((item) => item.startsWith("q="));
+      return { tag, q: weight ? Number(weight.slice(2)) : 1, index };
+    })
+    .filter((item) => item.tag && item.tag !== "*" && item.q > 0)
+    .sort((a, b) => b.q - a.q || a.index - b.index)
+    .map((item) => item.tag);
 }
 
 const LOCALE_TAGS: Record<string, string> = {

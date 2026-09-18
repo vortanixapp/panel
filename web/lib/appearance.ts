@@ -1,3 +1,5 @@
+import { RUNTIME_CONFIG_GLOBAL, type RuntimeConfig } from "@/lib/runtime-config";
+
 export type AppearanceTheme = "dark" | "light" | "system";
 export type AppearanceRadius = "standard" | "strict" | "soft";
 export type AppearanceFont =
@@ -198,7 +200,7 @@ export function rememberBranding(branding: BrandingPayload) {
 }
 
 const BOOT =
-  "(function(css,custom,theme,locked,icon){try{var d=document,r=d.documentElement;" +
+  "(function(css,custom,theme,locked){try{var d=document,r=d.documentElement;" +
   "function put(id,text){var el=d.getElementById(id);if(!text){if(el&&el.parentNode){el.parentNode.removeChild(el)}return}" +
   "if(!el){el=d.createElement('style');el.id=id;d.head.appendChild(el)}el.textContent=text}" +
   `put('${STYLE_ID}',css);put('${CUSTOM_STYLE_ID}',custom);` +
@@ -206,20 +208,29 @@ const BOOT =
   "var m=d.cookie.match(/(?:^|; )vite-ui-theme=([^;]*)/);var t=(!locked&&m)?decodeURIComponent(m[1]):theme;" +
   "if(t==='system'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}" +
   "if(t==='light'||t==='dark'){r.classList.remove('light','dark');r.classList.add(t)}" +
-  "if(icon){var l=d.createElement('link');l.rel='icon';l.href=icon;d.head.appendChild(l)}" +
   "}catch(e){}})";
 
-export function appearanceBootScript(branding: BrandingPayload): string {
-  const a = branding.appearance;
+function inlineJSON(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+export function bootScript(config: RuntimeConfig, branding: BrandingPayload | null): string {
+  const a = branding?.appearance;
   return (
+    `window.${RUNTIME_CONFIG_GLOBAL}=${inlineJSON(config)};` +
+    (branding ? `window.${BRANDING_GLOBAL}=${inlineJSON(branding)};` : "") +
     BOOT +
     "(" +
     [
-      JSON.stringify(appearanceCSS(a)),
-      JSON.stringify(a?.custom_css ?? ""),
-      JSON.stringify(a?.theme ?? "dark"),
+      inlineJSON(appearanceCSS(a)),
+      inlineJSON(a?.custom_css ?? ""),
+      inlineJSON(a?.theme ?? "dark"),
       a?.theme_locked ? "true" : "false",
-      JSON.stringify(branding.icon_url ?? ""),
     ].join(",") +
     ");"
   );
