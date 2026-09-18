@@ -6,10 +6,12 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchFeatures } from "@/lib/api";
+import { useBrand } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 
 export default function FeaturesPage() {
   const t = useT();
+  const { title } = useBrand();
   const { data, isLoading } = useQuery({
     queryKey: ["features"],
     queryFn: async () => (await fetchFeatures()).features,
@@ -23,7 +25,7 @@ export default function FeaturesPage() {
             {t("landing.catalog.features_title")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {t("landing.catalog.features_subtitle")}
+            {t("landing.catalog.features_subtitle", { brand: title })}
           </p>
         </div>
         <Link href="/games" className="text-sm text-primary hover:underline">

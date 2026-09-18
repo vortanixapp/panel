@@ -29,6 +29,7 @@ export type PublicAppearance = {
 
 export type BrandingPayload = {
   brand_name: string;
+  panel_name?: string;
   logo_url: string;
   logo_dark_url?: string;
   icon_url?: string;

@@ -1,13 +1,23 @@
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { LandingBody } from "@/components/landing/landing-body";
 import { LandingPublicLayout } from "@/components/landing/landing-public-layout";
-import type { Metadata } from "next";
-import { BRAND_NAME } from "@/lib/brand";
+import { loadServerBrandName } from "@/lib/branding-server";
+import { LOCALE_COOKIE_NAME, translator } from "@/lib/i18n";
+import { loadServerI18n } from "@/lib/i18n-server";
 
-export const metadata: Metadata = {
-  title: `${BRAND_NAME} — игровой хостинг`,
-  description:
-    "Серверы для Minecraft, CS2, Rust и ещё сорока игр. Запуск за минуту, ядра закреплены за вашим сервером, защита от DDoS на всех тарифах.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const store = await cookies();
+  const [brand, i18n] = await Promise.all([
+    loadServerBrandName(),
+    loadServerI18n(store.get(LOCALE_COOKIE_NAME)?.value),
+  ]);
+  const t = translator(i18n);
+  return {
+    title: { absolute: `${brand} — ${t("landing.meta.title")}` },
+    description: t("landing.meta.description"),
+  };
+}
 
 export default function Home() {
   return (

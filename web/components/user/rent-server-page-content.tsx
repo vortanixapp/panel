@@ -593,10 +593,12 @@ export function RentServerPageContent() {
                                   : "border-[var(--vx-border)] hover:border-[var(--vx-border-strong)]"
                               )}
                             >
-                              <span className="flex items-center gap-2">
-                                <span className="text-[14px] font-semibold">{tariff.name}</span>
+                              <span className="flex flex-wrap items-start gap-x-2 gap-y-1.5">
+                                <span className="min-w-0 text-[14px] leading-snug font-semibold [overflow-wrap:anywhere]">
+                                  {tariff.name}
+                                </span>
                                 {tariff.billing_type === "resources" && (
-                                  <span className="rounded-[4px] bg-[var(--vx-fg-strong)] px-1.5 py-0.5 text-[10px] tracking-[0.06em] text-[var(--vx-on-fill)] uppercase">
+                                  <span className="shrink-0 rounded-[4px] bg-[var(--vx-fg-strong)] px-1.5 py-0.5 text-[10px] leading-4 tracking-[0.06em] whitespace-nowrap text-[var(--vx-on-fill)] uppercase">
                                     {t("billing.rent.custom_config")}
                                   </span>
                                 )}

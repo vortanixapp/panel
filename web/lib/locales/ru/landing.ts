@@ -6,8 +6,12 @@ export const landing = {
   "landing.catalog.back_to_catalog": "← Каталог",
   "landing.catalog.game_not_found": "Игра не найдена",
   "landing.catalog.features_title": "Возможности",
-  "landing.catalog.features_subtitle": "Функции платформы Vortanix",
+  "landing.catalog.features_subtitle": "Функции платформы {brand}",
   "landing.catalog.features_link": "Возможности →",
+
+  "landing.meta.title": "игровой хостинг",
+  "landing.meta.description":
+    "Серверы для Minecraft, CS2, Rust и ещё сорока игр. Запуск за минуту, ядра закреплены за вашим сервером, защита от DDoS на всех тарифах.",
 
   "landing.nav.pricing": "Цены",
   "landing.nav.games": "Игры",

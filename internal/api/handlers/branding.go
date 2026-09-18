@@ -10,12 +10,13 @@ func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
 	settings := h.loadTenantSettingStrings(r.Context())
 	a := appearanceFromSettings(settings)
 
-	name := "VORTANIX"
-	if v := strings.TrimSpace(settings["brand.name"]); v != "" {
-		name = strings.ToUpper(v)
-	} else if a.Name != "" {
-		name = strings.ToUpper(a.Name)
-	}
+	title := firstNonEmpty(
+		strings.TrimSpace(settings["brand.name"]),
+		a.Name,
+		strings.TrimSpace(settings["panel.name"]),
+		"Vortanix",
+	)
+	name := strings.ToUpper(title)
 	logo := strings.TrimSpace(settings["brand.logo_url"])
 	if logo == "" {
 		logo = h.brandingPublicURL(r, a.Logo)
@@ -29,6 +30,7 @@ func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
 		"whmcs":             whmcsPublicInfo(settings),
 		"legal":             h.publicLegalInfo(r.Context(), settings),
 		"brand_name":        name,
+		"panel_name":        title,
 		"logo_url":          logo,
 		"logo_dark_url":     h.brandingPublicURL(r, a.LogoDark),
 		"icon_url":          h.brandingPublicURL(r, a.Icon),

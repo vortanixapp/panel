@@ -11,8 +11,8 @@ import {
 } from "next/font/google";
 import { LOCALE_COOKIE_NAME } from "@/lib/i18n";
 import { loadServerI18n } from "@/lib/i18n-server";
-import { BRAND_NAME, DEFAULT_BRAND_MARK_URL } from "@/lib/brand";
-import { serverRuntimeConfig } from "@/lib/runtime-config";
+import { DEFAULT_BRAND_MARK_URL } from "@/lib/brand";
+import { loadServerBrandName } from "@/lib/branding-server";
 import { Providers } from "@/components/providers";
 import { NavigationProgress } from "@/components/navigation-progress";
 import "./globals.css";
@@ -69,10 +69,10 @@ const ibmPlexSans = IBM_Plex_Sans({
   preload: false,
 });
 
-export function generateMetadata(): Metadata {
-  const brand = serverRuntimeConfig().brand_name || BRAND_NAME;
+export async function generateMetadata(): Promise<Metadata> {
+  const brand = await loadServerBrandName();
   return {
-    title: `${brand} Panel`,
+    title: { default: brand, template: `%s — ${brand}` },
     description: "Game hosting control panel",
     icons: {
       icon: [{ url: DEFAULT_BRAND_MARK_URL, type: "image/png" }],

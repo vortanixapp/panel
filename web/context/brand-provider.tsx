@@ -27,6 +27,7 @@ type WhmcsLinks = {
 
 type BrandState = {
   name: string;
+  title: string;
   logoUrl: string;
   logoDarkUrl: string;
   iconUrl: string;
@@ -44,6 +45,7 @@ const EMPTY: Record<string, never> = {};
 
 const BrandContext = createContext<BrandState>({
   name: BRAND_NAME,
+  title: BRAND_NAME,
   logoUrl: BRAND_LOGO_URL,
   logoDarkUrl: "",
   iconUrl: "",
@@ -85,6 +87,7 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   const value = useMemo<BrandState>(
     () => ({
       name: branding ? normalizeBrandName(branding.brand_name) : BRAND_NAME,
+      title: branding?.panel_name?.trim() || (branding ? normalizeBrandName(branding.brand_name) : BRAND_NAME),
       logoUrl: branding?.logo_url || BRAND_LOGO_URL,
       logoDarkUrl: branding?.logo_dark_url || "",
       iconUrl: branding?.icon_url || "",
