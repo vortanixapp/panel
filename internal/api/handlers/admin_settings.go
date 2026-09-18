@@ -425,7 +425,7 @@ func (h *Handler) currentPanelVersion(values map[string]string) string {
 func (h *Handler) saveBrandingFile(file io.Reader, filename, base string) (string, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
-	case ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico":
+	case ".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".ico":
 	default:
 		return "", fmt.Errorf("unsupported file type")
 	}

@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
+import { EditableSection } from "@/components/site/editable-section";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchDailyBonus,
@@ -317,567 +318,585 @@ export function DashboardPageContent() {
     <PageShell variant="user">
       <div className="font-panel">
         <div className="vx-stagger grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-6">
-          <div data-spotlight
-            className={cn(
-              CARD_RAISED,
-              "flex flex-col p-[26px] sm:col-span-2 lg:row-span-2"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <span className={CARD_LABEL}>{t("dashboard.balance")}</span>
-              <i className="ri-wallet-3-line text-lg" />
-            </div>
-            <div className="mt-[26px] flex items-baseline gap-2">
-              <AnimatedNumber
-                value={Number(d.balance) || 0}
-                format={(value) => formatAmount(value, 0)}
-                className="text-[46px] leading-none font-semibold tracking-[-0.045em] sm:text-[54px]"
-              />
-              <span className="text-[17px] font-medium text-[var(--vx-ink-faint)]">
-                {d.balance_currency === "RUB" ? "₽" : d.balance_currency}
-              </span>
-            </div>
-            {(d.wallets ?? []).length > 1 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(d.wallets ?? []).slice(1).map((w) => (
-                  <span
-                    key={w.currency}
-                    className="rounded-md border border-border px-2 py-0.5 text-[13px] text-muted-foreground"
-                  >
-                    {formatAmount(w.balance, 0)}{" "}
-                    {w.currency === "RUB" ? "₽" : w.currency}
-                  </span>
-                ))}
+          <EditableSection id="dashboard.balance">
+            <div data-spotlight
+              className={cn(
+                CARD_RAISED,
+                "flex flex-col p-[26px] sm:col-span-2 lg:row-span-2"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span className={CARD_LABEL}>{t("dashboard.balance")}</span>
+                <i className="ri-wallet-3-line text-lg" />
               </div>
-            ) : null}
-            <div className="mt-3 text-sm leading-[1.5] text-muted-foreground">
-              {burn.perDay > 0
-                ? burn.daysLeft !== null
-                  ? t(
-                      plural(
-                        burn.daysLeft,
-                        "dashboard.balance.burn_days_one",
-                        "dashboard.balance.burn_days_few",
-                        "dashboard.balance.burn_days_many"
-                      ),
-                      { amount: formatAmount(burn.perDay, 0), days: burn.daysLeft }
-                    )
-                  : t("dashboard.balance.burn", {
-                      amount: formatAmount(burn.perDay, 0),
-                    })
-                : t("billing.balance.topup_hint")}
-            </div>
-            <div className="flex-1" />
-            <div className="mt-6 h-[5px] overflow-hidden rounded-[3px] bg-[var(--vx-panel-track)]">
-              <div
-                className="vx-grow-x h-[5px] bg-[var(--vx-panel-ink)] transition-[width] duration-700"
-                style={{ width: `${balancePct}%` }}
-              />
-            </div>
-            <div className="mt-[18px] flex gap-2.5">
-              <Link
-                href="/billing/topup"
-                className="flex-1 rounded-full bg-[var(--vx-panel-track)] border border-[var(--vx-btn-line)] py-[11px] text-center text-[13.5px] font-semibold text-[var(--vx-panel-ink)] transition-colors hover:bg-[var(--vx-btn-hover)]"
-              >
-                {t("dashboard.topup")}
-              </Link>
-              <Link
-                href="/billing"
-                className="rounded-full border border-[var(--vx-panel-line-strong)] px-4 py-[11px] text-[13.5px] font-medium text-[var(--vx-panel-ink-2)] transition-colors hover:border-[var(--vx-panel-hover-line)]"
-              >
-                {t("dashboard.invoices")}
-              </Link>
-            </div>
-          </div>
-
-          <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-4")}>
-            <div className="flex flex-wrap items-center gap-3.5">
-              <span className="text-base font-semibold">{t("dashboard.servers.title")}</span>
-              <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
-                {empty
-                  ? t("dashboard.servers.zero_active")
-                  : t("dashboard.servers.count", {
-                      active: d.active_servers,
-                      total: d.total_servers,
-                    })}
-              </span>
+              <div className="mt-[26px] flex items-baseline gap-2">
+                <AnimatedNumber
+                  value={Number(d.balance) || 0}
+                  format={(value) => formatAmount(value, 0)}
+                  className="text-[46px] leading-none font-semibold tracking-[-0.045em] sm:text-[54px]"
+                />
+                <span className="text-[17px] font-medium text-[var(--vx-ink-faint)]">
+                  {d.balance_currency === "RUB" ? "₽" : d.balance_currency}
+                </span>
+              </div>
+              {(d.wallets ?? []).length > 1 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(d.wallets ?? []).slice(1).map((w) => (
+                    <span
+                      key={w.currency}
+                      className="rounded-md border border-border px-2 py-0.5 text-[13px] text-muted-foreground"
+                    >
+                      {formatAmount(w.balance, 0)}{" "}
+                      {w.currency === "RUB" ? "₽" : w.currency}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="mt-3 text-sm leading-[1.5] text-muted-foreground">
+                {burn.perDay > 0
+                  ? burn.daysLeft !== null
+                    ? t(
+                        plural(
+                          burn.daysLeft,
+                          "dashboard.balance.burn_days_one",
+                          "dashboard.balance.burn_days_few",
+                          "dashboard.balance.burn_days_many"
+                        ),
+                        { amount: formatAmount(burn.perDay, 0), days: burn.daysLeft }
+                      )
+                    : t("dashboard.balance.burn", {
+                        amount: formatAmount(burn.perDay, 0),
+                      })
+                  : t("billing.balance.topup_hint")}
+              </div>
               <div className="flex-1" />
-              <Link
-                href="/servers"
-                className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
-              >
-                {t("common.all")}
-                <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-              </Link>
-            </div>
-
-            {d.recent_servers.length === 0 ? (
-              <div className="mt-[18px] flex flex-col items-start gap-[22px] rounded-2xl border border-dashed border-[var(--vx-panel-line-strong)] px-[26px] py-[34px] sm:flex-row sm:items-center">
-                <div className="flex size-[52px] flex-shrink-0 items-center justify-center rounded-[15px] bg-[var(--vx-panel-media)] text-[var(--vx-ink-ghost)]">
-                  <i className="ri-server-line text-2xl" />
-                </div>
-                <div className="flex-1">
-                  <div className="text-[17px] font-semibold">
-                    {t("dashboard.servers.empty_title")}
-                  </div>
-                  <div className="mt-[7px] max-w-[420px] text-[13.5px] leading-[1.55] text-muted-foreground">
-                    {t("dashboard.servers.empty_text")}
-                  </div>
-                </div>
+              <div className="mt-6 h-[5px] overflow-hidden rounded-[3px] bg-[var(--vx-panel-track)]">
+                <div
+                  className="vx-grow-x h-[5px] bg-[var(--vx-panel-ink)] transition-[width] duration-700"
+                  style={{ width: `${balancePct}%` }}
+                />
+              </div>
+              <div className="mt-[18px] flex gap-2.5">
                 <Link
-                  href="/rent-server"
-                  className="vx-btn rounded-full px-[22px] py-3 text-[13.5px] font-semibold whitespace-nowrap"
+                  href="/billing/topup"
+                  className="flex-1 rounded-full bg-[var(--vx-panel-track)] border border-[var(--vx-btn-line)] py-[11px] text-center text-[13.5px] font-semibold text-[var(--vx-panel-ink)] transition-colors hover:bg-[var(--vx-btn-hover)]"
                 >
-                  {t("dashboard.servers.rent")}
+                  {t("dashboard.topup")}
+                </Link>
+                <Link
+                  href="/billing"
+                  className="rounded-full border border-[var(--vx-panel-line-strong)] px-4 py-[11px] text-[13.5px] font-medium text-[var(--vx-panel-ink-2)] transition-colors hover:border-[var(--vx-panel-hover-line)]"
+                >
+                  {t("dashboard.invoices")}
                 </Link>
               </div>
-            ) : (
-              <div className="mt-[18px] grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {d.recent_servers.slice(0, 3).map((s, i) => {
-                  const st = getServerStatus(s);
-                  const online = Number(s.online_players ?? 0);
-                  const max = Number(s.max_players ?? 0);
-                  const fill = max > 0 ? online / max : 0;
-                  const left = daysUntil(s.expires_at);
-                  const expiring = left !== null && left <= 7;
-                  const running = st.category === "running" || st.category === "active";
-                  return (
-                    <Link
-                      key={s.id}
-                      href={`/servers/${s.id}`}
-                      data-spotlight
-                      className={cn(
-                        "relative isolate rounded-2xl border p-[18px] transition-[border-color,transform] duration-300 hover:-translate-y-0.5 hover:border-[var(--vx-panel-hover-line)]",
-                        i === 0
-                          ? "border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-card)]"
-                          : "border-[var(--vx-panel-line)] bg-[var(--vx-panel-card-2)]"
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          className={cn(
-                            "relative size-[7px] flex-shrink-0 rounded-full",
-                            running ? "vx-live bg-[var(--vx-panel-fill)]" : "bg-[var(--vx-panel-fill-muted)]"
-                          )}
-                        />
-                        <span className="truncate text-sm font-semibold tracking-[-0.01em]">
-                          {s.name}
-                        </span>
-                        <div className="flex-1" />
-                        <span className="font-mono text-[11px] whitespace-nowrap text-[var(--vx-ink-faint)]">
-                          {s.location?.city || s.location?.name || "—"}
-                        </span>
-                      </div>
+            </div>
+          </EditableSection>
 
-                      <div className="mt-3.5 flex h-[38px] items-end gap-[3px]">
-                        {Array.from({ length: 14 }).map((_, k) => {
-                          const active = k < Math.round(fill * 14);
-                          return (
-                            <div
-                              key={k}
-                              className={cn(
-                                "vx-grow-y flex-1 rounded-[2px]",
-                                active ? "bg-[var(--vx-panel-fill)]" : "bg-[var(--vx-panel-track)]"
-                              )}
-                              style={{
-                                height: active ? `${45 + ((k * 13) % 55)}%` : "18%",
-                                animationDelay: `${200 + k * 25}ms`,
-                              }}
-                            />
-                          );
-                        })}
-                      </div>
-
-                      <div className="mt-3.5 flex items-baseline justify-between">
-                        <span
-                          className={cn(
-                            "font-mono text-[19px] font-medium",
-                            running ? "text-[var(--vx-panel-ink)]" : "text-[var(--vx-ink-faint)]"
-                          )}
-                        >
-                          {online}
-                        </span>
-                        <span className="text-xs text-[var(--vx-ink-faint)]">
-                          {max > 0
-                            ? t("dashboard.servers.of_players", { max })
-                            : st.label.toLowerCase()}
-                        </span>
-                      </div>
-
-                      <div className="mt-3.5 flex items-center justify-between border-t border-[var(--vx-panel-line)] pt-[13px] text-xs">
-                        <span
-                          className={cn(
-                            expiring ? "text-[var(--vx-warn)]" : "text-[var(--vx-ink-faint)]"
-                          )}
-                        >
-                          {left === null
-                            ? st.label
-                            : left <= 0
-                              ? t("dashboard.servers.expired")
-                              : expiring
-                                ? t(
-                                    plural(
-                                      left,
-                                      "dashboard.servers.expires_in_one",
-                                      "dashboard.servers.expires_in_few",
-                                      "dashboard.servers.expires_in_many"
-                                    ),
-                                    { days: left }
-                                  )
-                                : t("dashboard.servers.until", {
-                                    date: new Date(s.expires_at!).toLocaleDateString(
-                                      localeTag(),
-                                      { day: "numeric", month: "long" }
-                                    ),
-                                  })}
-                        </span>
-                        <span className="font-semibold text-primary">
-                          {expiring
-                            ? t("dashboard.servers.renew")
-                            : t("dashboard.servers.console")}
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
+          <EditableSection id="dashboard.servers">
+            <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-4")}>
+              <div className="flex flex-wrap items-center gap-3.5">
+                <span className="text-base font-semibold">{t("dashboard.servers.title")}</span>
+                <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
+                  {empty
+                    ? t("dashboard.servers.zero_active")
+                    : t("dashboard.servers.count", {
+                        active: d.active_servers,
+                        total: d.total_servers,
+                      })}
+                </span>
+                <div className="flex-1" />
+                <Link
+                  href="/servers"
+                  className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
+                >
+                  {t("common.all")}
+                  <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                </Link>
               </div>
-            )}
-          </div>
 
-          <div data-spotlight
-            className={cn(
-              d.expiring_soon_count > 0 ? CARD_RAISED : CARD,
-              "px-6 py-[22px] sm:col-span-1 lg:col-span-2"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <span className={CARD_LABEL}>{t("billing.balance.next_charge")}</span>
-              <i
+              {d.recent_servers.length === 0 ? (
+                <div className="mt-[18px] flex flex-col items-start gap-[22px] rounded-2xl border border-dashed border-[var(--vx-panel-line-strong)] px-[26px] py-[34px] sm:flex-row sm:items-center">
+                  <div className="flex size-[52px] flex-shrink-0 items-center justify-center rounded-[15px] bg-[var(--vx-panel-media)] text-[var(--vx-ink-ghost)]">
+                    <i className="ri-server-line text-2xl" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[17px] font-semibold">
+                      {t("dashboard.servers.empty_title")}
+                    </div>
+                    <div className="mt-[7px] max-w-[420px] text-[13.5px] leading-[1.55] text-muted-foreground">
+                      {t("dashboard.servers.empty_text")}
+                    </div>
+                  </div>
+                  <Link
+                    href="/rent-server"
+                    className="vx-btn rounded-full px-[22px] py-3 text-[13.5px] font-semibold whitespace-nowrap"
+                  >
+                    {t("dashboard.servers.rent")}
+                  </Link>
+                </div>
+              ) : (
+                <div className="mt-[18px] grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {d.recent_servers.slice(0, 3).map((s, i) => {
+                    const st = getServerStatus(s);
+                    const online = Number(s.online_players ?? 0);
+                    const max = Number(s.max_players ?? 0);
+                    const fill = max > 0 ? online / max : 0;
+                    const left = daysUntil(s.expires_at);
+                    const expiring = left !== null && left <= 7;
+                    const running = st.category === "running" || st.category === "active";
+                    return (
+                      <Link
+                        key={s.id}
+                        href={`/servers/${s.id}`}
+                        data-spotlight
+                        className={cn(
+                          "relative isolate rounded-2xl border p-[18px] transition-[border-color,transform] duration-300 hover:-translate-y-0.5 hover:border-[var(--vx-panel-hover-line)]",
+                          i === 0
+                            ? "border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-card)]"
+                            : "border-[var(--vx-panel-line)] bg-[var(--vx-panel-card-2)]"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={cn(
+                              "relative size-[7px] flex-shrink-0 rounded-full",
+                              running ? "vx-live bg-[var(--vx-panel-fill)]" : "bg-[var(--vx-panel-fill-muted)]"
+                            )}
+                          />
+                          <span className="truncate text-sm font-semibold tracking-[-0.01em]">
+                            {s.name}
+                          </span>
+                          <div className="flex-1" />
+                          <span className="font-mono text-[11px] whitespace-nowrap text-[var(--vx-ink-faint)]">
+                            {s.location?.city || s.location?.name || "—"}
+                          </span>
+                        </div>
+
+                        <div className="mt-3.5 flex h-[38px] items-end gap-[3px]">
+                          {Array.from({ length: 14 }).map((_, k) => {
+                            const active = k < Math.round(fill * 14);
+                            return (
+                              <div
+                                key={k}
+                                className={cn(
+                                  "vx-grow-y flex-1 rounded-[2px]",
+                                  active ? "bg-[var(--vx-panel-fill)]" : "bg-[var(--vx-panel-track)]"
+                                )}
+                                style={{
+                                  height: active ? `${45 + ((k * 13) % 55)}%` : "18%",
+                                  animationDelay: `${200 + k * 25}ms`,
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-3.5 flex items-baseline justify-between">
+                          <span
+                            className={cn(
+                              "font-mono text-[19px] font-medium",
+                              running ? "text-[var(--vx-panel-ink)]" : "text-[var(--vx-ink-faint)]"
+                            )}
+                          >
+                            {online}
+                          </span>
+                          <span className="text-xs text-[var(--vx-ink-faint)]">
+                            {max > 0
+                              ? t("dashboard.servers.of_players", { max })
+                              : st.label.toLowerCase()}
+                          </span>
+                        </div>
+
+                        <div className="mt-3.5 flex items-center justify-between border-t border-[var(--vx-panel-line)] pt-[13px] text-xs">
+                          <span
+                            className={cn(
+                              expiring ? "text-[var(--vx-warn)]" : "text-[var(--vx-ink-faint)]"
+                            )}
+                          >
+                            {left === null
+                              ? st.label
+                              : left <= 0
+                                ? t("dashboard.servers.expired")
+                                : expiring
+                                  ? t(
+                                      plural(
+                                        left,
+                                        "dashboard.servers.expires_in_one",
+                                        "dashboard.servers.expires_in_few",
+                                        "dashboard.servers.expires_in_many"
+                                      ),
+                                      { days: left }
+                                    )
+                                  : t("dashboard.servers.until", {
+                                      date: new Date(s.expires_at!).toLocaleDateString(
+                                        localeTag(),
+                                        { day: "numeric", month: "long" }
+                                      ),
+                                    })}
+                          </span>
+                          <span className="font-semibold text-primary">
+                            {expiring
+                              ? t("dashboard.servers.renew")
+                              : t("dashboard.servers.console")}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </EditableSection>
+
+          <EditableSection id="dashboard.next_charge">
+            <div data-spotlight
+              className={cn(
+                d.expiring_soon_count > 0 ? CARD_RAISED : CARD,
+                "px-6 py-[22px] sm:col-span-1 lg:col-span-2"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span className={CARD_LABEL}>{t("billing.balance.next_charge")}</span>
+                <i
+                  className={cn(
+                    "ri-time-line text-[17px]",
+                    d.expiring_soon_count > 0
+                      ? "text-[var(--vx-warn)]"
+                      : "text-[var(--vx-ink-faint)]"
+                  )}
+                />
+              </div>
+              <div
                 className={cn(
-                  "ri-time-line text-[17px]",
+                  "mt-4 text-[30px] font-semibold tracking-[-0.03em]",
                   d.expiring_soon_count > 0
                     ? "text-[var(--vx-warn)]"
                     : "text-[var(--vx-ink-faint)]"
                 )}
-              />
+              >
+                {soonest && soonest.days !== Infinity
+                  ? soonest.days <= 0
+                    ? t("dashboard.next_charge.expired")
+                    : t(
+                        plural(
+                          soonest.days,
+                          "dashboard.next_charge.in_one",
+                          "dashboard.next_charge.in_few",
+                          "dashboard.next_charge.in_many"
+                        ),
+                        { days: soonest.days }
+                      )
+                  : "—"}
+              </div>
+              <div className="mt-2 text-[13.5px] text-muted-foreground">
+                {soonest && soonest.days !== Infinity
+                  ? `${soonest.server.name}${soonest.server.tariff?.price_monthly ? ` · ${formatAmount(soonest.server.tariff.price_monthly, 0)} ₽` : ""}`
+                  : d.next_charge_text !== "—"
+                    ? d.next_charge_text
+                    : t("billing.balance.no_subscriptions")}
+              </div>
             </div>
-            <div
-              className={cn(
-                "mt-4 text-[30px] font-semibold tracking-[-0.03em]",
-                d.expiring_soon_count > 0
-                  ? "text-[var(--vx-warn)]"
-                  : "text-[var(--vx-ink-faint)]"
-              )}
-            >
-              {soonest && soonest.days !== Infinity
-                ? soonest.days <= 0
-                  ? t("dashboard.next_charge.expired")
-                  : t(
+          </EditableSection>
+
+          <EditableSection id="dashboard.support">
+            <div data-spotlight className={cn(CARD, "flex flex-col px-6 py-[22px] sm:col-span-1 lg:col-span-2")}>
+              <div className="flex items-center justify-between">
+                <span className={CARD_LABEL}>{t("dashboard.support.title")}</span>
+                <i
+                  className={cn(
+                    "ri-customer-service-2-line text-[17px]",
+                    d.open_support_tickets_count > 0
+                      ? "text-[var(--vx-danger)]"
+                      : "text-muted-foreground"
+                  )}
+                />
+              </div>
+              <div className="mt-4 text-[30px] font-semibold tracking-[-0.03em]">
+                {d.open_support_tickets_count > 0
+                  ? t(
                       plural(
-                        soonest.days,
-                        "dashboard.next_charge.in_one",
-                        "dashboard.next_charge.in_few",
-                        "dashboard.next_charge.in_many"
+                        d.open_support_tickets_count,
+                        "dashboard.support.open_line_one",
+                        "dashboard.support.open_line_few",
+                        "dashboard.support.open_line_many"
                       ),
-                      { days: soonest.days }
+                      { count: d.open_support_tickets_count }
                     )
-                : "—"}
-            </div>
-            <div className="mt-2 text-[13.5px] text-muted-foreground">
-              {soonest && soonest.days !== Infinity
-                ? `${soonest.server.name}${soonest.server.tariff?.price_monthly ? ` · ${formatAmount(soonest.server.tariff.price_monthly, 0)} ₽` : ""}`
-                : d.next_charge_text !== "—"
-                  ? d.next_charge_text
-                  : t("billing.balance.no_subscriptions")}
-            </div>
-          </div>
-
-          <div data-spotlight className={cn(CARD, "flex flex-col px-6 py-[22px] sm:col-span-1 lg:col-span-2")}>
-            <div className="flex items-center justify-between">
-              <span className={CARD_LABEL}>{t("dashboard.support.title")}</span>
-              <i
-                className={cn(
-                  "ri-customer-service-2-line text-[17px]",
-                  d.open_support_tickets_count > 0
-                    ? "text-[var(--vx-danger)]"
-                    : "text-muted-foreground"
-                )}
-              />
-            </div>
-            <div className="mt-4 text-[30px] font-semibold tracking-[-0.03em]">
-              {d.open_support_tickets_count > 0
-                ? t(
-                    plural(
-                      d.open_support_tickets_count,
-                      "dashboard.support.open_line_one",
-                      "dashboard.support.open_line_few",
-                      "dashboard.support.open_line_many"
-                    ),
-                    { count: d.open_support_tickets_count }
-                  )
-                : t("dashboard.support.none")}
-            </div>
-            <div className="mt-2 text-[13.5px] text-muted-foreground">
-              {d.open_support_tickets_count > 0
-                ? t("dashboard.support.waiting")
-                : t("dashboard.support.first_reply")}
-            </div>
-            <div className="flex-1" />
-            <Link
-              href={d.open_support_tickets_count > 0 ? "/support" : "/support/create"}
-              className="group mt-4 flex items-center gap-[7px] text-[13px] font-semibold text-primary"
-            >
-              {d.open_support_tickets_count > 0
-                ? t("dashboard.support.open_tickets")
-                : t("dashboard.support.write")}
-              <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-
-          <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-4")}>
-            <div className="flex flex-wrap items-center gap-3.5">
-              <span className="text-base font-semibold">{t("dashboard.spend.title")}</span>
-              <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
-                {formatAmount(spend.totalDebit, 0)} ₽
-              </span>
-              <div className="flex-1" />
-              <div className="flex gap-4">
-                <div className="flex items-center gap-[7px] text-xs text-muted-foreground">
-                  <span className="size-2 rounded-[3px] bg-[var(--vx-panel-fill)]" />
-                  {t("billing.tx.debits")}
-                </div>
-                <div className="flex items-center gap-[7px] text-xs text-muted-foreground">
-                  <span className="size-2 rounded-[3px] bg-[var(--vx-panel-fill-muted)]" />
-                  {t("billing.tx.credits")}
-                </div>
+                  : t("dashboard.support.none")}
               </div>
-            </div>
-            <div className="mt-[22px] flex h-[118px] items-end gap-[5px]">
-              {spend.days.map((day, i) => (
-                <div
-                  key={i}
-                  className="flex h-full flex-1 items-end gap-px"
-                  title={t("dashboard.spend.day_tooltip", {
-                    date: shortDate(day.date),
-                    debit: formatAmount(day.debit, 0),
-                    credit: formatAmount(day.credit, 0),
-                  })}
-                >
-                  <div
-                    className="vx-grow-y flex-1 rounded-t-[3px] bg-[var(--vx-panel-fill)]"
-                    style={{
-                      height: `${Math.max(day.debit > 0 ? 4 : 2, (day.debit / spend.peak) * 100)}%`,
-                      animationDelay: `${150 + i * 14}ms`,
-                    }}
-                  />
-                  <div
-                    className="vx-grow-y flex-1 rounded-t-[3px] bg-[var(--vx-panel-fill-muted)]"
-                    style={{
-                      height: `${Math.max(day.credit > 0 ? 4 : 2, (day.credit / spend.peak) * 100)}%`,
-                      animationDelay: `${190 + i * 14}ms`,
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="mt-[11px] flex justify-between font-mono text-[11px] text-[var(--vx-ink-ghost)]">
-              <span>{shortDate(spend.days[0].date)}</span>
-              <span>{shortDate(spend.days[14].date)}</span>
-              <span>{shortDate(spend.days[29].date)}</span>
-            </div>
-            {spend.totalDebit === 0 && (
-              <div className="mt-2 text-xs text-[var(--vx-ink-ghost)]">
-                {t("dashboard.spend.empty")}
+              <div className="mt-2 text-[13.5px] text-muted-foreground">
+                {d.open_support_tickets_count > 0
+                  ? t("dashboard.support.waiting")
+                  : t("dashboard.support.first_reply")}
               </div>
-            )}
-          </div>
-
-          <div data-spotlight className={cn(CARD_RAISED, "flex flex-col px-6 py-[22px] sm:col-span-2")}>
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-semibold tracking-[0.02em] text-[var(--vx-warn)]">
-                {t("billing.bonus.title")}
-              </span>
-              <i className="ri-gift-line text-[17px] text-[var(--vx-warn)]" />
-            </div>
-            <div className="mt-4 text-[15.5px] leading-[1.5] text-[var(--vx-panel-ink-2)]">
-              {bonus?.can_spin
-                ? t("dashboard.bonus.available")
-                : t("dashboard.bonus.done")}
-            </div>
-            <div className="flex-1" />
-            <button
-              type="button"
-              disabled={!bonus?.can_spin || spin.isPending}
-              onClick={() => spin.mutate()}
-              className={cn(
-                "mt-5 rounded-full py-3 text-center text-[13.5px] font-semibold transition-colors",
-                bonus?.can_spin && !spin.isPending
-                  ? "border border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-tint)] text-[var(--vx-warn)] hover:bg-[var(--vx-btn-hover)]"
-                  : "cursor-not-allowed border border-[var(--vx-panel-line-strong)] bg-transparent text-muted-foreground"
-              )}
-            >
-              {spin.isPending
-                ? t("billing.bonus.spinning_button")
-                : bonus?.can_spin
-                  ? t("billing.bonus.spin_button")
-                  : t("dashboard.bonus.already")}
-            </button>
-          </div>
-
-          <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-3")}>
-            <div className="flex items-center">
-              <span className="text-base font-semibold">{t("dashboard.recent.title")}</span>
               <div className="flex-1" />
               <Link
-                href="/activity"
-                className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
+                href={d.open_support_tickets_count > 0 ? "/support" : "/support/create"}
+                className="group mt-4 flex items-center gap-[7px] text-[13px] font-semibold text-primary"
               >
-                {t("dashboard.recent.journal")}
+                {d.open_support_tickets_count > 0
+                  ? t("dashboard.support.open_tickets")
+                  : t("dashboard.support.write")}
                 <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
               </Link>
             </div>
-            {d.recent_transactions.length === 0 ? (
-              <div className="mt-[18px] py-9 text-center">
-                <div className="text-sm text-muted-foreground">
-                  {t("billing.history.empty_title")}
-                </div>
-                <div className="mt-[7px] text-[13px] text-[var(--vx-ink-ghost)]">
-                  {t("dashboard.recent.empty_text")}
-                </div>
-              </div>
-            ) : (
-              <div className="mt-3.5 flex flex-col">
-                {d.recent_transactions.slice(0, 4).map((t) => {
-                  const credit = t.type === "credit";
-                  return (
-                    <div
-                      key={t.id}
-                      className="flex items-center gap-3.5 border-t border-[var(--vx-panel-line)] py-[13px]"
-                    >
-                      <div
-                        className={cn(
-                          "flex size-[30px] flex-shrink-0 items-center justify-center rounded-[10px] text-[13px] font-semibold",
-                          credit
-                            ? "bg-[var(--vx-panel-tint)] text-[var(--vx-panel-ink)]"
-                            : "bg-[var(--vx-panel-tint)] text-muted-foreground"
-                        )}
-                      >
-                        {credit ? "+" : "−"}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13.5px] font-medium">
-                          {t.description || "—"}
-                        </div>
-                        <div className="mt-0.5 font-mono text-[11px] text-[var(--vx-ink-ghost)]">
-                          {relTime(t.created_at)}
-                        </div>
-                      </div>
-                      <div
-                        className={cn(
-                          "font-mono text-[13.5px] whitespace-nowrap",
-                          credit ? "text-[var(--vx-panel-ink)]" : "text-[var(--vx-panel-ink-2)]"
-                        )}
-                      >
-                        {credit ? "+" : "−"}
-                        {formatAmount(Math.abs(Number(t.amount) || 0), 0)} ₽
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          </EditableSection>
 
-          <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-3")}>
-            <div className="text-base font-semibold">{t("dashboard.next_steps.title")}</div>
-            <div className="mt-4 flex flex-col gap-2.5">
-              {nextSteps.map((n) => (
-                <Link
-                  key={n.titleKey}
-                  href={n.href}
-                  className={cn(
-                    "group flex items-center gap-3.5 rounded-[14px] border px-4 py-3.5 transition-colors hover:border-[var(--vx-panel-hover-line)]",
-                    n.raised
-                      ? "border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-card)]"
-                      : "border-[var(--vx-panel-line)] bg-[var(--vx-panel-card-2)]"
-                  )}
-                >
+          <EditableSection id="dashboard.spend">
+            <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-4")}>
+              <div className="flex flex-wrap items-center gap-3.5">
+                <span className="text-base font-semibold">{t("dashboard.spend.title")}</span>
+                <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
+                  {formatAmount(spend.totalDebit, 0)} ₽
+                </span>
+                <div className="flex-1" />
+                <div className="flex gap-4">
+                  <div className="flex items-center gap-[7px] text-xs text-muted-foreground">
+                    <span className="size-2 rounded-[3px] bg-[var(--vx-panel-fill)]" />
+                    {t("billing.tx.debits")}
+                  </div>
+                  <div className="flex items-center gap-[7px] text-xs text-muted-foreground">
+                    <span className="size-2 rounded-[3px] bg-[var(--vx-panel-fill-muted)]" />
+                    {t("billing.tx.credits")}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-[22px] flex h-[118px] items-end gap-[5px]">
+                {spend.days.map((day, i) => (
                   <div
+                    key={i}
+                    className="flex h-full flex-1 items-end gap-px"
+                    title={t("dashboard.spend.day_tooltip", {
+                      date: shortDate(day.date),
+                      debit: formatAmount(day.debit, 0),
+                      credit: formatAmount(day.credit, 0),
+                    })}
+                  >
+                    <div
+                      className="vx-grow-y flex-1 rounded-t-[3px] bg-[var(--vx-panel-fill)]"
+                      style={{
+                        height: `${Math.max(day.debit > 0 ? 4 : 2, (day.debit / spend.peak) * 100)}%`,
+                        animationDelay: `${150 + i * 14}ms`,
+                      }}
+                    />
+                    <div
+                      className="vx-grow-y flex-1 rounded-t-[3px] bg-[var(--vx-panel-fill-muted)]"
+                      style={{
+                        height: `${Math.max(day.credit > 0 ? 4 : 2, (day.credit / spend.peak) * 100)}%`,
+                        animationDelay: `${190 + i * 14}ms`,
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="mt-[11px] flex justify-between font-mono text-[11px] text-[var(--vx-ink-ghost)]">
+                <span>{shortDate(spend.days[0].date)}</span>
+                <span>{shortDate(spend.days[14].date)}</span>
+                <span>{shortDate(spend.days[29].date)}</span>
+              </div>
+              {spend.totalDebit === 0 && (
+                <div className="mt-2 text-xs text-[var(--vx-ink-ghost)]">
+                  {t("dashboard.spend.empty")}
+                </div>
+              )}
+            </div>
+          </EditableSection>
+
+          <EditableSection id="dashboard.bonus">
+            <div data-spotlight className={cn(CARD_RAISED, "flex flex-col px-6 py-[22px] sm:col-span-2")}>
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-semibold tracking-[0.02em] text-[var(--vx-warn)]">
+                  {t("billing.bonus.title")}
+                </span>
+                <i className="ri-gift-line text-[17px] text-[var(--vx-warn)]" />
+              </div>
+              <div className="mt-4 text-[15.5px] leading-[1.5] text-[var(--vx-panel-ink-2)]">
+                {bonus?.can_spin
+                  ? t("dashboard.bonus.available")
+                  : t("dashboard.bonus.done")}
+              </div>
+              <div className="flex-1" />
+              <button
+                type="button"
+                disabled={!bonus?.can_spin || spin.isPending}
+                onClick={() => spin.mutate()}
+                className={cn(
+                  "mt-5 rounded-full py-3 text-center text-[13.5px] font-semibold transition-colors",
+                  bonus?.can_spin && !spin.isPending
+                    ? "border border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-tint)] text-[var(--vx-warn)] hover:bg-[var(--vx-btn-hover)]"
+                    : "cursor-not-allowed border border-[var(--vx-panel-line-strong)] bg-transparent text-muted-foreground"
+                )}
+              >
+                {spin.isPending
+                  ? t("billing.bonus.spinning_button")
+                  : bonus?.can_spin
+                    ? t("billing.bonus.spin_button")
+                    : t("dashboard.bonus.already")}
+              </button>
+            </div>
+          </EditableSection>
+
+          <EditableSection id="dashboard.recent">
+            <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-3")}>
+              <div className="flex items-center">
+                <span className="text-base font-semibold">{t("dashboard.recent.title")}</span>
+                <div className="flex-1" />
+                <Link
+                  href="/activity"
+                  className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
+                >
+                  {t("dashboard.recent.journal")}
+                  <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                </Link>
+              </div>
+              {d.recent_transactions.length === 0 ? (
+                <div className="mt-[18px] py-9 text-center">
+                  <div className="text-sm text-muted-foreground">
+                    {t("billing.history.empty_title")}
+                  </div>
+                  <div className="mt-[7px] text-[13px] text-[var(--vx-ink-ghost)]">
+                    {t("dashboard.recent.empty_text")}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3.5 flex flex-col">
+                  {d.recent_transactions.slice(0, 4).map((t) => {
+                    const credit = t.type === "credit";
+                    return (
+                      <div
+                        key={t.id}
+                        className="flex items-center gap-3.5 border-t border-[var(--vx-panel-line)] py-[13px]"
+                      >
+                        <div
+                          className={cn(
+                            "flex size-[30px] flex-shrink-0 items-center justify-center rounded-[10px] text-[13px] font-semibold",
+                            credit
+                              ? "bg-[var(--vx-panel-tint)] text-[var(--vx-panel-ink)]"
+                              : "bg-[var(--vx-panel-tint)] text-muted-foreground"
+                          )}
+                        >
+                          {credit ? "+" : "−"}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[13.5px] font-medium">
+                            {t.description || "—"}
+                          </div>
+                          <div className="mt-0.5 font-mono text-[11px] text-[var(--vx-ink-ghost)]">
+                            {relTime(t.created_at)}
+                          </div>
+                        </div>
+                        <div
+                          className={cn(
+                            "font-mono text-[13.5px] whitespace-nowrap",
+                            credit ? "text-[var(--vx-panel-ink)]" : "text-[var(--vx-panel-ink-2)]"
+                          )}
+                        >
+                          {credit ? "+" : "−"}
+                          {formatAmount(Math.abs(Number(t.amount) || 0), 0)} ₽
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </EditableSection>
+
+          <EditableSection id="dashboard.next_steps">
+            <div data-spotlight className={cn(CARD, "px-[26px] py-6 sm:col-span-2 lg:col-span-3")}>
+              <div className="text-base font-semibold">{t("dashboard.next_steps.title")}</div>
+              <div className="mt-4 flex flex-col gap-2.5">
+                {nextSteps.map((n) => (
+                  <Link
+                    key={n.titleKey}
+                    href={n.href}
                     className={cn(
-                      "flex size-[30px] flex-shrink-0 items-center justify-center rounded-[10px]",
-                      n.tone === "warn" && "bg-[rgba(232,160,60,0.13)] text-[var(--vx-warn)]",
-                      n.tone === "danger" && "bg-[rgba(224,122,122,0.13)] text-[var(--vx-danger)]",
-                      n.tone === "info" && "bg-[rgba(123,179,232,0.13)] text-[var(--vx-info)]",
-                      n.tone === "neutral" && "bg-[var(--vx-panel-tint)] text-[var(--vx-panel-ink)]"
+                      "group flex items-center gap-3.5 rounded-[14px] border px-4 py-3.5 transition-colors hover:border-[var(--vx-panel-hover-line)]",
+                      n.raised
+                        ? "border-[var(--vx-panel-line-strong)] bg-[var(--vx-panel-card)]"
+                        : "border-[var(--vx-panel-line)] bg-[var(--vx-panel-card-2)]"
                     )}
                   >
-                    <i className={cn(n.icon, "text-[15px]")} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13.5px] font-semibold">
-                      {t(n.titleKey, n.titleParams)}
+                    <div
+                      className={cn(
+                        "flex size-[30px] flex-shrink-0 items-center justify-center rounded-[10px]",
+                        n.tone === "warn" && "bg-[rgba(232,160,60,0.13)] text-[var(--vx-warn)]",
+                        n.tone === "danger" && "bg-[rgba(224,122,122,0.13)] text-[var(--vx-danger)]",
+                        n.tone === "info" && "bg-[rgba(123,179,232,0.13)] text-[var(--vx-info)]",
+                        n.tone === "neutral" && "bg-[var(--vx-panel-tint)] text-[var(--vx-panel-ink)]"
+                      )}
+                    >
+                      <i className={cn(n.icon, "text-[15px]")} />
                     </div>
-                    <div className="mt-0.5 truncate text-xs text-[var(--vx-ink-faint)]">
-                      {t(n.subKey, n.subParams)}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13.5px] font-semibold">
+                        {t(n.titleKey, n.titleParams)}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-[var(--vx-ink-faint)]">
+                        {t(n.subKey, n.subParams)}
+                      </div>
                     </div>
-                  </div>
-                  <ArrowIcon className="size-[15px] flex-shrink-0 text-[var(--vx-ink-ghost)] transition-[transform,color] duration-300 group-hover:translate-x-0.5 group-hover:text-[var(--vx-panel-ink)]" />
-                </Link>
-              ))}
+                    <ArrowIcon className="size-[15px] flex-shrink-0 text-[var(--vx-ink-ghost)] transition-[transform,color] duration-300 group-hover:translate-x-0.5 group-hover:text-[var(--vx-panel-ink)]" />
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          </EditableSection>
         </div>
 
         {d.news.length > 0 && (
-          <div data-spotlight className={cn(CARD, "mt-3.5 px-[26px] py-6")}>
-            <div className="flex items-center">
-              <span className="text-base font-semibold">{t("news.title")}</span>
-              <div className="flex-1" />
-              <Link
-                href="/news"
-                className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
-              >
-                {t("news.all")}
-                <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-              </Link>
-            </div>
-            <div className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-              {d.news.map((item) => (
+          <EditableSection id="dashboard.news">
+            <div data-spotlight className={cn(CARD, "mt-3.5 px-[26px] py-6")}>
+              <div className="flex items-center">
+                <span className="text-base font-semibold">{t("news.title")}</span>
+                <div className="flex-1" />
                 <Link
-                  key={item.id}
-                  href={`/news/${item.slug || item.id}`}
-                  className="group overflow-hidden rounded-2xl border border-[var(--vx-panel-line)] bg-[var(--vx-panel-card-2)] transition-colors hover:border-[var(--vx-panel-hover-line)]"
+                  href="/news"
+                  className="group flex items-center gap-[7px] text-[13px] font-medium text-primary"
                 >
-                  {item.image ? (
-                    <div className="aspect-video overflow-hidden bg-[var(--vx-panel-media)]">
-                      <img
-                        src={item.image}
-                        alt=""
-                        className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex aspect-video items-center justify-center bg-[var(--vx-panel-media)] text-[var(--vx-ink-ghost)]">
-                      <i className="ri-newspaper-line text-4xl" />
-                    </div>
-                  )}
-                  <div className="p-4">
-                    <div className="font-mono text-[11px] text-[var(--vx-ink-faint)]">
-                      {item.published_at
-                        ? new Date(item.published_at).toLocaleDateString(localeTag())
-                        : "—"}
-                    </div>
-                    <h4 className="mt-2 line-clamp-2 text-[14.5px] font-semibold">
-                      {item.title}
-                    </h4>
-                    <p className="mt-1.5 line-clamp-2 text-[13px] leading-[1.5] text-muted-foreground">
-                      {item.excerpt}
-                    </p>
-                  </div>
+                  {t("news.all")}
+                  <ArrowIcon className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
                 </Link>
-              ))}
+              </div>
+              <div className="mt-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                {d.news.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/news/${item.slug || item.id}`}
+                    className="group overflow-hidden rounded-2xl border border-[var(--vx-panel-line)] bg-[var(--vx-panel-card-2)] transition-colors hover:border-[var(--vx-panel-hover-line)]"
+                  >
+                    {item.image ? (
+                      <div className="aspect-video overflow-hidden bg-[var(--vx-panel-media)]">
+                        <img
+                          src={item.image}
+                          alt=""
+                          className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex aspect-video items-center justify-center bg-[var(--vx-panel-media)] text-[var(--vx-ink-ghost)]">
+                        <i className="ri-newspaper-line text-4xl" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <div className="font-mono text-[11px] text-[var(--vx-ink-faint)]">
+                        {item.published_at
+                          ? new Date(item.published_at).toLocaleDateString(localeTag())
+                          : "—"}
+                      </div>
+                      <h4 className="mt-2 line-clamp-2 text-[14.5px] font-semibold">
+                        {item.title}
+                      </h4>
+                      <p className="mt-1.5 line-clamp-2 text-[13px] leading-[1.5] text-muted-foreground">
+                        {item.excerpt}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          </EditableSection>
         )}
       </div>
     </PageShell>

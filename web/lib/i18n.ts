@@ -225,18 +225,52 @@ function interpolate(template: string, params: TranslateParams): string {
   });
 }
 
+type MarkerEncoder = (key: string, text: string) => string;
+
+let markerEncoder: MarkerEncoder | null = null;
+
+export function setMarkerEncoder(encoder: MarkerEncoder | null) {
+  markerEncoder = encoder;
+}
+
+export function rawMessage(
+  source: { base: BaseLocale; messages: Record<string, string> },
+  key: string
+): string | undefined {
+  const custom = source.messages[key];
+  return typeof custom === "string" && custom.trim() !== ""
+    ? custom
+    : catalogText(source.base, key);
+}
+
 export function translator(source: {
   base: BaseLocale;
   messages: Record<string, string>;
 }): TranslateFn {
   return (key: string, params?: TranslateParams): string => {
-    const custom = source.messages[key];
-    const value =
-      typeof custom === "string" && custom.trim() !== ""
-        ? custom
-        : catalogText(source.base, key);
+    const value = rawMessage(source, key);
     if (value === undefined) return key;
-    return params ? interpolate(value, params) : value;
+    const text = params ? interpolate(value, params) : value;
+    return markerEncoder ? markerEncoder(key, text) : text;
+  };
+}
+
+let localeOverride: I18nState | null = null;
+const overrideListeners = new Set<() => void>();
+
+export function setLocaleOverride(next: I18nState | null) {
+  localeOverride = next;
+  overrideListeners.forEach((fn) => fn());
+}
+
+export function getLocaleOverride(): I18nState | null {
+  return localeOverride;
+}
+
+export function subscribeLocaleOverride(fn: () => void): () => void {
+  overrideListeners.add(fn);
+  return () => {
+    overrideListeners.delete(fn);
   };
 }
 

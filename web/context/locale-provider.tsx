@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 
@@ -16,6 +17,7 @@ import { setCookie } from "@/lib/cookies";
 import {
   browserLocale,
   fallbackI18n,
+  getLocaleOverride,
   i18nState,
   LOCALE_COOKIE_MAX_AGE,
   LOCALE_COOKIE_NAME,
@@ -23,6 +25,7 @@ import {
   parseI18nPayload,
   resolveLocale,
   setI18nState,
+  subscribeLocaleOverride,
   type I18nPayload,
   type I18nState,
 } from "@/lib/i18n";
@@ -41,6 +44,10 @@ const LocaleContext = createContext<LocaleContextValue>({
   setLocale: () => undefined,
   reload: async () => undefined,
 });
+
+function noOverride(): I18nState | null {
+  return null;
+}
 
 export function useLocale(): LocaleContextValue {
   return useContext(LocaleContext);
@@ -134,9 +141,15 @@ export function LocaleProvider({
     return () => window.removeEventListener(ACCOUNT_PREFS_EVENT, onPrefs);
   }, [setLocale]);
 
+  const override = useSyncExternalStore(subscribeLocaleOverride, getLocaleOverride, noOverride);
+
+  useEffect(() => {
+    setI18nState(override ?? stateRef.current);
+  }, [override]);
+
   const value = useMemo(
-    () => ({ ...state, setLocale, reload }),
-    [state, setLocale, reload]
+    () => ({ ...(override ?? state), setLocale, reload }),
+    [override, state, setLocale, reload]
   );
 
   return (

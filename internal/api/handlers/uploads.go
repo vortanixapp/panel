@@ -127,6 +127,8 @@ func (h *Handler) ServeBranding(w http.ResponseWriter, r *http.Request) {
 		contentType = "image/png"
 	case ".webp":
 		contentType = "image/webp"
+	case ".gif":
+		contentType = "image/gif"
 	case ".svg":
 		contentType = "image/svg+xml"
 	case ".ico":

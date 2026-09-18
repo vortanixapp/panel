@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ImageIcon, RotateCcw, Trash2, Upload } from "lucide-react";
+import { ImageIcon, LayoutGrid, RotateCcw, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -42,26 +43,6 @@ import { useT } from "@/hooks/use-translations";
 type Tab = "colors" | "brand" | "landing" | "css";
 
 const QUERY_KEY = ["admin-appearance"] as const;
-
-const LANDING_BLOCKS = [
-  "hero",
-  "games",
-  "steps",
-  "hardware",
-  "panel",
-  "locations",
-  "faq",
-  "pricing",
-  "cta",
-] as const;
-
-const HERO_FIELDS = [
-  { key: "badge", labelKey: "admin.appearance.hero.badge", fallbackKey: "landing.hero.badge" },
-  { key: "title", labelKey: "admin.appearance.hero.title_field", fallbackKey: "landing.hero.title" },
-  { key: "subtitle", labelKey: "admin.appearance.hero.subtitle", fallbackKey: "landing.hero.subtitle" },
-  { key: "cta_primary", labelKey: "admin.appearance.hero.cta_primary", fallbackKey: "landing.hero.cta_primary" },
-  { key: "cta_secondary", labelKey: "admin.appearance.hero.cta_secondary", fallbackKey: "landing.hero.cta_secondary" },
-] as const;
 
 const LINK_FIELDS = [
   { key: "telegram", label: "Telegram", labelKey: "", placeholder: "https://t.me/example" },
@@ -138,10 +119,8 @@ function AppearanceEditor({
     setDraft((d) => ({ ...d, ...patch }));
   const setAccent = (key: keyof AppearanceAccent, value: string) =>
     setDraft((d) => ({ ...d, accent: { ...d.accent, [key]: value } }));
-  const setEntry = (field: "hero" | "links", key: string, value: string) =>
-    setDraft((d) => ({ ...d, [field]: { ...d[field], [key]: value } }));
-  const setBlock = (name: string, value: boolean) =>
-    setDraft((d) => ({ ...d, blocks: { ...d.blocks, [name]: value } }));
+  const setLink = (key: string, value: string) =>
+    setDraft((d) => ({ ...d, links: { ...d.links, [key]: value } }));
 
   const save = useMutation({
     mutationFn: () => saveAdminAppearance(draft),
@@ -470,49 +449,15 @@ function AppearanceEditor({
       {tab === "landing" && (
         <>
           <SettingsCard
-            title={t("admin.appearance.blocks.title")}
-            description={t("admin.appearance.blocks.hint")}
+            title={t("admin.appearance.template.title")}
+            description={t("admin.appearance.template.hint")}
           >
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {LANDING_BLOCKS.map((name) => (
-                <ToggleRow
-                  key={name}
-                  label={t(`admin.appearance.block.${name}`)}
-                  checked={draft.blocks[name] !== false}
-                  onCheckedChange={(on) => setBlock(name, on)}
-                />
-              ))}
-            </div>
-          </SettingsCard>
-
-          <SettingsCard
-            title={t("admin.appearance.hero.title")}
-            description={t("admin.appearance.hero.hint")}
-          >
-            <FieldGrid>
-              {HERO_FIELDS.map((field) =>
-                field.key === "subtitle" ? (
-                  <TextAreaField
-                    key={field.key}
-                    span="full"
-                    rows={3}
-                    label={t(field.labelKey)}
-                    value={draft.hero[field.key] ?? ""}
-                    placeholder={t(field.fallbackKey)}
-                    onChange={(v) => setEntry("hero", field.key, v)}
-                  />
-                ) : (
-                  <TextField
-                    key={field.key}
-                    span={field.key === "title" ? "full" : undefined}
-                    label={t(field.labelKey)}
-                    value={draft.hero[field.key] ?? ""}
-                    placeholder={t(field.fallbackKey)}
-                    onChange={(v) => setEntry("hero", field.key, v)}
-                  />
-                )
-              )}
-            </FieldGrid>
+            <Button asChild variant="outline" className="w-fit">
+              <Link href="/admin/template">
+                <LayoutGrid className="size-4" />
+                {t("admin.appearance.template.open")}
+              </Link>
+            </Button>
           </SettingsCard>
 
           <SettingsCard
@@ -527,7 +472,7 @@ function AppearanceEditor({
                   label={field.label || t(field.labelKey)}
                   value={draft.links[field.key] ?? ""}
                   placeholder={field.placeholder}
-                  onChange={(v) => setEntry("links", field.key, v)}
+                  onChange={(v) => setLink(field.key, v)}
                 />
               ))}
             </FieldGrid>

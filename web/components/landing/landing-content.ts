@@ -142,15 +142,6 @@ export const PANEL_FILES = [
   { name: "ops.json", size: "212 B", dir: false },
 ] as const;
 
-export function landingNav(t: TranslateFn) {
-  return [
-    { label: t("landing.nav.pricing"), href: "#pricing" },
-    { label: t("landing.nav.games"), href: "/games" },
-    { label: t("landing.nav.features"), href: "/features" },
-    { label: t("landing.nav.faq"), href: "#faq" },
-  ];
-}
-
 export function landingSteps(t: TranslateFn) {
   return [1, 2, 3].map((n) => ({
     n: `0${n}`,
@@ -219,41 +210,4 @@ export function landingPricing(t: TranslateFn) {
     audience: t(`landing.pricing.${plan.id}_audience`),
     specs: [1, 2, 3, 4, 5].map((n) => t(`landing.pricing.${plan.id}_spec${n}`)),
   }));
-}
-
-export function landingFooterCols(t: TranslateFn) {
-  return [
-    {
-      title: t("landing.footer.product"),
-      links: [
-        { label: t("landing.nav.pricing"), href: "#pricing" },
-        { label: t("landing.nav.games"), href: "/games" },
-        { label: t("landing.nav.features"), href: "/features" },
-        { label: t("landing.footer.status"), href: "/status" },
-      ],
-    },
-    {
-      title: t("landing.footer.company"),
-      links: [
-        { label: t("landing.footer.about"), href: "/about" },
-        { label: t("landing.footer.blog"), href: "/blog" },
-        { label: t("landing.footer.support"), href: "/support" },
-      ],
-    },
-    {
-      title: t("landing.footer.resources"),
-      links: [
-        { label: t("landing.footer.kb"), href: "/kb" },
-        { label: t("landing.nav.faq"), href: "#faq" },
-        { label: t("landing.footer.api"), href: "/kb" },
-      ],
-    },
-    {
-      title: t("landing.footer.account"),
-      links: [
-        { label: t("landing.footer.sign_in"), href: "/login" },
-        { label: t("landing.footer.register"), href: "/register" },
-      ],
-    },
-  ];
 }

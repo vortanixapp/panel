@@ -6,7 +6,6 @@ import { AnimatePresence, m, useReducedMotionConfig } from "motion/react";
 import { ArrowRight, Check, Copy } from "lucide-react";
 import { HERO_GAMES } from "@/components/landing/landing-content";
 import { EASE_OUT, Magnetic, WordsReveal } from "@/components/landing/motion";
-import { useBrand } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -16,7 +15,6 @@ const AUTOPLAY_DELAY = 5200;
 
 export function HeroSection({ showPricingLink }: { showPricingLink: boolean }) {
   const t = useT();
-  const { hero } = useBrand();
 
   const scrollToPricing = () =>
     document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -35,11 +33,11 @@ export function HeroSection({ showPricingLink }: { showPricingLink: boolean }) {
               <span className="absolute inset-0 animate-ping rounded-full bg-emerald-500/60 [animation-duration:2.4s]" />
               <span className="relative size-2 rounded-full bg-emerald-500" />
             </span>
-            {hero.badge || t("landing.hero.badge")}
+            {t("landing.hero.badge")}
           </m.div>
 
           <h1 className="vx-display mt-6 text-[2.35rem] leading-[1.04] font-semibold tracking-[-0.035em] text-balance sm:text-[3.1rem] lg:text-[3.7rem]">
-            <WordsReveal immediate delay={0.1} text={hero.title || t("landing.hero.title")} />
+            <WordsReveal immediate delay={0.1} text={t("landing.hero.title")} />
           </h1>
 
           <m.p
@@ -48,7 +46,7 @@ export function HeroSection({ showPricingLink }: { showPricingLink: boolean }) {
             transition={{ duration: 0.8, ease: EASE_OUT, delay: 0.45 }}
             className="mt-6 max-w-[540px] text-[17px] leading-[1.6] text-muted-foreground"
           >
-            {hero.subtitle || t("landing.hero.subtitle")}
+            {t("landing.hero.subtitle")}
           </m.p>
 
           <m.div
@@ -62,7 +60,7 @@ export function HeroSection({ showPricingLink }: { showPricingLink: boolean }) {
                 href="/register"
                 className="group inline-flex items-center gap-3 rounded-full bg-primary py-3.5 pr-3.5 pl-6 text-[15px] font-semibold text-primary-foreground transition-[transform,opacity] active:scale-[0.97]"
               >
-                {hero.cta_primary || t("landing.hero.cta_primary")}
+                {t("landing.hero.cta_primary")}
                 <span className="flex size-8 items-center justify-center rounded-full bg-primary-foreground/10 transition-transform duration-300 group-hover:translate-x-0.5">
                   <ArrowRight className="size-4" />
                 </span>
@@ -74,7 +72,7 @@ export function HeroSection({ showPricingLink }: { showPricingLink: boolean }) {
                 onClick={scrollToPricing}
                 className="group relative text-[15px] font-medium text-foreground"
               >
-                {hero.cta_secondary || t("landing.hero.cta_secondary")}
+                {t("landing.hero.cta_secondary")}
                 <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-100 bg-foreground/40 transition-transform duration-300 group-hover:scale-x-0" />
                 <span className="absolute -bottom-1 left-0 h-px w-full origin-right scale-x-0 bg-foreground transition-transform delay-150 duration-300 group-hover:origin-left group-hover:scale-x-100" />
               </button>

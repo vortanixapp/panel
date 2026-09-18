@@ -16,7 +16,7 @@ import { adminSearch } from "@/lib/api";
 
 import { useTheme } from "@/context/theme-provider";
 import { useServers } from "@/hooks/use-queries";
-import { getNavGroupsForVariant } from "@/lib/nav";
+import { useSidebarGroups } from "@/hooks/use-site-menu";
 import {
   isAdminSection,
   serverPath,
@@ -46,10 +46,7 @@ export function CommandMenu() {
   const variant = isAdminSection(pathname) ? "admin" : "user";
   const basePath = variantToBasePath(variant);
 
-  const navGroups = React.useMemo(
-    () => getNavGroupsForVariant(variant, t),
-    [variant, t]
-  );
+  const navGroups = useSidebarGroups(variant);
 
   const { data: hits } = useQuery({
     queryKey: ["admin-search", query],
@@ -99,7 +96,7 @@ export function CommandMenu() {
             </CommandGroup>
           )}
           {navGroups.map((group) => (
-            <CommandGroup key={group.title} heading={group.title}>
+            <CommandGroup key={group.id ?? group.title} heading={group.title}>
               {group.items.map((navItem, i) => {
                 if ("url" in navItem && navItem.url)
                   return (

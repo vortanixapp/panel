@@ -23,7 +23,6 @@ export type PublicAppearance = {
   font_panel: AppearanceFont;
   font_landing: AppearanceFont;
   custom_css: string;
-  hero: Record<string, string>;
   links: Record<string, string>;
 };
 
@@ -34,7 +33,6 @@ export type BrandingPayload = {
   logo_dark_url?: string;
   icon_url?: string;
   primary_color: string;
-  blocks?: Record<string, boolean>;
   user_menu_variant?: "default" | "screenshot";
   appearance?: PublicAppearance;
   whmcs?: {

@@ -7,7 +7,10 @@ import { FontProvider } from "@/context/font-provider";
 import { DirectionProvider } from "@/context/direction-provider";
 import { BrandProvider } from "@/context/brand-provider";
 import { LocaleProvider } from "@/context/locale-provider";
+import { SiteProvider } from "@/context/site-provider";
+import { EditorBridgeLoader } from "@/components/site/editor-bridge/bridge-loader";
 import type { I18nPayload } from "@/lib/i18n";
+import type { SiteDocument } from "@/lib/site/types";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthSessionProvider } from "@/components/auth/auth-session-provider";
 import { CookieBanner } from "@/components/legal/cookie-banner";
@@ -17,10 +20,12 @@ export function Providers({
   children,
   i18n,
   hasLocaleCookie,
+  site,
 }: {
   children: React.ReactNode;
   i18n: I18nPayload;
   hasLocaleCookie: boolean;
+  site: SiteDocument;
 }) {
   const [queryClient] = useState(
     () =>
@@ -42,10 +47,13 @@ export function Providers({
           <FontProvider>
             <DirectionProvider>
               <BrandProvider>
-                <VxRouteProgress />
-                <AuthSessionProvider>{children}</AuthSessionProvider>
-                <Toaster richColors closeButton />
-                <CookieBanner />
+                <SiteProvider initial={site}>
+                  <EditorBridgeLoader />
+                  <VxRouteProgress />
+                  <AuthSessionProvider>{children}</AuthSessionProvider>
+                  <Toaster richColors closeButton />
+                  <CookieBanner />
+                </SiteProvider>
               </BrandProvider>
             </DirectionProvider>
           </FontProvider>

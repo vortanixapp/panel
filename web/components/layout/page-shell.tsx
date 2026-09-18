@@ -8,6 +8,7 @@ import { Search } from "@/components/search";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { LanguageSwitch } from "@/components/language-switch";
 import { ThemeSwitch } from "@/components/theme-switch";
+import { PageSlot } from "@/components/site/page-slot";
 import type { PanelVariant } from "@/lib/panel-paths";
 
 export function PageShell({
@@ -36,8 +37,10 @@ export function PageShell({
         <ProfileDropdown />
       </Header>
       <Main fixed={fixed} fluid={fluid}>
+        <PageSlot position="top" />
         {title ? <h1 className="mb-6 text-2xl font-semibold tracking-tight">{title}</h1> : null}
         {children}
+        <PageSlot position="bottom" />
       </Main>
     </>
   );

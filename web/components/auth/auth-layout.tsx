@@ -9,6 +9,8 @@ import { BrandLogo } from "@/components/brand-logo";
 import { landingFontVariables } from "@/components/landing/fonts";
 import { HERO_GAMES } from "@/components/landing/landing-content";
 import { EASE_OUT, MotionRoot, WordsReveal } from "@/components/landing/motion";
+import { EditableSection, useSectionHidden } from "@/components/site/editable-section";
+import { PageSlot } from "@/components/site/page-slot";
 import { useBrand } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import { cn } from "@/lib/utils";
@@ -35,11 +37,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { name } = useBrand();
   const scene = SCENES[pathname] ?? "login";
+  const showcaseHidden = useSectionHidden("auth.showcase");
 
   return (
     <MotionRoot>
       <div className={cn(landingFontVariables, "font-landing min-h-screen bg-background text-foreground antialiased")}>
-        <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
+        <div className={cn("grid min-h-screen", !showcaseHidden && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]")}>
           <div className="flex min-h-screen min-w-0 flex-col px-5 sm:px-10">
             <header className="flex h-20 shrink-0 items-center justify-between gap-4">
               <Link href="/" aria-label={t("landing.header.home_aria")} className="flex items-center">
@@ -62,7 +65,9 @@ export function AuthLayout({ children }: { children: ReactNode }) {
                 transition={{ duration: 0.6, ease: EASE_OUT }}
                 className="w-full max-w-[420px]"
               >
+                <PageSlot position="top" />
                 {children}
+                <PageSlot position="bottom" />
               </m.div>
             </main>
 
@@ -71,9 +76,11 @@ export function AuthLayout({ children }: { children: ReactNode }) {
             </footer>
           </div>
 
-          <aside className="hidden p-3 lg:block">
-            <AuthScene scene={scene} />
-          </aside>
+          <EditableSection id="auth.showcase">
+            <aside className="hidden p-3 lg:block">
+              <AuthScene scene={scene} />
+            </aside>
+          </EditableSection>
         </div>
       </div>
     </MotionRoot>

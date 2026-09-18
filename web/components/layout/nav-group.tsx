@@ -37,16 +37,22 @@ import {
   type NavGroup as NavGroupProps,
 } from "./types";
 
+function linkTarget(item: { url: string; newTab?: boolean }) {
+  return item.newTab || /^(https?:)?\/\//i.test(item.url)
+    ? { target: "_blank", rel: "noopener noreferrer" }
+    : {};
+}
+
 export function NavGroup({ title, items }: NavGroupProps) {
   const pathname = usePathname();
   const { state, isMobile } = useSidebar();
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+      {title ? <SidebarGroupLabel>{title}</SidebarGroupLabel> : null}
       <SidebarMenu>
         {items.map((item) => {
-          const key = `${item.title}-${"url" in item ? item.url : "group"}`;
+          const key = item.id ?? `${item.title}-${"url" in item ? item.url : "group"}`;
 
           if (!item.items)
             return (
@@ -111,7 +117,7 @@ function SidebarMenuLink({
         tooltip={item.title}
         className={ITEM_MOTION}
       >
-        <Link href={item.url} onClick={() => setOpenMobile(false)}>
+        <Link href={item.url} {...linkTarget(item)} onClick={() => setOpenMobile(false)}>
           <ActiveGlow active={active} />
           {item.icon && <item.icon className="relative" />}
           <span className="relative">{item.title}</span>
@@ -151,7 +157,7 @@ function SidebarMenuCollapsible({
             {item.items.map((subItem) => {
               const active = checkIsActive(pathname, subItem);
               return (
-                <SidebarMenuSubItem key={subItem.title}>
+                <SidebarMenuSubItem key={subItem.id ?? subItem.title}>
                   <SidebarMenuSubButton
                     asChild
                     isActive={active}
@@ -159,6 +165,7 @@ function SidebarMenuCollapsible({
                   >
                     <Link
                       href={subItem.url}
+                      {...linkTarget(subItem)}
                       onClick={() => setOpenMobile(false)}
                     >
                       <ActiveGlow active={active} />
@@ -204,9 +211,10 @@ function SidebarMenuCollapsedDropdown({
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           {item.items.map((sub) => (
-            <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>
+            <DropdownMenuItem key={sub.id ?? `${sub.title}-${sub.url}`} asChild>
               <Link
                 href={sub.url}
+                {...linkTarget(sub)}
                 className={
                   checkIsActive(pathname, sub) ? "bg-secondary" : undefined
                 }

@@ -34,6 +34,7 @@ export const nav = {
   "nav.admin.mailings": "Mailings",
   "nav.admin.settings": "Settings",
   "nav.admin.appearance": "Branding",
+  "nav.admin.template": "Site template",
   "nav.admin.billing": "Billing",
   "nav.admin.accounting": "Accounting",
   "nav.admin.legal": "Legal documents",

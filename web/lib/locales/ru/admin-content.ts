@@ -662,6 +662,7 @@ export const adminContent = {
   "admin.groups.perm.admin.hosting.read": "Веб-хостинг (просмотр)",
   "admin.groups.perm.admin.hosting.write": "Веб-хостинг (управление)",
   "admin.groups.perm.admin.whmcs.write": "WHMCS (подключение модуля биллинга)",
+  "admin.groups.perm.admin.template.write": "Шаблон сайта и меню (изменение)",
   "admin.users.staff_group": "Набор прав",
   "admin.users.staff_group_base": "Базовые права тех поддержки",
   "admin.users.staff_group_hint": "Права групп настраиваются в разделе «Группы»",

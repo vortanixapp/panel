@@ -28,8 +28,6 @@ var (
 	appearanceRadii    = []string{"standard", "strict", "soft"}
 	appearanceThemes   = []string{"dark", "light", "system"}
 	appearanceMenus    = []string{"default", "screenshot"}
-	landingBlockNames  = []string{"hero", "games", "steps", "hardware", "panel", "locations", "faq", "pricing", "cta"}
-	landingHeroFields  = []string{"badge", "title", "subtitle", "cta_primary", "cta_secondary"}
 	landingLinkFields  = []string{"telegram", "discord", "vk", "support", "email", "offer", "privacy"}
 	appearanceAssets   = map[string]string{
 		"logo":      "app.branding.logo",
@@ -58,8 +56,6 @@ type appearanceSettings struct {
 	FontPanel   string            `json:"font_panel"`
 	FontLanding string            `json:"font_landing"`
 	CustomCSS   string            `json:"custom_css"`
-	Blocks      map[string]bool   `json:"blocks"`
-	Hero        map[string]string `json:"hero"`
 	Links       map[string]string `json:"links"`
 }
 
@@ -106,18 +102,7 @@ func appearanceFromSettings(s map[string]string) appearanceSettings {
 		FontPanel:   fontPanel,
 		FontLanding: fontLanding,
 		CustomCSS:   s["appearance.custom_css"],
-		Blocks:      map[string]bool{},
-		Hero:        map[string]string{},
 		Links:       map[string]string{},
-	}
-	stored := jsonObjectOfBools(s["app.site.template.blocks"])
-	for _, name := range landingBlockNames {
-		v, ok := stored[name]
-		a.Blocks[name] = !ok || v
-	}
-	hero := jsonObjectOfStrings(s["appearance.landing.hero"])
-	for _, f := range landingHeroFields {
-		a.Hero[f] = hero[f]
 	}
 	for _, f := range landingLinkFields {
 		a.Links[f] = strings.TrimSpace(s["app.links."+f])
@@ -155,11 +140,6 @@ func normalizeAppearance(a *appearanceSettings) string {
 	}
 	if len(a.CustomCSS) > appearanceCSSLimit {
 		return "свой CSS не больше 64 КБ"
-	}
-	for _, f := range landingHeroFields {
-		if utf8.RuneCountInString(strings.TrimSpace(a.Hero[f])) > appearanceTextLimit {
-			return "тексты лендинга не длиннее 300 символов"
-		}
 	}
 	for _, f := range landingLinkFields {
 		v := strings.TrimSpace(a.Links[f])
@@ -227,23 +207,6 @@ func (h *Handler) UpdateAdminAppearance(w http.ResponseWriter, r *http.Request) 
 		"appearance.font.landing":             body.FontLanding,
 		"appearance.custom_css":               body.CustomCSS,
 	}
-
-	blocks := map[string]bool{}
-	for _, name := range landingBlockNames {
-		v, ok := body.Blocks[name]
-		blocks[name] = !ok || v
-	}
-	rawBlocks, _ := json.Marshal(blocks)
-	values["app.site.template.blocks"] = string(rawBlocks)
-
-	hero := map[string]string{}
-	for _, f := range landingHeroFields {
-		if v := strings.TrimSpace(body.Hero[f]); v != "" {
-			hero[f] = v
-		}
-	}
-	rawHero, _ := json.Marshal(hero)
-	values["appearance.landing.hero"] = string(rawHero)
 
 	for _, f := range landingLinkFields {
 		values["app.links."+f] = strings.TrimSpace(body.Links[f])

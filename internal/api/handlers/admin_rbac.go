@@ -72,6 +72,7 @@ func rbacAllPermissionKeys() []string {
 		"admin.hosting.read",
 		"admin.hosting.write",
 		"admin.whmcs.write",
+		"admin.template.write",
 	}
 }
 
@@ -124,6 +125,7 @@ func rbacPermissionLabels() map[string]string {
 		"admin.hosting.read":            "Веб-хостинг (просмотр)",
 		"admin.hosting.write":           "Веб-хостинг (управление)",
 		"admin.whmcs.write":             "WHMCS (подключение модуля биллинга)",
+		"admin.template.write":          "Шаблон сайта и меню (изменение)",
 	}
 }
 
@@ -709,6 +711,10 @@ func rbacResolveAdminPermission(path, method string) (permission string, bypass 
 		return readWrite("admin.hosting.read", "admin.hosting.write")
 	case "whmcs":
 		return "admin.whmcs.write", false
+	case "template":
+		return "admin.template.write", false
+	case "site-menu":
+		return "", true
 	default:
 		return "", false
 	}

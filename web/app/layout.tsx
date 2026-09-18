@@ -11,6 +11,7 @@ import {
 } from "next/font/google";
 import { LOCALE_COOKIE_NAME } from "@/lib/i18n";
 import { loadServerI18n } from "@/lib/i18n-server";
+import { loadServerSite } from "@/lib/site-server";
 import { DEFAULT_BRAND_MARK_URL } from "@/lib/brand";
 import { loadServerBrandName } from "@/lib/branding-server";
 import { Providers } from "@/components/providers";
@@ -88,7 +89,7 @@ export default async function RootLayout({
 }) {
   const store = await cookies();
   const cookieLocale = store.get(LOCALE_COOKIE_NAME)?.value;
-  const i18n = await loadServerI18n(cookieLocale);
+  const [i18n, site] = await Promise.all([loadServerI18n(cookieLocale), loadServerSite()]);
 
   return (
     <html lang={i18n.locale} className="dark" suppressHydrationWarning>
@@ -107,7 +108,7 @@ export default async function RootLayout({
       <body
         className={`${inter.variable} ${outfit.variable} ${dmMono.variable} ${manrope.variable} ${rubik.variable} ${montserrat.variable} ${ibmPlexSans.variable} font-sans`}
       >
-        <Providers i18n={i18n} hasLocaleCookie={Boolean(cookieLocale)}>
+        <Providers i18n={i18n} hasLocaleCookie={Boolean(cookieLocale)} site={site}>
           <NavigationProgress />
           {children}
         </Providers>

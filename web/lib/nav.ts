@@ -1,53 +1,52 @@
-import { adminSidebarNavGroups } from "@/components/layout/data/sidebar-data-admin";
-import { userSidebarNavGroups } from "@/components/layout/data/sidebar-data-user";
 import type { NavGroup, NavItem } from "@/components/layout/types";
-import type { TranslateFn } from "@/lib/i18n";
 import type { PanelVariant } from "@/lib/panel-paths";
+import { siteIcon } from "@/lib/site/icons";
+import { resolveMenu, type ResolveContext, type ResolvedItem } from "@/lib/site/menu";
+import type { SiteDocument } from "@/lib/site/types";
 import { isNavUrlVisible } from "@/lib/user-preferences";
 
-function filterNavItem(item: NavItem): NavItem | null {
-  if ("url" in item && item.url) {
-    if (!isNavUrlVisible(item.url)) return null;
-    return item;
+function toNavItem(item: ResolvedItem): NavItem | null {
+  const icon = siteIcon(item.icon);
+  if (item.items.length > 0) {
+    const items = item.items
+      .filter((sub) => sub.url && isNavUrlVisible(sub.url))
+      .map((sub) => ({
+        id: sub.id,
+        title: sub.title,
+        url: sub.url,
+        icon: siteIcon(sub.icon),
+        badge: sub.badge,
+        newTab: sub.newTab,
+      }));
+    if (items.length === 0) return null;
+    return { id: item.id, title: item.title, icon, badge: item.badge, items };
   }
-
-  if (item.items) {
-    const subItems = item.items.filter((sub) => isNavUrlVisible(sub.url));
-    if (subItems.length === 0) return null;
-    return { ...item, items: subItems };
-  }
-
-  return item;
+  if (!item.url || !isNavUrlVisible(item.url)) return null;
+  return { id: item.id, title: item.title, url: item.url, icon, badge: item.badge, newTab: item.newTab };
 }
 
-function filterNavGroups(groups: NavGroup[]): NavGroup[] {
-  return groups
-    .map((group) => {
-      const items = group.items
-        .map((item) => filterNavItem(item))
-        .filter((item): item is NavItem => item !== null);
-      if (items.length === 0) return null;
-      return { ...group, items };
-    })
-    .filter((group): group is NavGroup => group !== null);
-}
-
-export function getUserNavGroups(t: TranslateFn): NavGroup[] {
-  return filterNavGroups(userSidebarNavGroups(t));
-}
-
-export function getAdminNavGroups(t: TranslateFn): NavGroup[] {
-  return filterNavGroups(adminSidebarNavGroups(t));
-}
-
-export function getNavGroupsForVariant(
+export function sidebarGroups(
   variant: PanelVariant,
-  t: TranslateFn
+  doc: SiteDocument | undefined,
+  ctx: ResolveContext
 ): NavGroup[] {
-  return variant === "admin" ? getAdminNavGroups(t) : getUserNavGroups(t);
-}
-
-export function getVisibleNavGroups(role: string, t: TranslateFn): NavGroup[] {
-  void role;
-  return getUserNavGroups(t);
+  const groups: NavGroup[] = [];
+  let loose: NavGroup | null = null;
+  const menu = resolveMenu(variant === "admin" ? "admin_sidebar" : "user_sidebar", doc, ctx);
+  for (const item of menu) {
+    if (item.kind === "group") {
+      loose = null;
+      const items = item.items.map(toNavItem).filter((nav): nav is NavItem => nav !== null);
+      if (items.length > 0) groups.push({ id: item.id, title: item.title, items });
+      continue;
+    }
+    const nav = toNavItem(item);
+    if (!nav) continue;
+    if (!loose) {
+      loose = { id: `${item.id}-loose`, title: "", items: [] };
+      groups.push(loose);
+    }
+    loose.items.push(nav);
+  }
+  return groups;
 }

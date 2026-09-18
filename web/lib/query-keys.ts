@@ -1,5 +1,8 @@
 export const queryKeys = {
   me: ["me"] as const,
+  adminSiteMenu: ["admin-site-menu"] as const,
+  adminTemplate: ["admin-template"] as const,
+  adminTemplateVersions: ["admin-template-versions"] as const,
   tenantStatus: ["tenant-status"] as const,
   users: ["users"] as const,
   nodes: ["nodes"] as const,

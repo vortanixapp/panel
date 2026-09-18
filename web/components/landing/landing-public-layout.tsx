@@ -4,27 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, m, useMotionValueEvent, useScroll } from "motion/react";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { landingFontVariables } from "@/components/landing/fonts";
-import { landingFooterCols, landingNav } from "@/components/landing/landing-content";
+import { SiteFooterColumns, SiteHeaderNav, SiteMobileNav } from "@/components/landing/site-nav";
 import { EASE_OUT, MotionRoot } from "@/components/landing/motion";
 import { useBrand } from "@/context/brand-provider";
-import { hasSession } from "@/lib/api";
+import { useViewer } from "@/hooks/use-site";
+import { useSiteMenu } from "@/hooks/use-site-menu";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-
-const ANCHOR_BLOCKS: Record<string, string> = {
-  "#pricing": "pricing",
-  "#faq": "faq",
-  "#games": "games",
-};
-
-function anchorVisible(blocks: Record<string, boolean>, href: string) {
-  const block = ANCHOR_BLOCKS[href];
-  return !block || blocks[block] !== false;
-}
 
 function footerContacts(t: TranslateFn, links: Record<string, string>) {
   return [
@@ -49,13 +39,13 @@ function footerContacts(t: TranslateFn, links: Record<string, string>) {
 export function LandingPublicLayout({ children }: { children: ReactNode }) {
   const t = useT();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false);
+  const { loggedIn } = useViewer();
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const pathname = usePathname();
   const { scrollY } = useScroll();
-  const { name: appName, templateBlocks: blocks, links, legal } = useBrand();
+  const { name: appName, links, legal } = useBrand();
   const publishedDocs = new Set((legal?.documents ?? []).map((doc) => doc.kind));
   const legalLinks = [
     { key: "offer", label: t("landing.footer.offer"), href: links.offer || (publishedDocs.has("offer") ? "/legal/offer" : "") },
@@ -78,18 +68,9 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
         .join(", ")
     : "";
 
-  const navItems = landingNav(t).filter((item) => anchorVisible(blocks, item.href));
-  const footerCols = landingFooterCols(t)
-    .map((col) => ({
-      ...col,
-      links: col.links.filter((link) => anchorVisible(blocks, link.href)),
-    }))
-    .filter((col) => col.links.length > 0);
+  const navItems = useSiteMenu("site_header");
+  const footerItems = useSiteMenu("site_footer");
   const contacts = footerContacts(t, links);
-
-  useEffect(() => {
-    setLoggedIn(hasSession());
-  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -171,52 +152,13 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
               <BrandLogo size="sm" className="h-8 max-w-[176px]" priority />
             </Link>
 
-            <nav
-              className="hidden flex-1 items-center gap-0.5 lg:flex"
-              onMouseLeave={() => setHovered(null)}
-            >
-              {navItems.map((item) => {
-                const active = !item.href.startsWith("#") && pathname === item.href;
-                const content = (
-                  <>
-                    {hovered === item.href && (
-                      <m.span
-                        layoutId="landing-nav-hover"
-                        className="absolute inset-0 rounded-full bg-accent"
-                        transition={{ type: "spring", stiffness: 500, damping: 38 }}
-                      />
-                    )}
-                    <span className="relative">{item.label}</span>
-                  </>
-                );
-                const className = cn(
-                  "relative rounded-full px-3.5 py-2 text-[14px] font-medium whitespace-nowrap transition-colors",
-                  active || hovered === item.href ? "text-foreground" : "text-muted-foreground"
-                );
-                return item.href.startsWith("#") ? (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onMouseEnter={() => setHovered(item.href)}
-                    onFocus={() => setHovered(item.href)}
-                    onClick={() => handleNavClick(item.href)}
-                    className={className}
-                  >
-                    {content}
-                  </button>
-                ) : (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    onMouseEnter={() => setHovered(item.href)}
-                    onFocus={() => setHovered(item.href)}
-                    className={className}
-                  >
-                    {content}
-                  </Link>
-                );
-              })}
-            </nav>
+            <SiteHeaderNav
+              items={navItems}
+              pathname={pathname}
+              hovered={hovered}
+              onHover={setHovered}
+              onNavigate={handleNavClick}
+            />
 
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <Link
@@ -277,31 +219,7 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
                   }}
                   className="flex min-h-full flex-col px-5 pt-6 pb-10 sm:px-8"
                 >
-                  {navItems.map((item) => {
-                    const className =
-                      "vx-display flex w-full items-center justify-between border-b border-border py-4 text-left text-[1.7rem] font-semibold tracking-[-0.03em]";
-                    return (
-                      <m.div
-                        key={item.label}
-                        variants={{
-                          hidden: { opacity: 0, y: 18 },
-                          shown: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE_OUT } },
-                        }}
-                      >
-                        {item.href.startsWith("#") ? (
-                          <button type="button" onClick={() => handleNavClick(item.href)} className={className}>
-                            {item.label}
-                            <ArrowRight className="size-5 text-muted-foreground" />
-                          </button>
-                        ) : (
-                          <Link href={item.href} onClick={() => setMobileOpen(false)} className={className}>
-                            {item.label}
-                            <ArrowRight className="size-5 text-muted-foreground" />
-                          </Link>
-                        )}
-                      </m.div>
-                    );
-                  })}
+                  <SiteMobileNav items={navItems} onNavigate={handleNavClick} />
                   <m.div
                     variants={{
                       hidden: { opacity: 0, y: 18 },
@@ -370,36 +288,7 @@ export function LandingPublicLayout({ children }: { children: ReactNode }) {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
-                {footerCols.map((col) => (
-                  <div key={col.title}>
-                    <div className="font-mono text-[12px] text-muted-foreground">{col.title}</div>
-                    <ul className="mt-4 flex flex-col gap-2.5">
-                      {col.links.map((link) => (
-                        <li key={link.label}>
-                          {link.href.startsWith("#") ? (
-                            <button
-                              type="button"
-                              onClick={() => handleNavClick(link.href)}
-                              className="text-left text-[14.5px] text-foreground/80 transition-colors hover:text-foreground"
-                            >
-                              {link.label}
-                            </button>
-                          ) : (
-                            <Link
-                              href={link.href}
-                              className="group inline-flex items-center gap-1 text-[14.5px] text-foreground/80 transition-colors hover:text-foreground"
-                            >
-                              {link.label}
-                              <ArrowUpRight className="size-3.5 -translate-x-1 opacity-0 transition-[opacity,transform] duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
-                            </Link>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+              <SiteFooterColumns items={footerItems} onNavigate={handleNavClick} />
             </div>
 
             <div className="mt-16 flex flex-col gap-4 border-t border-border py-6 text-[12.5px] text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">

@@ -13,6 +13,7 @@ import { notifications } from "./notifications";
 import { servers } from "./servers";
 import { settings } from "./settings";
 import { support } from "./support";
+import { template } from "./template";
 
 export const RU = {
   ...common,
@@ -30,4 +31,5 @@ export const RU = {
   ...dashboard,
   ...adminInfra,
   ...adminContent,
+  ...template,
 };

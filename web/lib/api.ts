@@ -176,6 +176,24 @@ export function authHeaders(extra: Record<string, string> = {}): Record<string, 
   return { ...(csrf ? { "X-CSRF-Token": csrf } : {}), ...extra };
 }
 
+export class ApiError extends Error {
+  status: number;
+  data: Record<string, unknown>;
+
+  constructor(message: string, status: number, data: Record<string, unknown>) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
+let requestBodyFilter: ((body: string) => string) | null = null;
+
+export function setRequestBodyFilter(filter: ((body: string) => string) | null) {
+  requestBodyFilter = filter;
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -189,8 +207,12 @@ export async function apiFetch<T>(
   };
   const csrf = csrfToken();
   if (csrf) headers["X-CSRF-Token"] = csrf;
+  const body =
+    requestBodyFilter && typeof options.body === "string"
+      ? requestBodyFilter(options.body)
+      : options.body;
 
-  const res = await fetch(url, { ...options, headers, credentials: "include" });
+  const res = await fetch(url, { ...options, body, headers, credentials: "include" });
   let data: { error?: string; message?: string } = {};
   const text = await res.text();
   if (text) {
@@ -211,7 +233,11 @@ export async function apiFetch<T>(
     }
   }
   if (!res.ok) {
-    throw new Error(data.error ?? data.message ?? "Request failed");
+    throw new ApiError(
+      data.error ?? data.message ?? "Request failed",
+      res.status,
+      data as Record<string, unknown>
+    );
   }
   return data as T;
 }
@@ -4290,8 +4316,6 @@ export type AdminAppearance = {
   font_panel: AppearanceFont;
   font_landing: AppearanceFont;
   custom_css: string;
-  blocks: Record<string, boolean>;
-  hero: Record<string, string>;
   links: Record<string, string>;
 };
 

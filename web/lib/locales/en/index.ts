@@ -13,6 +13,7 @@ import { notifications } from "./notifications";
 import { servers } from "./servers";
 import { settings } from "./settings";
 import { support } from "./support";
+import { template } from "./template";
 
 export const EN = {
   ...common,
@@ -30,4 +31,5 @@ export const EN = {
   ...dashboard,
   ...adminInfra,
   ...adminContent,
+  ...template,
 };

@@ -667,6 +667,7 @@ export const adminContent = {
   "admin.groups.perm.admin.hosting.read": "Web hosting (view)",
   "admin.groups.perm.admin.hosting.write": "Web hosting (manage)",
   "admin.groups.perm.admin.whmcs.write": "WHMCS (billing module connection)",
+  "admin.groups.perm.admin.template.write": "Site template and menus (edit)",
   "admin.users.staff_group": "Permission set",
   "admin.users.staff_group_base": "Base support permissions",
   "admin.users.staff_group_hint": "Group permissions are configured in the Groups section",

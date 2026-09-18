@@ -20,6 +20,7 @@ func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/health", h.Health)
 	r.Get("/v1/branding", h.GetBranding)
+	r.Get("/v1/site", h.PublicSite)
 	r.Get("/v1/i18n", h.PublicI18n)
 	r.Get("/v1/legal", h.PublicLegal)
 	r.Get("/v1/legal/{kind}", h.PublicLegalDocument)

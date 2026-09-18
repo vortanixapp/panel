@@ -1,5 +1,6 @@
 "use client";
 
+import { isEditorFrame } from "@/lib/site/frame";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -65,7 +66,7 @@ export function LoginForm() {
   });
 
   useEffect(() => {
-    if (!addingAccount && hasSession()) router.replace("/dashboard");
+    if (!addingAccount && hasSession() && !isEditorFrame()) router.replace("/dashboard");
   }, [router, addingAccount]);
 
   useEffect(() => {
