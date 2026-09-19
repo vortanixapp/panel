@@ -105,3 +105,28 @@ BuildTools»: название версии уходит в `--rev` (`26.2`, `1.
 
 minecraft.net не отдаёт файлы клиентам со стандартным User-Agent curl и Go,
 поэтому и агент, и образ представляются `Mozilla/5.0 (compatible; Vortanix)`.
+
+### PocketMine-MP
+
+Образ `pocketmine` запускает PocketMine-MP — сервер Bedrock на PHP с
+плагинами в `.phar`. Без файлов в томе он сам ставит ядро из последнего
+релиза `pmmp/PocketMine-MP` и PHP той версии, что указана в его
+`build_info.json`, из `pmmp/PHP-Binaries` (`pm5-php-<версия>-latest`). При
+каждом запуске поставленные образом ядро и PHP обновляются до актуальных.
+Версии лежат в `/data/.vtx/pocketmine_version` и `/data/.vtx/pocketmine_php`
+вместе с контрольной суммой: файл, заменённый вручную, образ больше не трогает.
+
+Свой PHP и ядро кладутся архивом версии или через файловый менеджер:
+
+- PHP — `bin/php7/bin/php` (так раскладывает pmmp, в том числе PHP 8),
+  `bin/<папка>/bin/php` или `bin/php`, только сборка Linux x86_64; права на
+  запуск и `extension_dir` в `php.ini` образ выставляет сам;
+- ядро — `PocketMine-MP.phar`, любой `*.phar` в корне или исходники `src/`
+  вместе с `vendor/`.
+
+PHP 7 и 8.0 для старых ядер pmmp больше не собирает, их нужно класть самим.
+Версию PHP для автоматической установки задаёт `/data/.vtx/php` (`8.1`–`8.4`)
+или переменная `PHP_VERSION`, а `PHP_DOWNLOAD_URL` и `POCKETMINE_FILE` меняют
+источник PHP и файл ядра. `server-port` и `server-portv6` (порт + 1)
+перезаписываются при запуске. IPv6 при первом запуске выключается: в сети
+Docker без IPv6 PocketMine с ним не стартует.

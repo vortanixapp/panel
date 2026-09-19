@@ -82,7 +82,7 @@ function formatBackupSize(bytes: number): string {
   });
 }
 
-const MC_SLUGS = ["minecraft", "mcjava", "mcpaper", "mcspigot", "mcforge", "mcfabric", "mcbedrock"];
+const MC_SLUGS = ["minecraft", "mcjava", "mcpaper", "mcspigot", "mcforge", "mcfabric", "mcbedrock", "pocketmine"];
 
 const CHART_W = 600;
 const CHART_H = 150;

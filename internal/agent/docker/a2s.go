@@ -25,8 +25,9 @@ func isMcJavaGame(game string) bool {
 
 func isMcBedrockGame(game string) bool {
 	key := normalizeGame(game)
+	repo := gamecatalog.Repository(key)
 	return gamecatalog.QueryProtocol(key) == gamecatalog.QueryMC &&
-		strings.HasSuffix(gamecatalog.Repository(key), "/mcbedrock")
+		(strings.HasSuffix(repo, "/mcbedrock") || strings.HasSuffix(repo, "/pocketmine"))
 }
 
 func readCString(buf []byte, offset int) (string, int) {
