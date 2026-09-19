@@ -51,7 +51,7 @@ export function ConfigDrawer() {
           size='icon'
           variant='ghost'
           aria-label={t('layout.appearance.open')}
-          className='rounded-full'
+          className='rounded-full max-sm:hidden'
         >
           <Settings aria-hidden='true' />
         </Button>

@@ -39,12 +39,12 @@ export function ProfileDropdown() {
           {expanded ? (
             <Button
               variant="ghost"
-              className="relative h-9 gap-2 rounded-full px-1.5 pr-3"
+              className="relative h-9 gap-2 rounded-full px-1.5 pr-3 max-sm:pr-1.5"
             >
               <Avatar className="h-7 w-7">
                 <AvatarFallback>{accountInitials(email)}</AvatarFallback>
               </Avatar>
-              <span className="flex min-w-0 flex-col items-start leading-tight">
+              <span className="flex min-w-0 flex-col items-start leading-tight max-sm:hidden">
                 <span className="max-w-[160px] truncate text-xs font-medium">
                   {email}
                 </span>
