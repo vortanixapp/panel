@@ -448,8 +448,22 @@ export const adminContent = {
   "admin.games.add_version": "Add a version",
   "admin.games.version_name": "Version name",
   "admin.games.source": "Source",
-  "admin.games.source_hint": "Archive: a .zip URL | Steam: an App ID",
+  "admin.games.source_hint":
+    "Link: a zip, tar.gz or jar URL · Own archive: a file from your computer · Steam: an App ID",
+  "admin.games.source_archive": "Archive link",
+  "admin.games.source_upload": "Own archive",
+  "admin.games.source_steam": "Steam (App ID)",
+  "admin.games.source_buildtools": "BuildTools build",
   "admin.games.archive_url": "Archive URL",
+  "admin.games.archive_file": "Archive file",
+  "admin.games.archive_file_hint":
+    "zip, tar.gz or jar up to 4 GB: an archive is unpacked into the server folder, a jar becomes server.jar",
+  "admin.games.need_archive_file": "Choose an archive file",
+  "admin.games.buildtools_hint":
+    "The version name goes to BuildTools: 26.2, 1.21.4 or latest. Spigot is built on the node during installation, which takes 5–15 minutes",
+  "admin.games.uploading": "Uploading {percent}%",
+  "admin.games.uploaded_archive": "Own archive: {name}, {size}",
+  "admin.games.buildtools_version": "BuildTools, version {version}",
   "admin.games.versions_list": "Version list",
   "admin.games.versions_empty": "No versions yet",
   "admin.games.version_added": "Version added",

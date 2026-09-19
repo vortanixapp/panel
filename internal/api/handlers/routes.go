@@ -305,6 +305,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Route("/games/{gameId}/versions", func(r chi.Router) {
 				r.Get("/", h.ListGameVersions)
 				r.Post("/", h.CreateGameVersion)
+				r.Post("/upload", h.UploadGameVersionArchive)
 				r.Patch("/{id}", h.UpdateGameVersion)
 				r.Delete("/{id}", h.DeleteGameVersion)
 			})

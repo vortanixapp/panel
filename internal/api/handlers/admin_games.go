@@ -262,9 +262,7 @@ func (h *Handler) GetAdminGameEdit(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) loadGameVersionsJSON(r *http.Request, gameID string) []map[string]any {
 	rows, err := h.readerOf(r.Context()).Query(r.Context(), `
-		SELECT id::text, version, source_type,
-			COALESCE(archive_url, ''), COALESCE(docker_image, ''), steam_app_id, steam_branch,
-			active, sort_order
+		SELECT `+gameVersionColumns+`
 		FROM core.game_versions
 		WHERE game_id = $1
 		ORDER BY sort_order ASC, created_at ASC
@@ -275,13 +273,8 @@ func (h *Handler) loadGameVersionsJSON(r *http.Request, gameID string) []map[str
 	defer rows.Close()
 	list := []map[string]any{}
 	for rows.Next() {
-		var id, name, sourceType, archiveURL, dockerImage string
-		var steamAppID *int64
-		var steamBranch *string
-		var active bool
-		var sortOrder int
-		if rows.Scan(&id, &name, &sourceType, &archiveURL, &dockerImage, &steamAppID, &steamBranch, &active, &sortOrder) == nil {
-			list = append(list, versionLegacyJSON(id, name, sourceType, archiveURL, dockerImage, steamAppID, steamBranch, active, sortOrder))
+		if item, ok := scanGameVersionJSON(rows.Scan); ok {
+			list = append(list, item)
 		}
 	}
 	return list

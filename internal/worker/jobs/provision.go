@@ -234,18 +234,18 @@ func (r *Runner) resolveDockerImage(ctx context.Context, serverID string) string
 }
 
 func (r *Runner) resolveInstallSpec(ctx context.Context, serverID string) map[string]any {
-	var sourceType, archiveURL, steamBranch, steamModConfig string
+	var sourceType, version, archiveURL, steamBranch, steamModConfig string
 	var steamAppID *int64
 	err := r.db.QueryRow(ctx, `
-		SELECT COALESCE(gv.source_type, ''), COALESCE(gv.archive_url, ''),
+		SELECT COALESCE(gv.source_type, ''), gv.version, COALESCE(gv.archive_url, ''),
 		       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, '')
 		FROM core.servers s
 		JOIN core.game_versions gv ON gv.id = s.game_version_id
 		WHERE s.id = $1
-	`, serverID).Scan(&sourceType, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
+	`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
 	if err != nil {
 		err = r.db.QueryRow(ctx, `
-			SELECT COALESCE(gv.source_type, ''), COALESCE(gv.archive_url, ''),
+			SELECT COALESCE(gv.source_type, ''), gv.version, COALESCE(gv.archive_url, ''),
 			       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, '')
 			FROM core.servers s
 			JOIN core.games g ON g.slug = s.game_id
@@ -253,13 +253,15 @@ func (r *Runner) resolveInstallSpec(ctx context.Context, serverID string) map[st
 			WHERE s.id = $1
 			ORDER BY gv.sort_order ASC, gv.created_at DESC
 			LIMIT 1
-		`, serverID).Scan(&sourceType, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
+		`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
 		if err != nil {
 			return nil
 		}
 	}
 	spec := map[string]any{"source_type": sourceType}
 	switch {
+	case sourceType == gamecatalog.SourceBuildTools:
+		spec["version"] = version
 	case archiveURL != "":
 		spec["archive_url"] = archiveURL
 	case steamAppID != nil && *steamAppID > 0:

@@ -21,8 +21,22 @@ const installTimeout = 2 * time.Hour
 
 const maxArchiveBytes = 32 << 30
 
+const downloadUserAgent = "Mozilla/5.0 (compatible; Vortanix)"
+
+var keptConfigs = map[string]bool{
+	"server.properties":   true,
+	"permissions.json":    true,
+	"allowlist.json":      true,
+	"whitelist.json":      true,
+	"ops.json":            true,
+	"banned-players.json": true,
+	"banned-ips.json":     true,
+	"eula.txt":            true,
+}
+
 type InstallSpec struct {
 	SourceType     string
+	Version        string
 	ArchiveURL     string
 	SteamAppID     int64
 	SteamBranch    string
@@ -30,7 +44,7 @@ type InstallSpec struct {
 }
 
 func (s InstallSpec) HasSource() bool {
-	return s.ArchiveURL != "" || s.SteamAppID > 0
+	return s.ArchiveURL != "" || s.SteamAppID > 0 || s.SourceType == sourceBuildTools
 }
 
 func InstallSpecFromPayload(v any) InstallSpec {
@@ -40,6 +54,7 @@ func InstallSpecFromPayload(v any) InstallSpec {
 	}
 	spec := InstallSpec{}
 	spec.SourceType, _ = m["source_type"].(string)
+	spec.Version, _ = m["version"].(string)
 	spec.ArchiveURL, _ = m["archive_url"].(string)
 	spec.SteamBranch, _ = m["steam_branch"].(string)
 	spec.SteamModConfig, _ = m["steam_mod_config"].(string)
@@ -116,13 +131,7 @@ func Install(ctx context.Context, serverID string, spec InstallSpec, report Prog
 		return fmt.Errorf("метка установки: %w", err)
 	}
 
-	var installErr error
-	if spec.SteamAppID > 0 {
-		installErr = installSteam(ctx, dataDir, spec, report)
-	} else {
-		installErr = installArchive(ctx, dataDir, spec.ArchiveURL, report)
-	}
-	if installErr != nil {
+	if installErr := installFromSource(ctx, dataDir, spec, report); installErr != nil {
 		return installErr
 	}
 	if err := os.Remove(marker); err != nil && !os.IsNotExist(err) {
@@ -151,10 +160,18 @@ func Update(ctx context.Context, serverID string, spec InstallSpec, report Progr
 		return fmt.Errorf("создание тома: %w", err)
 	}
 
-	if spec.SteamAppID > 0 {
+	return installFromSource(ctx, dataDir, spec, report)
+}
+
+func installFromSource(ctx context.Context, dataDir string, spec InstallSpec, report ProgressFunc) error {
+	switch {
+	case spec.SourceType == sourceBuildTools:
+		return installBuildTools(ctx, dataDir, spec.Version, report)
+	case spec.SteamAppID > 0:
 		return installSteam(ctx, dataDir, spec, report)
+	default:
+		return installArchive(ctx, dataDir, spec.ArchiveURL, report)
 	}
-	return installArchive(ctx, dataDir, spec.ArchiveURL, report)
 }
 
 func installSteam(ctx context.Context, dataDir string, spec InstallSpec, report ProgressFunc) error {
@@ -372,6 +389,7 @@ func download(ctx context.Context, url, dest string, report ProgressFunc) (downl
 	if err != nil {
 		return meta, fmt.Errorf("запрос архива: %w", err)
 	}
+	req.Header.Set("User-Agent", downloadUserAgent)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return meta, fmt.Errorf("скачивание архива: %w", err)
@@ -525,6 +543,11 @@ func moveIntoData(extractDir, dataDir string) error {
 	for _, e := range entries {
 		from := filepath.Join(src, e.Name())
 		to := filepath.Join(dataDir, e.Name())
+		if !e.IsDir() && keptConfigs[e.Name()] {
+			if _, err := os.Stat(to); err == nil {
+				continue
+			}
+		}
 		_ = os.RemoveAll(to)
 		if err := os.Rename(from, to); err != nil {
 			if err := copyPath(from, to); err != nil {

@@ -13,6 +13,7 @@ const (
 	StageDownload = "download"
 	StageExtract  = "extract"
 	StageSteamCMD = "steamcmd"
+	StageBuild    = "build"
 	StageDone     = "done"
 )
 

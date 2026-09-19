@@ -442,8 +442,22 @@ export const adminContent = {
   "admin.games.add_version": "Добавить версию",
   "admin.games.version_name": "Название версии",
   "admin.games.source": "Источник",
-  "admin.games.source_hint": "Archive: URL на .zip | Steam: App ID",
+  "admin.games.source_hint":
+    "Ссылка: zip, tar.gz или jar по URL · Свой архив: файл с компьютера · Steam: App ID",
+  "admin.games.source_archive": "Ссылка на архив",
+  "admin.games.source_upload": "Свой архив",
+  "admin.games.source_steam": "Steam (App ID)",
+  "admin.games.source_buildtools": "Сборка BuildTools",
   "admin.games.archive_url": "URL архива",
+  "admin.games.archive_file": "Файл архива",
+  "admin.games.archive_file_hint":
+    "zip, tar.gz или jar до 4 ГБ: архив распаковывается в папку сервера, jar ложится как server.jar",
+  "admin.games.need_archive_file": "Выберите файл архива",
+  "admin.games.buildtools_hint":
+    "Название версии уходит в BuildTools: 26.2, 1.21.4 или latest. Spigot собирается на ноде при установке, это 5–15 минут",
+  "admin.games.uploading": "Загрузка {percent}%",
+  "admin.games.uploaded_archive": "Свой архив: {name}, {size}",
+  "admin.games.buildtools_version": "BuildTools, версия {version}",
   "admin.games.versions_list": "Список версий",
   "admin.games.versions_empty": "Версий пока нет",
   "admin.games.version_added": "Версия добавлена",

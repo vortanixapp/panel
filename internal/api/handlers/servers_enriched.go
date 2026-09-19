@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vortanixapp/panel/internal/api/pricing"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 func (h *Handler) listEnrichedServers(ctx context.Context, userID string, allOwners bool, limit int) []map[string]any {
@@ -462,7 +463,7 @@ func (h *Handler) listActiveGameVersions(ctx context.Context, gameSlug string) [
 			item := map[string]any{
 				"id": id, "name": version, "version": version,
 				"source_type":    sourceType,
-				"manual_install": sourceType == "docker",
+				"manual_install": gamecatalog.ManualInstall(gamecatalog.Normalize(gameSlug), sourceType),
 			}
 			if note != "" {
 				item["install_note"] = note

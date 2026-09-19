@@ -28,10 +28,20 @@ import {
   deleteAdminGameVersion,
   fetchAdminGameEdit,
   updateAdminGame,
+  uploadAdminGameVersionArchive,
   type AdminGameVersion,
 } from "@/lib/api";
+import type { TranslateFn } from "@/lib/i18n";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
+
+const BUILDTOOLS_GAMES = ["mcspigot"];
+
+function formatSize(bytes: number, t: TranslateFn): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} ${t("admin.plugins.unit_kb")}`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} ${t("admin.infra.unit_mb")}`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} ${t("admin.infra.unit_gb")}`;
+}
 
 type FormState = {
   name: string;
@@ -47,12 +57,24 @@ type FormState = {
 
 type VersionFormState = {
   name: string;
-  source_type: "archive" | "steam" | "docker";
+  source_type: "archive" | "upload" | "steam" | "buildtools";
   url: string;
+  file: File | null;
   steam_app_id: string;
   steam_branch: string;
   sort_order: number;
   is_active: boolean;
+};
+
+const EMPTY_VERSION: VersionFormState = {
+  name: "",
+  source_type: "archive",
+  url: "",
+  file: null,
+  steam_app_id: "",
+  steam_branch: "",
+  sort_order: 0,
+  is_active: true,
 };
 
 export function GameEditContent() {
@@ -72,15 +94,9 @@ export function GameEditContent() {
     default_startup_params: "",
     status: true,
   });
-  const [vForm, setVForm] = useState<VersionFormState>({
-    name: "",
-    source_type: "archive",
-    url: "",
-    steam_app_id: "",
-    steam_branch: "",
-    sort_order: 0,
-    is_active: true,
-  });
+  const [vForm, setVForm] = useState<VersionFormState>(EMPTY_VERSION);
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
   const [versions, setVersions] = useState<AdminGameVersion[]>([]);
 
   const { data, isLoading } = useQuery({
@@ -118,31 +134,40 @@ export function GameEditContent() {
   });
 
   const addVersionMut = useMutation({
-    mutationFn: () =>
-      createAdminGameVersion(id, {
+    mutationFn: () => {
+      if (vForm.source_type === "upload" && vForm.file) {
+        setUploadPercent(0);
+        return uploadAdminGameVersionArchive(
+          id,
+          {
+            name: vForm.name,
+            sort_order: vForm.sort_order,
+            is_active: vForm.is_active,
+            file: vForm.file,
+          },
+          setUploadPercent
+        );
+      }
+      return createAdminGameVersion(id, {
         name: vForm.name,
-        source_type: vForm.source_type,
+        source_type: vForm.source_type === "upload" ? "archive" : vForm.source_type,
         url: vForm.source_type === "archive" ? vForm.url : undefined,
         steam_app_id:
           vForm.source_type === "steam" ? Number(vForm.steam_app_id) : undefined,
-        steam_branch: vForm.steam_branch || undefined,
+        steam_branch:
+          vForm.source_type === "steam" ? vForm.steam_branch || undefined : undefined,
         is_active: vForm.is_active,
         sort_order: vForm.sort_order,
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success(t("admin.games.version_added"));
-      setVForm({
-        name: "",
-        source_type: "archive",
-        url: "",
-        steam_app_id: "",
-        steam_branch: "",
-        sort_order: 0,
-        is_active: true,
-      });
+      setVForm(EMPTY_VERSION);
+      setFileInputKey((k) => k + 1);
       void queryClient.invalidateQueries({ queryKey: queryKeys.adminGameEdit(id) });
     },
     onError: (e: Error) => toast.error(e.message),
+    onSettled: () => setUploadPercent(null),
   });
 
   const deleteVersionMut = useMutation({
@@ -174,6 +199,10 @@ export function GameEditContent() {
     e.preventDefault();
     if (vForm.source_type === "archive" && !vForm.url.trim()) {
       toast.error(t("admin.games.need_archive_url"));
+      return;
+    }
+    if (vForm.source_type === "upload" && !vForm.file) {
+      toast.error(t("admin.games.need_archive_file"));
       return;
     }
     if (vForm.source_type === "steam") {
@@ -380,12 +409,18 @@ export function GameEditContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="archive">Archive (URL)</SelectItem>
-                        <SelectItem value="steam">Steam (App ID)</SelectItem>
+                        <SelectItem value="archive">{t("admin.games.source_archive")}</SelectItem>
+                        <SelectItem value="upload">{t("admin.games.source_upload")}</SelectItem>
+                        <SelectItem value="steam">{t("admin.games.source_steam")}</SelectItem>
+                        {(BUILDTOOLS_GAMES.includes(form.slug) || vForm.source_type === "buildtools") && (
+                          <SelectItem value="buildtools">{t("admin.games.source_buildtools")}</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      {t("admin.games.source_hint")}
+                      {vForm.source_type === "buildtools"
+                        ? t("admin.games.buildtools_hint")
+                        : t("admin.games.source_hint")}
                     </p>
                   </div>
                   {vForm.source_type === "archive" && (
@@ -396,6 +431,22 @@ export function GameEditContent() {
                         onChange={(e) => setVField("url", e.target.value)}
                         required
                       />
+                    </div>
+                  )}
+                  {vForm.source_type === "upload" && (
+                    <div className="space-y-2">
+                      <Label>{t("admin.games.archive_file")}</Label>
+                      <Input
+                        key={fileInputKey}
+                        type="file"
+                        accept=".zip,.tar.gz,.tgz,.jar"
+                        onChange={(e) => setVField("file", e.target.files?.[0] ?? null)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {vForm.file
+                          ? `${vForm.file.name}, ${formatSize(vForm.file.size, t)}`
+                          : t("admin.games.archive_file_hint")}
+                      </p>
                     </div>
                   )}
                   {vForm.source_type === "steam" && (
@@ -442,9 +493,11 @@ export function GameEditContent() {
                     className="w-full"
                     disabled={addVersionMut.isPending}
                   >
-                    {addVersionMut.isPending
-                      ? t("common.adding")
-                      : t("admin.games.add_version")}
+                    {uploadPercent !== null
+                      ? t("admin.games.uploading", { percent: uploadPercent })
+                      : addVersionMut.isPending
+                        ? t("common.adding")
+                        : t("admin.games.add_version")}
                   </Button>
                 </form>
               </CardContent>
@@ -492,6 +545,13 @@ export function GameEditContent() {
                               app_id={v.steam_app_id ?? 0}
                               {v.steam_branch ? ` branch=${v.steam_branch}` : ""}
                             </>
+                          ) : v.source_type === "buildtools" ? (
+                            t("admin.games.buildtools_version", { version: v.name })
+                          ) : v.archive_name ? (
+                            t("admin.games.uploaded_archive", {
+                              name: v.archive_name,
+                              size: formatSize(v.archive_size ?? 0, t),
+                            })
                           ) : (
                             (v.archive_url || v.url || v.docker_image || "").slice(
                               0,

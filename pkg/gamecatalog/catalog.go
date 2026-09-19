@@ -20,6 +20,7 @@ type Install struct {
 	ArchiveURL     string
 	Version        string
 	Note           string
+	SelfInstall    bool
 }
 
 type Game struct {
@@ -58,9 +59,10 @@ const (
 )
 
 const (
-	SourceSteam   = "steam"
-	SourceArchive = "archive"
-	SourceDocker  = "docker"
+	SourceSteam      = "steam"
+	SourceArchive    = "archive"
+	SourceDocker     = "docker"
+	SourceBuildTools = "buildtools"
 )
 
 const (
@@ -297,6 +299,14 @@ func FitsNode(code string, ramMB, diskMB int, cpu float64) bool {
 
 func FitsSmallNode(code string) bool {
 	return FitsNode(code, SmallNodeRAMMB, SmallNodeDiskMB, SmallNodeCPU)
+}
+
+func ManualInstall(code, sourceType string) bool {
+	if sourceType != SourceDocker {
+		return false
+	}
+	g, ok := Resolve(code)
+	return !ok || !g.Install.SelfInstall
 }
 
 func InstallNote(g Game) string {

@@ -13,6 +13,28 @@ import (
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
+const gameVersionColumns = `id::text, version, source_type,
+	COALESCE(archive_url, ''), COALESCE(docker_image, ''), steam_app_id, steam_branch,
+	active, sort_order, COALESCE(archive_name, ''), COALESCE(archive_size, 0)`
+
+func scanGameVersionJSON(scan func(dest ...any) error) (map[string]any, bool) {
+	var id, name, sourceType, archiveURL, dockerImage, archiveName string
+	var steamAppID *int64
+	var steamBranch *string
+	var active bool
+	var sortOrder int
+	var archiveSize int64
+	if scan(&id, &name, &sourceType, &archiveURL, &dockerImage, &steamAppID, &steamBranch, &active, &sortOrder, &archiveName, &archiveSize) != nil {
+		return nil, false
+	}
+	out := versionLegacyJSON(id, name, sourceType, archiveURL, dockerImage, steamAppID, steamBranch, active, sortOrder)
+	if archiveName != "" {
+		out["archive_name"] = archiveName
+		out["archive_size"] = archiveSize
+	}
+	return out, true
+}
+
 func versionLegacyJSON(id, name, sourceType, archiveURL, dockerImage string, steamAppID *int64, steamBranch *string, active bool, sortOrder int) map[string]any {
 	url := archiveURL
 	if sourceType == "steam" && steamAppID != nil && *steamAppID > 0 {
@@ -74,18 +96,18 @@ func (h *Handler) resolveDockerImage(ctx context.Context, serverID string) strin
 }
 
 func (h *Handler) resolveInstallSpec(ctx context.Context, serverID string) map[string]any {
-	var sourceType, archiveURL, steamBranch, steamModConfig string
+	var sourceType, version, archiveURL, steamBranch, steamModConfig string
 	var steamAppID *int64
 	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT COALESCE(gv.source_type, ''), COALESCE(gv.archive_url, ''),
+		SELECT COALESCE(gv.source_type, ''), gv.version, COALESCE(gv.archive_url, ''),
 		       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, '')
 		FROM core.servers s
 		JOIN core.game_versions gv ON gv.id = s.game_version_id
 		WHERE s.id = $1
-	`, serverID).Scan(&sourceType, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
+	`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
 	if err != nil {
 		err = h.dbOf(ctx).QueryRow(ctx, `
-			SELECT COALESCE(gv.source_type, ''), COALESCE(gv.archive_url, ''),
+			SELECT COALESCE(gv.source_type, ''), gv.version, COALESCE(gv.archive_url, ''),
 			       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, '')
 			FROM core.servers s
 			JOIN core.games g ON g.slug = s.game_id
@@ -93,7 +115,7 @@ func (h *Handler) resolveInstallSpec(ctx context.Context, serverID string) map[s
 			WHERE s.id = $1
 			ORDER BY gv.sort_order ASC, gv.created_at DESC
 			LIMIT 1
-		`, serverID).Scan(&sourceType, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
+		`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
 		if err != nil {
 			return nil
 		}
@@ -101,6 +123,8 @@ func (h *Handler) resolveInstallSpec(ctx context.Context, serverID string) map[s
 
 	spec := map[string]any{"source_type": sourceType}
 	switch {
+	case sourceType == gamecatalog.SourceBuildTools:
+		spec["version"] = version
 	case archiveURL != "":
 		spec["archive_url"] = archiveURL
 	case steamAppID != nil && *steamAppID > 0:
@@ -171,9 +195,7 @@ func (h *Handler) ListGameVersions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := h.dbOf(r.Context()).Query(r.Context(), `
-		SELECT id::text, version, source_type,
-			COALESCE(archive_url, ''), COALESCE(docker_image, ''), steam_app_id, steam_branch,
-			active, sort_order
+		SELECT `+gameVersionColumns+`
 		FROM core.game_versions
 		WHERE game_id = $1
 		ORDER BY sort_order ASC, created_at ASC
@@ -185,13 +207,8 @@ func (h *Handler) ListGameVersions(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	list := []map[string]any{}
 	for rows.Next() {
-		var id, name, sourceType, archiveURL, dockerImage string
-		var steamAppID *int64
-		var steamBranch *string
-		var active bool
-		var sortOrder int
-		if rows.Scan(&id, &name, &sourceType, &archiveURL, &dockerImage, &steamAppID, &steamBranch, &active, &sortOrder) == nil {
-			list = append(list, versionLegacyJSON(id, name, sourceType, archiveURL, dockerImage, steamAppID, steamBranch, active, sortOrder))
+		if item, ok := scanGameVersionJSON(rows.Scan); ok {
+			list = append(list, item)
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"versions": list})
@@ -258,7 +275,7 @@ func (h *Handler) CreateGameVersion(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "error": "Для steam версии нужен Steam App ID"})
 			return
 		}
-	case "docker":
+	case "docker", gamecatalog.SourceBuildTools:
 	default:
 		writeError(w, http.StatusBadRequest, "invalid source_type")
 		return
@@ -340,12 +357,15 @@ func (h *Handler) DeleteGameVersion(w http.ResponseWriter, r *http.Request) {
 	}
 	gameID := chi.URLParam(r, "gameId")
 	versionID := chi.URLParam(r, "id")
-	tag, err := h.dbOf(r.Context()).Exec(r.Context(), `
+	var archivePath string
+	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
 		DELETE FROM core.game_versions WHERE id = $1 AND game_id = $2
-	`, versionID, gameID)
-	if err != nil || tag.RowsAffected() == 0 {
+		RETURNING COALESCE(archive_path, '')
+	`, versionID, gameID).Scan(&archivePath)
+	if err != nil {
 		writeError(w, http.StatusNotFound, "version not found")
 		return
 	}
+	_ = h.deleteCatalogFile(archivePath)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }

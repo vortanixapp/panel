@@ -233,7 +233,7 @@ func (h *Handler) queryRentGames(ctx context.Context) []map[string]any {
 			item["min_price"] = price
 		}
 		if g, ok := gamecatalog.Resolve(gamecatalog.Normalize(slug)); ok {
-			if g.Install.SourceType == gamecatalog.SourceDocker {
+			if gamecatalog.ManualInstall(g.Key, g.Install.SourceType) {
 				item["manual_install"] = true
 				item["manual_install_note"] = g.Install.Note
 			}

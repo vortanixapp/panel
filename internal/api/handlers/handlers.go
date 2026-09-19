@@ -28,6 +28,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/v1/uploads/avatars/{filename}", h.ServeAvatar)
 	r.Get("/v1/plugins/images/{id}", h.ServePluginImage)
 	r.Get("/v1/internal/catalog-archive", h.ServeCatalogArchive)
+	r.Get("/v1/internal/game-archive/{token}/{name}", h.ServeGameArchive)
 	r.Get("/v1/news/images/{id}", h.ServeNewsImage)
 	r.Get("/v1/uploads/branding/{filename}", h.ServeBranding)
 	r.Get("/v1/tenants/status", h.TenantStatus)

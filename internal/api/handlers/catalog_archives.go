@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -78,7 +77,7 @@ func (h *Handler) resolveCatalogPath(rel string) (string, error) {
 	return full, nil
 }
 
-func (h *Handler) saveCatalogFile(category, slug, prefix, ext string, src multipart.File, maxBytes int64) (string, int64, error) {
+func (h *Handler) saveCatalogFile(category, slug, prefix, ext string, src io.Reader, maxBytes int64) (string, int64, error) {
 	dirRel := catalogRelPath(category, catalogSafeSlug(slug))
 	dirAbs, err := h.resolveCatalogPath(dirRel)
 	if err != nil {

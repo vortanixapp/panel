@@ -463,7 +463,7 @@ var games = []Game{
 		RecRAMMB:    1024,
 		MinDiskMB:   1024,
 		MinCPU:      1,
-		Install:     Install{SourceType: SourceDocker, Version: "latest", Note: "образ сам качает bedrock-server.zip с minecraft.net при первом запуске"},
+		Install:     Install{SourceType: SourceDocker, Version: "latest", SelfInstall: true, Note: "образ сам качает актуальную версию Bedrock с minecraft.net и обновляет её при запуске"},
 	},
 	{
 		Key:         "mcjava",
@@ -482,7 +482,7 @@ var games = []Game{
 		RecRAMMB:    2048,
 		MinDiskMB:   2048,
 		MinCPU:      1,
-		Install:     Install{SourceType: SourceArchive, ArchiveURL: "https://piston-data.mojang.com/v1/objects/823e2250d24b3ddac457a60c92a6a941943fcd6a/server.jar", Version: "26.2"},
+		Install:     Install{SourceType: SourceArchive, ArchiveURL: "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar", Version: "26.3"},
 	},
 	{
 		Key:         "mcpaper",
@@ -501,7 +501,7 @@ var games = []Game{
 		RecRAMMB:    2048,
 		MinDiskMB:   2048,
 		MinCPU:      1,
-		Install:     Install{SourceType: SourceArchive, ArchiveURL: "https://fill-data.papermc.io/v1/objects/bd3a58cf96874e5ea6643f5f6fe9b4f5bf9e34b795fa078c2f0ee8b98b2f907e/paper-26.2-112.jar", Version: "26.2-112"},
+		Install:     Install{SourceType: SourceArchive, ArchiveURL: "https://fill-data.papermc.io/v1/objects/274bbcb9807ad79a479617ce695a7c0686e652a8d1cabfd0e288d92a3ea29593/paper-26.2-124.jar", Version: "26.2-124"},
 	},
 	{
 		Key:         "mcspigot",
@@ -520,7 +520,7 @@ var games = []Game{
 		RecRAMMB:    2048,
 		MinDiskMB:   2048,
 		MinCPU:      1,
-		Install:     Install{SourceType: SourceDocker, Version: "manual", Note: "Spigot нельзя раздавать готовым jar по лицензии: сервер собирается BuildTools"},
+		Install:     Install{SourceType: SourceBuildTools, Version: "26.2", Note: "Spigot нельзя раздавать готовым jar по лицензии: агент собирает его BuildTools на ноде при установке, это занимает 5–15 минут"},
 	},
 	{
 		Key:         "mcforge",
@@ -539,7 +539,7 @@ var games = []Game{
 		RecRAMMB:    3072,
 		MinDiskMB:   4096,
 		MinCPU:      1,
-		Install:     Install{SourceType: SourceDocker, Version: "manual", Note: "Forge раздаёт installer, а не готовый server.jar: установку выполняет админ"},
+		Install:     Install{SourceType: SourceArchive, ArchiveURL: "https://maven.minecraftforge.net/net/minecraftforge/forge/26.2-65.1.0/forge-26.2-65.1.0-installer.jar", Version: "26.2-65.1.0", Note: "ссылка ведёт на installer Forge: образ сам запускает его при первом старте"},
 	},
 	{
 		Key:         "mcfabric",
@@ -558,7 +558,7 @@ var games = []Game{
 		RecRAMMB:    2560,
 		MinDiskMB:   3072,
 		MinCPU:      1,
-		Install:     Install{SourceType: SourceArchive, ArchiveURL: "https://meta.fabricmc.net/v2/versions/loader/26.2/0.19.3/1.1.2/server/jar", Version: "26.2 (Fabric 0.19.3)"},
+		Install:     Install{SourceType: SourceArchive, ArchiveURL: "https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/1.1.2/server/jar", Version: "26.3 (Fabric 0.19.5)"},
 	},
 	{
 		Key:         "mordhau",

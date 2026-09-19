@@ -3393,6 +3393,8 @@ export type AdminGameVersion = {
   docker_image?: string;
   steam_app_id?: number;
   steam_branch?: string;
+  archive_name?: string;
+  archive_size?: number;
   is_active: boolean;
   sort_order: number;
 };
@@ -3448,7 +3450,7 @@ export async function createAdminGameVersion(
   gameId: string,
   data: {
     name: string;
-    source_type: "archive" | "steam" | "docker";
+    source_type: "archive" | "steam" | "docker" | "buildtools";
     url?: string;
     steam_app_id?: number;
     steam_branch?: string;
@@ -3461,6 +3463,46 @@ export async function createAdminGameVersion(
     `/v1/admin/games/${gameId}/versions`,
     { method: "POST", body: JSON.stringify(data) }
   );
+}
+
+export async function uploadAdminGameVersionArchive(
+  gameId: string,
+  data: { name: string; sort_order: number; is_active: boolean; file: File },
+  onProgress?: (percent: number) => void
+) {
+  await ensureValidSession();
+  const form = new FormData();
+  form.append("name", data.name);
+  form.append("sort_order", String(data.sort_order));
+  form.append("is_active", String(data.is_active));
+  form.append("archive", data.file);
+  return new Promise<{ ok: boolean; id: string }>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}/v1/admin/games/${gameId}/versions/upload`);
+    xhr.withCredentials = true;
+    for (const [key, value] of Object.entries(authHeaders())) {
+      xhr.setRequestHeader(key, value);
+    }
+    xhr.upload.onprogress = (evt) => {
+      if (!evt.lengthComputable || !onProgress) return;
+      onProgress(Math.max(0, Math.min(100, Math.round((evt.loaded / evt.total) * 100))));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed"));
+    xhr.onload = () => {
+      let payload: { ok?: boolean; id?: string; error?: string } = {};
+      try {
+        payload = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch {
+        payload = {};
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(payload.error ?? "Upload failed"));
+        return;
+      }
+      resolve({ ok: true, id: payload.id ?? "" });
+    };
+    xhr.send(form);
+  });
 }
 
 export async function deleteAdminGameVersion(gameId: string, versionId: string) {

@@ -63,4 +63,45 @@ sh scripts/build-game-images.sh --all        # все старые образы
   `VTX_PARAM_*` — ставит агент из каталога.
 
 Файлы самого сервера образ **не скачивает** — их кладёт агент в том: из
-архива версии или через SteamCMD.
+архива версии, через SteamCMD или сборкой BuildTools. Исключение — Bedrock,
+см. ниже.
+
+## Minecraft
+
+Версия игры в админке задаёт, откуда агент возьмёт файлы: ссылка на архив,
+свой архив, загруженный в панель, Steam или сборка BuildTools. Архив zip и
+tar.gz распаковывается в папку сервера, jar ложится как `server.jar`.
+
+### Java: Vanilla, Paper, Spigot, Forge, Fabric
+
+Образ `mcjava` содержит Java 8, 17, 21 и 25 и сам выбирает нужную по
+`server.jar`:
+
+- `version.json` внутри jar — Vanilla 1.18+ и Paper;
+- `install.properties` — лаунчер Fabric, по версии Minecraft;
+- версия class-файла главного класса — старые Vanilla, Paper, Spigot, Forge.
+
+Выбор виден в логе: `Java 17 (version.json)`. Переопределить можно файлом
+`/data/.vtx/java` с номером версии или переменной `JAVA_VERSION`.
+
+Forge и NeoForge ставятся ссылкой на installer: образ при первом старте
+запускает `--installServer`, а дальше стартует через
+`libraries/.../unix_args.txt` или через старый `forge-*.jar`.
+
+Spigot нельзя раздавать готовым jar, поэтому у версии источник «Сборка
+BuildTools»: название версии уходит в `--rev` (`26.2`, `1.21.4`, `latest`).
+Агент собирает jar в контейнере `eclipse-temurin:<N>-jdk`, подобрав JDK по
+`hub.spigotmc.org/versions/<rev>.json`. Сборка идёт 5–15 минут.
+
+### Bedrock
+
+Образ `mcbedrock` без файлов в томе сам скачивает актуальный сервер: ссылку
+отдаёт `net-secondary.web.minecraft-services.net/api/v1.0/download/links`,
+версия записывается в `/data/.vtx/bedrock_version`, и при каждом запуске
+сервер обновляется до актуальной, не трогая мир, `server.properties`,
+`permissions.json` и `allowlist.json`. Переменные `BEDROCK_VERSION`
+(`latest`, `preview` или точная версия) и `BEDROCK_DOWNLOAD_URL` меняют
+источник. Если файлы положил агент из архива версии, образ их не обновляет.
+
+minecraft.net не отдаёт файлы клиентам со стандартным User-Agent curl и Go,
+поэтому и агент, и образ представляются `Mozilla/5.0 (compatible; Vortanix)`.
