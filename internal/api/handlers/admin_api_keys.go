@@ -49,8 +49,9 @@ func (h *Handler) AdminAPIKeysList(w http.ResponseWriter, r *http.Request) {
 		       k.revoked_at, k.created_at, COALESCE(u.email, '')
 		FROM core.api_keys k
 		LEFT JOIN core.users u ON u.id = k.user_id
+		WHERE k.kind = $1
 		ORDER BY k.created_at DESC
-	`)
+	`, apiKeyKindAdmin)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
@@ -142,10 +143,10 @@ func (h *Handler) AdminAPIKeyCreate(w http.ResponseWriter, r *http.Request) {
 
 	var id string
 	if h.dbOf(r.Context()).QueryRow(r.Context(), `
-		INSERT INTO core.api_keys ( user_id, name, prefix, key_hash, scopes, expires_at)
-		VALUES ( $1, $2, $3, $4, $5::jsonb, $6)
+		INSERT INTO core.api_keys ( user_id, name, prefix, key_hash, scopes, expires_at, kind)
+		VALUES ( $1, $2, $3, $4, $5::jsonb, $6, $7)
 		RETURNING id::text
-	`, nullableUUID(claims.UserID), name, prefix, hash, scopesJSON, expires).Scan(&id) != nil {
+	`, nullableUUID(claims.UserID), name, prefix, hash, scopesJSON, expires, apiKeyKindAdmin).Scan(&id) != nil {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
@@ -168,8 +169,8 @@ func (h *Handler) AdminAPIKeyRevoke(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	tag, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		UPDATE core.api_keys SET revoked_at = now()
-		WHERE id = $1 AND revoked_at IS NULL
-	`, id)
+		WHERE id::text = $1 AND kind = $2 AND revoked_at IS NULL
+	`, id, apiKeyKindAdmin)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
@@ -185,50 +186,70 @@ func (h *Handler) AdminAPIKeyRevoke(w http.ResponseWriter, r *http.Request) {
 type apiKeyClaims struct {
 	ID     string
 	UserID string
+	Kind   string
+	Email  string
 	Scopes map[string]bool
 }
 
-func (h *Handler) authenticateAPIKey(ctx context.Context, key string) (*apiKeyClaims, bool) {
+func (h *Handler) authenticateAPIKey(ctx context.Context, key, ip string) (*apiKeyClaims, bool) {
 	key = strings.TrimSpace(key)
 	if !strings.HasPrefix(key, apiKeyPrefix) {
 		return nil, false
 	}
-	var id, userID, ownerRole string
+	var id, userID, ownerRole, kind, email string
 	var scopes []byte
 	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT k.id::text, COALESCE(k.user_id::text, ''), COALESCE(u.role, ''), k.scopes
+		SELECT k.id::text, COALESCE(k.user_id::text, ''), COALESCE(u.role, ''), k.scopes, k.kind, COALESCE(u.email, '')
 		FROM core.api_keys k
 		LEFT JOIN core.users u ON u.id = k.user_id AND u.status = 'active'
 		WHERE k.key_hash = $1
 		  AND k.revoked_at IS NULL
 		  AND (k.expires_at IS NULL OR k.expires_at > now())
-	`, hashAPIKey(key)).Scan(&id, &userID, &ownerRole, &scopes)
+	`, hashAPIKey(key)).Scan(&id, &userID, &ownerRole, &scopes, &kind, &email)
 	if err != nil {
-		return nil, false
-	}
-	if userID != "" && !isStaffRole(ownerRole) {
 		return nil, false
 	}
 
 	var list []string
 	_ = json.Unmarshal(scopes, &list)
 	set := map[string]bool{}
-	owner := h.rbacClaimsPermissions(ctx, &paneljwt.Claims{UserID: userID, Role: ownerRole})
-	for _, s := range list {
-		if userID != "" && !owner[s] {
-			continue
+	if kind == apiKeyKindPersonal {
+		if userID == "" || ownerRole == "" {
+			return nil, false
 		}
-		set[s] = true
+		allowed := map[string]bool{}
+		for _, s := range personalTokenScopes {
+			allowed[s] = true
+		}
+		for _, s := range list {
+			if allowed[s] {
+				set[s] = true
+			}
+		}
+	} else {
+		if userID != "" && !isStaffRole(ownerRole) {
+			return nil, false
+		}
+		owner := h.rbacClaimsPermissions(ctx, &paneljwt.Claims{UserID: userID, Role: ownerRole})
+		for _, s := range list {
+			if userID != "" && !owner[s] {
+				continue
+			}
+			set[s] = true
+		}
 	}
 
 	pool := h.dbOf(ctx)
-	go func(keyID string) {
+	go func(keyID, addr string) {
 		bg, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_, _ = pool.Exec(bg, `UPDATE core.api_keys SET last_used_at = now() WHERE id = $1`, keyID)
-	}(id)
+		_, _ = pool.Exec(bg, `
+			UPDATE core.api_keys SET last_used_at = now(), last_used_ip = COALESCE(NULLIF($2, ''), last_used_ip)
+			WHERE id = $1
+		`, keyID, addr)
+	}(id, ip)
 
-	return &apiKeyClaims{ID: id, UserID: userID, Scopes: set}, true
+	return &apiKeyClaims{ID: id, UserID: userID, Kind: kind, Email: email, Scopes: set}, true
 }
 
 type apiKeyContextKeyType struct{}
@@ -243,9 +264,13 @@ func (h *Handler) authWithAPIKey(next http.Handler) http.Handler {
 			jwtChain.ServeHTTP(w, r)
 			return
 		}
-		key, ok := h.authenticateAPIKey(r.Context(), raw)
+		key, ok := h.authenticateAPIKey(r.Context(), raw, clientIP(r))
 		if !ok {
 			writeError(w, http.StatusUnauthorized, "invalid api key")
+			return
+		}
+		if key.Kind == apiKeyKindPersonal {
+			h.servePersonalToken(w, r, key, next)
 			return
 		}
 		if !strings.HasPrefix(r.URL.Path, "/v1/admin/") {

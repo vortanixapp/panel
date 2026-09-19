@@ -44,6 +44,7 @@ const (
 	KindEmailChange    Kind = "security.email"
 	KindSocialAccount  Kind = "security.social"
 	KindRecoveryCode   Kind = "security.recovery"
+	KindAPIToken       Kind = "security.api_token"
 
 	KindAnnounce Kind = "system.announce"
 
@@ -130,6 +131,7 @@ var defs = map[Kind]Def{
 	KindEmailChange:    {Group: GroupSecurity, Icon: "ri-mail-settings-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 	KindSocialAccount:  {Group: GroupSecurity, Icon: "ri-links-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 	KindRecoveryCode:   {Group: GroupSecurity, Icon: "ri-key-2-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
+	KindAPIToken:       {Group: GroupSecurity, Icon: "ri-code-s-slash-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 
 	KindAnnounce: {Group: GroupSystem, Icon: "ri-megaphone-line", Severity: SeverityInfo},
 

@@ -138,6 +138,9 @@ func (h *Handler) accountView(ctx context.Context, r *http.Request, claims *pane
 			"vk":       contactString(contacts, "vk_id"),
 		},
 		"preferences": prefs,
+		"features": map[string]bool{
+			"api_tokens": h.apiTokensVisible(ctx, claims.UserID),
+		},
 	}, nil
 }
 

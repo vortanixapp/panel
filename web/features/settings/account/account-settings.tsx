@@ -12,8 +12,11 @@ import { ContactsTab } from "@/features/settings/account/contacts-tab";
 import { SecurityTab } from "@/features/settings/account/security-tab";
 import { DevicesTab } from "@/features/settings/account/devices-tab";
 import { DataTab } from "@/features/settings/account/data-tab";
+import { TokensTab } from "@/features/settings/account/tokens-tab";
 
-type TabDef = { id: string; labelKey: string; icon: string };
+type Feature = "api_tokens" | "referrals";
+
+type TabDef = { id: string; labelKey: string; icon: string; feature?: Feature };
 
 const TABS: TabDef[] = [
   { id: "profile", labelKey: "settings.tab.profile", icon: "ri-user-3-line" },
@@ -22,6 +25,7 @@ const TABS: TabDef[] = [
   { id: "sessions", labelKey: "settings.tab.sessions", icon: "ri-device-line" },
   { id: "appearance", labelKey: "settings.tab.appearance", icon: "ri-palette-line" },
   { id: "notifications", labelKey: "settings.tab.notifications", icon: "ri-notification-3-line" },
+  { id: "tokens", labelKey: "settings.tab.tokens", icon: "ri-code-s-slash-line", feature: "api_tokens" },
   { id: "data", labelKey: "settings.tab.data", icon: "ri-folder-shield-2-line" },
 ];
 
@@ -44,8 +48,8 @@ export function AccountSettings() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { data: account } = useAccountQuery();
-  const tabs = TABS;
-  const { tab, anchor } = resolveTab(searchParams.get("tab"), tabs);
+  const tabs = TABS.filter((item) => !item.feature || account?.user.features?.[item.feature]);
+  const { tab, anchor } = resolveTab(searchParams.get("tab"), account ? tabs : TABS);
   const listRef = useRef<HTMLDivElement | null>(null);
   const [edges, setEdges] = useState({ left: false, right: false });
 
@@ -67,13 +71,15 @@ export function AccountSettings() {
     });
   }, []);
 
+  const tabIds = tabs.map((item) => item.id).join(",");
+
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
     const active = el.querySelector<HTMLElement>(`[data-tab="${tab}"]`);
     active?.scrollIntoView({ block: "nearest", inline: "nearest" });
     updateEdges();
-  }, [tab, updateEdges]);
+  }, [tab, tabIds, updateEdges]);
 
   useEffect(() => {
     window.addEventListener("resize", updateEdges);
@@ -172,6 +178,7 @@ export function AccountSettings() {
         {tab === "sessions" && <DevicesTab />}
         {tab === "appearance" && <AppearanceTab />}
         {tab === "notifications" && <NotificationsForm />}
+        {tab === "tokens" && <TokensTab />}
         {tab === "data" && <DataTab />}
       </div>
     </div>

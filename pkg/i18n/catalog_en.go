@@ -62,6 +62,8 @@ var catalogEN = map[string]string{
 	"notify.social_unlinked.body":         "Signing in with {provider} no longer works for this account.",
 	"notify.recovery_code_used.title":     "Recovery code used",
 	"notify.recovery_code_used.body":      "A 2FA recovery code was entered from {ip}. Codes left: {left}. If this wasn't you, change your password and generate new codes.",
+	"notify.api_token_created.title":      "API token created",
+	"notify.api_token_created.body":       "The token \"{name}\" was created from {ip}. It can manage your servers without a password. If this wasn't you, revoke it and change your password.",
 	"notify.new_login.title":              "Sign-in from a new device",
 	"notify.new_login.body":               "Someone signed in to {email} from {ip} ({device}). If this wasn't you, change your password and turn on two-factor authentication.",
 	"notify.new_login.unknown_ip":         "an unknown address",

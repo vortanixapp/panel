@@ -62,6 +62,8 @@ var catalogRU = map[string]string{
 	"notify.social_unlinked.body":         "Вход через {provider} больше не работает для этой учётной записи.",
 	"notify.recovery_code_used.title":     "Использован резервный код",
 	"notify.recovery_code_used.body":      "Резервный код 2FA введён с адреса {ip}. Осталось кодов: {left}. Если это были не вы, смените пароль и выпустите новые коды.",
+	"notify.api_token_created.title":      "Создан API-токен",
+	"notify.api_token_created.body":       "Токен «{name}» создан с адреса {ip}. Через него можно управлять серверами без пароля. Если это были не вы, отзовите токен и смените пароль.",
 	"notify.new_login.title":              "Вход с нового устройства",
 	"notify.new_login.body":               "В аккаунт {email} вошли с адреса {ip} ({device}). Если это были не вы — смените пароль и включите двухфакторную аутентификацию.",
 	"notify.new_login.unknown_ip":         "неизвестный адрес",

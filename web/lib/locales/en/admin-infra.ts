@@ -1086,6 +1086,11 @@ export const adminInfra = {
     "Administrators and support operators cannot sign in without a second factor. The requirement does not apply to clients",
   "admin.security.2fa_on": "Two-factor authentication for staff is on",
   "admin.security.2fa_off": "The 2FA requirement has been lifted",
+  "admin.security.user_tokens": "Personal API tokens for clients",
+  "admin.security.user_tokens_hint":
+    "Clients can issue tokens for bots and scripts: managing their own servers, files, backups and balance. The admin area, payments and account settings stay closed to tokens. Turning this off stops all issued tokens",
+  "admin.security.user_tokens_on": "Clients can use API tokens again",
+  "admin.security.user_tokens_off": "Personal API tokens are turned off",
   "admin.security.suspicious_title":
     "Addresses with failed sign-ins in the last day",
   "admin.security.suspicious_hint":

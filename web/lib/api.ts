@@ -1042,6 +1042,37 @@ export async function fetchAccountDeleteCheck() {
   return apiFetch<AccountDeleteCheck>("/v1/account/delete/check");
 }
 
+export type PersonalToken = {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  created_at: string;
+  last_used_at: string | null;
+  last_used_ip: string;
+  expires_at: string | null;
+  expired: boolean;
+};
+
+export async function fetchAPITokens() {
+  return apiFetch<{ tokens: PersonalToken[]; scopes: string[]; limit: number; enabled: boolean }>(
+    "/v1/account/api-tokens"
+  );
+}
+
+export async function createAPIToken(body: { name: string; scopes: string[]; expires_in_days: number }) {
+  return apiFetch<{ token: PersonalToken; key: string }>("/v1/account/api-tokens", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function revokeAPIToken(id: string) {
+  return apiFetch<{ status: string }>(`/v1/account/api-tokens/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export type ServerViewerPermissions = {
   can_view_console?: boolean;
   can_view_logs?: boolean;

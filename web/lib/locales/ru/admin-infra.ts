@@ -1086,6 +1086,11 @@ export const adminInfra = {
   "admin.security.2fa_on":
     "Двухфакторная аутентификация для сотрудников включена",
   "admin.security.2fa_off": "Требование 2FA снято",
+  "admin.security.user_tokens": "Личные API-токены клиентов",
+  "admin.security.user_tokens_hint":
+    "Клиенты смогут выпускать токены для ботов и скриптов: управление своими серверами, файлы, копии и баланс. Админка, оплата и настройки аккаунта токенам закрыты. Если выключить, выданные токены перестанут работать",
+  "admin.security.user_tokens_on": "Клиенты снова могут пользоваться API-токенами",
+  "admin.security.user_tokens_off": "Личные API-токены отключены",
   "admin.security.suspicious_title": "Адреса с неудачными входами за сутки",
   "admin.security.suspicious_hint":
     "Последняя попытка {when} — нажмите, чтобы подставить в блокировку",

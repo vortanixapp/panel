@@ -55,6 +55,22 @@ export function SecurityPageContent() {
     queryFn: fetchAdminSettings,
   });
   const require2FA = settingsQuery.data?.values?.["security.staff_2fa_required"] === "1";
+  const userTokensRaw = String(settingsQuery.data?.values?.["security.user_api_tokens"] ?? "").trim().toLowerCase();
+  const userTokens = userTokensRaw === "" || ["1", "true", "yes", "on"].includes(userTokensRaw);
+
+  const toggleTokensMut = useMutation({
+    mutationFn: (enabled: boolean) =>
+      updateAdminSettings({ "security.user_api_tokens": enabled ? "1" : "0" }),
+    onSuccess: (_res, enabled) => {
+      toast.success(
+        enabled
+          ? t("admin.security.user_tokens_on")
+          : t("admin.security.user_tokens_off")
+      );
+      void qc.invalidateQueries({ queryKey: ["admin-settings-security"] });
+    },
+    onError: (e: Error) => toast.error(e.message || t("common.save_failed")),
+  });
 
   const toggle2FAMut = useMutation({
     mutationFn: (enabled: boolean) =>
@@ -126,6 +142,21 @@ export function SecurityPageContent() {
             checked={require2FA}
             onCheckedChange={(v) => toggle2FAMut.mutate(v)}
             disabled={toggle2FAMut.isPending || settingsQuery.isLoading}
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">
+              {t("admin.security.user_tokens")}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("admin.security.user_tokens_hint")}
+            </p>
+          </div>
+          <Switch
+            checked={userTokens}
+            onCheckedChange={(v) => toggleTokensMut.mutate(v)}
+            disabled={toggleTokensMut.isPending || settingsQuery.isLoading}
           />
         </div>
       </div>
