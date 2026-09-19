@@ -27,9 +27,10 @@ func main() {
 		port = "8090"
 	}
 
+	upd := updater.NewServer(secret)
 	srv := &http.Server{
 		Addr:              netaddr.Listen(port),
-		Handler:           updater.NewServer(secret).Handler(),
+		Handler:           upd.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	go func() {
@@ -39,9 +40,13 @@ func main() {
 		}
 	}()
 
+	cleanupCtx, stopCleanup := context.WithCancel(context.Background())
+	go upd.CleanupImages(cleanupCtx)
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	stopCleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(ctx)

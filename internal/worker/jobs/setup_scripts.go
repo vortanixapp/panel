@@ -201,13 +201,25 @@ func daemonAgentCommands(agentToken, nodeID, relayURL, relayPin, version string)
 		relayURL = "ws://127.0.0.1:8082/v1/agent/connect"
 	}
 	image := agentImage(version)
-	return []string{
+	return append([]string{
 		"sudo systemctl start docker || true",
 		"sudo mkdir -p /var/lib/vortanix/servers /opt/vortanix/plugin-cache",
 		fmt.Sprintf("sudo docker pull %s", image),
 		"sudo docker rm -f vortanix-agent 2>/dev/null || true",
 		fmt.Sprintf("sudo docker run -d --name vortanix-agent --restart unless-stopped --user 0:0 --cap-add SYS_ADMIN -e RELAY_URL=%q -e RELAY_PIN=%q -e AGENT_TOKEN=%q -e NODE_ID=%q -e VORTANIX_VERSION=%q -e VORTANIX_DATA_DIR=/var/lib/vortanix/servers -v /var/run/docker.sock:/var/run/docker.sock -v /dev:/dev -v /var/lib/vortanix/servers:/var/lib/vortanix/servers -v /opt/vortanix:/opt/vortanix %s",
 			relayURL, relayPin, agentToken, nodeID, versionLabelOf(image, version), image),
+	}, agentImageCleanupCommands(image)...)
+}
+
+func agentImageCleanupCommands(image string) []string {
+	repo, tag := image, "latest"
+	if idx := strings.LastIndex(image, ":"); idx > strings.LastIndex(image, "/") {
+		repo, tag = image[:idx], image[idx+1:]
+	}
+	return []string{
+		fmt.Sprintf("sudo docker images --format '{{.Repository}}:{{.Tag}}' %s | grep -vxF -e %s -e %s | xargs -r sudo docker rmi >/dev/null 2>&1 || true",
+			shellQuote(repo), shellQuote(repo+":"+tag), shellQuote(repo+":<none>")),
+		"sudo docker image prune -f >/dev/null 2>&1 || true",
 	}
 }
 

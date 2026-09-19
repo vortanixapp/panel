@@ -57,6 +57,7 @@ func imageCleanupCommands() []string {
 	return []string{
 		fmt.Sprintf("sudo rm -rf %s", imageBuildRoot),
 		"sudo docker builder prune -f >/dev/null 2>&1 || true",
+		"sudo docker image prune -f >/dev/null 2>&1 || true",
 	}
 }
 

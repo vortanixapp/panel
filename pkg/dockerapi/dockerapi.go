@@ -107,6 +107,12 @@ type Summary struct {
 	Labels map[string]string `json:"Labels"`
 }
 
+type ImageSummary struct {
+	ID          string   `json:"Id"`
+	RepoTags    []string `json:"RepoTags"`
+	RepoDigests []string `json:"RepoDigests"`
+}
+
 func (c *Client) request(ctx context.Context, method, path string, query url.Values, body any) (*http.Response, error) {
 	var reader io.Reader
 	if body != nil {
@@ -193,6 +199,18 @@ func (c *Client) List(ctx context.Context, all bool, filters map[string][]string
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *Client) Images(ctx context.Context) ([]ImageSummary, error) {
+	var out []ImageSummary
+	if err := c.call(ctx, http.MethodGet, "/images/json", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) RemoveImage(ctx context.Context, ref string) error {
+	return c.call(ctx, http.MethodDelete, "/images/"+ref, nil, nil, nil)
 }
 
 func SplitRef(ref string) (name, tag string) {

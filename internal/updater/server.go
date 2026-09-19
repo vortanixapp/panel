@@ -63,6 +63,7 @@ type project struct {
 	ConfigFiles []string
 	EnvFile     string
 	Image       string
+	Ref         string
 	Socket      string
 	Mode        string
 }
@@ -81,6 +82,7 @@ func (s *Server) discover(ctx context.Context) (*project, error) {
 		Name:       labels["com.docker.compose.project"],
 		WorkingDir: labels["com.docker.compose.project.working_dir"],
 		Image:      self.Image,
+		Ref:        self.ConfigImage(),
 		Socket:     "/var/run/docker.sock",
 		Mode:       "source",
 	}
