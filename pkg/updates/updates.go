@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -50,14 +51,34 @@ type Release struct {
 	CheckedAt   string `json:"checked_at"`
 }
 
-func LatestRelease(ctx context.Context, repo string) (*Release, error) {
+type githubRelease struct {
+	TagName     string `json:"tag_name"`
+	Body        string `json:"body"`
+	HTMLURL     string `json:"html_url"`
+	PublishedAt string `json:"published_at"`
+	Prerelease  bool   `json:"prerelease"`
+	Draft       bool   `json:"draft"`
+}
+
+func (g githubRelease) release(checkedAt string) Release {
+	return Release{
+		Version:     buildinfo.Normalize(g.TagName),
+		Notes:       g.Body,
+		URL:         g.HTMLURL,
+		PublishedAt: g.PublishedAt,
+		Prerelease:  g.Prerelease,
+		CheckedAt:   checkedAt,
+	}
+}
+
+func githubGet(ctx context.Context, repo, path string, out any) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	base := strings.TrimRight(Env("UPDATE_API_BASE", "https://api.github.com"), "/")
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/repos/"+repo+"/releases/latest", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/repos/"+repo+path, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "vortanix-panel")
@@ -67,38 +88,54 @@ func LatestRelease(ctx context.Context, repo string) (*Release, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("github недоступен: %w", err)
+		return fmt.Errorf("github недоступен: %w", err)
 	}
 	defer resp.Body.Close()
 
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return nil, fmt.Errorf("у репозитория %s нет ни одного выпуска", repo)
+		return fmt.Errorf("у репозитория %s нет ни одного выпуска", repo)
 	case http.StatusForbidden, http.StatusTooManyRequests:
-		return nil, fmt.Errorf("github ограничил частоту запросов, попробуйте позже")
+		return fmt.Errorf("github ограничил частоту запросов, попробуйте позже")
 	default:
-		return nil, fmt.Errorf("github ответил %s", resp.Status)
+		return fmt.Errorf("github ответил %s", resp.Status)
 	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
 
-	var payload struct {
-		TagName     string `json:"tag_name"`
-		Body        string `json:"body"`
-		HTMLURL     string `json:"html_url"`
-		PublishedAt string `json:"published_at"`
-		Prerelease  bool   `json:"prerelease"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+func LatestRelease(ctx context.Context, repo string) (*Release, error) {
+	var payload githubRelease
+	if err := githubGet(ctx, repo, "/releases/latest", &payload); err != nil {
 		return nil, err
 	}
-	return &Release{
-		Version:     buildinfo.Normalize(payload.TagName),
-		Notes:       payload.Body,
-		URL:         payload.HTMLURL,
-		PublishedAt: payload.PublishedAt,
-		Prerelease:  payload.Prerelease,
-		CheckedAt:   time.Now().UTC().Format(time.RFC3339),
-	}, nil
+	rel := payload.release(time.Now().UTC().Format(time.RFC3339))
+	return &rel, nil
+}
+
+func Releases(ctx context.Context, repo string, limit int) ([]Release, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+	var payload []githubRelease
+	if err := githubGet(ctx, repo, "/releases?per_page="+strconv.Itoa(limit), &payload); err != nil {
+		return nil, err
+	}
+	checkedAt := time.Now().UTC().Format(time.RFC3339)
+	out := make([]Release, 0, len(payload))
+	for _, item := range payload {
+		rel := item.release(checkedAt)
+		if item.Draft || !IsSemver(rel.Version) {
+			continue
+		}
+		out = append(out, rel)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return IsNewer(out[i].Version, out[j].Version) })
+	return out, nil
+}
+
+func SameVersion(a, b string) bool {
+	return IsSemver(a) && IsSemver(b) && !IsNewer(a, b) && !IsNewer(b, a)
 }
 
 func Parse(v string) ([3]int, bool) {

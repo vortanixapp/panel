@@ -21,8 +21,10 @@ import (
 )
 
 const (
-	updateCacheKey = "updates:latest"
-	updateCacheTTL = time.Hour
+	updateCacheKey   = "updates:latest"
+	releasesCacheKey = "updates:releases"
+	updateCacheTTL   = time.Hour
+	releasesLimit    = 30
 )
 
 var errUpdatesDisabled = errors.New("проверка обновлений выключена: не задан UPDATE_REPO")
@@ -59,6 +61,27 @@ func (h *Handler) latestRelease(ctx context.Context, refresh bool) (*updates.Rel
 		log.Printf("проверка обновлений: ответ не закеширован: %v", err)
 	}
 	return fetched, false, nil
+}
+
+func (h *Handler) recentReleases(ctx context.Context, refresh bool) ([]updates.Release, error) {
+	repo := updates.Repo()
+	if repo == "" {
+		return nil, errUpdatesDisabled
+	}
+	var list []updates.Release
+	if !refresh {
+		if found, err := h.cache.GetJSON(ctx, releasesCacheKey, &list); err == nil && found {
+			return list, nil
+		}
+	}
+	fetched, err := updates.Releases(ctx, repo, releasesLimit)
+	if err != nil {
+		return nil, err
+	}
+	if err := h.cache.SetJSON(ctx, releasesCacheKey, fetched, updateCacheTTL); err != nil {
+		log.Printf("проверка обновлений: список выпусков не закеширован: %v", err)
+	}
+	return fetched, nil
 }
 
 func updaterStatus(ctx context.Context) *updates.Status {
@@ -117,7 +140,8 @@ func (h *Handler) AdminUpdates(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, out)
 		return
 	}
-	rel, cached, err := h.latestRelease(ctx, r.URL.Query().Get("refresh") == "1")
+	refresh := r.URL.Query().Get("refresh") == "1"
+	rel, cached, err := h.latestRelease(ctx, refresh)
 	if err != nil {
 		out["error"] = err.Error()
 		writeJSON(w, http.StatusOK, out)
@@ -131,6 +155,26 @@ func (h *Handler) AdminUpdates(w http.ResponseWriter, r *http.Request) {
 	out["prerelease"] = rel.Prerelease
 	out["checked_at"] = rel.CheckedAt
 	out["from_cache"] = cached
+
+	newer := []updates.Release{}
+	if list, err := h.recentReleases(ctx, refresh); err == nil {
+		for _, item := range list {
+			switch {
+			case item.Prerelease:
+			case updates.IsNewer(item.Version, current):
+				if !updates.IsNewer(item.Version, rel.Version) {
+					newer = append(newer, item)
+				}
+			case updates.SameVersion(item.Version, current):
+				installed := item
+				out["installed_release"] = installed
+			}
+		}
+		out["releases_limited"] = len(list) >= releasesLimit && len(newer) > 0 && out["installed_release"] == nil
+	} else {
+		log.Printf("проверка обновлений: список выпусков не получен: %v", err)
+	}
+	out["releases"] = newer
 	writeJSON(w, http.StatusOK, out)
 }
 

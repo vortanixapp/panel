@@ -5240,6 +5240,14 @@ export async function updateAdminPaymentSettings(data: {
   );
 }
 
+export type UpdateRelease = {
+  version: string;
+  notes: string;
+  url: string;
+  published_at: string;
+  prerelease: boolean;
+};
+
 export type AdminUpdates = {
   current_version: string;
   latest_version?: string;
@@ -5253,6 +5261,9 @@ export type AdminUpdates = {
   repo?: string;
   checks_disabled?: boolean;
   error?: string;
+  releases?: UpdateRelease[];
+  installed_release?: UpdateRelease;
+  releases_limited?: boolean;
   auto: PanelAutoUpdate;
   updater: UpdaterStatus;
 };
