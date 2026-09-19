@@ -4982,6 +4982,7 @@ export type AdminPaymentProvider = {
   fields: AdminPaymentProviderField[];
   config: Record<string, string>;
   secrets: Record<string, boolean>;
+  secret_hints?: Record<string, { length: number; tail: string }>;
   manual: boolean;
   currency_mode: "fixed" | "account" | "setting" | "wallet";
   currency: string;

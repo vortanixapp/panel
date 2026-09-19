@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/vortanixapp/panel/pkg/yookassa"
 )
@@ -138,7 +140,9 @@ func (YooMoney) HandleNotification(_ context.Context, cfg map[string]any, req *N
 	label := req.Value("label")
 	operation := req.Value("operation_id")
 	n := Notification{PaymentID: label, ProviderPaymentID: operation, Currency: "RUB"}
-	if !yoomoneySigned(req, strCfg(cfg, "notification_secret")) {
+	secret := strCfg(cfg, "notification_secret")
+	if !yoomoneySigned(req, secret) && !yoomoneySigned(req, visibleOnly(secret)) {
+		log.Printf("yoomoney: подпись не сошлась: %s", yoomoneyDiagnostics(req, secret))
 		return n, ErrBadSignature
 	}
 	if req.Value("test_notification") == "true" {
@@ -181,6 +185,36 @@ func yoomoneySigned(req *NotifyRequest, secret string) bool {
 		return secureEqualFold(sha1Hex(strings.Join(parts, "&")), hash)
 	}
 	return false
+}
+
+func yoomoneyDiagnostics(req *NotifyRequest, secret string) string {
+	keys := make([]string, 0, len(req.Form))
+	for key := range req.Form {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := []string{
+		"поля " + strings.Join(keys, ","),
+		fmt.Sprintf("sign %d симв.", len(strings.TrimSpace(req.Form.Get("sign")))),
+		fmt.Sprintf("sha1_hash %d симв.", len(strings.TrimSpace(req.Form.Get("sha1_hash")))),
+		fmt.Sprintf("секрет в панели %d симв.", utf8.RuneCountInString(secret)),
+	}
+	if secret != visibleOnly(secret) {
+		parts = append(parts, "в секрете есть невидимые символы")
+	}
+	if req.Value("test_notification") == "true" {
+		parts = append(parts, "строка подписи "+yoomoneySignString(req.Form), "sign "+req.Form.Get("sign"))
+	}
+	return strings.Join(parts, "; ")
+}
+
+func visibleOnly(value string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.Is(unicode.Cf, r) || unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, value)
 }
 
 func yoomoneyParamSets(req *NotifyRequest) []url.Values {

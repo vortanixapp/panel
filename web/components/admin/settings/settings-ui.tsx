@@ -85,6 +85,8 @@ export function TextField({
   span,
   accent,
   autoComplete = "off",
+  hint,
+  selectOnFocus,
 }: {
   label: string;
   value: string;
@@ -95,6 +97,8 @@ export function TextField({
   span?: 2 | 3 | 4 | "full";
   accent?: boolean;
   autoComplete?: string;
+  hint?: string;
+  selectOnFocus?: boolean;
 }) {
   return (
     <div className={cn("flex flex-col gap-[7px]", spanClass(span))}>
@@ -110,14 +114,19 @@ export function TextField({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={selectOnFocus ? (e) => e.currentTarget.select() : undefined}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        data-1p-ignore={type === "password" ? "" : undefined}
+        data-lpignore={type === "password" ? "true" : undefined}
+        data-bwignore={type === "password" ? "" : undefined}
         className={cn(
           controlClass,
           mono && "font-mono",
           accent && "border-amber-500/40 focus-visible:border-amber-500"
         )}
       />
+      {hint ? <span className="text-[11px] text-muted-foreground">{hint}</span> : null}
     </div>
   );
 }

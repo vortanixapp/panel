@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -106,6 +107,37 @@ func paymentProviderReady(def payments.AdminProviderDef, row paymentProviderRow)
 	return row.Enabled && !row.Unreadable && payments.IsSupported(def.Key) && len(def.MissingFields(row.Config)) == 0
 }
 
+type secretHint struct {
+	Length int    `json:"length"`
+	Tail   string `json:"tail"`
+}
+
+func hintOfSecret(value string) secretHint {
+	runes := []rune(value)
+	hint := secretHint{Length: len(runes)}
+	switch {
+	case len(runes) >= 12:
+		hint.Tail = string(runes[len(runes)-4:])
+	case len(runes) >= 6:
+		hint.Tail = string(runes[len(runes)-2:])
+	}
+	return hint
+}
+
+func cleanFieldValue(value string, multiline bool) string {
+	return strings.TrimSpace(strings.Map(func(r rune) rune {
+		switch {
+		case unicode.Is(unicode.Cf, r):
+			return -1
+		case multiline && (r == '\n' || r == '\r' || r == '\t'):
+			return r
+		case unicode.IsControl(r):
+			return -1
+		}
+		return r
+	}, value))
+}
+
 func providerValue(cfg map[string]any, key string) string {
 	return strings.TrimSpace(anyString(cfg[key]))
 }
@@ -179,10 +211,14 @@ func (h *Handler) paymentSettingsView(settings map[string]string) map[string]any
 func (h *Handler) adminPaymentProviderView(def payments.AdminProviderDef, row paymentProviderRow, fee float64) map[string]any {
 	config := map[string]string{}
 	secrets := map[string]bool{}
+	hints := map[string]secretHint{}
 	for _, f := range def.Fields {
 		value := providerValue(row.Config, f.Key)
 		if f.Type == "password" {
 			secrets[f.Key] = value != ""
+			if value != "" {
+				hints[f.Key] = hintOfSecret(value)
+			}
 			continue
 		}
 		config[f.Key] = value
@@ -199,6 +235,7 @@ func (h *Handler) adminPaymentProviderView(def payments.AdminProviderDef, row pa
 		"fields":        def.Fields,
 		"config":        config,
 		"secrets":       secrets,
+		"secret_hints":  hints,
 		"manual":        def.Manual,
 		"currency_mode": def.CurrencyMode(),
 		"currency":      def.ChargeCurrency(row.Config, ""),
@@ -291,7 +328,7 @@ func (h *Handler) AdminUpdatePaymentProvider(w http.ResponseWriter, r *http.Requ
 			if !present {
 				continue
 			}
-			value := strings.TrimSpace(anyString(raw))
+			value := cleanFieldValue(anyString(raw), f.Type == "textarea")
 			switch f.Type {
 			case "password":
 				if value != "" {

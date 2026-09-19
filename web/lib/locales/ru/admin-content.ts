@@ -316,6 +316,8 @@ export const adminContent = {
   "admin.psp.manual_hint":
     "Клиент увидит реквизиты, а баланс пополнится, когда вы подтвердите перевод в разделе «Биллинг»",
   "admin.psp.secret_saved": "сохранён — введите новый, чтобы заменить",
+  "admin.psp.secret_hint": "Сохранено {length} симв., заканчивается на …{tail}",
+  "admin.psp.secret_hint_short": "Сохранено {length} симв.",
   "admin.psp.currency_fixed": "списание в {currency}",
   "admin.psp.currency_setting": "списание в {currency}",
   "admin.psp.currency_account": "списание в {currency} по типу счёта",

@@ -264,6 +264,7 @@ function ProviderRow({
       ),
     onSuccess: (res, enabled) => {
       applyResult(res.provider);
+      setConfig(initialConfig(res.provider));
       toast.success(
         t(enabled ? "admin.psp.enabled_toast" : "admin.psp.disabled_toast", {
           name: provider.name,
@@ -280,6 +281,7 @@ function ProviderRow({
     mutationFn: () => updateAdminPaymentProvider(provider.key, { fee_percent: fee, config }),
     onSuccess: (res) => {
       applyResult(res.provider);
+      setConfig(initialConfig(res.provider));
       toast.success(t("admin.psp.config_saved"));
     },
     onError: (e: Error) => toast.error(e.message || t("admin.psp.config_failed")),
@@ -443,6 +445,7 @@ function ProviderRow({
                   />
                 );
               }
+              const secretHint = field.type === "password" ? provider.secret_hints?.[field.key] : undefined;
               return (
                 <TextField
                   key={field.key}
@@ -451,6 +454,14 @@ function ProviderRow({
                   label={label}
                   value={value}
                   onChange={(v) => setField(field.key, v)}
+                  selectOnFocus={field.type === "password"}
+                  hint={
+                    secretHint
+                      ? secretHint.tail
+                        ? t("admin.psp.secret_hint", { length: secretHint.length, tail: secretHint.tail })
+                        : t("admin.psp.secret_hint_short", { length: secretHint.length })
+                      : undefined
+                  }
                   placeholder={
                     field.type === "password"
                       ? provider.secrets[field.key]

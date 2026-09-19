@@ -321,6 +321,8 @@ export const adminContent = {
   "admin.psp.manual_hint":
     "The client sees the bank details; the balance is credited once you confirm the transfer under Billing",
   "admin.psp.secret_saved": "saved — enter a new one to replace it",
+  "admin.psp.secret_hint": "{length} characters saved, ends with …{tail}",
+  "admin.psp.secret_hint_short": "{length} characters saved",
   "admin.psp.currency_fixed": "charged in {currency}",
   "admin.psp.currency_setting": "charged in {currency}",
   "admin.psp.currency_account": "charged in {currency} by account type",
