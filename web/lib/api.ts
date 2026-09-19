@@ -5025,43 +5025,79 @@ export async function deleteAdminMysqlInstance(nodeId: string, key: string) {
   });
 }
 
-export async function createAdminBugReport(payload: {
+export type BugReportSeverity = "low" | "medium" | "high" | "critical";
+
+export type BugReportInfo = {
+  repo: string;
+  repo_url: string;
+  issues_url: string;
+  my_issues_url: string;
+  version: string;
+  database: string;
+  nodes: {
+    total: number;
+    online: number;
+    agents: { version: string; count: number }[];
+  };
+};
+
+export type BugReportIssue = {
+  number: number;
+  title: string;
+  state: "open" | "closed";
+  state_reason: string;
+  url: string;
+  comments: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BugReportField = {
+  id: "description" | "severity" | "component" | "version" | "environment" | "logs";
+  value: string;
+};
+
+export type BugReportPrepared = {
+  repo: string;
+  title: string;
+  url: string;
+  fields: BugReportField[];
+  text: string;
+  clipboard: string;
+  logs_lines: number;
+  logs_total: number;
+};
+
+export async function fetchBugReportInfo() {
+  return apiFetch<BugReportInfo>("/v1/admin/bug-report");
+}
+
+export async function fetchBugReportSimilar(query: string) {
+  const qs = query.trim() ? `?q=${encodeURIComponent(query.trim())}` : "";
+  return apiFetch<{ issues: BugReportIssue[]; matched: boolean }>(
+    `/v1/admin/bug-report/similar${qs}`
+  );
+}
+
+export async function prepareBugReport(payload: {
   title: string;
   description: string;
-  severity: "low" | "medium" | "high" | "critical";
+  severity: BugReportSeverity;
   component: string;
-  node?: string;
-  environment?: Record<string, string>;
+  node_id: string;
+  attach_logs: boolean;
+  client: {
+    ui_version: string;
+    browser: string;
+    screen: string;
+    language: string;
+    time: string;
+  };
 }) {
-  return apiFetch<{
-    ok: boolean;
-    ticket_id: string;
-    priority: "low" | "normal" | "high" | "urgent";
-    status: string;
-    delivered?: boolean;
-    report_number?: number;
-    delivery_error?: string;
-  }>("/v1/admin/bug-report", {
+  return apiFetch<BugReportPrepared>("/v1/admin/bug-report", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-}
-
-export type AdminBugReport = {
-  id: string;
-  title: string;
-  status: string;
-  priority: "low" | "normal" | "high" | "urgent";
-  severity: string;
-  component: string;
-  created_at: string;
-  mine: boolean;
-};
-
-export async function fetchAdminBugReports() {
-  return apiFetch<{ reports: AdminBugReport[]; mine: number }>(
-    "/v1/admin/bug-report"
-  );
 }
 
 export type AdminPromotionDiscount = "percent" | "fixed" | "";

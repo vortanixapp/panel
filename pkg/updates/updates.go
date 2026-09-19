@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -24,9 +25,12 @@ const (
 	SettingAgentsAuto       = "updates.agents.auto"
 
 	DefaultAgentImage = "ghcr.io/vortanixapp/vortanix-agent:latest"
+	DefaultRepo       = "vortanixapp/panel"
 
 	AgentUpdateTimeout = 15 * time.Minute
 )
+
+var errGitHubNotFound = errors.New("github: not found")
 
 func Env(key, fallback string) string {
 	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
@@ -39,7 +43,7 @@ func Repo() string {
 	if v, ok := os.LookupEnv("UPDATE_REPO"); ok {
 		return strings.Trim(strings.TrimSpace(v), "/")
 	}
-	return "vortanixapp/panel"
+	return DefaultRepo
 }
 
 type Release struct {
@@ -72,11 +76,19 @@ func (g githubRelease) release(checkedAt string) Release {
 }
 
 func githubGet(ctx context.Context, repo, path string, out any) error {
+	err := githubAPI(ctx, "/repos/"+repo+path, out)
+	if errors.Is(err, errGitHubNotFound) {
+		return fmt.Errorf("у репозитория %s нет ни одного выпуска", repo)
+	}
+	return err
+}
+
+func githubAPI(ctx context.Context, path string, out any) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	base := strings.TrimRight(Env("UPDATE_API_BASE", "https://api.github.com"), "/")
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/repos/"+repo+path, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+path, nil)
 	if err != nil {
 		return err
 	}
@@ -88,6 +100,13 @@ func githubGet(ctx context.Context, repo, path string, out any) error {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			if urlErr.Timeout() {
+				return errors.New("github не ответил вовремя, попробуйте позже")
+			}
+			err = urlErr.Err
+		}
 		return fmt.Errorf("github недоступен: %w", err)
 	}
 	defer resp.Body.Close()
@@ -95,9 +114,11 @@ func githubGet(ctx context.Context, repo, path string, out any) error {
 	switch resp.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return fmt.Errorf("у репозитория %s нет ни одного выпуска", repo)
+		return errGitHubNotFound
 	case http.StatusForbidden, http.StatusTooManyRequests:
 		return fmt.Errorf("github ограничил частоту запросов, попробуйте позже")
+	case http.StatusUnprocessableEntity:
+		return fmt.Errorf("github не принял поисковый запрос")
 	default:
 		return fmt.Errorf("github ответил %s", resp.Status)
 	}

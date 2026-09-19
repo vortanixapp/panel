@@ -1,0 +1,53 @@
+name: Report from the panel
+description: Opened by the «Report a bug» page of the panel with the details already filled in
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The panel has filled this in for you. Check the text, add screenshots and press **Create**.
+        This issue is public — remove anything private before sending.
+
+        Панель заполнила отчёт за вас. Проверьте текст, добавьте скриншоты и нажмите **Create**.
+        Задача публичная — уберите всё личное перед отправкой.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened
+    validations:
+      required: true
+
+  - type: input
+    id: severity
+    attributes:
+      label: Severity
+
+  - type: input
+    id: component
+    attributes:
+      label: Component
+
+  - type: input
+    id: version
+    attributes:
+      label: Panel version
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      render: text
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Paste images with Ctrl+V or drag them here · Вставьте картинки через Ctrl+V или перетащите их сюда
