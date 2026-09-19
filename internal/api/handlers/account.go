@@ -216,6 +216,17 @@ func normalizePreferences(raw json.RawMessage) (map[string]any, error) {
 	return out, nil
 }
 
+func (h *Handler) startPage(ctx context.Context, userID string) string {
+	var page string
+	_ = h.dbOf(ctx).QueryRow(ctx, `
+		SELECT COALESCE(preferences->>'start_page', '') FROM core.user_profiles WHERE user_id = $1
+	`, userID).Scan(&page)
+	if !accountStartPages[page] {
+		return ""
+	}
+	return page
+}
+
 func (h *Handler) validLocale(ctx context.Context, code string) bool {
 	if code == "ru" || code == "en" {
 		return true

@@ -75,6 +75,7 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"access_token":  access,
 		"refresh_token": refresh,
+		"start_page":    h.startPage(ctx, pending["user_id"]),
 		"user": map[string]string{
 			"id":    pending["user_id"],
 			"email": pending["email"],

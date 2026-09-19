@@ -115,7 +115,7 @@ export function LoginForm() {
       if (!hasSession()) {
         throw new Error(t("auth.login.no_token"));
       }
-      router.push(postLoginPath(res.user?.role ?? "user"));
+      router.push(postLoginPath(res.user?.role ?? "user", res.start_page));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.login.failed"));
     } finally {

@@ -43,6 +43,29 @@ type telegramLink struct {
 	UserID string `json:"user_id"`
 }
 
+type notificationQuiet struct {
+	Enabled  bool   `json:"enabled"`
+	From     int    `json:"from"`
+	To       int    `json:"to"`
+	Critical bool   `json:"critical"`
+	TimeZone string `json:"tz"`
+}
+
+type notificationExtras struct {
+	Quiet            notificationQuiet `json:"quiet"`
+	BalanceThreshold *float64          `json:"balance_threshold"`
+}
+
+func (h *Handler) loadNotificationExtras(ctx context.Context, db notify.DB, userID string) notificationExtras {
+	x := notificationExtras{Quiet: notificationQuiet{From: 1380, To: 480, Critical: true}}
+	_ = db.QueryRow(ctx, `
+		SELECT quiet_enabled, quiet_from, quiet_to, quiet_critical, quiet_tz, balance_threshold::float8
+		FROM core.user_notification_channels
+		WHERE user_id = $1
+	`, userID).Scan(&x.Quiet.Enabled, &x.Quiet.From, &x.Quiet.To, &x.Quiet.Critical, &x.Quiet.TimeZone, &x.BalanceThreshold)
+	return x
+}
+
 func telegramLinkKey(code string) string {
 	return "notify:tg-link:" + code
 }
@@ -92,6 +115,15 @@ func (h *Handler) notificationPrefsPayload(ctx context.Context, role string, l i
 	}
 }
 
+func (h *Handler) writeNotificationPrefs(w http.ResponseWriter, ctx context.Context, userID, role string, c notificationChannels, routes notify.Routes) {
+	db := h.dbOf(ctx)
+	payload := h.notificationPrefsPayload(ctx, role, i18n.ForUser(ctx, db, userID), c, routes)
+	extras := h.loadNotificationExtras(ctx, db, userID)
+	payload["quiet"] = extras.Quiet
+	payload["balance_threshold"] = extras.BalanceThreshold
+	writeJSON(w, http.StatusOK, payload)
+}
+
 func (h *Handler) NotificationChannelsShow(w http.ResponseWriter, r *http.Request) {
 	claims, ok := tenantClaims(r.Context())
 	if !ok {
@@ -100,8 +132,7 @@ func (h *Handler) NotificationChannelsShow(w http.ResponseWriter, r *http.Reques
 	}
 	ctx := r.Context()
 	c, routes := h.loadNotificationPrefs(ctx, h.dbOf(ctx), claims.UserID)
-	l := i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID)
-	writeJSON(w, http.StatusOK, h.notificationPrefsPayload(ctx, claims.Role, l, c, routes))
+	h.writeNotificationPrefs(w, ctx, claims.UserID, claims.Role, c, routes)
 }
 
 func (h *Handler) NotificationChannelsUpdate(w http.ResponseWriter, r *http.Request) {
@@ -115,12 +146,14 @@ func (h *Handler) NotificationChannelsUpdate(w http.ResponseWriter, r *http.Requ
 	current, routes := h.loadNotificationPrefs(ctx, db, claims.UserID)
 
 	var body struct {
-		Email          *bool                      `json:"email"`
-		Telegram       *bool                      `json:"telegram"`
-		Discord        *bool                      `json:"discord"`
-		TelegramChatID *string                    `json:"telegram_chat_id"`
-		DiscordWebhook *string                    `json:"discord_webhook"`
-		Routes         map[string]map[string]bool `json:"routes"`
+		Email            *bool                      `json:"email"`
+		Telegram         *bool                      `json:"telegram"`
+		Discord          *bool                      `json:"discord"`
+		TelegramChatID   *string                    `json:"telegram_chat_id"`
+		DiscordWebhook   *string                    `json:"discord_webhook"`
+		Routes           map[string]map[string]bool `json:"routes"`
+		Quiet            *notificationQuiet         `json:"quiet"`
+		BalanceThreshold json.RawMessage            `json:"balance_threshold"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
@@ -191,8 +224,42 @@ func (h *Handler) NotificationChannelsUpdate(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	l := i18n.ForUser(ctx, db, claims.UserID)
-	writeJSON(w, http.StatusOK, h.notificationPrefsPayload(ctx, claims.Role, l, current, routes))
+	if body.Quiet != nil {
+		q := *body.Quiet
+		if q.From < 0 || q.From >= 1440 || q.To < 0 || q.To >= 1440 {
+			writeError(w, http.StatusBadRequest, "invalid_quiet_hours")
+			return
+		}
+		q.TimeZone = strings.TrimSpace(q.TimeZone)
+		if q.TimeZone != "" {
+			if _, err := time.LoadLocation(q.TimeZone); err != nil || q.TimeZone == "Local" {
+				q.TimeZone = ""
+			}
+		}
+		if _, err := db.Exec(ctx, `
+			UPDATE core.user_notification_channels
+			SET quiet_enabled = $2, quiet_from = $3, quiet_to = $4, quiet_critical = $5, quiet_tz = $6, updated_at = now()
+			WHERE user_id = $1
+		`, claims.UserID, q.Enabled, q.From, q.To, q.Critical, q.TimeZone); err != nil {
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+	}
+	if len(body.BalanceThreshold) > 0 {
+		var threshold *float64
+		if err := json.Unmarshal(body.BalanceThreshold, &threshold); err != nil || (threshold != nil && (*threshold <= 0 || *threshold > 10_000_000)) {
+			writeError(w, http.StatusBadRequest, "invalid_balance_threshold")
+			return
+		}
+		if _, err := db.Exec(ctx, `
+			UPDATE core.user_notification_channels SET balance_threshold = $2, updated_at = now() WHERE user_id = $1
+		`, claims.UserID, threshold); err != nil {
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+	}
+
+	h.writeNotificationPrefs(w, ctx, claims.UserID, claims.Role, current, routes)
 }
 
 func (h *Handler) panelDisplayName(ctx context.Context, r *http.Request) string {

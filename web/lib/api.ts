@@ -311,6 +311,7 @@ export async function login(
     requires_2fa?: boolean;
     two_factor_token?: string;
     user?: { id: string; email: string; role: string };
+    start_page?: string;
   }>("/v1/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password, tenant_slug: tenantSlug, remember }),
@@ -814,6 +815,7 @@ export async function challenge2FA(twoFactorToken: string, code: string) {
   return apiFetch<{
     access_token: string;
     refresh_token: string;
+    start_page?: string;
     user: { id: string; email: string; role: string };
   }>("/v1/auth/2fa/challenge", {
     method: "POST",
@@ -1367,14 +1369,26 @@ export type NotificationGroupPrefs = {
   routes: Partial<Record<NotificationChannel, boolean>>;
 };
 
+export type NotificationQuiet = {
+  enabled: boolean;
+  from: number;
+  to: number;
+  critical: boolean;
+  tz: string;
+};
+
 export type NotificationPrefs = {
   channels: NotificationChannels;
   groups: NotificationGroupPrefs[];
   telegram: { available: boolean; bot_username: string };
+  quiet?: NotificationQuiet;
+  balance_threshold?: number | null;
 };
 
 export type NotificationPrefsUpdate = Partial<NotificationChannels> & {
   routes?: Record<string, Partial<Record<NotificationChannel, boolean>>>;
+  quiet?: NotificationQuiet;
+  balance_threshold?: number | null;
 };
 
 export async function fetchNotificationPrefs() {

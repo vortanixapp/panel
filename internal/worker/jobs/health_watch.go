@@ -21,6 +21,7 @@ func (r *Runner) HealthWatchLoop(ctx context.Context) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 	r.checkLowBalances(ctx)
+	r.checkBalanceThresholds(ctx)
 	r.checkNodeDiskSpace(ctx)
 	for {
 		select {
@@ -28,8 +29,58 @@ func (r *Runner) HealthWatchLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			r.checkLowBalances(ctx)
+			r.checkBalanceThresholds(ctx)
 			r.checkNodeDiskSpace(ctx)
 		}
+	}
+}
+
+func (r *Runner) checkBalanceThresholds(ctx context.Context) {
+	rows, err := r.db.Query(ctx, `
+		SELECT c.user_id::text, c.balance_threshold::float8, COALESCE(w.balance, 0)::float8, COALESCE(w.currency, 'RUB')
+		FROM core.user_notification_channels c
+		JOIN core.users u ON u.id = c.user_id AND u.status = 'active'
+		LEFT JOIN LATERAL (
+			SELECT balance, currency FROM core.wallets w
+			WHERE w.user_id = c.user_id
+			ORDER BY is_default DESC, created_at
+			LIMIT 1
+		) w ON true
+		WHERE c.balance_threshold IS NOT NULL AND c.balance_threshold > 0
+		  AND COALESCE(w.balance, 0) < c.balance_threshold
+		LIMIT 1000
+	`)
+	if err != nil {
+		log.Printf("health: проверка порога баланса не выполнена: %v", err)
+		return
+	}
+	type below struct {
+		userID, currency   string
+		threshold, balance float64
+	}
+	var list []below
+	for rows.Next() {
+		var b below
+		if rows.Scan(&b.userID, &b.threshold, &b.balance, &b.currency) == nil {
+			list = append(list, b)
+		}
+	}
+	rows.Close()
+
+	day := time.Now().Format("2006-01-02")
+	for _, b := range list {
+		r.notifyUser(ctx, b.userID, notify.Event{
+			Kind:  notify.KindBalanceLow,
+			Title: i18n.Key("notify.balance_threshold.title"),
+			Body: i18n.Key("notify.balance_threshold.body", i18n.Params{
+				"balance":   fmt.Sprintf("%.2f", b.balance),
+				"threshold": fmt.Sprintf("%.2f", b.threshold),
+				"currency":  b.currency,
+			}),
+			Action:    r.panelAction("notify.action.topup", "/billing#topup"),
+			Meta:      map[string]any{"balance": b.balance, "threshold": b.threshold, "currency": b.currency},
+			DedupeKey: "balance.threshold:" + b.userID + ":" + day,
+		})
 	}
 }
 

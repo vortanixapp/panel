@@ -78,6 +78,8 @@ var catalogRU = map[string]string{
 	"notify.payment_refunded.title":       "Возврат платежа",
 	"notify.payment_refunded.body":        "Возвращено {amount} {currency}. Деньги вернутся тем же способом, которым были внесены.",
 	"notify.payment_refunded.body_reason": "Возвращено {amount} {currency}: {reason}. Деньги вернутся тем же способом, которым были внесены.",
+	"notify.balance_threshold.title":      "Баланс ниже заданного порога",
+	"notify.balance_threshold.body":       "На балансе {balance} {currency} — меньше порога {threshold} {currency}, который вы указали в настройках уведомлений.",
 	"notify.balance_low.title":            "На счету не хватает средств",
 	"notify.balance_low.body":             "До {date} нужно продлить серверы на {due} {currency}, а на счету {balance} {currency}. Пополните баланс, иначе серверы будут остановлены.",
 	"notify.renew_failed.title":           "Автопродление не прошло",

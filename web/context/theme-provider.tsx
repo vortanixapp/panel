@@ -23,9 +23,11 @@ type ThemeProviderState = {
   theme: Theme
   setTheme: (theme: Theme, origin?: { x: number; y: number }) => void
   resetTheme: () => void
+  locked: boolean
 }
 
 const initialState: ThemeProviderState = {
+  locked: false,
   defaultTheme: DEFAULT_THEME,
   resolvedTheme: 'light',
   theme: DEFAULT_THEME,
@@ -143,6 +145,7 @@ export function ThemeProvider({
     resetTheme,
     theme,
     setTheme,
+    locked,
   }
 
   return (

@@ -49,6 +49,7 @@ type Recipient struct {
 	Locale string
 
 	Prefs Prefs
+	Quiet Quiet
 }
 
 type Prefs struct {

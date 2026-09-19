@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -80,15 +81,19 @@ func Dispatch(ctx context.Context, db DB, r Recipient, e Event) (Result, error) 
 	}
 
 	subject, text := render(title, body)
+	var holdUntil *time.Time
+	if until, held := r.Quiet.HoldUntil(time.Now(), DefFor(e.Kind)); held {
+		holdUntil = &until
+	}
 	channels := make([]Channel, 0, len(routes))
 	for _, rt := range routes {
 		if _, err := db.Exec(ctx, `
 			INSERT INTO core.notification_deliveries
 				( user_id, notification_id, kind, channel, target,
-				 subject, body, action_label, action_href)
-			VALUES ( $1, $2::uuid, $3, $4, $5, $6, $7, $8, $9)
+				 subject, body, action_label, action_href, next_attempt_at)
+			VALUES ( $1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, COALESCE($10::timestamptz, now()))
 		`, r.UserID, id, string(e.Kind), string(rt.channel), rt.target,
-			subject, text, label, href); err != nil {
+			subject, text, label, href, holdUntil); err != nil {
 			return Result{NotificationID: id, Channels: channels}, err
 		}
 		channels = append(channels, rt.channel)
@@ -141,7 +146,12 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		       COALESCE(c.discord_enabled, false),
 		       COALESCE(c.telegram_chat_id, ''),
 		       COALESCE(c.discord_webhook, ''),
-		       COALESCE(c.routes, '{}'::jsonb)
+		       COALESCE(c.routes, '{}'::jsonb),
+		       COALESCE(c.quiet_enabled, false),
+		       COALESCE(c.quiet_from, 1380),
+		       COALESCE(c.quiet_to, 480),
+		       COALESCE(c.quiet_critical, true),
+		       COALESCE(NULLIF(p.timezone, ''), NULLIF(c.quiet_tz, ''), '')
 		FROM core.users u
 		LEFT JOIN core.user_profiles p
 		       ON p.user_id = u.id
@@ -149,7 +159,8 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		       ON c.user_id = u.id
 		WHERE u.id = $1
 	`, userID).Scan(&r.Email, &r.Locale, &r.Prefs.Email, &r.Prefs.Telegram,
-		&r.Prefs.Discord, &r.Prefs.TelegramChatID, &r.Prefs.DiscordWebhook, &routes)
+		&r.Prefs.Discord, &r.Prefs.TelegramChatID, &r.Prefs.DiscordWebhook, &routes,
+		&r.Quiet.Enabled, &r.Quiet.From, &r.Quiet.To, &r.Quiet.Critical, &r.Quiet.TimeZone)
 	if err != nil {
 		return Recipient{}, err
 	}

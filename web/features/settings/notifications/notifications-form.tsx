@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Check, ExternalLink, Loader2, Lock, MonitorSmartphone, Send } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { displayTimeZone } from "@/lib/timezone";
 import { btnGhost, btnPrimary, fieldClass } from "@/components/user/panel-parts";
 import { groupIcon } from "@/components/notifications/group-icons";
 import {
@@ -54,7 +56,14 @@ export function NotificationsForm() {
   }
 
   if (prefs.isError || !prefs.data) {
-    return <p className="text-sm text-destructive">{t("notifications.prefs.load_failed")}</p>;
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-5 py-4 text-sm text-destructive">
+        <span>{t("notifications.prefs.load_failed")}</span>
+        <button type="button" onClick={() => void prefs.refetch()} className={cn(btnGhost, "h-8 px-3")}>
+          {t("settings.common.retry")}
+        </button>
+      </div>
+    );
   }
 
   const save: Save = (payload, success) =>
@@ -80,6 +89,14 @@ export function NotificationsForm() {
 
       <SettingsCard title={t("notifications.prefs.matrix_title")} desc={t("notifications.prefs.matrix_desc")}>
         <RoutesMatrix prefs={prefs.data} save={save} />
+      </SettingsCard>
+
+      <SettingsCard title={t("notifications.prefs.quiet_title")} desc={t("notifications.prefs.quiet_desc")}>
+        <QuietHours prefs={prefs.data} save={save} pending={update.isPending} />
+      </SettingsCard>
+
+      <SettingsCard title={t("notifications.prefs.balance_title")} desc={t("notifications.prefs.balance_desc")}>
+        <BalanceThreshold prefs={prefs.data} save={save} pending={update.isPending} />
       </SettingsCard>
 
       <SettingsCard title={t("notifications.prefs.device_title")} desc={t("notifications.prefs.device_desc")}>
@@ -292,18 +309,15 @@ function TelegramChannel({ prefs, save }: { prefs: NotificationPrefs; save: Save
           connected ? (
             <>
               <TestButton channel="telegram" disabled={!enabled} />
-              <button
-                type="button"
-                onClick={() =>
+              <DisconnectButton
+                channel="Telegram"
+                onConfirm={() =>
                   save(
                     { telegram: false, telegram_chat_id: "" },
                     t("notifications.prefs.telegram_disconnected")
                   )
                 }
-                className={cn(btnGhost, "h-8 px-3")}
-              >
-                {t("notifications.prefs.disconnect")}
-              </button>
+              />
               <Switch
                 checked={enabled}
                 aria-label="Telegram"
@@ -423,13 +437,10 @@ function DiscordChannel({ prefs, save }: { prefs: NotificationPrefs; save: Save 
         connected ? (
           <>
             <TestButton channel="discord" disabled={!enabled} />
-            <button
-              type="button"
-              onClick={() => save({ discord: false, discord_webhook: "" }, t("notifications.prefs.discord_removed"))}
-              className={cn(btnGhost, "h-8 px-3")}
-            >
-              {t("notifications.prefs.disconnect")}
-            </button>
+            <DisconnectButton
+              channel="Discord"
+              onConfirm={() => save({ discord: false, discord_webhook: "" }, t("notifications.prefs.discord_removed"))}
+            />
             <Switch checked={enabled} aria-label="Discord" onCheckedChange={(on) => save({ discord: on })} />
           </>
         ) : undefined
@@ -641,5 +652,172 @@ function DeviceNotifications() {
         }}
       />
     </div>
+  );
+}
+
+function DisconnectButton({ channel, onConfirm }: { channel: string; onConfirm: () => void }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className={cn(btnGhost, "h-8 px-3")}>
+        {t("notifications.prefs.disconnect")}
+      </button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={t("notifications.prefs.disconnect_title", { channel })}
+        desc={t("notifications.prefs.disconnect_hint", { channel })}
+        destructive
+        cancelBtnText={t("common.cancel")}
+        confirmText={t("notifications.prefs.disconnect")}
+        handleConfirm={() => {
+          setOpen(false);
+          onConfirm();
+        }}
+      />
+    </>
+  );
+}
+
+function toTime(minutes: number): string {
+  const m = ((minutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+}
+
+function fromTime(value: string): number {
+  const [h, m] = value.split(":").map((v) => Number(v));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
+  return Math.min(1439, Math.max(0, h * 60 + m));
+}
+
+function QuietHours({ prefs, save, pending }: { prefs: NotificationPrefs; save: Save; pending: boolean }) {
+  const t = useT();
+  const initial = prefs.quiet ?? { enabled: false, from: 1380, to: 480, critical: true, tz: "" };
+  const [form, setForm] = useState(initial);
+  const key = JSON.stringify(initial);
+  useEffect(() => {
+    setForm(JSON.parse(key) as typeof initial);
+  }, [key]);
+  const zone = displayTimeZone();
+  const dirty = JSON.stringify({ ...form, tz: "" }) !== JSON.stringify({ ...initial, tz: "" }) || (form.enabled && initial.tz !== zone);
+  const same = form.from === form.to;
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (form.enabled && same) {
+          toast.error(t("notifications.prefs.quiet_same"));
+          return;
+        }
+        save({ quiet: { ...form, tz: zone } }, t("notifications.prefs.quiet_saved"));
+      }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[14px] font-medium">{t("notifications.prefs.quiet_enable")}</div>
+          <div className="text-[12.5px] text-muted-foreground">{t("notifications.prefs.quiet_zone", { zone: zone.replace(/_/g, " ") })}</div>
+        </div>
+        <Switch
+          checked={form.enabled}
+          aria-label={t("notifications.prefs.quiet_enable")}
+          onCheckedChange={(on) => setForm({ ...form, enabled: on })}
+        />
+      </div>
+      <div className={cn("grid gap-4 sm:grid-cols-2", !form.enabled && "opacity-60")}>
+        <label className="space-y-1.5">
+          <span className="text-[13px] font-medium">{t("notifications.prefs.quiet_from")}</span>
+          <input
+            type="time"
+            step={900}
+            disabled={!form.enabled}
+            value={toTime(form.from)}
+            onChange={(e) => setForm({ ...form, from: fromTime(e.target.value) })}
+            className={cn(fieldClass, "h-9")}
+          />
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-[13px] font-medium">{t("notifications.prefs.quiet_to")}</span>
+          <input
+            type="time"
+            step={900}
+            disabled={!form.enabled}
+            value={toTime(form.to)}
+            onChange={(e) => setForm({ ...form, to: fromTime(e.target.value) })}
+            className={cn(fieldClass, "h-9")}
+          />
+        </label>
+      </div>
+      <div className={cn("flex items-center justify-between gap-3", !form.enabled && "opacity-60")}>
+        <div>
+          <div className="text-[13.5px] font-medium">{t("notifications.prefs.quiet_critical")}</div>
+          <div className="text-[12.5px] text-muted-foreground">{t("notifications.prefs.quiet_critical_hint")}</div>
+        </div>
+        <Switch
+          checked={form.critical}
+          disabled={!form.enabled}
+          aria-label={t("notifications.prefs.quiet_critical")}
+          onCheckedChange={(on) => setForm({ ...form, critical: on })}
+        />
+      </div>
+      <button type="submit" disabled={!dirty || pending} className={cn(btnPrimary, "h-9 px-4")}>
+        {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+        {t("common.save")}
+      </button>
+    </form>
+  );
+}
+
+function BalanceThreshold({ prefs, save, pending }: { prefs: NotificationPrefs; save: Save; pending: boolean }) {
+  const t = useT();
+  const stored = prefs.balance_threshold ?? null;
+  const [enabled, setEnabled] = useState(stored !== null);
+  const [amount, setAmount] = useState(stored !== null ? String(stored) : "");
+  useEffect(() => {
+    setEnabled(stored !== null);
+    setAmount(stored !== null ? String(stored) : "");
+  }, [stored]);
+  const value = Number(amount.replace(",", "."));
+  const valid = Number.isFinite(value) && value > 0 && value <= 10_000_000;
+  const dirty = enabled ? !valid || value !== stored : stored !== null;
+
+  return (
+    <form
+      className="space-y-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (enabled && !valid) {
+          toast.error(t("notifications.prefs.balance_invalid"));
+          return;
+        }
+        save({ balance_threshold: enabled ? value : null }, t("notifications.prefs.balance_saved"));
+      }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[14px] font-medium">{t("notifications.prefs.balance_enable")}</div>
+        <Switch
+          checked={enabled}
+          aria-label={t("notifications.prefs.balance_enable")}
+          onCheckedChange={setEnabled}
+        />
+      </div>
+      <label className={cn("block max-w-xs space-y-1.5", !enabled && "opacity-60")}>
+        <span className="text-[13px] font-medium">{t("notifications.prefs.balance_amount")}</span>
+        <input
+          inputMode="decimal"
+          disabled={!enabled}
+          value={amount}
+          placeholder="500"
+          onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, ""))}
+          className={cn(fieldClass, "h-9")}
+        />
+      </label>
+      <button type="submit" disabled={!dirty || pending} className={cn(btnPrimary, "h-9 px-4")}>
+        {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+        {t("common.save")}
+      </button>
+    </form>
   );
 }

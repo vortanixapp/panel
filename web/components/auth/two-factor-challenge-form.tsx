@@ -47,7 +47,7 @@ export function TwoFactorChallengeForm() {
       const res = await challenge2FA(twoFactorToken, values.code);
       queryClient.clear();
       adoptSession();
-      router.push(postLoginPath(res.user?.role ?? "user"));
+      router.push(postLoginPath(res.user?.role ?? "user", res.start_page));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.two_factor.invalid_code"));
     }

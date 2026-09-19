@@ -253,6 +253,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"access_token":  access,
 		"refresh_token": refresh,
+		"start_page":    h.startPage(ctx, userID),
 		"user": map[string]string{
 			"id":    userID,
 			"email": req.Email,

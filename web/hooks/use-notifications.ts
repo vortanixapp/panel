@@ -209,9 +209,11 @@ export function useNotificationPrefs() {
 }
 
 function applyPrefs(prev: NotificationPrefs, payload: NotificationPrefsUpdate): NotificationPrefs {
-  const { routes, ...channels } = payload;
+  const { routes, quiet, balance_threshold, ...channels } = payload;
   return {
     ...prev,
+    quiet: quiet ?? prev.quiet,
+    balance_threshold: balance_threshold !== undefined ? balance_threshold : prev.balance_threshold,
     channels: { ...prev.channels, ...channels },
     groups: prev.groups.map((g) =>
       routes?.[g.id] ? { ...g, routes: { ...g.routes, ...routes[g.id] } } : g

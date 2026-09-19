@@ -78,6 +78,8 @@ var catalogEN = map[string]string{
 	"notify.payment_refunded.title":       "Payment refunded",
 	"notify.payment_refunded.body":        "{amount} {currency} was refunded. The money returns the same way it was paid.",
 	"notify.payment_refunded.body_reason": "{amount} {currency} was refunded: {reason}. The money returns the same way it was paid.",
+	"notify.balance_threshold.title":      "Balance below your threshold",
+	"notify.balance_threshold.body":       "Your balance is {balance} {currency}, below the {threshold} {currency} threshold set in your notification settings.",
 	"notify.balance_low.title":            "Not enough funds",
 	"notify.balance_low.body":             "Servers worth {due} {currency} must be renewed by {date}, but your balance is {balance} {currency}. Top up, or the servers will be stopped.",
 	"notify.renew_failed.title":           "Auto-renewal failed",

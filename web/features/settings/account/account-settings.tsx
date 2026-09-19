@@ -5,9 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useT } from "@/hooks/use-translations";
 import { useAccountQuery } from "@/hooks/use-account";
 import { cn } from "@/lib/utils";
-import { AppearanceForm } from "@/features/settings/appearance/appearance-form";
-import { DisplayForm } from "@/features/settings/display/display-form";
 import { NotificationsForm } from "@/features/settings/notifications/notifications-form";
+import { AppearanceTab } from "@/features/settings/account/appearance-tab";
 import { ProfileTab } from "@/features/settings/account/profile-tab";
 import { ContactsTab } from "@/features/settings/account/contacts-tab";
 import { SecurityTab } from "@/features/settings/account/security-tab";
@@ -171,12 +170,7 @@ export function AccountSettings() {
         {tab === "contacts" && <ContactsTab />}
         {tab === "security" && <SecurityTab />}
         {tab === "sessions" && <DevicesTab />}
-        {tab === "appearance" && (
-          <>
-            <AppearanceForm />
-            <DisplayForm />
-          </>
-        )}
+        {tab === "appearance" && <AppearanceTab />}
         {tab === "notifications" && <NotificationsForm />}
         {tab === "data" && <DataTab />}
       </div>

@@ -275,6 +275,9 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 	if isStaffRole(role) {
 		redirect = "/admin/dashboard"
 	}
+	if page := h.startPage(ctx, userID); page != "" {
+		redirect = page
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":            true,
 		"access_token":  access,

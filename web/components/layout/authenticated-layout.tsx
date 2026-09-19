@@ -3,6 +3,7 @@
 import { getCookie } from "@/lib/cookies";
 import { cn } from "@/lib/utils";
 import { LayoutProvider } from "@/context/layout-provider";
+import { AccountSync } from "@/components/layout/account-sync";
 import { SearchProvider } from "@/context/search-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -33,6 +34,7 @@ export function AuthenticatedLayout({
       <NotificationsLive />
       <SearchProvider>
         <LayoutProvider>
+          <AccountSync />
           <SidebarProvider defaultOpen={defaultOpen}>
             <SkipToMain />
             <AppSidebar email={email} role={role} variant={variant} />
