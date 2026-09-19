@@ -1246,6 +1246,22 @@ export type DashboardNews = {
   image: string | null;
 };
 
+export type DashboardRenewal = {
+  server_id: string;
+  name: string;
+  expires_at: string;
+  auto_renew: boolean;
+  period_days: number;
+  cost: number;
+};
+
+export type DashboardSpending = {
+  currency: string;
+  debit: number;
+  credit: number;
+  days: { date: string; debit: number; credit: number }[];
+};
+
 export type DashboardData = {
   balance: number;
   balance_currency: string;
@@ -1255,7 +1271,10 @@ export type DashboardData = {
   expiring_soon_count: number;
   open_support_tickets_count: number;
   next_charge_text: string;
-  recent_servers: DashboardServer[];
+  monthly_spend?: number;
+  next_renewal?: DashboardRenewal | null;
+  spending?: DashboardSpending;
+  recent_servers: (DashboardServer & { monthly_cost?: number })[];
   recent_transactions: DashboardTransaction[];
   news: DashboardNews[];
 };

@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/vortanixapp/panel/internal/api/pricing"
 )
 
 func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +91,46 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	`, claims.UserID).Scan(&openTickets)
 
 	recentServers := h.listEnrichedServers(ctx, claims.UserID, false, 6)
+	h.attachServerLoad(ctx, recentServers)
+	costs := h.userServerCosts(ctx, claims.UserID)
+	monthly := 0.0
+	var next *userServerCost
+	for i := range costs {
+		c := &costs[i]
+		if c.billedByWHMCS {
+			continue
+		}
+		monthly += c.monthly
+		if c.expiresAt != nil && (next == nil || c.expiresAt.Before(*next.expiresAt)) {
+			next = c
+		}
+	}
+	byID := make(map[string]*userServerCost, len(costs))
+	for i := range costs {
+		byID[costs[i].id] = &costs[i]
+	}
+	for _, s := range recentServers {
+		id, _ := s["id"].(string)
+		if c, ok := byID[id]; ok {
+			s["monthly_cost"] = c.monthly
+			s["auto_renew"] = c.autoRenew
+			s["rental_period_days"] = c.periodDays
+			if c.billedByWHMCS {
+				s["billing_source"] = "whmcs"
+			}
+		}
+	}
+	var nextRenewal any
+	if next != nil {
+		nextRenewal = map[string]any{
+			"server_id":   next.id,
+			"name":        next.name,
+			"expires_at":  next.expiresAt.Format(time.RFC3339),
+			"auto_renew":  next.autoRenew,
+			"period_days": next.periodDays,
+			"cost":        next.renewal,
+		}
+	}
 	recentTransactions := h.queryRecentTransactions(ctx, claims.UserID)
 	news := h.queryRecentNews(ctx)
 
@@ -101,12 +143,126 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		"expiring_soon_count":        expiringSoon,
 		"open_support_tickets_count": openTickets,
 		"next_charge_text":           nextChargeText,
+		"monthly_spend":              monthly,
+		"next_renewal":               nextRenewal,
+		"spending":                   h.userSpending(ctx, claims.UserID, balanceCurrency),
 		"recent_servers":             recentServers,
 		"recent_transactions":        recentTransactions,
 		"news":                       news,
 	}
 	_ = h.cache.SetJSON(ctx, cacheKey, resp, 5*time.Second)
 	writeJSON(w, http.StatusOK, resp)
+}
+
+type userServerCost struct {
+	id            string
+	name          string
+	monthly       float64
+	renewal       float64
+	autoRenew     bool
+	periodDays    int
+	expiresAt     *time.Time
+	billedByWHMCS bool
+}
+
+func (h *Handler) userServerCosts(ctx context.Context, userID string) []userServerCost {
+	rows, err := h.readerOf(ctx).Query(ctx, `
+		SELECT id::text, name, COALESCE(tariff_id::text, ''), COALESCE(limits, '{}'::jsonb), expires_at,
+		       COALESCE(auto_renew, false), COALESCE(rental_period_days, 30), COALESCE(billing_source, 'panel')
+		FROM core.servers
+		WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return nil
+	}
+	type pending struct {
+		cost     userServerCost
+		tariffID string
+		limits   map[string]any
+	}
+	list := []pending{}
+	for rows.Next() {
+		var p pending
+		var limitsRaw []byte
+		var source string
+		if rows.Scan(&p.cost.id, &p.cost.name, &p.tariffID, &limitsRaw, &p.cost.expiresAt,
+			&p.cost.autoRenew, &p.cost.periodDays, &source) != nil {
+			continue
+		}
+		_ = json.Unmarshal(limitsRaw, &p.limits)
+		if p.cost.periodDays <= 0 {
+			p.cost.periodDays = 30
+		}
+		p.cost.billedByWHMCS = source == "whmcs"
+		list = append(list, p)
+	}
+	rows.Close()
+
+	tariffs := map[string]map[string]any{}
+	out := make([]userServerCost, 0, len(list))
+	for _, p := range list {
+		if p.tariffID != "" {
+			tariff, seen := tariffs[p.tariffID]
+			if !seen {
+				loaded, loadErr := h.loadTariffLegacyJSON(ctx, p.tariffID)
+				if loadErr != nil {
+					loaded = nil
+				}
+				tariffs[p.tariffID] = loaded
+				tariff = loaded
+			}
+			if tariff != nil {
+				order := limitsToRentOrder(p.limits)
+				p.cost.monthly = pricing.MonthlyCost(tariff, order)
+				p.cost.renewal = pricing.CalculateRentCost(tariff, order, p.cost.periodDays)
+			}
+		}
+		out = append(out, p.cost)
+	}
+	return out
+}
+
+func (h *Handler) userSpending(ctx context.Context, userID, currency string) map[string]any {
+	since := time.Now().UTC().AddDate(0, 0, -29).Truncate(24 * time.Hour)
+	days := make([]map[string]any, 30)
+	index := map[string]int{}
+	for i := range days {
+		day := since.AddDate(0, 0, i).Format("2006-01-02")
+		days[i] = map[string]any{"date": day, "debit": 0.0, "credit": 0.0}
+		index[day] = i
+	}
+	var totalDebit, totalCredit float64
+	rows, err := h.readerOf(ctx).Query(ctx, `
+		SELECT to_char(date_trunc('day', t.created_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD'),
+		       COALESCE(SUM(ABS(t.amount)) FILTER (WHERE t.type = 'debit'), 0)::float8,
+		       COALESCE(SUM(ABS(t.amount)) FILTER (WHERE t.type = 'credit'), 0)::float8
+		FROM core.transactions t
+		JOIN core.wallets w ON w.id = t.wallet_id
+		WHERE w.user_id = $1 AND UPPER(w.currency) = UPPER($2) AND t.created_at >= $3
+		GROUP BY 1
+	`, userID, currency, since)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var day string
+			var debit, credit float64
+			if rows.Scan(&day, &debit, &credit) != nil {
+				continue
+			}
+			if i, ok := index[day]; ok {
+				days[i]["debit"] = debit
+				days[i]["credit"] = credit
+			}
+			totalDebit += debit
+			totalCredit += credit
+		}
+	}
+	return map[string]any{
+		"currency": currency,
+		"debit":    totalDebit,
+		"credit":   totalCredit,
+		"days":     days,
+	}
 }
 
 func (h *Handler) queryRecentTransactions(ctx context.Context, userID string) []map[string]any {
