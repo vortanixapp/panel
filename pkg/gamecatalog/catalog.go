@@ -3,6 +3,7 @@ package gamecatalog
 import (
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -299,6 +300,45 @@ func FitsNode(code string, ramMB, diskMB int, cpu float64) bool {
 
 func FitsSmallNode(code string) bool {
 	return FitsNode(code, SmallNodeRAMMB, SmallNodeDiskMB, SmallNodeCPU)
+}
+
+var sourceMinAgent = map[string]string{SourceBuildTools: "0.1.38"}
+
+func AgentLacksSource(sourceType, agentVersion string) (string, bool) {
+	minimum, ok := sourceMinAgent[sourceType]
+	if !ok {
+		return "", false
+	}
+	have, ok := parseVersion(agentVersion)
+	if !ok {
+		return "", false
+	}
+	want, _ := parseVersion(minimum)
+	for i := range have {
+		if have[i] != want[i] {
+			return minimum, have[i] < want[i]
+		}
+	}
+	return "", false
+}
+
+func parseVersion(raw string) ([3]int, bool) {
+	var out [3]int
+	parts := strings.SplitN(strings.TrimPrefix(strings.TrimSpace(raw), "v"), ".", 3)
+	if len(parts) != 3 {
+		return out, false
+	}
+	for i, part := range parts {
+		if j := strings.IndexFunc(part, func(r rune) bool { return r < '0' || r > '9' }); j >= 0 {
+			part = part[:j]
+		}
+		n, err := strconv.Atoi(part)
+		if err != nil {
+			return out, false
+		}
+		out[i] = n
+	}
+	return out, true
 }
 
 func ManualInstall(code, sourceType string) bool {

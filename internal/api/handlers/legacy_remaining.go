@@ -292,7 +292,8 @@ func (h *Handler) defaultStartupParams(ctx context.Context, gameID string) strin
 
 func (h *Handler) ServerSwitchVersion(w http.ResponseWriter, r *http.Request) {
 	serverID := chi.URLParam(r, "id")
-	if _, ok := h.authorizeServerTab(w, r, serverID, "update"); !ok {
+	claims, ok := h.authorizeServerTab(w, r, serverID, "update")
+	if !ok || !h.authorizeServerAction(w, r, claims, serverID, "reinstall") {
 		return
 	}
 	var body struct {
@@ -303,15 +304,24 @@ func (h *Handler) ServerSwitchVersion(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "version_id required")
 		return
 	}
-	_, err := h.dbOf(r.Context()).Exec(r.Context(), `
-		UPDATE core.servers SET game_version_id = $2::uuid
-		WHERE id = $1
+	ctx := r.Context()
+	tag, err := h.dbOf(ctx).Exec(ctx, `
+		UPDATE core.servers s SET game_version_id = gv.id
+		FROM core.game_versions gv
+		JOIN core.games g ON g.id = gv.game_id
+		WHERE s.id = $1 AND gv.id = $2::uuid AND gv.active AND g.slug = s.game_id
 	`, serverID, body.VersionID)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid version")
+	if err != nil || tag.RowsAffected() == 0 {
+		writeError(w, http.StatusBadRequest, "Эта версия недоступна для сервера")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "version_switched", "version_id": body.VersionID})
+	cmdID, status, err := h.startReinstall(ctx, serverID)
+	if err != nil {
+		writeError(w, status, err.Error())
+		return
+	}
+	audit(ctx, h.dbOf(ctx), claims.UserID, "server.switch_version", "server:"+serverID, map[string]any{"version_id": body.VersionID})
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "reinstalling", "version_id": body.VersionID, "command_id": cmdID})
 }
 
 func (h *Handler) ServerFilesMkdir(w http.ResponseWriter, r *http.Request) {

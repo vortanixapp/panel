@@ -141,6 +141,18 @@ func (h *Handler) resolveInstallSpec(ctx context.Context, serverID string) map[s
 	return spec
 }
 
+func (h *Handler) installUnsupported(ctx context.Context, nodeID string, spec map[string]any) string {
+	sourceType, _ := spec["source_type"].(string)
+	var version string
+	_ = h.dbOf(ctx).QueryRow(ctx, `
+		SELECT COALESCE(version, '') FROM core.node_daemons WHERE node_id = $1::uuid
+	`, nodeID).Scan(&version)
+	if minimum, lacks := gamecatalog.AgentLacksSource(sourceType, version); lacks {
+		return fmt.Sprintf("Агент на ноде версии %s не собирает Spigot через BuildTools: обновите агента до %s или новее", version, minimum)
+	}
+	return ""
+}
+
 func (h *Handler) catalogImageForGame(ctx context.Context, gameID, image string) (string, error) {
 	image = strings.TrimSpace(image)
 	if image == "" {

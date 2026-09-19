@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -80,25 +82,31 @@ func (h *Handler) ReinstallServer(w http.ResponseWriter, r *http.Request) {
 	if !h.authorizeServerAction(w, r, claims, serverID, "reinstall") {
 		return
 	}
-	var nodeID string
-	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		SELECT node_id::text FROM core.servers WHERE id = $1
-	`, serverID).Scan(&nodeID)
+	cmdID, status, err := h.startReinstall(r.Context(), serverID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "not found")
+		writeError(w, status, err.Error())
 		return
 	}
+	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.reinstall", "server:"+serverID, nil)
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "reinstalling", "command_id": cmdID})
+}
+
+func (h *Handler) startReinstall(ctx context.Context, serverID string) (string, int, error) {
+	var nodeID string
+	if err := h.dbOf(ctx).QueryRow(ctx, `
+		SELECT node_id::text FROM core.servers WHERE id = $1
+	`, serverID).Scan(&nodeID); err != nil {
+		return "", http.StatusNotFound, fmt.Errorf("not found")
+	}
 	cmdID := uuid.NewString()
-	if err := h.relay.SendCommand(r.Context(), nodeID, relay.CommandRequest{
+	if err := h.relay.SendCommand(ctx, nodeID, relay.CommandRequest{
 		CommandID: cmdID,
 		Action:    "destroy",
 		ServerID:  serverID,
 		Payload:   map[string]any{"wipe": true},
 	}); err != nil {
-		writeError(w, http.StatusBadGateway, "agent unreachable: "+err.Error())
-		return
+		return "", http.StatusBadGateway, fmt.Errorf("agent unreachable: %w", err)
 	}
-	ctx := r.Context()
 	_, _ = h.dbOf(ctx).Exec(ctx, `
 		UPDATE core.servers
 		SET status = 'reinstalling', provisioning_status = 'provisioning', provisioning_error = NULL
@@ -115,6 +123,5 @@ func (h *Handler) ReinstallServer(w http.ResponseWriter, r *http.Request) {
 		VALUES ( 'provision_server', 'pending', $1::jsonb)
 	`, mustJSON(map[string]string{"server_id": serverID}))
 	jobwake.Notify("provision_server")
-	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.reinstall", "server:"+serverID, nil)
-	writeJSON(w, http.StatusAccepted, map[string]string{"status": "reinstalling", "command_id": cmdID})
+	return cmdID, 0, nil
 }

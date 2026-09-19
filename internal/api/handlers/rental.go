@@ -426,19 +426,6 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 	currency := tariffCurrency(tariffJSON)
 	limits := tariffLimits(tariffJSON, order, gamecatalog.DefaultLimits(gameID))
 
-	rentTxID := ""
-	if rentPrice > 0 {
-		var debitErr error
-		rentTxID, debitErr = h.debitWalletForRentSource(r, claims, body.WalletID, currency,
-			rentPrice, "Server rent: "+body.Name, "server_rent", "")
-		if debitErr != nil {
-			writeError(w, http.StatusPaymentRequired, debitErr.Error())
-			return
-		}
-		if promoID != "" {
-			_ = payments.IncrementPromoUsage(r.Context(), h.dbOf(r.Context()), promoID)
-		}
-	}
 	limitsJSON, _ := json.Marshal(limits)
 	expires := time.Now().Add(time.Duration(periodDays) * 24 * time.Hour)
 
@@ -453,6 +440,32 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create server")
 		return
+	}
+	dropServer := func() {
+		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `DELETE FROM core.servers WHERE id = $1`, id)
+	}
+	if gameID != "test" {
+		if _, portErr := portalloc.Assign(r.Context(), h.dbOf(r.Context()), nodeID, id, gameID); portErr != nil {
+			dropServer()
+			writeCodedError(w, http.StatusConflict, "node_ports",
+				"На локации закончились свободные порты для этой игры, выберите другую")
+			return
+		}
+	}
+
+	rentTxID := ""
+	if rentPrice > 0 {
+		var debitErr error
+		rentTxID, debitErr = h.debitWalletForRentSource(r, claims, body.WalletID, currency,
+			rentPrice, "Server rent: "+body.Name, "server_rent", "")
+		if debitErr != nil {
+			dropServer()
+			writeError(w, http.StatusPaymentRequired, debitErr.Error())
+			return
+		}
+		if promoID != "" {
+			_ = payments.IncrementPromoUsage(r.Context(), h.dbOf(r.Context()), promoID)
+		}
 	}
 	if rentTxID != "" {
 		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
@@ -477,14 +490,6 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) launchNewServer(ctx context.Context, id, nodeID, gameID, name string, limitsJSON []byte) {
 	_, _ = h.dbOf(ctx).Exec(ctx, `
-		INSERT INTO core.jobs ( type, status, payload)
-		VALUES ( 'provision_server', 'pending', $1::jsonb)
-	`, mustJSON(map[string]string{"server_id": id}))
-	jobwake.Notify("provision_server")
-
-	var lim map[string]any
-	_ = json.Unmarshal(limitsJSON, &lim)
-	_, _ = h.dbOf(ctx).Exec(ctx, `
 		UPDATE core.servers s SET ip_address = n.fqdn
 		FROM core.nodes n
 		WHERE s.id = $1 AND n.id = s.node_id AND COALESCE(s.ip_address, '') = ''
@@ -494,10 +499,22 @@ func (h *Handler) launchNewServer(ctx context.Context, id, nodeID, gameID, name 
 		assigned, err := portalloc.Assign(ctx, h.dbOf(ctx), nodeID, id, gameID)
 		if err != nil {
 			log.Printf("rental: не удалось выдать порт серверу %s (%s): %v", id, gameID, err)
-		} else {
-			port = assigned
+			_, _ = h.dbOf(ctx).Exec(ctx, `
+				UPDATE core.servers SET provisioning_status = 'failed', provisioning_error = $2 WHERE id = $1
+			`, id, "Не удалось выдать порт: "+err.Error())
+			return
 		}
+		port = assigned
 	}
+
+	_, _ = h.dbOf(ctx).Exec(ctx, `
+		INSERT INTO core.jobs ( type, status, payload)
+		VALUES ( 'provision_server', 'pending', $1::jsonb)
+	`, mustJSON(map[string]string{"server_id": id}))
+	jobwake.Notify("provision_server")
+
+	var lim map[string]any
+	_ = json.Unmarshal(limitsJSON, &lim)
 	payload := map[string]any{
 		"power_action": "start",
 		"name":         name,
@@ -514,6 +531,16 @@ func (h *Handler) launchNewServer(ctx context.Context, id, nodeID, gameID, name 
 		payload["docker_image"] = img
 	}
 	if spec := h.resolveInstallSpec(ctx, id); spec != nil {
+		if msg := h.installUnsupported(ctx, nodeID, spec); msg != "" {
+			_, _ = h.dbOf(ctx).Exec(ctx, `
+				UPDATE core.servers SET provisioning_status = 'failed', provisioning_error = $2 WHERE id = $1
+			`, id, msg)
+			_, _ = h.dbOf(ctx).Exec(ctx, `
+				UPDATE core.jobs SET status = 'failed', result = jsonb_build_object('error', $2::text)
+				WHERE type = 'provision_server' AND status = 'pending' AND payload->>'server_id' = $1
+			`, id, msg)
+			return
+		}
 		payload["install"] = spec
 	}
 	startErr := h.relay.SendCommand(ctx, nodeID, relay.CommandRequest{

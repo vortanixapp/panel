@@ -145,6 +145,9 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 	if req.GameID != "test" {
 		if _, portErr := portalloc.Assign(ctx, h.dbOf(ctx), req.NodeID, id, req.GameID); portErr != nil {
 			log.Printf("servers: не удалось выдать порт серверу %s (%s): %v", id, req.GameID, portErr)
+			_, _ = h.dbOf(ctx).Exec(ctx, `DELETE FROM core.servers WHERE id = $1`, id)
+			writeError(w, http.StatusConflict, errNoFreePort.Error())
+			return
 		}
 	}
 
@@ -276,6 +279,7 @@ var (
 	errServerNotFound   = errors.New("server not found")
 	errServerExpired    = errors.New("rent expired")
 	errAgentUnreachable = errors.New("agent unreachable")
+	errNoFreePort       = errors.New("На локации закончились свободные порты для этой игры")
 )
 
 func (h *Handler) sendServerPower(ctx context.Context, actorID, id, action string) (string, string, error) {
@@ -299,6 +303,13 @@ func (h *Handler) sendServerPower(ctx context.Context, actorID, id, action strin
 
 	if expired && (action == "start" || action == "restart") {
 		return "", "", errServerExpired
+	}
+	if primaryPort <= 0 && gameID != "test" && (action == "start" || action == "restart") {
+		assigned, err := portalloc.Assign(ctx, h.dbOf(ctx), nodeID, id, gameID)
+		if err != nil {
+			return "", "", errNoFreePort
+		}
+		primaryPort = assigned
 	}
 
 	transient := map[string]string{"start": "starting", "stop": "stopping", "restart": "starting", "kill": "stopping"}[action]
@@ -379,6 +390,8 @@ func (h *Handler) PowerServer(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusPaymentRequired, "Оплаченный период закончился — продлите аренду, чтобы запустить сервер")
 		case errors.Is(err, errAgentUnreachable):
 			writeError(w, http.StatusBadGateway, err.Error())
+		case errors.Is(err, errNoFreePort):
+			writeError(w, http.StatusConflict, err.Error())
 		default:
 			writeError(w, http.StatusInternalServerError, "database error")
 		}

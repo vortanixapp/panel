@@ -244,10 +244,6 @@ run_forge_installer() {
   mv -f "$installer" "$DATA_DIR/.vtx/forge-installer.jar"
 }
 
-if [ ! -f "$EULA_FILE" ] || ! grep -q '^eula=true$' "$EULA_FILE" 2>/dev/null; then
-  printf 'eula=true\n' > "$EULA_FILE"
-fi
-
 if [ "$SERVER_JAR" = "" ] && [ -f "$DATA_DIR/server.jar" ] && jar_has "$DATA_DIR/server.jar" install_profile.json; then
   run_forge_installer "$DATA_DIR/server.jar"
 fi
@@ -280,6 +276,10 @@ if [ "$LAUNCH" = "" ]; then
   log "server jar not found: ${SERVER_JAR:-$DATA_DIR/server.jar}"
   log "Put your jar at /data/server.jar or set SERVER_JAR env"
   exit 1
+fi
+
+if [ ! -f "$EULA_FILE" ] || ! grep -q '^eula=true$' "$EULA_FILE" 2>/dev/null; then
+  printf 'eula=true\n' > "$EULA_FILE"
 fi
 
 if [ "${SERVER_PORT:-}" != "" ]; then

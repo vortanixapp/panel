@@ -83,7 +83,7 @@ func NeedsInstall(serverID string) bool {
 		return true
 	}
 	for _, e := range entries {
-		if e.Name() != ".vtx" {
+		if e.Name() != ".vtx" && e.Name() != "eula.txt" {
 			return false
 		}
 	}

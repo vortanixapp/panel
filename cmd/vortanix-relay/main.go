@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -50,6 +51,9 @@ func main() {
 
 	h := handlers.New(pool, rdb, hub.New(), secret, metricsURL).
 		WithPanelURL(env("FRONTEND_URL", env("APP_URL", "")))
+	if metricsURL == "" {
+		go purgeMetricPoints(ctx, pool, env("METRICS_RETENTION_DAYS", "7"))
+	}
 	prom := httpprom.New("agent-relay")
 	r := chi.NewRouter()
 	r.Get("/v1/agent/connect", h.AgentConnect)
@@ -131,4 +135,30 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func purgeMetricPoints(ctx context.Context, pool *pgxpool.Pool, days string) {
+	if n, err := strconv.Atoi(days); err != nil || n <= 0 {
+		days = "7"
+	}
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for {
+		purgeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		tag, err := pool.Exec(purgeCtx, `
+			DELETE FROM core.server_metric_points
+			WHERE ts < now() - ($1::text || ' days')::interval
+		`, days)
+		cancel()
+		if err != nil {
+			log.Printf("relay: очистка старых метрик: %v", err)
+		} else if tag.RowsAffected() > 0 {
+			log.Printf("relay: удалено %d точек метрик старше %s дней", tag.RowsAffected(), days)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }

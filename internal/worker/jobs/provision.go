@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -115,7 +116,11 @@ func (r *Runner) processOne(ctx context.Context) bool {
 	var lim map[string]any
 	_ = json.Unmarshal(limits, &lim)
 	dockerImage := r.resolveDockerImage(ctx, pl.ServerID)
-	r.assignServerNetwork(ctx, tx, pl.ServerID, nodeID, gameID)
+	if err := r.assignServerNetwork(ctx, tx, pl.ServerID, nodeID, gameID); err != nil {
+		r.failJob(ctx, tx, jobID, pl.ServerID, "Не удалось выдать порт: "+err.Error())
+		_ = tx.Commit(ctx)
+		return true
+	}
 	var primaryPort int
 	var startupParams string
 	_ = tx.QueryRow(ctx, `
@@ -139,6 +144,11 @@ func (r *Runner) processOne(ctx context.Context) bool {
 		cmdPayload["docker_image"] = dockerImage
 	}
 	if spec := r.resolveInstallSpec(ctx, pl.ServerID); spec != nil {
+		if msg := r.installUnsupported(ctx, nodeID, spec); msg != "" {
+			r.failJob(ctx, tx, jobID, pl.ServerID, msg)
+			_ = tx.Commit(ctx)
+			return true
+		}
 		cmdPayload["install"] = spec
 	}
 	cmdErr := r.relay.SendCommand(ctx, nodeID, relay.CommandRequest{
@@ -183,21 +193,34 @@ func (r *Runner) failJob(ctx context.Context, tx pgx.Tx, jobID, serverID, msg st
 	}
 }
 
-func (r *Runner) assignServerNetwork(ctx context.Context, tx pgx.Tx, serverID, nodeID, gameID string) {
-	var fqdn string
-	if err := tx.QueryRow(ctx, `SELECT COALESCE(fqdn, '') FROM core.nodes WHERE id = $1`, nodeID).Scan(&fqdn); err != nil || fqdn == "" {
-		return
+func (r *Runner) installUnsupported(ctx context.Context, nodeID string, spec map[string]any) string {
+	sourceType, _ := spec["source_type"].(string)
+	var version string
+	_ = r.db.QueryRow(ctx, `
+		SELECT COALESCE(version, '') FROM core.node_daemons WHERE node_id = $1::uuid
+	`, nodeID).Scan(&version)
+	if minimum, lacks := gamecatalog.AgentLacksSource(sourceType, version); lacks {
+		return fmt.Sprintf("Агент на ноде версии %s не собирает Spigot через BuildTools: обновите агента до %s или новее", version, minimum)
 	}
-	_, _ = tx.Exec(ctx, `
-		UPDATE core.servers SET ip_address = $2 WHERE id = $1 AND (ip_address IS NULL OR ip_address = '')
-	`, serverID, fqdn)
+	return ""
+}
+
+func (r *Runner) assignServerNetwork(ctx context.Context, tx pgx.Tx, serverID, nodeID, gameID string) error {
+	var fqdn string
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(fqdn, '') FROM core.nodes WHERE id = $1`, nodeID).Scan(&fqdn); err == nil && fqdn != "" {
+		_, _ = tx.Exec(ctx, `
+			UPDATE core.servers SET ip_address = $2 WHERE id = $1 AND (ip_address IS NULL OR ip_address = '')
+		`, serverID, fqdn)
+	}
 
 	if gameID == "test" || gameID == "" {
-		return
+		return nil
 	}
 	if _, err := portalloc.Assign(ctx, tx, nodeID, serverID, gameID); err != nil {
 		log.Printf("provision: не удалось выдать порт серверу %s (%s): %v", serverID, gameID, err)
+		return err
 	}
+	return nil
 }
 
 func (r *Runner) resolveDockerImage(ctx context.Context, serverID string) string {

@@ -199,20 +199,21 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, _ = h.dbOf(ctx).Exec(ctx, `
-		INSERT INTO core.trial_grants ( user_id, server_id, game_id, hours)
-		VALUES ( $1::uuid, $2::uuid, $3, $4)
-	`, claims.UserID, serverID, gameID, cfg.Hours)
-
-	_, _ = h.dbOf(ctx).Exec(ctx, `
 		UPDATE core.servers s SET ip_address = n.fqdn
 		FROM core.nodes n WHERE s.id = $1 AND n.id = s.node_id
 	`, serverID)
 	if gameID != "test" {
 		if _, err := portalloc.Assign(ctx, h.dbOf(ctx), nodeID, serverID, gameID); err != nil {
-			writeError(w, http.StatusConflict, "На локации нет свободного порта для этой игры")
+			_, _ = h.dbOf(ctx).Exec(ctx, `DELETE FROM core.servers WHERE id = $1`, serverID)
+			writeError(w, http.StatusConflict, errNoFreePort.Error())
 			return
 		}
 	}
+
+	_, _ = h.dbOf(ctx).Exec(ctx, `
+		INSERT INTO core.trial_grants ( user_id, server_id, game_id, hours)
+		VALUES ( $1::uuid, $2::uuid, $3, $4)
+	`, claims.UserID, serverID, gameID, cfg.Hours)
 
 	_, _ = h.dbOf(ctx).Exec(ctx, `
 		INSERT INTO core.jobs ( type, status, payload)

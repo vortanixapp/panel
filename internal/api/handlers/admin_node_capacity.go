@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math"
 	"net/http"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/portalloc"
 )
 
 type nodeCapacity struct {
@@ -264,6 +266,11 @@ func (h *Handler) nodeCapacityReason(ctx context.Context, nodeID, gameID string)
 	}
 	if slots := c.slotsLeft(); slots != nil && *slots <= 0 {
 		return "на локации достигнут лимит серверов"
+	}
+	if game := strings.TrimSpace(gameID); game != "" && game != "test" {
+		if _, err := portalloc.Allocate(ctx, h.dbOf(ctx), nodeID, game); errors.Is(err, portalloc.ErrNoFreePort) {
+			return "на локации закончились свободные порты для этой игры"
+		}
 	}
 	if !c.MetricsKnown {
 		return ""

@@ -103,7 +103,7 @@ export const servers = {
     "Копия создаётся и появится в списке в течение минуты",
   "servers.overview.backup_create_failed": "Не удалось создать копию",
   "servers.overview.update_started": "Обновление запущено",
-  "servers.overview.version_changed": "Версия изменена",
+  "servers.overview.version_changed": "Версия сменена, сервер переустанавливается",
   "servers.overview.renewed": "Сервер продлён",
   "servers.overview.renew_error": "Ошибка продления",
   "servers.overview.command_sent": "Команда отправлена",

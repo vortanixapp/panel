@@ -494,6 +494,10 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 			})
 		} else {
 			_ = events.StoreMetricPoint(ctx, h.redis, serverID, cpu, memUsed, memLimit)
+			_, _ = c.DB.Exec(ctx, `
+				INSERT INTO core.server_metric_points (server_id, ts, cpu_pct, mem_used_mb, mem_limit_mb)
+				VALUES ($1, now(), $2, $3, $4)
+			`, serverID, cpu, memUsed, memLimit)
 		}
 		events.PublishTenantEvent(ctx, h.redis, protocol.TenantEvent{
 			Type: "server.metrics", ServerID: serverID,

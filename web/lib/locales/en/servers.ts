@@ -104,7 +104,7 @@ export const servers = {
     "The backup is being created and will show up in the list within a minute",
   "servers.overview.backup_create_failed": "Could not create the backup",
   "servers.overview.update_started": "Update started",
-  "servers.overview.version_changed": "Version changed",
+  "servers.overview.version_changed": "Version switched, the server is being reinstalled",
   "servers.overview.renewed": "Server renewed",
   "servers.overview.renew_error": "Renewal failed",
   "servers.overview.command_sent": "Command sent",
