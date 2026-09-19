@@ -51,7 +51,7 @@ export const nav = {
 
   "nav.settings": "Settings",
   "nav.settings.profile": "Profile",
-  "nav.settings.account": "Account",
+  "nav.settings.account": "Security",
   "nav.settings.appearance": "Appearance",
   "nav.settings.notifications": "Notifications",
 

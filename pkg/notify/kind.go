@@ -41,6 +41,9 @@ const (
 	KindNewLogin       Kind = "security.new_login"
 	KindPasswordChange Kind = "security.password"
 	KindTwoFactor      Kind = "security.2fa"
+	KindEmailChange    Kind = "security.email"
+	KindSocialAccount  Kind = "security.social"
+	KindRecoveryCode   Kind = "security.recovery"
 
 	KindAnnounce Kind = "system.announce"
 
@@ -124,6 +127,9 @@ var defs = map[Kind]Def{
 	KindNewLogin:       {Group: GroupSecurity, Icon: "ri-login-circle-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 	KindPasswordChange: {Group: GroupSecurity, Icon: "ri-lock-password-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 	KindTwoFactor:      {Group: GroupSecurity, Icon: "ri-shield-keyhole-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
+	KindEmailChange:    {Group: GroupSecurity, Icon: "ri-mail-settings-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
+	KindSocialAccount:  {Group: GroupSecurity, Icon: "ri-links-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
+	KindRecoveryCode:   {Group: GroupSecurity, Icon: "ri-key-2-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 
 	KindAnnounce: {Group: GroupSystem, Icon: "ri-megaphone-line", Severity: SeverityInfo},
 

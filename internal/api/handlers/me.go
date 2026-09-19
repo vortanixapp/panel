@@ -29,32 +29,36 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if req.CurrentPassword == "" || req.NewPassword == "" {
-		writeError(w, http.StatusBadRequest, "current_password and new_password are required")
+	if len(req.NewPassword) < 8 {
+		writeError(w, http.StatusBadRequest, "Пароль должен быть не короче 8 символов")
 		return
 	}
-	if len(req.NewPassword) < 8 {
-		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+	if len(req.NewPassword) > 128 {
+		writeError(w, http.StatusBadRequest, "Пароль должен быть не длиннее 128 символов")
 		return
 	}
 
 	ctx := r.Context()
 	var hash string
+	var passwordSet bool
 	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT password_hash FROM core.users
+		SELECT password_hash, password_set FROM core.users
 		WHERE id = $1 AND status = 'active'
-	`, claims.UserID).Scan(&hash)
+	`, claims.UserID).Scan(&hash, &passwordSet)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "user not found")
+			writeError(w, http.StatusNotFound, "Учётная запись не найдена")
 			return
 		}
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.CurrentPassword)); err != nil {
-		writeError(w, http.StatusUnauthorized, "invalid current password")
+	if !h.checkAccountPassword(w, r, claims.UserID, passwordSet, hash, req.CurrentPassword) {
+		return
+	}
+	if passwordSet && req.CurrentPassword == req.NewPassword {
+		writeError(w, http.StatusBadRequest, "Новый пароль совпадает с текущим")
 		return
 	}
 
@@ -65,11 +69,11 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = h.dbOf(ctx).Exec(ctx, `
-		UPDATE core.users SET password_hash = $1
+		UPDATE core.users SET password_hash = $1, password_set = true
 		WHERE id = $2
 	`, string(newHash), claims.UserID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to update password")
+		writeError(w, http.StatusInternalServerError, "Не удалось сохранить пароль")
 		return
 	}
 
@@ -89,8 +93,8 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		Kind:   notify.KindPasswordChange,
 		Title:  i18n.Key("notify.password_changed.title"),
 		Body:   i18n.Key("notify.password_changed.body"),
-		Action: h.panelAction("notify.action.sessions", "/settings"),
+		Action: h.panelAction("notify.action.sessions", "/settings?tab=sessions"),
 	})
 
-	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "sessions_closed": closed})
+	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "sessions_closed": closed, "was_set": passwordSet})
 }

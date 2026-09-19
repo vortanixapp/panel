@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Languages } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -18,13 +19,16 @@ import { useT } from "@/hooks/use-translations";
 
 export function LanguageSwitch() {
   const t = useT();
+  const qc = useQueryClient();
   const { locale, languages } = useLocale();
 
   function choose(next: string) {
     if (next === locale) return;
     setAccountPreferences({ language: next });
     if (!hasSession()) return;
-    void updateAccount({ locale: next }).catch((err: unknown) =>
+    void updateAccount({ locale: next })
+      .then((res) => qc.setQueryData(["account"], res))
+      .catch((err: unknown) =>
       toast.error(
         t("layout.language_save_failed", {
           message: err instanceof Error ? err.message : String(err),

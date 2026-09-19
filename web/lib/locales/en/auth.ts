@@ -101,6 +101,9 @@ export const auth = {
   "auth.two_factor.code_min": "Enter the 6-digit code",
   "auth.two_factor.no_token": "The two-factor authentication token is missing",
   "auth.two_factor.invalid_code": "Invalid code",
+  "auth.two_factor.recovery_label": "Recovery code",
+  "auth.two_factor.use_recovery": "No access to the app? Sign in with a recovery code",
+  "auth.two_factor.use_app": "Enter the code from the app",
 
   "auth.social.title": "Social sign-in",
   "auth.social.error_title": "Sign-in error",
@@ -125,6 +128,11 @@ export const auth = {
   "auth.verify.resent": "The email has been sent again!",
   "auth.verify.resend": "Send again",
   "auth.verify.go_panel": "Go to the panel",
+  "auth.verify.change_title": "Confirm new email",
+  "auth.verify.change_checking": "Confirming the new address…",
+  "auth.verify.change_success": "Done: your account email is now {email}.",
+  "auth.verify.change_failed": "Could not confirm the address. Request the email change again in settings.",
+  "auth.verify.to_settings": "Open settings",
   "auth.verify.failed":
     "Could not confirm the email. Sign in to your account and try again.",
   "auth.verify.resend_failed": "Could not send the email. Sign in to your account.",

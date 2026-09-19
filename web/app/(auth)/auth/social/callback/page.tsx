@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ function SocialCallbackContent() {
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState("");
+  const [linking, setLinking] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +39,7 @@ function SocialCallbackContent() {
       sessionStorage.getItem("social_auth_link") === "true";
 
     async function run() {
+      if (linkMode && !cancelled) setLinking(true);
       if (oauthError) {
         if (!cancelled) setError(oauthError);
         return;
@@ -50,7 +53,8 @@ function SocialCallbackContent() {
       try {
         const res = await socialExchange(provider, code, state, linkMode);
         if (linkMode) {
-          router.replace(res.redirect ?? "/settings/account");
+          toast.success(t("settings.security.linked_toast"));
+          router.replace(res.redirect ?? "/settings?tab=security");
           return;
         }
         adoptSession();
@@ -99,7 +103,11 @@ function SocialCallbackContent() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
               <Button asChild className="w-full">
-                <Link href="/login">{t("auth.back_to_login")}</Link>
+                {linking ? (
+                  <Link href="/settings?tab=security">{t("settings.security.back_to_settings")}</Link>
+                ) : (
+                  <Link href="/login">{t("auth.back_to_login")}</Link>
+                )}
               </Button>
             </>
           ) : (

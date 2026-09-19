@@ -52,10 +52,14 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	secret = h.secrets.MustDecrypt(secret)
+	reason := ""
 	if !totp.Validate(req.Code, secret) {
-		h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "2FA: неверный код", false)
-		writeError(w, http.StatusUnauthorized, "invalid code")
-		return
+		if !h.checkSecondFactor(ctx, r, pending["user_id"], req.Code) {
+			h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "2FA: неверный код", false)
+			writeError(w, http.StatusUnauthorized, "Код не подошёл")
+			return
+		}
+		reason = "вход по резервному коду"
 	}
 
 	_ = h.cache.Delete(ctx, "2fa:"+req.Token, "2fa:tries:"+req.Token)
@@ -66,7 +70,7 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 	}
 	h.startSession(w, r, pending["user_id"], pending["email"], pending["role"], access, refresh, rememberRefreshTTL)
 	audit(ctx, h.dbOf(ctx), pending["user_id"], "auth.2fa", "login", nil)
-	h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "", true)
+	h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], reason, true)
 	h.notifyNewLogin(ctx, r, pending["user_id"], pending["email"])
 	writeJSON(w, http.StatusOK, map[string]any{
 		"access_token":  access,

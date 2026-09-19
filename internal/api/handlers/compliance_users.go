@@ -281,21 +281,31 @@ func (h *Handler) AccountDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		ConfirmEmail string `json:"confirm_email"`
+		Password     string `json:"password"`
+		Code         string `json:"code"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 	ctx := r.Context()
-	var email string
+	var email, hash string
+	var passwordSet, twoFA bool
 	if err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT email FROM core.users WHERE id = $1 AND deleted_at IS NULL
-	`, claims.UserID).Scan(&email); err != nil {
+		SELECT email, password_hash, password_set, two_factor_enabled FROM core.users WHERE id = $1 AND deleted_at IS NULL
+	`, claims.UserID).Scan(&email, &hash, &passwordSet, &twoFA); err != nil {
 		writeError(w, http.StatusNotFound, "Учётная запись не найдена")
 		return
 	}
 	if !strings.EqualFold(strings.TrimSpace(body.ConfirmEmail), email) {
 		writeError(w, http.StatusBadRequest, "Введите email учётной записи, чтобы подтвердить удаление")
+		return
+	}
+	if !h.checkAccountPassword(w, r, claims.UserID, passwordSet, hash, body.Password) {
+		return
+	}
+	if twoFA && !h.checkSecondFactor(ctx, r, claims.UserID, body.Code) {
+		writeError(w, http.StatusUnauthorized, "Введите верный код 2FA или резервный код")
 		return
 	}
 	if msg := h.userDeletionBlocker(ctx, claims.UserID, false); msg != "" {

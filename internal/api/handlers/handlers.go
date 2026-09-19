@@ -37,6 +37,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/v1/setup/status", h.SetupStatus)
 	r.Post("/v1/auth/login", h.Login)
 	r.Post("/v1/auth/register", h.Register)
+	r.Post("/v1/auth/email-change/confirm", h.ConfirmEmailChange)
 	r.HandleFunc("/v1/webhooks/{provider}", h.PaymentWebhook)
 	r.Get("/v1/pay/{id}", h.PaymentCheckoutPage)
 	h.mountPublicMonitoring(r)
@@ -400,9 +401,16 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	email := claims.Email
+	if claims.UserID != "" {
+		var stored string
+		if h.dbOf(r.Context()).QueryRow(r.Context(), `SELECT email FROM core.users WHERE id = $1`, claims.UserID).Scan(&stored) == nil && stored != "" {
+			email = stored
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"user_id": claims.UserID,
-		"email":   claims.Email,
+		"email":   email,
 		"role":    claims.Role,
 	})
 }

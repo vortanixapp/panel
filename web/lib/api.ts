@@ -627,7 +627,7 @@ export async function fetchMe() {
 }
 
 export async function changePassword(currentPassword: string, newPassword: string) {
-  return apiFetch<{ status: string }>("/v1/me/password", {
+  return apiFetch<{ status: string; sessions_closed: number; was_set: boolean }>("/v1/me/password", {
     method: "PATCH",
     body: JSON.stringify({
       current_password: currentPassword,
@@ -831,36 +831,95 @@ export async function refreshToken(refresh: string) {
   );
 }
 
+export type AccountContacts = {
+  telegram: string;
+  discord: string;
+  vk: string;
+};
+
+export type AccountPreferences = {
+  theme?: "light" | "dark" | "system" | "";
+  font?: string;
+  layout?: string;
+  collapsible?: string;
+  sidebar_collapsed?: boolean;
+  start_page?: string;
+};
+
 export type AccountUser = {
   id: string;
   email: string;
   role: string;
+  staff?: boolean;
   two_factor_enabled: boolean;
+  two_factor_required?: boolean;
+  recovery_codes_left?: number;
+  has_password?: boolean;
   email_verified?: boolean;
+  email_verified_at?: string | null;
+  pending_email?: string | null;
+  created_at?: string;
+  last_login_at?: string | null;
   display_name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
   phone?: string | null;
   locale?: string;
+  timezone?: string;
   avatar_url?: string | null;
   linked_providers?: string[];
+  contacts?: AccountContacts;
+  preferences?: AccountPreferences;
+  features?: { api_tokens?: boolean; referrals?: boolean };
 };
+
+export type AccountPatch = Partial<{
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  locale: string;
+  timezone: string;
+  contacts: Partial<AccountContacts>;
+  preferences: AccountPreferences;
+}>;
 
 export type AccountSession = {
   id: string;
   ip_address?: string;
   user_agent?: string;
+  device?: string;
   last_activity?: string;
   created_at?: string;
   is_current?: boolean;
+};
+
+export type AccountLogin = {
+  id: number;
+  success: boolean;
+  reason: string;
+  ip: string;
+  device: string;
+  created_at: string;
+};
+
+export type AccountDeleteCheck = {
+  allowed: boolean;
+  staff: boolean;
+  blockers: {
+    kind: "servers" | "hosting" | "refund" | "balance";
+    count?: number;
+    amounts?: { currency: string; amount: number }[];
+  }[];
+  requires: { password: boolean; two_factor: boolean };
 };
 
 export async function fetchAccount() {
   return apiFetch<{ user: AccountUser }>("/v1/account");
 }
 
-export async function updateAccount(data: Record<string, unknown>) {
-  return apiFetch<{ status: string }>("/v1/account", {
+export async function updateAccount(data: AccountPatch) {
+  return apiFetch<{ user: AccountUser }>("/v1/account", {
     method: "PATCH",
     body: JSON.stringify(data),
   });
@@ -887,23 +946,30 @@ export async function socialUnlink(provider: string) {
 }
 
 export async function generate2FA() {
-  return apiFetch<{ secret: string; uri: string }>(
+  return apiFetch<{ secret: string; uri: string; qr?: string }>(
     "/v1/account/2fa/generate",
     { method: "POST" }
   );
 }
 
 export async function enable2FA(code: string) {
-  return apiFetch<{ status: string }>("/v1/account/2fa/enable", {
+  return apiFetch<{ status: string; recovery_codes: string[] }>("/v1/account/2fa/enable", {
     method: "POST",
     body: JSON.stringify({ code }),
   });
 }
 
-export async function disable2FA(password: string) {
+export async function disable2FA(body: { password?: string; code: string }) {
   return apiFetch<{ status: string }>("/v1/account/2fa/disable", {
     method: "POST",
-    body: JSON.stringify({ password }),
+    body: JSON.stringify(body),
+  });
+}
+
+export async function regenerateRecoveryCodes(code: string) {
+  return apiFetch<{ recovery_codes: string[] }>("/v1/account/2fa/recovery-codes", {
+    method: "POST",
+    body: JSON.stringify({ code }),
   });
 }
 
@@ -917,45 +983,61 @@ export async function fetchAccountSessions() {
 export async function destroyAccountSession(body: {
   session_id?: string;
   all_others?: boolean;
+  all?: boolean;
 }) {
-  return apiFetch<{ status: string }>("/v1/account/sessions/destroy", {
+  return apiFetch<{ status: string; closed: number }>("/v1/account/sessions/destroy", {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
 
-export async function changeAccountEmail(data: {
-  email: string;
-  current_password: string;
-}) {
-  return apiFetch<{
-    status: string;
-    email: string;
-    verification_url?: string;
-  }>("/v1/account/email/change", {
+export async function fetchAccountLogins(before?: number) {
+  const q = before ? `?before=${before}` : "";
+  return apiFetch<{ logins: AccountLogin[]; has_more: boolean; next_before?: number }>(
+    `/v1/account/logins${q}`
+  );
+}
+
+export async function changeAccountEmail(data: { email: string; current_password?: string }) {
+  return apiFetch<{ status: string; pending_email: string; confirm_url?: string }>(
+    "/v1/account/email/change",
+    { method: "POST", body: JSON.stringify(data) }
+  );
+}
+
+export async function cancelEmailChange() {
+  return apiFetch<{ user: AccountUser }>("/v1/account/email/pending", { method: "DELETE" });
+}
+
+export async function confirmEmailChange(token: string) {
+  return apiFetch<{ status: string; email: string }>("/v1/auth/email-change/confirm", {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify({ token }),
   });
 }
 
 export async function uploadAccountAvatar(file: File) {
   const form = new FormData();
   form.append("avatar", file);
-  const url = API_URL + "/v1/account/avatar";
-  const headers = authHeaders();
-  const res = await fetch(url, { method: "POST", headers, credentials: "include", body: form });
-  const data = await res.json();
-  if (!res.ok) {
+  const res = await fetch(API_URL + "/v1/account/avatar", {
+    method: "POST",
+    headers: authHeaders(),
+    credentials: "include",
+    body: form,
+  });
+  const data = (await res.json().catch(() => ({}))) as { user?: AccountUser; error?: string };
+  if (!res.ok || !data.user) {
     throw new Error(data.error ?? "Upload failed");
   }
-  return data as { status: string; avatar_url: string };
+  return { user: data.user };
 }
 
-export async function uploadAccountAvatarUrl(avatarUrl: string) {
-  return apiFetch<{ status: string; avatar_url: string }>("/v1/account/avatar", {
-    method: "POST",
-    body: JSON.stringify({ avatar_url: avatarUrl }),
-  });
+export async function deleteAccountAvatar() {
+  return apiFetch<{ user: AccountUser }>("/v1/account/avatar", { method: "DELETE" });
+}
+
+export async function fetchAccountDeleteCheck() {
+  return apiFetch<AccountDeleteCheck>("/v1/account/delete/check");
 }
 
 export type ServerViewerPermissions = {
@@ -5924,10 +6006,14 @@ export function downloadAccountData() {
   return downloadAuthorizedFile("/v1/account/export", "personal-data.json", t("settings.data.export_failed"));
 }
 
-export async function deleteOwnAccount(confirmEmail: string) {
+export async function deleteOwnAccount(body: {
+  confirm_email: string;
+  password?: string;
+  code?: string;
+}) {
   return apiFetch<{ status: string }>("/v1/account/delete", {
     method: "POST",
-    body: JSON.stringify({ confirm_email: confirmEmail }),
+    body: JSON.stringify(body),
   });
 }
 

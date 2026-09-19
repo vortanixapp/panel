@@ -15,7 +15,7 @@ import type { TranslateFn } from "@/lib/i18n";
 
 function buildSchema(t: TranslateFn) {
   return z.object({
-    code: z.string().min(6, t("auth.two_factor.code_min")).max(8),
+    code: z.string().trim().min(6, t("auth.two_factor.code_min")).max(9),
   });
 }
 
@@ -28,6 +28,7 @@ export function TwoFactorChallengeForm() {
   const searchParams = useSearchParams();
   const twoFactorToken = searchParams.get("token") ?? "";
   const [error, setError] = useState("");
+  const [recovery, setRecovery] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(buildSchema(t)),
@@ -58,18 +59,36 @@ export function TwoFactorChallengeForm() {
       <AuthError message={error} />
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
         <AuthField
+          key={recovery ? "recovery" : "totp"}
           id="code"
-          label={t("auth.two_factor.code_label")}
-          inputMode="numeric"
-          autoComplete="one-time-code"
+          label={recovery ? t("auth.two_factor.recovery_label") : t("auth.two_factor.code_label")}
+          inputMode={recovery ? "text" : "numeric"}
+          autoComplete={recovery ? "off" : "one-time-code"}
+          autoCapitalize="none"
+          spellCheck={false}
           autoFocus
-          maxLength={8}
-          placeholder="000000"
+          maxLength={recovery ? 9 : 6}
+          placeholder={recovery ? "xxxx-xxxx" : "000000"}
           disabled={loading}
           error={form.formState.errors.code?.message}
-          className="[&_input]:h-14 [&_input]:text-center [&_input]:font-mono [&_input]:text-[22px] [&_input]:tracking-[0.45em]"
+          className={
+            recovery
+              ? "[&_input]:h-14 [&_input]:text-center [&_input]:font-mono [&_input]:text-[20px] [&_input]:tracking-[0.2em]"
+              : "[&_input]:h-14 [&_input]:text-center [&_input]:font-mono [&_input]:text-[22px] [&_input]:tracking-[0.45em]"
+          }
           {...form.register("code")}
         />
+        <button
+          type="button"
+          className="-mt-2 self-start text-[13px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          onClick={() => {
+            setRecovery((v) => !v);
+            setError("");
+            form.reset({ code: "" });
+          }}
+        >
+          {recovery ? t("auth.two_factor.use_app") : t("auth.two_factor.use_recovery")}
+        </button>
         <div className="pt-1">
           <AuthSubmit loading={loading} disabled={!twoFactorToken}>
             {t("common.confirm")}

@@ -9,6 +9,7 @@ import { useAdminSiteMenu } from "@/hooks/use-site-menu";
 import { queryKeys } from "@/lib/query-keys";
 import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { LegalAcceptanceGate } from "@/components/legal/legal-acceptance-gate";
+import { AccountSync } from "@/components/layout/account-sync";
 import { useLiveSync } from "@/hooks/use-live-sync";
 import type { PanelVariant } from "@/lib/panel-paths";
 import { VxPageLoader } from "@/components/vx/loader";
@@ -67,6 +68,7 @@ export function DashboardLayout({
         {children}
       </AuthenticatedLayout>
       <LegalAcceptanceGate />
+      <AccountSync />
     </>
   );
 }

@@ -101,6 +101,9 @@ export const auth = {
   "auth.two_factor.code_min": "Введите 6-значный код",
   "auth.two_factor.no_token": "Отсутствует токен двухфакторной аутентификации",
   "auth.two_factor.invalid_code": "Неверный код",
+  "auth.two_factor.recovery_label": "Резервный код",
+  "auth.two_factor.use_recovery": "Нет доступа к приложению? Войти по резервному коду",
+  "auth.two_factor.use_app": "Ввести код из приложения",
 
   "auth.social.title": "Вход через соцсеть",
   "auth.social.error_title": "Ошибка авторизации",
@@ -125,6 +128,11 @@ export const auth = {
   "auth.verify.resent": "Письмо отправлено повторно!",
   "auth.verify.resend": "Отправить повторно",
   "auth.verify.go_panel": "Перейти в панель",
+  "auth.verify.change_title": "Подтверждение новой почты",
+  "auth.verify.change_checking": "Подтверждаем новый адрес…",
+  "auth.verify.change_success": "Готово: почта учётной записи теперь {email}.",
+  "auth.verify.change_failed": "Не удалось подтвердить адрес. Запросите смену почты в настройках заново.",
+  "auth.verify.to_settings": "Открыть настройки",
   "auth.verify.failed":
     "Не удалось подтвердить email. Войдите в аккаунт и попробуйте снова.",
   "auth.verify.resend_failed": "Не удалось отправить письмо. Войдите в аккаунт.",

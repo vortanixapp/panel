@@ -6,7 +6,7 @@ export const layout = {
   "layout.account.server_unreachable": "Не удалось связаться с сервером",
 
   "layout.user.profile": "Профиль",
-  "layout.user.account": "Аккаунт",
+  "layout.user.account": "Безопасность",
   "layout.user.appearance": "Внешний вид",
   "layout.user.sign_out": "Выйти",
   "layout.user.sign_out_all": "Выйти из всех аккаунтов",

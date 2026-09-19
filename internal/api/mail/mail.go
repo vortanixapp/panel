@@ -56,6 +56,15 @@ func PasswordResetEmail(l i18n.Localizer, brand mailtpl.Brand, resetURL string) 
 	})
 }
 
+func EmailChangeEmail(l i18n.Localizer, brand mailtpl.Brand, email, confirmURL string) (subject, body string) {
+	return l.T("mail.email_change.subject"), mailtpl.Render(brand, mailtpl.Message{
+		Title:       l.T("mail.email_change.title"),
+		Body:        mailtpl.Paragraphs(l.T("mail.email_change.body", i18n.Params{"email": email})),
+		ActionLabel: l.T("mail.email_change.action"),
+		ActionURL:   confirmURL,
+	})
+}
+
 func TestEmail(l i18n.Localizer, brand mailtpl.Brand, to string) (subject, body string) {
 	return l.T("mail.test.subject"), mailtpl.Render(brand, mailtpl.Message{
 		Title: l.T("mail.test.title"),

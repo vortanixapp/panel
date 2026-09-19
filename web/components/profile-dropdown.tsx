@@ -82,7 +82,7 @@ export function ProfileDropdown() {
               <Link href="/settings">{t("layout.user.profile")}</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings/account">{t("layout.user.account")}</Link>
+              <Link href="/settings?tab=security">{t("layout.user.account")}</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/settings?tab=appearance">

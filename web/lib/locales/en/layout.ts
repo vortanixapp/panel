@@ -7,7 +7,7 @@ export const layout = {
   "layout.account.server_unreachable": "Could not reach the server",
 
   "layout.user.profile": "Profile",
-  "layout.user.account": "Account",
+  "layout.user.account": "Security",
   "layout.user.appearance": "Appearance",
   "layout.user.sign_out": "Sign out",
   "layout.user.sign_out_all": "Sign out of all accounts",

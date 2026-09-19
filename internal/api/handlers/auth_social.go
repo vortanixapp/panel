@@ -19,6 +19,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/vortanixapp/panel/internal/api/mail"
 	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/oauth"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -98,7 +99,7 @@ func (h *Handler) startSocialOAuth(w http.ResponseWriter, r *http.Request, inten
 	tenantSlug := singleTenantSlug
 	returnPath := "/login"
 	if intent == socialIntentLink {
-		returnPath = "/settings/account"
+		returnPath = "/settings?tab=security"
 	}
 	st := oauthState{
 		Intent:     intent,
@@ -290,8 +291,8 @@ func (h *Handler) createSocialUser(ctx context.Context, email string, profile oa
 	hashBytes, _ := bcrypt.GenerateFromPassword([]byte(randomToken(32)), bcrypt.DefaultCost)
 	role = "user"
 	err = h.dbOf(ctx).QueryRow(ctx, `
-		INSERT INTO core.users ( email, password_hash, role, email_verified_at)
-		VALUES ( $1, $2, $3, CASE WHEN $4 = '' THEN NULL ELSE now() END)
+		INSERT INTO core.users ( email, password_hash, role, email_verified_at, password_set)
+		VALUES ( $1, $2, $3, CASE WHEN $4 = '' THEN NULL ELSE now() END, false)
 		RETURNING id::text
 	`, strings.ToLower(email), string(hashBytes), role, profile.Email).Scan(&userID)
 	outEmail = email
@@ -329,6 +330,13 @@ func (h *Handler) linkSocialAccount(w http.ResponseWriter, r *http.Request, st o
 		writeError(w, http.StatusInternalServerError, "link failed")
 		return
 	}
+	audit(ctx, h.dbOf(ctx), userID, "user.social_link", "user:"+userID, map[string]any{"provider": providerKey})
+	h.notifyUser(ctx, userID, notify.Event{
+		Kind:   notify.KindSocialAccount,
+		Title:  i18n.Key("notify.social_linked.title"),
+		Body:   i18n.Key("notify.social_linked.body", i18n.Params{"provider": providerTitle(providerKey)}),
+		Action: h.panelAction("notify.action.security", "/settings?tab=security"),
+	})
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":       true,
 		"status":   "social-linked",
@@ -348,10 +356,51 @@ func (h *Handler) SocialUnlink(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "unknown provider")
 		return
 	}
-	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-		DELETE FROM core.user_social_accounts WHERE user_id = $1 AND provider = $2
-	`, claims.UserID, providerKey)
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Соцсеть отвязана."})
+	ctx := r.Context()
+	db := h.dbOf(ctx)
+	var passwordSet bool
+	var others int
+	if err := db.QueryRow(ctx, `
+		SELECT u.password_set,
+		       (SELECT COUNT(*) FROM core.user_social_accounts s WHERE s.user_id = u.id AND s.provider <> $2)
+		FROM core.users u WHERE u.id = $1
+	`, claims.UserID, providerKey).Scan(&passwordSet, &others); err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if !passwordSet && others == 0 {
+		writeError(w, http.StatusConflict, "Это единственный способ входа. Сначала задайте пароль в разделе «Безопасность»")
+		return
+	}
+	tag, err := db.Exec(ctx, `DELETE FROM core.user_social_accounts WHERE user_id = $1 AND provider = $2`, claims.UserID, providerKey)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "Не удалось отвязать вход")
+		return
+	}
+	if tag.RowsAffected() > 0 {
+		audit(ctx, db, claims.UserID, "user.social_unlink", "user:"+claims.UserID, map[string]any{"provider": providerKey})
+		h.notifyUser(ctx, claims.UserID, notify.Event{
+			Kind:   notify.KindSocialAccount,
+			Title:  i18n.Key("notify.social_unlinked.title"),
+			Body:   i18n.Key("notify.social_unlinked.body", i18n.Params{"provider": providerTitle(providerKey)}),
+			Action: h.panelAction("notify.action.security", "/settings?tab=security"),
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Вход отвязан"})
+}
+
+func providerTitle(key string) string {
+	switch publicProviderKey(key) {
+	case "google":
+		return "Google"
+	case "discord":
+		return "Discord"
+	case "vk":
+		return "VK"
+	case "telegram":
+		return "Telegram"
+	}
+	return key
 }
 
 func (h *Handler) TelegramCallback(w http.ResponseWriter, r *http.Request) {
@@ -364,7 +413,7 @@ func (h *Handler) TelegramLink(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	st := oauthState{Intent: socialIntentLink, UserID: claims.UserID, ReturnPath: "/settings/account"}
+	st := oauthState{Intent: socialIntentLink, UserID: claims.UserID, ReturnPath: "/settings?tab=security"}
 	h.handleTelegramWithState(w, r, st)
 }
 
@@ -484,19 +533,23 @@ func (h *Handler) SendEmailVerification(w http.ResponseWriter, r *http.Request) 
 	}
 	ctx := r.Context()
 	var verified *time.Time
-	if err := h.dbOf(ctx).QueryRow(ctx, `SELECT email_verified_at FROM core.users WHERE id = $1`, claims.UserID).Scan(&verified); err != nil {
+	var email string
+	if err := h.dbOf(ctx).QueryRow(ctx, `SELECT email_verified_at, email FROM core.users WHERE id = $1`, claims.UserID).Scan(&verified, &email); err != nil {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
 	if verified != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Email уже подтвержден."})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Email уже подтверждён."})
 		return
 	}
-	verifyURL := h.buildSignedVerifyURL(claims.UserID, claims.Email)
+	if h.tooManyAttempts(w, r, "verify-mail", 1, time.Minute, claims.UserID) {
+		return
+	}
+	verifyURL := h.buildSignedVerifyURL(claims.UserID, email)
 	resp := map[string]any{"ok": true, "status": "verification-link-sent", "message": "Письмо для подтверждения отправлено."}
 	if h.mail.Enabled() {
 		subject, body := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID), h.mailBrand(ctx, r), verifyURL)
-		_ = h.mail.Send(claims.Email, subject, body)
+		_ = h.mail.Send(email, subject, body)
 	} else if h.mail.DevExpose {
 		resp["verification_url"] = verifyURL
 	}

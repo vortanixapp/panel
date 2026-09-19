@@ -13,13 +13,80 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  confirmEmailChange,
   resendEmailVerification,
   verifyEmailURL,
   hasSession,
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 
+function ChangeEmailContent({ token }: { token: string }) {
+  const t = useT();
+  const [state, setState] = useState<"checking" | "done" | "error">("checking");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    confirmEmailChange(token)
+      .then((res) => {
+        if (cancelled) return;
+        setEmail(res.email);
+        setState("done");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setMessage(err instanceof Error && err.message ? err.message : t("auth.verify.change_failed"));
+        setState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, t]);
+
+  return (
+    <div className="flex min-h-svh flex-col items-center justify-center p-6">
+      <Card className="w-full max-w-md text-center">
+        <CardHeader>
+          <CardTitle>{t("auth.verify.change_title")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {state === "checking" && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("auth.verify.change_checking")}
+            </div>
+          )}
+          {state === "done" && (
+            <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-500">
+              {t("auth.verify.change_success", { email })}
+            </p>
+          )}
+          {state === "error" && (
+            <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {message}
+            </p>
+          )}
+          <Button asChild className="w-full">
+            <Link href="/settings?tab=contacts">{t("auth.verify.to_settings")}</Link>
+          </Button>
+          <Button asChild variant="outline" className="w-full">
+            <Link href="/dashboard">{t("auth.verify.go_panel")}</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function VerifyEmailContent() {
+  const params = useSearchParams();
+  const changeToken = params.get("change")?.trim() ?? "";
+  if (changeToken) return <ChangeEmailContent token={changeToken} />;
+  return <VerifyLinkContent />;
+}
+
+function VerifyLinkContent() {
   const t = useT();
   const params = useSearchParams();
   const verifyURL = params.get("verify_url")?.trim() ?? "";

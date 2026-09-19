@@ -26,6 +26,9 @@ func (h *Handler) recordLoginAttempt(ctx context.Context, r *http.Request, userI
 		INSERT INTO core.login_attempts (email, user_id, ip, user_agent, success, reason)
 		VALUES ($1, NULLIF($2, '')::uuid, $3, $4, $5, $6)
 	`, strings.ToLower(strings.TrimSpace(email)), userID, clientIP(r), agent, success, reason)
+	if success && userID != "" {
+		_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.users SET last_login_at = now() WHERE id = $1`, userID)
+	}
 }
 
 func (h *Handler) ipBlocked(ctx context.Context, ip string) (bool, string) {

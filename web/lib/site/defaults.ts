@@ -57,7 +57,7 @@ const USER_SIDEBAR: BuiltinItem[] = [
         icon: "settings",
         items: [
           { ref: "user.settings.profile", labelKey: "nav.settings.profile", url: "/settings", icon: "user-cog" },
-          { ref: "user.settings.account", labelKey: "nav.settings.account", url: "/settings/account", icon: "wrench" },
+          { ref: "user.settings.account", labelKey: "nav.settings.account", url: "/settings?tab=security", icon: "shield" },
           { ref: "user.settings.appearance", labelKey: "nav.settings.appearance", url: "/settings?tab=appearance", icon: "palette" },
           { ref: "user.settings.notifications", labelKey: "nav.settings.notifications", url: "/settings?tab=notifications", icon: "bell" },
         ],
