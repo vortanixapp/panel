@@ -1,6 +1,7 @@
 package payments
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"crypto/sha1"
@@ -10,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash"
+	"log"
 	"net/http"
 	"net/url"
 	"sort"
@@ -134,19 +136,21 @@ func (YooMoney) CreateCheckout(_ context.Context, cfg map[string]any, in Checkou
 
 func (YooMoney) HandleNotification(_ context.Context, cfg map[string]any, req *NotifyRequest) (Notification, error) {
 	label := req.Value("label")
-	if label == "" {
-		return Notification{}, nil
-	}
-	parts := []string{
-		req.Value("notification_type"), req.Value("operation_id"), req.Value("amount"),
-		req.Value("currency"), req.Value("datetime"), req.Value("sender"), req.Value("codepro"),
-		strCfg(cfg, "notification_secret"), label,
-	}
-	n := Notification{PaymentID: label, ProviderPaymentID: req.Value("operation_id"), Currency: "RUB"}
-	if !secureEqualFold(sha1Hex(strings.Join(parts, "&")), req.Value("sha1_hash")) {
+	operation := req.Value("operation_id")
+	n := Notification{PaymentID: label, ProviderPaymentID: operation, Currency: "RUB"}
+	if !yoomoneySigned(req, strCfg(cfg, "notification_secret")) {
 		return n, ErrBadSignature
 	}
+	if req.Value("test_notification") == "true" {
+		log.Printf("yoomoney: тестовое уведомление принято, подпись сходится")
+		return Notification{}, nil
+	}
+	if label == "" {
+		log.Printf("yoomoney: перевод %s пришёл без метки платежа и не зачислен", operation)
+		return Notification{}, nil
+	}
 	if req.Value("codepro") == "true" || req.Value("unaccepted") == "true" {
+		log.Printf("yoomoney: перевод %s по платежу %s заморожен в ЮMoney и не зачислен", operation, label)
 		return n, nil
 	}
 	n.Amount = parseAmount(req.Value("withdraw_amount"))
@@ -155,6 +159,64 @@ func (YooMoney) HandleNotification(_ context.Context, cfg map[string]any, req *N
 	}
 	n.Status = NotifyPaid
 	return n, nil
+}
+
+func yoomoneySigned(req *NotifyRequest, secret string) bool {
+	if secret == "" {
+		return false
+	}
+	if sign := req.Form.Get("sign"); strings.TrimSpace(sign) != "" {
+		for _, params := range yoomoneyParamSets(req) {
+			if secureEqualFold(hmacSHA256Hex(secret, []byte(yoomoneySignString(params))), sign) {
+				return true
+			}
+		}
+	}
+	if hash := req.Value("sha1_hash"); hash != "" {
+		parts := []string{
+			req.Value("notification_type"), req.Value("operation_id"), req.Value("amount"),
+			req.Value("currency"), req.Value("datetime"), req.Value("sender"), req.Value("codepro"),
+			secret, req.Value("label"),
+		}
+		return secureEqualFold(sha1Hex(strings.Join(parts, "&")), hash)
+	}
+	return false
+}
+
+func yoomoneyParamSets(req *NotifyRequest) []url.Values {
+	sets := []url.Values{req.Form}
+	if !bytes.Contains(req.Body, []byte("+")) {
+		return sets
+	}
+	literal := url.Values{}
+	for _, pair := range strings.Split(string(req.Body), "&") {
+		if pair == "" {
+			continue
+		}
+		key, value, _ := strings.Cut(pair, "=")
+		k, errKey := url.PathUnescape(key)
+		v, errValue := url.PathUnescape(value)
+		if errKey != nil || errValue != nil {
+			return sets
+		}
+		literal.Add(k, v)
+	}
+	return append(sets, literal)
+}
+
+func yoomoneySignString(params url.Values) string {
+	keys := make([]string, 0, len(params))
+	for key := range params {
+		if key != "sign" {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, key+"="+strings.ReplaceAll(url.QueryEscape(params.Get(key)), "+", "%20"))
+	}
+	return strings.Join(parts, "&")
 }
 
 type TKassa struct{}
