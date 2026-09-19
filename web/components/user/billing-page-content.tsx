@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { BillingDocuments } from "@/components/user/billing-documents";
+import {
+  BillingPaymentDialog,
+  paymentStatusLabel,
+  paymentTone,
+} from "@/components/user/billing-payment-dialog";
 import { BillingRefunds } from "@/components/user/billing-refunds";
 import { IdentificationNotice } from "@/components/user/identification-notice";
 import {
@@ -16,6 +20,7 @@ import {
   fetchDashboard,
   fetchTopupForm,
   type BillingData,
+  type TopupProvider,
   type Transaction,
 } from "@/lib/api";
 import { BILLING_PROVIDERS } from "@/lib/billing-providers";
@@ -65,6 +70,59 @@ function resolveApiError(err: unknown): string {
   }
   return t("billing.topup.create_error");
 }
+
+type Quote = {
+  chargeAmount: number | null;
+  chargeCurrency: string;
+  feePercent: number;
+  converted: boolean;
+};
+
+function buildQuote(
+  amount: number,
+  walletCurrency: string,
+  provider: TopupProvider,
+  fxFeePercent: number,
+  rates: Record<string, number> | null | undefined
+): Quote {
+  const chargeCurrency = (provider.currency || walletCurrency).toUpperCase();
+  const feePercent = provider.fee_percent ?? 0;
+  const converted = chargeCurrency !== walletCurrency;
+  let value = amount;
+  if (converted) {
+    const from = rates?.[walletCurrency];
+    const to = rates?.[chargeCurrency];
+    if (!from || !to) return { chargeAmount: null, chargeCurrency, feePercent, converted };
+    value = value * (to / from) * (1 + fxFeePercent / 100);
+  }
+  value = value * (1 + feePercent / 100);
+  return {
+    chargeAmount: Math.ceil(value * 100 - 1e-6) / 100,
+    chargeCurrency,
+    feePercent,
+    converted,
+  };
+}
+
+function externalRedirect(url?: string) {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  try {
+    const target = new URL(url);
+    if (target.origin === window.location.origin && /^\/billing(\/|$)/.test(target.pathname)) {
+      return null;
+    }
+    return target.toString();
+  } catch {
+    return null;
+  }
+}
+
+const STATUS_BADGE = {
+  success: "border-emerald-500/30 text-emerald-500",
+  failure: "border-rose-500/30 text-rose-500",
+  pending: "border-amber-500/30 text-amber-500",
+  other: "border-[var(--vx-border-2)] text-muted-foreground",
+};
 
 function withRunningBalance(transactions: Transaction[], currentBalance: number) {
   let running = currentBalance;
@@ -139,13 +197,23 @@ export function BillingPageContent() {
   useT();
   const qc = useQueryClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paymentId = searchParams.get("payment");
 
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [amount, setAmount] = useState(1000);
   const [method, setMethod] = useState("");
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [freekassaMethod, setFreekassaMethod] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [visible, setVisible] = useState(8);
+  const [paymentsVisible, setPaymentsVisible] = useState(5);
   const [topupError, setTopupError] = useState("");
+
+  const openPayment = (id: string) =>
+    router.replace(`/billing?payment=${encodeURIComponent(id)}`, { scroll: false });
+  const closePayment = () => router.replace("/billing", { scroll: false });
 
   const { data, isLoading, isError } = useQuery({
     queryKey: queryKeys.billing(selectedWalletId),
@@ -168,6 +236,13 @@ export function BillingPageContent() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["billing"] }),
   });
 
+  const ready = Boolean(data);
+  useEffect(() => {
+    if (ready && window.location.hash === "#topup") {
+      document.getElementById("topup")?.scrollIntoView({ block: "start" });
+    }
+  }, [ready]);
+
   const d = data ?? EMPTY_BILLING;
   const wallet =
     d.selected_wallet ??
@@ -179,27 +254,42 @@ export function BillingPageContent() {
   const balance = wallet?.balance ?? 0;
   const activeWalletId = selectedWalletId ?? d.selected_wallet?.id ?? wallet?.id ?? "";
 
+  const providerRows = topupForm?.providers ?? [];
   const enabledProviders = topupForm?.enabled_providers ?? [];
+  const freekassaMethods = topupForm?.freekassa_methods ?? [];
+  const payments = topupForm?.payments ?? [];
   const activeMethod = enabledProviders.includes(method) ? method : enabledProviders[0] ?? "";
+  const activeProvider = providerRows.find((p) => p.code === activeMethod);
+  const needsFreekassaMethod =
+    activeMethod === "freekassa" && freekassaMethods.length > 0 && !freekassaMethod;
+  const quote =
+    activeProvider && amount > 0
+      ? buildQuote(amount, currency, activeProvider, topupForm?.fx?.fee_percent ?? 0, topupForm?.fx?.rates)
+      : null;
 
   const topupMutation = useMutation({
     mutationFn: async () => {
-      const row = (topupForm?.providers ?? []).find((p) => p.code === activeMethod);
-      if (!row) throw new Error(t("billing.topup.provider_unavailable"));
+      if (!activeProvider) throw new Error(t("billing.topup.provider_unavailable"));
       if (!amount || amount <= 0) throw new Error(t("billing.topup.amount_required"));
+      if (needsFreekassaMethod) throw new Error(t("billing.topup.freekassa_select"));
       return createTopup({
         walletId: activeWalletId || undefined,
-        providerId: row.id,
+        providerId: activeProvider.id,
         providerCode: activeMethod,
         amount,
+        promoCode: promoCode.trim() || undefined,
+        paymentMethodId:
+          activeMethod === "freekassa" && freekassaMethod ? freekassaMethod : undefined,
       });
     },
     onSuccess: (res) => {
-      if (res.redirect_url) {
-        window.location.href = res.redirect_url;
+      void qc.invalidateQueries({ queryKey: queryKeys.billingTopup() });
+      const target = externalRedirect(res.redirect_url);
+      if (target) {
+        window.location.href = target;
         return;
       }
-      router.push(`/billing/topup/payment/${res.payment_id}`);
+      openPayment(res.payment_id);
     },
     onError: (err) => setTopupError(resolveApiError(err)),
   });
@@ -355,7 +445,8 @@ export function BillingPageContent() {
 
         <div className="mt-3.5 grid grid-cols-1 items-start gap-3.5 lg:grid-cols-2">
           <form
-            className={cn(CARD, "px-[26px] py-6")}
+            id="topup"
+            className={cn(CARD, "scroll-mt-24 px-5 py-6 sm:px-[26px]")}
             onSubmit={(e) => {
               e.preventDefault();
               setTopupError("");
@@ -408,6 +499,28 @@ export function BillingPageContent() {
               </span>
             </label>
 
+            {promoOpen ? (
+              <label className="mt-2.5 flex items-center gap-3 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 py-3">
+                <span className="text-[13px] whitespace-nowrap text-muted-foreground">
+                  {t("billing.topup.promo")}
+                </span>
+                <input
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  autoComplete="off"
+                  className="min-w-0 flex-1 border-none bg-transparent font-mono text-[15px] text-foreground uppercase outline-none"
+                />
+              </label>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPromoOpen(true)}
+                className="mt-2.5 text-[12.5px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              >
+                {t("billing.topup.promo_toggle")}
+              </button>
+            )}
+
             <div className="mt-[18px] text-[12.5px] font-semibold tracking-[0.06em] text-[var(--vx-ink-faint)] uppercase">
               {t("billing.topup.method")}
             </div>
@@ -420,6 +533,8 @@ export function BillingPageContent() {
                 {enabledProviders.map((code) => {
                   const on = activeMethod === code;
                   const meta = providerMeta(code);
+                  const row = providerRows.find((p) => p.code === code);
+                  const fee = row?.fee_percent ?? 0;
                   return (
                     <button
                       key={code}
@@ -434,18 +549,61 @@ export function BillingPageContent() {
                     >
                       <div
                         className={cn(
-                          "text-[13.5px] font-semibold",
+                          "text-[13.5px] font-semibold break-words",
                           on ? "text-foreground" : "text-[var(--vx-ink-dim)]"
                         )}
                       >
-                        {meta.name}
+                        {row?.name || meta.name}
                       </div>
                       <div className="mt-[5px] text-[11.5px] text-[var(--vx-ink-faint)]">
                         {meta.note}
                       </div>
+                      {fee > 0 && (
+                        <div className="mt-2 inline-flex rounded-full border border-[var(--vx-border-2)] px-2 py-0.5 text-[10.5px] text-muted-foreground">
+                          {t("billing.topup.fee", { fee })}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
+              </div>
+            )}
+
+            {activeMethod === "freekassa" && freekassaMethods.length > 0 && (
+              <select
+                value={freekassaMethod}
+                onChange={(e) => setFreekassaMethod(e.target.value)}
+                className="mt-3 h-11 w-full rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 text-[13px] text-foreground outline-none focus:border-[var(--vx-border-hover)]"
+              >
+                <option value="">{t("billing.topup.freekassa_select")}</option>
+                {freekassaMethods.map((m) => (
+                  <option key={m.id} value={String(m.id)}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {quote && (quote.feePercent > 0 || quote.converted) && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 py-3 text-[12.5px]">
+                <span className="text-muted-foreground">
+                  {[
+                    quote.feePercent > 0 ? t("billing.topup.fee", { fee: quote.feePercent }) : "",
+                    quote.converted
+                      ? t("billing.topup.conversion", { currency: quote.chargeCurrency })
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+                <span className="font-mono font-medium text-foreground">
+                  {quote.chargeAmount != null
+                    ? t("billing.payment.to_pay", {
+                        amount: formatAmount(quote.chargeAmount),
+                        currency: quote.chargeCurrency,
+                      })
+                    : t("billing.topup.rate_pending", { currency: quote.chargeCurrency })}
+                </span>
               </div>
             )}
 
@@ -453,20 +611,24 @@ export function BillingPageContent() {
               <p className="mt-3 text-[13px] text-destructive">{topupError}</p>
             )}
 
-            <div className="mt-[18px] flex items-center gap-3">
+            <div className="mt-[18px] flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center sm:gap-3">
               <button
                 type="submit"
-                disabled={topupMutation.isPending || !activeMethod || amount <= 0}
-                className="vx-btn flex-1 rounded-full py-[13px] text-center text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={
+                  topupMutation.isPending || !activeMethod || amount <= 0 || needsFreekassaMethod
+                }
+                className="vx-btn flex-1 rounded-full px-4 py-[13px] text-center text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {topupMutation.isPending
                   ? t("billing.topup.creating")
-                  : t("billing.topup.submit_amount", {
-                      amount: amount.toLocaleString(localeTag()),
-                      symbol,
-                    })}
+                  : activeProvider?.manual
+                    ? t("billing.topup.bank_submit")
+                    : t("billing.topup.submit_amount", {
+                        amount: amount.toLocaleString(localeTag()),
+                        symbol,
+                      })}
               </button>
-              <div className="max-w-[150px] text-[12.5px] leading-[1.4] text-[var(--vx-ink-faint)]">
+              <div className="text-center text-[12.5px] leading-[1.4] text-[var(--vx-ink-faint)] sm:max-w-[150px] sm:text-left">
                 {t("billing.topup.receipt_hint")}
               </div>
             </div>
@@ -546,6 +708,71 @@ export function BillingPageContent() {
           </div>
         </div>
 
+        {payments.length > 0 && (
+          <div className={cn(CARD, "mt-3.5 overflow-hidden")}>
+            <div className="flex flex-wrap items-center gap-3.5 border-b border-[var(--vx-panel-line)] px-5 py-5 sm:px-[26px]">
+              <span className="text-base font-semibold">{t("billing.topup.my_topups")}</span>
+              <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
+                {t("billing.topup.last_20")}
+              </span>
+            </div>
+            {payments.slice(0, paymentsVisible).map((p) => {
+              const tone = paymentTone(p.status);
+              const bonus =
+                p.credited_amount != null && Number(p.credited_amount) > Number(p.amount)
+                  ? Number(p.credited_amount) - Number(p.amount)
+                  : 0;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => openPayment(p.id)}
+                  className="flex w-full items-center gap-3 border-b border-[var(--vx-inset)] px-5 py-3.5 text-left transition-colors last:border-b-0 hover:bg-[var(--vx-elevated)] sm:px-[26px]"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13.5px] font-medium">
+                      {p.provider_name || (p.provider ? providerMeta(p.provider).name : "—")}
+                    </div>
+                    <div className="mt-1 truncate font-mono text-[11px] text-[var(--vx-ink-faint)]">
+                      {fmtRowDate(p.created_at)} · #{String(p.id).slice(0, 8)}
+                    </div>
+                  </div>
+                  <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                    <span className="font-mono text-sm">
+                      {formatAmount(p.amount)} {(p.currency || "RUB").toUpperCase()}
+                    </span>
+                    {bonus > 0 && (
+                      <span className="font-mono text-[11px] text-emerald-500">
+                        +{formatAmount(bonus)} {t("billing.topup.bonus_suffix")}
+                      </span>
+                    )}
+                    <span
+                      className={cn(
+                        "rounded-full border px-2 py-0.5 text-[10.5px] font-semibold",
+                        STATUS_BADGE[tone]
+                      )}
+                    >
+                      {paymentStatusLabel(p.status)}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+            {payments.length > paymentsVisible && (
+              <div className="flex justify-end px-5 py-3 sm:px-[26px]">
+                <button
+                  type="button"
+                  onClick={() => setPaymentsVisible(payments.length)}
+                  className="flex items-center gap-2 rounded-full border border-[var(--vx-border-2)] px-4 py-2 text-[12.5px] text-muted-foreground transition-colors hover:border-[var(--vx-border-hover)] hover:text-foreground"
+                >
+                  {t("billing.history.show_more")}
+                  <ArrowIcon className="size-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className={cn(CARD, "mt-3.5 overflow-hidden")}>
           <div className="flex flex-wrap items-center gap-3.5 border-b border-[var(--vx-panel-line)] px-[26px] py-5">
             <span className="text-base font-semibold">{t("billing.history.title")}</span>
@@ -604,12 +831,12 @@ export function BillingPageContent() {
               <div className="max-w-[340px] text-center text-[13.5px] leading-[1.55] text-[var(--vx-ink-faint)]">
                 {t("billing.history.empty_hint")}
               </div>
-              <Link
-                href="/billing/topup"
+              <a
+                href="#topup"
                 className="vx-btn mt-1 rounded-full px-[22px] py-[11px] text-[13.5px] font-semibold"
               >
                 {t("billing.history.topup_cta")}
-              </Link>
+              </a>
             </div>
           ) : (
             <>
@@ -728,6 +955,7 @@ export function BillingPageContent() {
         <BillingDocuments currency={currency} />
         <BillingRefunds currency={currency} />
       </div>
+      <BillingPaymentDialog id={paymentId} onClose={closePayment} />
     </PageShell>
   );
 }

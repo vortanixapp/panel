@@ -165,9 +165,9 @@ export function ServerFtpTab() {
     <>
       <FtpAccountsCard serverId={id} />
       <Panel
-        title={<span className="font-mono text-[12.5px]">{path}</span>}
+        title={<span className="font-mono text-[12.5px] break-all">{path}</span>}
         aside={
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Btn
               size="sm"
               disabled={path === "/"}
@@ -209,10 +209,21 @@ export function ServerFtpTab() {
         />
 
         <div
+          role="button"
+          tabIndex={0}
           className={cn(
-            "rounded-[10px] border border-dashed p-3.5 text-[12px] transition-colors",
+            "cursor-pointer rounded-[10px] border border-dashed p-3.5 text-[12px] transition-colors hover:border-[var(--vx-border-hover)]",
             dragOver ? "border-[var(--vx-fg-strong)] bg-[var(--vx-veil)]" : cn("border-[var(--vx-border-2)]", VX_FAINT)
           )}
+          onClick={() => {
+            if (!uploadingName) filePickerRef.current?.click();
+          }}
+          onKeyDown={(e) => {
+            if ((e.key === "Enter" || e.key === " ") && !uploadingName) {
+              e.preventDefault();
+              filePickerRef.current?.click();
+            }
+          }}
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
@@ -225,7 +236,8 @@ export function ServerFtpTab() {
             if (file) void onUpload(file);
           }}
         >
-          {t("servers.ftp.drop_hint")}
+          <span className="hidden sm:inline">{t("servers.ftp.drop_hint")}</span>
+          <span className="sm:hidden">{t("servers.ftp.tap_hint")}</span>
           {uploadingName && (
             <div className="mt-2">
               <div className="mb-1 font-mono text-[11px]">
@@ -247,31 +259,52 @@ export function ServerFtpTab() {
           ) : (
             files.map((file) => {
               const fullPath = joinPath(path, file.name);
+              const meta = file.is_dir ? t("servers.ftp.folder") : formatSize(file.size);
               return (
                 <div
                   key={file.name}
                   className={cn(
-                    "grid grid-cols-[22px_minmax(0,1fr)_90px_auto] items-center gap-3 px-3.5 py-2.5 text-[12.5px] last:border-b-0",
+                    "flex items-center gap-2.5 px-3 py-2 text-[12.5px] last:border-b-0 sm:gap-3 sm:px-3.5 sm:py-2.5",
                     VX_ROW_LINE
                   )}
                 >
-                  <span className={cn("font-mono", VX_FAINT)}>{file.is_dir ? "▸" : "·"}</span>
+                  <i
+                    className={cn(
+                      file.is_dir ? "ri-folder-3-line" : "ri-file-3-line",
+                      "flex-shrink-0 text-[15px]",
+                      VX_FAINT
+                    )}
+                  />
                   <button
                     type="button"
                     onClick={() => (file.is_dir ? setPath(fullPath) : openFile(file.name))}
-                    className="truncate text-left text-[12.5px] text-[var(--vx-fg)] transition-colors hover:text-white"
+                    className="min-w-0 flex-1 py-0.5 text-left transition-colors hover:text-white"
                   >
-                    {file.name}
+                    <span className="line-clamp-2 text-[13px] break-all text-[var(--vx-fg)] sm:line-clamp-none sm:block sm:truncate sm:text-[12.5px] sm:break-normal">
+                      {file.name}
+                    </span>
+                    <span className={cn("block font-mono text-[11px] sm:hidden", VX_FAINT)}>
+                      {meta}
+                    </span>
                   </button>
-                  <span className={cn("font-mono text-[11.5px]", VX_FAINT)}>
-                    {file.is_dir ? t("servers.ftp.folder") : formatSize(file.size)}
+                  <span
+                    className={cn(
+                      "hidden w-[90px] flex-shrink-0 font-mono text-[11.5px] sm:block",
+                      VX_FAINT
+                    )}
+                  >
+                    {meta}
                   </span>
-                  <span className="flex justify-end gap-1.5">
+                  <span className="flex flex-shrink-0 items-center gap-1 sm:gap-1.5">
                     <Btn
                       size="sm"
                       tone="ghost"
-                      className="h-[26px] rounded-[7px] border-[var(--vx-border-2)] px-2.5 text-[11.5px]"
+                      className={cn(
+                        "size-8 rounded-[8px] border-[var(--vx-border-2)] px-0 sm:h-[26px] sm:w-auto sm:rounded-[7px] sm:px-2.5 sm:text-[11.5px]",
+                        file.is_dir && "hidden sm:inline-flex"
+                      )}
                       disabled={file.is_dir || !!uploadingName}
+                      aria-label={t("common.download")}
                       title={
                         file.is_dir
                           ? t("servers.ftp.dir_download_unsupported")
@@ -279,15 +312,19 @@ export function ServerFtpTab() {
                       }
                       onClick={() => void onDownload(fullPath)}
                     >
-                      {t("common.download")}
+                      <i className="ri-download-2-line text-[15px] sm:hidden" />
+                      <span className="hidden sm:inline">{t("common.download")}</span>
                     </Btn>
                     <Btn
                       size="sm"
-                      className="h-[26px] rounded-[7px] border-[rgba(224,122,122,0.3)] bg-transparent px-2.5 text-[11.5px] text-[var(--vx-danger)]"
+                      className="size-8 rounded-[8px] border-[rgba(224,122,122,0.3)] bg-transparent px-0 text-[var(--vx-danger)] sm:h-[26px] sm:w-auto sm:rounded-[7px] sm:px-2.5 sm:text-[11.5px]"
                       disabled={deleteMutation.isPending}
+                      aria-label={t("common.delete")}
+                      title={t("common.delete")}
                       onClick={() => setDeleteTarget(fullPath)}
                     >
-                      {t("common.delete")}
+                      <i className="ri-delete-bin-line text-[15px] sm:hidden" />
+                      <span className="hidden sm:inline">{t("common.delete")}</span>
                     </Btn>
                   </span>
                 </div>
@@ -298,7 +335,7 @@ export function ServerFtpTab() {
       </Panel>
 
       <Dialog open={editorPath !== null} onOpenChange={(open) => !open && setEditorPath(null)}>
-        <DialogContent className="max-h-[85vh] max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto p-4 sm:max-w-2xl sm:p-6">
           <DialogHeader>
             <DialogTitle className="truncate font-mono text-[13px]">{editorPath}</DialogTitle>
           </DialogHeader>

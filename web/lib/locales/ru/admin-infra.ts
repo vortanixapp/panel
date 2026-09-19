@@ -101,6 +101,20 @@ export const adminInfra = {
   "admin.settings.project.domain": "Домен",
   "admin.settings.project.site_ip": "IP-адрес сайта",
   "admin.settings.project.subnet": "Подсеть сайта",
+  "admin.settings.site_files.title": "Подтверждение владельца сайта",
+  "admin.settings.site_files.description":
+    "Файлы, которые просят платёжные системы, Яндекс Вебмастер или Google Search Console. Загруженный файл открывается по адресу вашего домена с его именем, например https://example.com/enot_9a3201b4.html.",
+  "admin.settings.site_files.upload": "Загрузить файл",
+  "admin.settings.site_files.create": "Создать вручную",
+  "admin.settings.site_files.name": "Имя файла",
+  "admin.settings.site_files.content": "Содержимое",
+  "admin.settings.site_files.save": "Сохранить файл",
+  "admin.settings.site_files.empty": "Файлов пока нет. Подходят .html, .htm, .txt и .xml до 64 КБ.",
+  "admin.settings.site_files.meta": "{size} байт · {date}",
+  "admin.settings.site_files.saved": "Файл {name} сохранён",
+  "admin.settings.site_files.save_failed": "Не удалось сохранить файл",
+  "admin.settings.site_files.deleted": "Файл удалён",
+  "admin.settings.site_files.delete_confirm": "Удалить файл {name}? Подтверждение домена по нему перестанет работать.",
 
   "admin.settings.trial.title": "Пробный сервер",
   "admin.settings.trial.description":

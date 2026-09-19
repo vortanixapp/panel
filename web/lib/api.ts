@@ -4408,6 +4408,52 @@ export async function uploadAdminAppearanceAsset(
   return { appearance: data.appearance };
 }
 
+export type SiteFile = {
+  name: string;
+  size: number;
+  updated_at: string;
+};
+
+export async function fetchAdminSiteFiles() {
+  const data = await apiFetch<{ files?: SiteFile[] }>("/v1/admin/settings/site-files");
+  return data.files ?? [];
+}
+
+export async function uploadAdminSiteFile(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/v1/admin/settings/site-files`, {
+    method: "POST",
+    headers: authHeaders(),
+    credentials: "include",
+    body: form,
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    file?: SiteFile;
+    error?: string;
+    message?: string;
+  };
+  if (!res.ok || !data.file) {
+    throw new Error(data.error ?? data.message ?? "Request failed");
+  }
+  return data.file;
+}
+
+export async function createAdminSiteFile(name: string, content: string) {
+  const data = await apiFetch<{ file: SiteFile }>("/v1/admin/settings/site-files", {
+    method: "POST",
+    body: JSON.stringify({ name, content }),
+  });
+  return data.file;
+}
+
+export async function deleteAdminSiteFile(name: string) {
+  return apiFetch<{ status: string }>(
+    `/v1/admin/settings/site-files/${encodeURIComponent(name)}`,
+    { method: "DELETE" }
+  );
+}
+
 export function brandingUploadUrl(path: string): string {
   const trimmed = path.trim();
   if (!trimmed) return "";

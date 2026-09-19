@@ -204,7 +204,7 @@ export function DashboardPageContent() {
           raised: true,
         },
         {
-          href: "/billing/topup",
+          href: "/billing#topup",
           titleKey: "billing.history.topup_cta",
           titleParams: {},
           subKey: "dashboard.step.topup_sub",
@@ -264,7 +264,7 @@ export function DashboardPageContent() {
       });
     }
     steps.push({
-      href: "/billing/topup",
+      href: "/billing#topup",
       titleKey: "billing.history.topup_cta",
       titleParams: {},
       subKey:
@@ -378,7 +378,7 @@ export function DashboardPageContent() {
               </div>
               <div className="mt-[18px] flex gap-2.5">
                 <Link
-                  href="/billing/topup"
+                  href="/billing#topup"
                   className="flex-1 rounded-full bg-[var(--vx-panel-track)] border border-[var(--vx-btn-line)] py-[11px] text-center text-[13.5px] font-semibold text-[var(--vx-panel-ink)] transition-colors hover:bg-[var(--vx-btn-hover)]"
                 >
                   {t("dashboard.topup")}

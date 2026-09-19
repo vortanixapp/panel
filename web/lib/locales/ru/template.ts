@@ -86,7 +86,6 @@ export const template = {
   "template.route.hosting_my": "Мой хостинг",
   "template.route.hosting_rent": "Аренда хостинга",
   "template.route.billing": "Баланс",
-  "template.route.topup": "Пополнение",
   "template.route.daily_bonus": "Ежедневный бонус",
   "template.route.monitoring": "Мониторинг",
   "template.route.news": "Новости",

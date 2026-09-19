@@ -959,7 +959,7 @@ export function RentServerPageContent() {
                   )}
 
                   {notEnough ? (
-                    <a href="/billing/topup" className={cn(btnClass("primary"), "h-[38px] w-full rounded-[8px]")}>
+                    <a href="/billing#topup" className={cn(btnClass("primary"), "h-[38px] w-full rounded-[8px]")}>
                       {t("billing.history.topup_cta")}
                     </a>
                   ) : (

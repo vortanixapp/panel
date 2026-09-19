@@ -372,6 +372,7 @@ export const servers = {
   "servers.ftp.up": "↑ Up",
   "servers.ftp.new_dir": "New folder",
   "servers.ftp.drop_hint": "Drop files here or press “Upload”",
+  "servers.ftp.tap_hint": "Tap to choose a file to upload",
   "servers.ftp.empty": "The list is empty or the container is not running",
   "servers.ftp.folder": "folder",
   "servers.ftp.dir_download_unsupported": "Downloading folders is not supported",

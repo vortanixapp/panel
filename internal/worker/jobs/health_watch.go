@@ -92,7 +92,7 @@ func (r *Runner) checkLowBalances(ctx context.Context) {
 				"balance":  fmt.Sprintf("%.2f", lb.balance),
 				"currency": lb.currency,
 			}),
-			Action: r.panelAction("notify.action.topup", "/billing/topup"),
+			Action: r.panelAction("notify.action.topup", "/billing"),
 			Meta: map[string]any{
 				"due": lb.due, "balance": lb.balance, "currency": lb.currency,
 			},

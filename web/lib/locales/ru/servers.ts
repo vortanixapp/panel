@@ -370,6 +370,7 @@ export const servers = {
   "servers.ftp.up": "↑ Выше",
   "servers.ftp.new_dir": "Новая папка",
   "servers.ftp.drop_hint": "Перетащите файлы сюда или нажмите «Загрузить»",
+  "servers.ftp.tap_hint": "Нажмите, чтобы выбрать файл для загрузки",
   "servers.ftp.empty": "Список пуст или контейнер не запущен",
   "servers.ftp.folder": "папка",
   "servers.ftp.dir_download_unsupported": "Скачивание папок не поддерживается",

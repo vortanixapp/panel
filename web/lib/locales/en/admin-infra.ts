@@ -101,6 +101,20 @@ export const adminInfra = {
   "admin.settings.project.domain": "Domain",
   "admin.settings.project.site_ip": "Site IP address",
   "admin.settings.project.subnet": "Site subnet",
+  "admin.settings.site_files.title": "Site ownership verification",
+  "admin.settings.site_files.description":
+    "Files requested by payment providers, Yandex Webmaster or Google Search Console. An uploaded file is served at your domain under its name, e.g. https://example.com/enot_9a3201b4.html.",
+  "admin.settings.site_files.upload": "Upload file",
+  "admin.settings.site_files.create": "Create manually",
+  "admin.settings.site_files.name": "File name",
+  "admin.settings.site_files.content": "Content",
+  "admin.settings.site_files.save": "Save file",
+  "admin.settings.site_files.empty": "No files yet. Accepted: .html, .htm, .txt and .xml up to 64 KB.",
+  "admin.settings.site_files.meta": "{size} bytes · {date}",
+  "admin.settings.site_files.saved": "File {name} saved",
+  "admin.settings.site_files.save_failed": "Failed to save the file",
+  "admin.settings.site_files.deleted": "File deleted",
+  "admin.settings.site_files.delete_confirm": "Delete {name}? Domain verification that relies on it will stop working.",
 
   "admin.settings.trial.title": "Trial server",
   "admin.settings.trial.description":

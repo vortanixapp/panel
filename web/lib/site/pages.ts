@@ -21,7 +21,6 @@ export const REGISTRY_PAGES: RegistryPage[] = [
   { key: "/hosting/my", path: "/hosting/my", group: "cabinet", titleKey: "template.route.hosting_my", variant: "panel" },
   { key: "/hosting/rent", path: "/hosting/rent", group: "cabinet", titleKey: "template.route.hosting_rent", variant: "panel" },
   { key: "/billing", path: "/billing", group: "cabinet", titleKey: "template.route.billing", variant: "panel" },
-  { key: "/billing/topup", path: "/billing/topup", group: "cabinet", titleKey: "template.route.topup", variant: "panel" },
   { key: "/daily-bonus", path: "/daily-bonus", group: "cabinet", titleKey: "template.route.daily_bonus", variant: "panel" },
   { key: "/monitoring", path: "/monitoring", group: "cabinet", titleKey: "template.route.monitoring", variant: "panel" },
   { key: "/news", path: "/news", group: "cabinet", titleKey: "template.route.news", variant: "panel" },

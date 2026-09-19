@@ -74,6 +74,7 @@ export const queryKeys = {
   adminGroups: ["admin-groups"] as const,
   adminPaymentProviders: ["admin-payment-providers"] as const,
   adminSettings: ["admin-settings"] as const,
+  adminSiteFiles: ["admin-site-files"] as const,
   adminReadiness: ["admin-readiness"] as const,
   adminServers: ["admin-servers"] as const,
   adminServerCard: (id: string) => ["admin-servers", id, "card"] as const,

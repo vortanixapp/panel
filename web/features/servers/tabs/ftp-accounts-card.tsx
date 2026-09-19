@@ -77,10 +77,10 @@ export function FtpAccountsCard({ serverId }: { serverId: string }) {
 
   return (
     <Card className="mb-6">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <CardTitle className="text-base">{t("servers.ftp.card_title")}</CardTitle>
         {data?.host ? (
-          <span className="font-mono text-xs text-muted-foreground">
+          <span className="font-mono text-xs break-all text-muted-foreground select-all">
             sftp://{data.host}:{data.port}
           </span>
         ) : null}
@@ -139,15 +139,19 @@ export function FtpAccountsCard({ serverId }: { serverId: string }) {
                           size="sm"
                           variant="outline"
                           disabled={resetMut.isPending}
+                          aria-label={t("servers.ftp.change_password")}
+                          title={t("servers.ftp.change_password")}
                           onClick={() => resetMut.mutate(a.username)}
                         >
-                          <KeyRound className="mr-1 h-3 w-3" />
-                          {t("servers.ftp.change_password")}
+                          <KeyRound className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline">{t("servers.ftp.change_password")}</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           disabled={deleteMut.isPending}
+                          aria-label={t("common.delete")}
+                          title={t("common.delete")}
                           onClick={() => {
                             if (
                               confirm(

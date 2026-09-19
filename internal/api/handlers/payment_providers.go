@@ -41,7 +41,7 @@ func (h *Handler) paymentNotifyURL(code string) string {
 }
 
 func (h *Handler) paymentReturnURL(paymentID string) string {
-	return h.paymentBaseURL() + "/billing/topup/payment/" + paymentID
+	return h.paymentBaseURL() + "/billing/payment/" + paymentID
 }
 
 func (h *Handler) paymentCheckoutURL(paymentID string) string {

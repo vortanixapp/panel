@@ -36,6 +36,7 @@ import {
   TextField,
   ToggleRow,
 } from "./settings-ui";
+import { SiteFilesCard } from "./site-files-card";
 import type { SettingsTab } from "./types";
 
 type SettingsPageContentProps = {
@@ -302,6 +303,8 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
                 />
               </FieldGrid>
             </SettingsCard>
+
+            <SiteFilesCard />
 
             <SettingsCard
               title={t("admin.settings.trial.title")}

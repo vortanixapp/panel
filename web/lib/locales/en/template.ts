@@ -86,7 +86,6 @@ export const template = {
   "template.route.hosting_my": "My hosting",
   "template.route.hosting_rent": "Rent hosting",
   "template.route.billing": "Balance",
-  "template.route.topup": "Top up",
   "template.route.daily_bonus": "Daily bonus",
   "template.route.monitoring": "Monitoring",
   "template.route.news": "News",

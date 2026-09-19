@@ -383,7 +383,7 @@ func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request) {
 		"credited_amount": meta["credited_amount"],
 	}
 	if status == "pending" || status == "processing" {
-		if u, ok := meta["checkout_url"].(string); ok && u != "" && u != h.paymentReturnURL(id) {
+		if u, ok := meta["checkout_url"].(string); ok && u != "" && !strings.HasSuffix(u, "/payment/"+id) {
 			payment["checkout_url"] = u
 		}
 		if def, ok := payments.Definition(provider); ok && def.Manual {

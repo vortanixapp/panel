@@ -13,7 +13,10 @@ const LEGACY_REDIRECTS: Record<string, string> = {
   "/auth/forgot-password": "/forgot-password",
   "/auth/reset-password": "/reset-password",
   "/auth/two-factor-challenge": "/two-factor-challenge",
+  "/billing/topup": "/billing",
 };
+
+const PAYMENT_PATH = /^\/billing(?:\/topup)?\/payment\/([A-Za-z0-9-]{1,64})\/?$/;
 
 let bootstrapped = false;
 let checkedAt = 0;
@@ -52,6 +55,14 @@ export async function middleware(request: NextRequest) {
   if (LEGACY_REDIRECTS[pathname]) {
     const url = request.nextUrl.clone();
     url.pathname = LEGACY_REDIRECTS[pathname];
+    return NextResponse.redirect(url);
+  }
+
+  const payment = PAYMENT_PATH.exec(pathname);
+  if (payment) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/billing";
+    url.search = `?payment=${payment[1]}`;
     return NextResponse.redirect(url);
   }
 
