@@ -38,6 +38,7 @@ var catalogEN = map[string]string{
 	"notify.action.location":      "Open location",
 	"notify.action.updates":       "View updates",
 	"notify.action.notifications": "All notifications",
+	"notify.action.referrals":     "Referral program",
 
 	"notify.size.b":  "{value} B",
 	"notify.size.kb": "{value} KB",
@@ -80,6 +81,10 @@ var catalogEN = map[string]string{
 	"notify.payment_refunded.title":       "Payment refunded",
 	"notify.payment_refunded.body":        "{amount} {currency} was refunded. The money returns the same way it was paid.",
 	"notify.payment_refunded.body_reason": "{amount} {currency} was refunded: {reason}. The money returns the same way it was paid.",
+	"notify.referral_reward.title":        "Referral reward",
+	"notify.referral_reward.body":         "{amount} {currency} was added to your balance: {percent}% of a top-up by a user you invited.",
+	"notify.referral_joined.title":        "Someone signed up with your link",
+	"notify.referral_joined.body":         "A new user joined through your referral link. You will get a reward when they top up their balance.",
 	"notify.balance_threshold.title":      "Balance below your threshold",
 	"notify.balance_threshold.body":       "Your balance is {balance} {currency}, below the {threshold} {currency} threshold set in your notification settings.",
 	"notify.balance_low.title":            "Not enough funds",

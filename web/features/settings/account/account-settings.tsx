@@ -13,6 +13,7 @@ import { SecurityTab } from "@/features/settings/account/security-tab";
 import { DevicesTab } from "@/features/settings/account/devices-tab";
 import { DataTab } from "@/features/settings/account/data-tab";
 import { TokensTab } from "@/features/settings/account/tokens-tab";
+import { ReferralsTab } from "@/features/settings/account/referrals-tab";
 
 type Feature = "api_tokens" | "referrals";
 
@@ -26,6 +27,7 @@ const TABS: TabDef[] = [
   { id: "appearance", labelKey: "settings.tab.appearance", icon: "ri-palette-line" },
   { id: "notifications", labelKey: "settings.tab.notifications", icon: "ri-notification-3-line" },
   { id: "tokens", labelKey: "settings.tab.tokens", icon: "ri-code-s-slash-line", feature: "api_tokens" },
+  { id: "referrals", labelKey: "settings.tab.referrals", icon: "ri-user-shared-line", feature: "referrals" },
   { id: "data", labelKey: "settings.tab.data", icon: "ri-folder-shield-2-line" },
 ];
 
@@ -179,6 +181,7 @@ export function AccountSettings() {
         {tab === "appearance" && <AppearanceTab />}
         {tab === "notifications" && <NotificationsForm />}
         {tab === "tokens" && <TokensTab />}
+        {tab === "referrals" && <ReferralsTab />}
         {tab === "data" && <DataTab />}
       </div>
     </div>

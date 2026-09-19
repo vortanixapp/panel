@@ -5,6 +5,7 @@ import type {
   SettingsFileContent,
 } from "@/lib/game-settings/types";
 import { csrfToken, currentAccount } from "@/lib/accounts";
+import { getCookie } from "@/lib/cookies";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { t, type BaseLocale } from "@/lib/i18n";
 import type {
@@ -274,6 +275,11 @@ export async function fetchTenantStatus(tenantSlug: string) {
   );
 }
 
+function referralCode(): string | undefined {
+  const code = getCookie("vtx_ref");
+  return code && /^[a-z0-9]{4,32}$/.test(code) ? code : undefined;
+}
+
 export async function register(
   email: string,
   password: string,
@@ -281,6 +287,7 @@ export async function register(
   profile?: { name?: string; lastName?: string },
   consents?: { terms: boolean; personalData: boolean }
 ) {
+  const ref = referralCode();
   return apiFetch<{
     access_token: string;
     refresh_token: string;
@@ -295,6 +302,7 @@ export async function register(
       ...(profile?.lastName ? { last_name: profile.lastName } : {}),
       accept_terms: Boolean(consents?.terms),
       accept_personal_data: Boolean(consents?.personalData),
+      ...(ref ? { referral_code: ref } : {}),
     }),
   });
 }
@@ -342,6 +350,8 @@ function telegramQuery(user: TelegramAuthUser) {
 export async function telegramLogin(user: TelegramAuthUser, tenantSlug: string) {
   const q = telegramQuery(user);
   q.set("tenant_slug", tenantSlug);
+  const ref = referralCode();
+  if (ref) q.set("ref", ref);
   return apiFetch<{
     ok?: boolean;
     access_token?: string;
@@ -366,6 +376,7 @@ export async function socialExchange(
   const path = linkMode
     ? `/v1/account/social/${encodeURIComponent(provider)}/exchange`
     : `/v1/auth/social/${encodeURIComponent(provider)}/exchange`;
+  const ref = linkMode ? undefined : referralCode();
   return apiFetch<{
     ok?: boolean;
     access_token?: string;
@@ -375,7 +386,7 @@ export async function socialExchange(
     message?: string;
   }>(path, {
     method: "POST",
-    body: JSON.stringify({ code, state }),
+    body: JSON.stringify({ code, state, ...(ref ? { referral_code: ref } : {}) }),
   });
 }
 
@@ -516,6 +527,8 @@ export type AdminUserDetail = {
     identification_method?: string;
     identification_note?: string;
     deleted_at?: string | null;
+    referrer?: { id: string; email: string } | null;
+    referrals_count?: number;
   };
   servers: AdminUserServer[];
   wallets: AdminUserWallet[];
@@ -1071,6 +1084,32 @@ export async function revokeAPIToken(id: string) {
   return apiFetch<{ status: string }>(`/v1/account/api-tokens/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+}
+
+export type MoneyAmount = { currency: string; amount: number };
+
+export type AccountReferral = {
+  email: string;
+  deleted?: boolean;
+  joined_at: string;
+  earned: MoneyAmount[];
+  active: boolean;
+  active_until: string | null;
+};
+
+export type AccountReferrals = {
+  enabled: boolean;
+  code: string;
+  percent: number;
+  months: number;
+  min_payment: number;
+  currency: string;
+  stats: { invited: number; paid: number; earned: MoneyAmount[] };
+  referrals: AccountReferral[];
+};
+
+export async function fetchAccountReferrals() {
+  return apiFetch<AccountReferrals>("/v1/account/referrals");
 }
 
 export type ServerViewerPermissions = {

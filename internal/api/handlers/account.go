@@ -140,6 +140,7 @@ func (h *Handler) accountView(ctx context.Context, r *http.Request, claims *pane
 		"preferences": prefs,
 		"features": map[string]bool{
 			"api_tokens": h.apiTokensVisible(ctx, claims.UserID),
+			"referrals":  h.referralsVisible(ctx, claims.UserID),
 		},
 	}, nil
 }

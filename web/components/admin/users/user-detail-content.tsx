@@ -366,19 +366,37 @@ export function UserDetailContent() {
               { label: "Telegram", value: user.telegram_id },
               { label: "Discord", value: user.discord_id },
               { label: "VK", value: user.vk_id },
-            ].map((item) => (
+              {
+                label: t("admin.users.referrer"),
+                value: user.referrer?.email ?? null,
+                href: user.referrer ? `/admin/users/${user.referrer.id}` : undefined,
+              },
+              {
+                label: t("admin.users.referrals_count"),
+                value: String(user.referrals_count ?? 0),
+              },
+            ].map((item: { label: string; value: string | null; href?: string }) => (
               <div key={item.label} className="flex flex-col gap-1.5">
                 <span className="text-xs text-muted-foreground">
                   {item.label}
                 </span>
-                <span
-                  className={cn(
-                    "truncate font-mono text-[13px]",
-                    !item.value && "text-muted-foreground/50"
-                  )}
-                >
-                  {item.value || "—"}
-                </span>
+                {item.href && item.value ? (
+                  <Link
+                    href={item.href}
+                    className="truncate font-mono text-[13px] text-primary underline-offset-4 hover:underline"
+                  >
+                    {item.value}
+                  </Link>
+                ) : (
+                  <span
+                    className={cn(
+                      "truncate font-mono text-[13px]",
+                      !item.value && "text-muted-foreground/50"
+                    )}
+                  >
+                    {item.value || "—"}
+                  </span>
+                )}
               </div>
             ))}
           </div>

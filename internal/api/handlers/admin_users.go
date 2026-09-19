@@ -282,6 +282,21 @@ func (h *Handler) adminUserDetail(ctx context.Context, userID string) (map[strin
 		"deleted_at":            deletedAt,
 	}
 
+	var referrerID, referrerEmail string
+	var referralsCount int
+	_ = h.dbOf(ctx).QueryRow(ctx, `
+		SELECT COALESCE(r.id::text, ''), COALESCE(r.email, ''),
+		       (SELECT count(*) FROM core.users c WHERE c.referrer_id = u.id)
+		FROM core.users u
+		LEFT JOIN core.users r ON r.id = u.referrer_id
+		WHERE u.id = $1
+	`, userID).Scan(&referrerID, &referrerEmail, &referralsCount)
+	user["referrals_count"] = referralsCount
+	user["referrer"] = nil
+	if referrerID != "" {
+		user["referrer"] = map[string]any{"id": referrerID, "email": referrerEmail}
+	}
+
 	wallets := []map[string]any{}
 	var defaultWallet map[string]any
 	wrows, err := h.dbOf(ctx).Query(ctx, `

@@ -38,6 +38,7 @@ var catalogRU = map[string]string{
 	"notify.action.location":      "Открыть локацию",
 	"notify.action.updates":       "К обновлениям",
 	"notify.action.notifications": "Все оповещения",
+	"notify.action.referrals":     "Реферальная программа",
 
 	"notify.size.b":  "{value} Б",
 	"notify.size.kb": "{value} КБ",
@@ -80,6 +81,10 @@ var catalogRU = map[string]string{
 	"notify.payment_refunded.title":       "Возврат платежа",
 	"notify.payment_refunded.body":        "Возвращено {amount} {currency}. Деньги вернутся тем же способом, которым были внесены.",
 	"notify.payment_refunded.body_reason": "Возвращено {amount} {currency}: {reason}. Деньги вернутся тем же способом, которым были внесены.",
+	"notify.referral_reward.title":        "Начисление за приглашённого",
+	"notify.referral_reward.body":         "На баланс зачислено {amount} {currency} — {percent}% от пополнения пользователя, которого вы пригласили.",
+	"notify.referral_joined.title":        "По вашей ссылке зарегистрировались",
+	"notify.referral_joined.body":         "Новый пользователь пришёл по вашей реферальной ссылке. Вознаграждение начислится, когда он пополнит баланс.",
 	"notify.balance_threshold.title":      "Баланс ниже заданного порога",
 	"notify.balance_threshold.body":       "На балансе {balance} {currency} — меньше порога {threshold} {currency}, который вы указали в настройках уведомлений.",
 	"notify.balance_low.title":            "На счету не хватает средств",

@@ -103,9 +103,11 @@ func (h *Handler) completeTopupPayment(ctx context.Context, paymentID, providerP
 	if tag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
+	reward := h.creditReferralReward(ctx, tx, paymentID, userID, amount, currency)
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
+	h.notifyReferralReward(ctx, paymentID, reward)
 	h.identifyByPayment(ctx, paymentID)
 	h.emitWebhook(ctx, "payment.completed", map[string]any{
 		"payment_id": paymentID, "user_id": userID,

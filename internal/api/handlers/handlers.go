@@ -289,6 +289,7 @@ type registerRequest struct {
 	LastName           string `json:"last_name"`
 	AcceptTerms        bool   `json:"accept_terms"`
 	AcceptPersonalData bool   `json:"accept_personal_data"`
+	ReferralCode       string `json:"referral_code"`
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -355,6 +356,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 	h.ensureDefaultWallet(ctx, userID)
 	h.recordRegistrationConsents(ctx, r, userID, consentKinds)
+	h.attachReferrer(ctx, userID, referralCodeFrom(r, req.ReferralCode))
 
 	firstName := strings.TrimSpace(req.Name)
 	lastName := strings.TrimSpace(req.LastName)

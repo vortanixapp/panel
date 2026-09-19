@@ -33,6 +33,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 		r.Get("/v1/account/api-tokens", h.ListAPITokens)
 		r.Post("/v1/account/api-tokens", h.CreateAPIToken)
 		r.Delete("/v1/account/api-tokens/{id}", h.RevokeAPIToken)
+		r.Get("/v1/account/referrals", h.AccountReferrals)
 		r.Get("/v1/account/social/{provider}/redirect", h.SocialLinkRedirect)
 		r.Post("/v1/account/social/{provider}/exchange", h.SocialLinkExchange)
 		r.Post("/v1/account/social/{provider}/unlink", h.SocialUnlink)

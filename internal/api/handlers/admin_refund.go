@@ -135,6 +135,7 @@ func (h *Handler) refundPayment(ctx context.Context, actorID, actorEmail, paymen
 	`, walletID, refundAmount, "Возврат платежа"+reasonSuffix(reason), paymentID); err != nil {
 		return refundOutcome{}, refundFail(http.StatusInternalServerError, "database error")
 	}
+	reverseReferralReward(ctx, tx, paymentID, refundAmount, amount)
 	newRefunded := refunded + refundAmount
 	newStatus := status
 	if newRefunded+0.009 >= amount {

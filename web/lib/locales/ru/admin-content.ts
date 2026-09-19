@@ -240,6 +240,21 @@ export const adminContent = {
   "admin.billing.title": "Биллинг",
   "admin.billing.subtitle":
     "Платежи клиентов панели. Корректировка баланса изменяет кошелёк внутри панели и не затрагивает средства в платёжном шлюзе",
+  "admin.referral.title": "Реферальная программа",
+  "admin.referral.description":
+    "Клиенты приглашают знакомых по своей ссылке и получают на баланс процент от их пополнений",
+  "admin.referral.enabled": "Программа включена",
+  "admin.referral.enabled_hint":
+    "Если выключить, новые приглашения не засчитываются и вознаграждение не начисляется, а история у клиентов сохраняется",
+  "admin.referral.percent": "Процент вознаграждения",
+  "admin.referral.percent_hint": "От 1 до 50 — доля от суммы пополнения",
+  "admin.referral.months": "Срок начислений, мес.",
+  "admin.referral.months_hint": "0 — без ограничения",
+  "admin.referral.min_payment": "Минимальное пополнение",
+  "admin.referral.min_payment_hint": "Меньшие пополнения не дают вознаграждения",
+  "admin.referral.rules":
+    "Вознаграждение считается от оплаченной суммы без бонусов и промокодов и зачисляется на кошелёк пригласившего в той же валюте. При возврате платежа приглашённому оно списывается. Ручная корректировка баланса вознаграждения не даёт",
+  "admin.referral.saved": "Настройки реферальной программы сохранены",
   "admin.billing.status.all": "Все статусы",
   "admin.billing.status.completed": "Оплачен",
   "admin.billing.status.pending": "Ожидает",
@@ -874,6 +889,8 @@ export const adminContent = {
   "admin.users.account_state": "Состояние аккаунта",
   "admin.users.verified": "Подтверждён",
   "admin.users.registered": "Регистрация",
+  "admin.users.referrer": "Пригласил",
+  "admin.users.referrals_count": "Приглашённых",
   "admin.users.last_login": "Последний вход",
   "admin.users.verify_manual": "Подтвердить email вручную",
   "admin.users.verifying": "Подтверждение…",

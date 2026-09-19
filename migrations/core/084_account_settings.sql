@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS core.referral_rewards (
     referred_id  UUID REFERENCES core.users(id) ON DELETE SET NULL,
     payment_id   UUID NOT NULL UNIQUE REFERENCES core.payments(id) ON DELETE CASCADE,
     amount       NUMERIC(14, 2) NOT NULL,
+    reversed     NUMERIC(14, 2) NOT NULL DEFAULT 0,
     currency     TEXT NOT NULL,
     percent      NUMERIC(5, 2) NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()

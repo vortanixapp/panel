@@ -34,6 +34,8 @@ const (
 	KindRefundRejected  Kind = "payment.refund_rejected"
 	KindBalanceLow      Kind = "balance.low"
 	KindBonusGranted    Kind = "bonus.granted"
+	KindReferralReward  Kind = "referral.reward"
+	KindReferralJoined  Kind = "referral.joined"
 
 	KindSupportReply  Kind = "support.reply"
 	KindSupportStatus Kind = "support.status"
@@ -121,6 +123,8 @@ var defs = map[Kind]Def{
 	KindRefundRejected:  {Group: GroupBilling, Icon: "ri-refund-2-line", Severity: SeverityWarning, Channels: channelsEmail},
 	KindBalanceLow:      {Group: GroupBilling, Icon: "ri-wallet-line", Severity: SeverityWarning, Channels: channelsAll},
 	KindBonusGranted:    {Group: GroupBilling, Icon: "ri-gift-line", Severity: SeveritySuccess, Quiet: true},
+	KindReferralReward:  {Group: GroupBilling, Icon: "ri-user-shared-line", Severity: SeveritySuccess, Channels: channelsEmail},
+	KindReferralJoined:  {Group: GroupBilling, Icon: "ri-user-add-line", Severity: SeverityInfo, Quiet: true},
 
 	KindSupportReply:  {Group: GroupSupport, Icon: "ri-customer-service-line", Severity: SeverityInfo, Channels: channelsAll},
 	KindSupportStatus: {Group: GroupSupport, Icon: "ri-customer-service-line", Severity: SeverityInfo, Quiet: true},

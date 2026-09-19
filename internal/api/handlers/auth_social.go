@@ -119,8 +119,9 @@ func (h *Handler) startSocialOAuth(w http.ResponseWriter, r *http.Request, inten
 }
 
 type socialExchangeRequest struct {
-	Code  string `json:"code"`
-	State string `json:"state"`
+	Code         string `json:"code"`
+	State        string `json:"state"`
+	ReferralCode string `json:"referral_code"`
 }
 
 func (h *Handler) SocialExchange(w http.ResponseWriter, r *http.Request) {
@@ -167,10 +168,10 @@ func (h *Handler) socialExchange(w http.ResponseWriter, r *http.Request, forcedI
 		})
 		return
 	}
-	h.loginOrRegisterSocial(w, r, st.TenantSlug, providerKey, profile)
+	h.loginOrRegisterSocial(w, r, st.TenantSlug, providerKey, profile, req.ReferralCode)
 }
 
-func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, tenantSlug, providerKey string, profile oauth.Profile) {
+func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, tenantSlug, providerKey string, profile oauth.Profile, refCode string) {
 	ctx := r.Context()
 
 	if blocked, reason := h.ipBlocked(ctx, clientIP(r)); blocked {
@@ -228,6 +229,7 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 				writeError(w, http.StatusInternalServerError, "failed to create user")
 				return
 			}
+			h.attachReferrer(ctx, userID, referralCodeFrom(r, refCode))
 		}
 		_, _ = h.dbOf(ctx).Exec(ctx, `
 			INSERT INTO core.user_social_accounts ( user_id, provider, provider_user_id, email, name, avatar_url)
@@ -451,7 +453,7 @@ func (h *Handler) handleTelegramWithState(w http.ResponseWriter, r *http.Request
 		h.linkSocialAccount(w, r, st, "telegram", profile)
 		return
 	}
-	h.loginOrRegisterSocial(w, r, st.TenantSlug, "telegram", profile)
+	h.loginOrRegisterSocial(w, r, st.TenantSlug, "telegram", profile, r.URL.Query().Get("ref"))
 }
 
 func extractTelegramData(r *http.Request) map[string]string {

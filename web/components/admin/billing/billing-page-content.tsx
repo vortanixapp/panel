@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
+import { ReferralSettingsCard } from "@/components/admin/billing/referral-settings-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,6 +177,10 @@ export function BillingPageContent() {
         <p className="text-sm text-muted-foreground">
           {t("admin.billing.subtitle")}
         </p>
+      </div>
+
+      <div className="mb-6">
+        <ReferralSettingsCard />
       </div>
 
       <div className="mb-4 flex flex-wrap items-end gap-3">

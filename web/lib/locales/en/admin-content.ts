@@ -244,6 +244,21 @@ export const adminContent = {
   "admin.billing.title": "Billing",
   "admin.billing.subtitle":
     "Payments from panel clients. A balance adjustment changes the wallet inside the panel and does not touch funds in the payment gateway",
+  "admin.referral.title": "Referral program",
+  "admin.referral.description":
+    "Clients invite people with their own link and get a share of their top-ups on their balance",
+  "admin.referral.enabled": "Program is on",
+  "admin.referral.enabled_hint":
+    "When off, new invitations do not count and no rewards are credited, while clients keep their history",
+  "admin.referral.percent": "Reward percent",
+  "admin.referral.percent_hint": "From 1 to 50, as a share of the top-up",
+  "admin.referral.months": "Reward period, months",
+  "admin.referral.months_hint": "0 means no limit",
+  "admin.referral.min_payment": "Minimum top-up",
+  "admin.referral.min_payment_hint": "Smaller top-ups earn no reward",
+  "admin.referral.rules":
+    "The reward is calculated from the paid amount without bonuses or promo codes and is credited to the referrer's wallet in the same currency. It is taken back if the referral's payment is refunded. Manual balance adjustments earn no reward",
+  "admin.referral.saved": "Referral program settings saved",
   "admin.billing.status.all": "All statuses",
   "admin.billing.status.completed": "Paid",
   "admin.billing.status.pending": "Pending",
@@ -880,6 +895,8 @@ export const adminContent = {
   "admin.users.account_state": "Account state",
   "admin.users.verified": "Verified",
   "admin.users.registered": "Registered",
+  "admin.users.referrer": "Invited by",
+  "admin.users.referrals_count": "Invited users",
   "admin.users.last_login": "Last sign-in",
   "admin.users.verify_manual": "Verify the email manually",
   "admin.users.verifying": "Verifying…",
