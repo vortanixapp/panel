@@ -86,6 +86,8 @@ func (h *Handler) supportTicketAccess(r *http.Request, ticketID string) (*panelj
 }
 
 func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request) {
+	r, cancelTransfer := extendTransfer(w, r)
+	defer cancelTransfer()
 	ticketID := chi.URLParam(r, "id")
 	if ticketID == "" {
 		writeError(w, http.StatusBadRequest, "ticket id required")

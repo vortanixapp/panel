@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
@@ -13,6 +15,13 @@ import (
 	"github.com/vortanixapp/panel/internal/console/relayclient"
 	"github.com/vortanixapp/panel/pkg/paneljwt"
 	"github.com/vortanixapp/panel/pkg/protocol"
+)
+
+const (
+	consolePongWait   = 70 * time.Second
+	consolePingPeriod = 25 * time.Second
+	consoleWriteWait  = 10 * time.Second
+	consoleReadLimit  = 64 << 10
 )
 
 type Handler struct {
@@ -69,11 +78,43 @@ func (h *Handler) ConsoleWS(w http.ResponseWriter, r *http.Request) {
 	pubsub := h.redis.Subscribe(ctx, protocol.ConsoleChannel(sessionID))
 	defer pubsub.Close()
 
+	conn.SetReadLimit(consoleReadLimit)
+	_ = conn.SetReadDeadline(time.Now().Add(consolePongWait))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(consolePongWait))
+	})
+
+	var writeMu sync.Mutex
+	write := func(kind int, payload []byte) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		_ = conn.SetWriteDeadline(time.Now().Add(consoleWriteWait))
+		return conn.WriteMessage(kind, payload)
+	}
+
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		for msg := range pubsub.Channel() {
-			_ = conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload))
+		defer conn.Close()
+		ticker := time.NewTicker(consolePingPeriod)
+		defer ticker.Stop()
+		messages := pubsub.Channel()
+		for {
+			select {
+			case msg, ok := <-messages:
+				if !ok {
+					return
+				}
+				if write(websocket.TextMessage, []byte(msg.Payload)) != nil {
+					return
+				}
+			case <-ticker.C:
+				if write(websocket.PingMessage, nil) != nil {
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 
@@ -90,7 +131,7 @@ func (h *Handler) ConsoleWS(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if !canCommand {
-			_ = conn.WriteMessage(websocket.TextMessage,
+			_ = write(websocket.TextMessage,
 				[]byte(`{"type":"error","data":"нет права вводить команды на этом сервере"}`))
 			continue
 		}
@@ -137,8 +178,39 @@ func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {
 	pubsub := h.redis.Subscribe(ctx, protocol.TenantEventsChannel())
 	defer pubsub.Close()
 
-	for msg := range pubsub.Channel() {
-		if err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload)); err != nil {
+	conn.SetReadLimit(consoleReadLimit)
+	_ = conn.SetReadDeadline(time.Now().Add(consolePongWait))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(consolePongWait))
+	})
+	go func() {
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				_ = conn.Close()
+				return
+			}
+		}
+	}()
+
+	ticker := time.NewTicker(consolePingPeriod)
+	defer ticker.Stop()
+	messages := pubsub.Channel()
+	for {
+		select {
+		case msg, ok := <-messages:
+			if !ok {
+				return
+			}
+			_ = conn.SetWriteDeadline(time.Now().Add(consoleWriteWait))
+			if conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload)) != nil {
+				return
+			}
+		case <-ticker.C:
+			_ = conn.SetWriteDeadline(time.Now().Add(consoleWriteWait))
+			if conn.WriteMessage(websocket.PingMessage, nil) != nil {
+				return
+			}
+		case <-ctx.Done():
 			return
 		}
 	}

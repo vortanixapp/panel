@@ -10,6 +10,7 @@ import {
   useSpring,
 } from "motion/react";
 import { EASE_OUT } from "@/components/motion-root";
+import { useSite } from "@/context/site-provider";
 import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -54,21 +55,23 @@ export function WordsReveal({
   delay?: number;
   immediate?: boolean;
 }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const { inEditor } = useSite();
+  const inView = useInView(ref, { once: true, margin: "0px 0px -10% 0px" });
   const words = text.split(/\s+/).filter(Boolean);
   const state = { hidden: { y: "110%" }, shown: { y: "0%" } };
   return (
     <m.span
+      ref={ref}
       className={cn("inline", className)}
-      initial="hidden"
-      {...(immediate
-        ? { animate: "shown" }
-        : { whileInView: "shown", viewport: { once: true, margin: "0px 0px -10% 0px" } })}
+      initial={immediate || inEditor ? "shown" : "hidden"}
+      animate={immediate || inEditor || inView ? "shown" : "hidden"}
       transition={{ staggerChildren: 0.045, delayChildren: delay }}
       aria-label={text}
     >
       {words.map((word, index) => (
         <span
-          key={`${word}-${index}`}
+          key={index}
           aria-hidden
           className="inline-block overflow-hidden pb-[0.12em] align-top [margin-bottom:-0.12em]"
         >

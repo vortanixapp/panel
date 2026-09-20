@@ -740,5 +740,7 @@ export const servers = {
 
   "servers.console.connecting": "Connecting to the console…",
   "servers.console.error": "Error: {message}",
+  "servers.console.connected": "Console connected",
+  "servers.console.reconnecting": "Connection lost, reconnecting…",
   "servers.metrics.chart_empty": "Metrics appear once the server is running",
 };

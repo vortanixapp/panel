@@ -586,6 +586,27 @@ html[data-theme-switching] *::after {
   transition: none !important;
 }
 
+.vx-console .xterm-viewport {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+}
+
+.vx-console .xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vx-console .xterm-viewport::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--foreground) 22%, transparent);
+}
+
+.vx-console .xterm-screen {
+  touch-action: pan-y;
+}
+
 @media (max-width: 767px) {
   .vx-tbl-wrap {
     padding: 0;

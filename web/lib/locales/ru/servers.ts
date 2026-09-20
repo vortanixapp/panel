@@ -739,5 +739,7 @@ export const servers = {
 
   "servers.console.connecting": "Подключение к консоли…",
   "servers.console.error": "Ошибка: {message}",
+  "servers.console.connected": "Консоль подключена",
+  "servers.console.reconnecting": "Соединение потеряно, переподключаемся…",
   "servers.metrics.chart_empty": "Метрики появятся когда сервер запущен",
 };

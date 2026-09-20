@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -15,7 +15,6 @@ import (
 const (
 	gameArchiveMaxBytes  = 4 << 30
 	gameArchiveCategory  = "game-versions"
-	gameArchiveTransfer  = 2 * time.Hour
 	gameArchiveTokenSize = 32
 )
 
@@ -51,18 +50,12 @@ func gameArchiveName(filename, ext string) string {
 	return name + ext
 }
 
-func extendTransfer(w http.ResponseWriter) {
-	rc := http.NewResponseController(w)
-	deadline := time.Now().Add(gameArchiveTransfer)
-	_ = rc.SetReadDeadline(deadline)
-	_ = rc.SetWriteDeadline(deadline)
-}
-
 func (h *Handler) UploadGameVersionArchive(w http.ResponseWriter, r *http.Request) {
 	if _, ok := tenantClaims(r.Context()); !ok {
 		return
 	}
-	extendTransfer(w)
+	r, cancelTransfer := extendTransfer(w, r)
+	defer cancelTransfer()
 	gameID := chi.URLParam(r, "gameId")
 	var slug string
 	if err := h.dbOf(r.Context()).QueryRow(r.Context(),
@@ -150,7 +143,8 @@ func (h *Handler) UploadGameVersionArchive(w http.ResponseWriter, r *http.Reques
 		VALUES ($1, $2, 'archive', $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id::text
 	`, gameID, name, archiveURL, rel, archiveName, size, token, active, sortOrder).Scan(&id); err != nil {
-		fail(http.StatusInternalServerError, "Не удалось сохранить версию")
+		log.Printf("версия игры %s: запись не сохранена: %v", gameID, err)
+		fail(http.StatusInternalServerError, "Не удалось сохранить версию: "+err.Error())
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{
@@ -189,7 +183,8 @@ func (h *Handler) ServeGameArchive(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "Архив не найден")
 		return
 	}
-	extendTransfer(w)
+	r, cancelTransfer := extendTransfer(w, r)
+	defer cancelTransfer()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
 	w.Header().Set("X-Content-Type-Options", "nosniff")

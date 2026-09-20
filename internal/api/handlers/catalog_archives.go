@@ -173,6 +173,8 @@ func zipFileList(path string) ([]string, error) {
 }
 
 func (h *Handler) UploadPluginArchive(w http.ResponseWriter, r *http.Request) {
+	r, cancelTransfer := extendTransfer(w, r)
+	defer cancelTransfer()
 	_, ok := tenantClaims(r.Context())
 	if !ok {
 		return
@@ -325,6 +327,8 @@ func (h *Handler) ServePluginImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UploadMapArchive(w http.ResponseWriter, r *http.Request) {
+	r, cancelTransfer := extendTransfer(w, r)
+	defer cancelTransfer()
 	_, ok := tenantClaims(r.Context())
 	if !ok {
 		return

@@ -351,6 +351,8 @@ func (h *Handler) ServerFilesDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ServerFilesUpload(w http.ResponseWriter, r *http.Request) {
+	r, cancelTransfer := extendTransfer(w, r)
+	defer cancelTransfer()
 	serverID := chi.URLParam(r, "id")
 	claims, ok := tenantClaims(r.Context())
 	if !ok {
@@ -422,6 +424,8 @@ func (h *Handler) ServerFilesUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ServerFilesDownload(w http.ResponseWriter, r *http.Request) {
+	r, cancelTransfer := extendTransfer(w, r)
+	defer cancelTransfer()
 	serverID := chi.URLParam(r, "id")
 	filePath := strings.TrimSpace(r.URL.Query().Get("path"))
 	if filePath == "" {
