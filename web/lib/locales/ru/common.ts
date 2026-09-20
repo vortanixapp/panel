@@ -55,6 +55,7 @@ export const common = {
   "common.download": "Скачать",
   "common.upload": "Загрузить",
   "common.send": "Отправить",
+  "common.optional": "необязательно",
   "common.sending": "Отправка…",
   "common.id": "ID",
   "common.email": "Email",

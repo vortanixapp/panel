@@ -818,6 +818,62 @@ export function consoleWsUrl(ticket: string) {
   return `${CONSOLE_URL}/v1/console?ticket=${encodeURIComponent(ticket)}`;
 }
 
+export type ConsoleRuleKind =
+  | "info"
+  | "warn"
+  | "error"
+  | "chat"
+  | "join"
+  | "leave"
+  | "ready"
+  | "stop"
+  | "map";
+
+export type ConsoleRule = {
+  kind: ConsoleRuleKind;
+  pattern: string;
+  flags?: string;
+};
+
+export type ConsoleCommandArg = {
+  name: string;
+  label: string;
+  placeholder?: string;
+  kind?: string;
+  optional?: boolean;
+};
+
+export type ConsoleCommand = {
+  id: string;
+  label: string;
+  template: string;
+  hint?: string;
+  args?: ConsoleCommandArg[];
+  danger?: boolean;
+};
+
+export type ConsoleProfile = {
+  key: string;
+  title: string;
+  note?: string;
+  timestamp?: string;
+  trim?: string[];
+  rules: ConsoleRule[];
+  commands?: ConsoleCommand[];
+};
+
+export type ServerConsoleProfile = {
+  game: string;
+  title: string;
+  tailored: boolean;
+  profile: ConsoleProfile;
+};
+
+export async function fetchServerConsoleProfile(serverId: string) {
+  return apiFetch<ServerConsoleProfile>(`/v1/servers/${serverId}/console/profile`);
+}
+
+
 export async function forgotPassword(email: string, tenantSlug: string) {
   return apiFetch<{ status: string; token?: string }>("/v1/auth/forgot-password", {
     method: "POST",

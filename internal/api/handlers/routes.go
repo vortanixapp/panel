@@ -161,6 +161,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Delete("/{id}", h.DeleteServer)
 			r.Post("/{id}/power", h.PowerServer)
 			r.Post("/{id}/console-ticket", h.CreateConsoleTicket)
+			r.Get("/{id}/console/profile", h.GetServerConsoleProfile)
 			r.Get("/{id}/metrics", h.GetServerMetrics)
 			r.Get("/{id}/logs", h.GetServerLogs)
 			r.Get("/{id}/install-log", h.ServerInstallLog)
