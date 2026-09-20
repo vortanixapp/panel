@@ -32,6 +32,7 @@ export const nav = {
   "nav.admin.news": "News",
   "nav.admin.promo": "Promotions",
   "nav.admin.mailings": "Mailings",
+  "nav.admin.mails": "Emails",
   "nav.admin.settings": "Settings",
   "nav.admin.appearance": "Branding",
   "nav.admin.template": "Site template",

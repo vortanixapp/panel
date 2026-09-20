@@ -516,10 +516,11 @@ func (h *Handler) ChangeEmail(w http.ResponseWriter, r *http.Request) {
 
 	confirmURL := strings.TrimRight(h.frontendURL, "/") + "/verify-email?change=" + token
 	resp := map[string]any{"status": "pending", "pending_email": newEmail}
-	if h.mail.Enabled() {
-		subject, text := mail.EmailChangeEmail(i18n.ForUser(ctx, db, claims.UserID), h.mailBrand(ctx, r), newEmail, confirmURL)
-		if err := h.mail.Send(newEmail, subject, text); err != nil {
-			writeError(w, http.StatusBadGateway, "Не удалось отправить письмо на новый адрес")
+	if h.mailConfigured(ctx) {
+		msg := mail.EmailChangeEmail(i18n.ForUser(ctx, db, claims.UserID), h.mailBrand(ctx, r), newEmail, confirmURL)
+		msg.To = newEmail
+		if err := h.sendMail(ctx, "mail.email_change", claims.UserID, newEmail, msg); err != nil {
+			writeError(w, http.StatusBadGateway, "Не удалось отправить письмо на новый адрес: "+err.Error())
 			return
 		}
 	} else if h.mail.DevExpose {

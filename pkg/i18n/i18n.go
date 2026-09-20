@@ -287,3 +287,35 @@ func (l Localizer) param(value any) string {
 		return fmt.Sprint(v)
 	}
 }
+
+func Format(text string, params Params) string {
+	if len(params) == 0 {
+		return text
+	}
+	return placeholder.ReplaceAllStringFunc(text, func(match string) string {
+		value, ok := params[match[1:len(match)-1]]
+		if !ok {
+			return match
+		}
+		switch v := value.(type) {
+		case string:
+			return v
+		case nil:
+			return ""
+		default:
+			return fmt.Sprint(v)
+		}
+	})
+}
+
+func Placeholders(text string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, match := range placeholder.FindAllStringSubmatch(text, -1) {
+		if name := match[1]; !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	return out
+}

@@ -8,23 +8,18 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"mime"
 	"net/http"
-	"net/smtp"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/mailtpl"
 )
 
 type Config struct {
-	SMTPHost string
-	SMTPPort string
-	SMTPUser string
-	SMTPPass string
-	MailFrom string
-	Brand    mailtpl.Brand
+	Mail  mailer.Config
+	Brand mailtpl.Brand
 
 	TelegramBotToken string
 
@@ -64,48 +59,24 @@ func Send(ctx context.Context, cfg Config, d Delivery) error {
 }
 
 func sendEmail(ctx context.Context, cfg Config, d Delivery) error {
-	host := strings.TrimSpace(cfg.SMTPHost)
-	if host == "" {
-		return fmt.Errorf("%w: не задан SMTP_HOST", ErrChannelUnavailable)
+	if !cfg.Mail.Configured() {
+		return fmt.Errorf("%w: не задан адрес SMTP-сервера", ErrChannelUnavailable)
 	}
-	from := strings.TrimSpace(cfg.MailFrom)
-	if from == "" {
-		from = "no-reply@" + host
+	if cfg.Mail.Silent() {
+		return fmt.Errorf("%w: выбран режим %q, письма не отправляются", ErrChannelUnavailable, cfg.Mail.MailerName())
 	}
-	port := strings.TrimSpace(cfg.SMTPPort)
-	if port == "" {
-		port = "587"
-	}
-
-	var msg bytes.Buffer
-	msg.WriteString("From: " + from + "\r\n")
-	msg.WriteString("To: " + d.Target + "\r\n")
-	msg.WriteString("Subject: " + mime.QEncoding.Encode("utf-8", d.Subject) + "\r\n")
-	msg.WriteString("MIME-Version: 1.0\r\n")
-	msg.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
-	msg.WriteString("\r\n")
-	msg.WriteString(mailtpl.Render(cfg.Brand, mailtpl.Message{
+	body := mailtpl.Message{
 		Title:       d.Subject,
 		Body:        mailtpl.Paragraphs(d.Body),
 		ActionLabel: d.ActionLabel,
 		ActionURL:   d.ActionHref,
-	}))
-
-	var auth smtp.Auth
-	if u := strings.TrimSpace(cfg.SMTPUser); u != "" {
-		auth = smtp.PlainAuth("", u, cfg.SMTPPass, host)
 	}
-
-	done := make(chan error, 1)
-	go func() {
-		done <- smtp.SendMail(host+":"+port, auth, from, []string{d.Target}, msg.Bytes())
-	}()
-	select {
-	case err := <-done:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return cfg.Mail.Send(ctx, mailer.Message{
+		To:      d.Target,
+		Subject: d.Subject,
+		HTML:    mailtpl.Render(cfg.Brand, body),
+		Text:    mailtpl.PlainText(cfg.Brand, body),
+	})
 }
 
 func sendTelegram(ctx context.Context, cfg Config, d Delivery) error {

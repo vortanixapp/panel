@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronsUpDown, LogOut } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +23,7 @@ import {
   AccountSwitchItems,
   ActiveAccountCheck,
 } from "@/components/layout/account-switch-items";
-import { accountInitials } from "@/lib/accounts";
+import { UserAvatar } from "@/components/user-avatar";
 import {
   forgetEveryAccount,
   goToAccount,
@@ -33,6 +32,7 @@ import {
   prepareSwitch,
 } from "@/lib/account-switch";
 import { activeAccountId, logout as apiLogout } from "@/lib/api";
+import { useMe } from "@/hooks/use-queries";
 import { roleLabel } from "@/lib/rbac";
 import { useT } from "@/hooks/use-translations";
 
@@ -43,6 +43,7 @@ type NavUserProps = {
 
 export function NavUser({ email, role = "user" }: NavUserProps) {
   const t = useT();
+  const { data: me } = useMe();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { isMobile } = useSidebar();
@@ -90,11 +91,13 @@ export function NavUser({ email, role = "user" }: NavUserProps) {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarFallback className="rounded-lg">
-                  {accountInitials(email)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                email={email}
+                name={me?.display_name}
+                src={me?.avatar_url}
+                className="h-8 w-8 rounded-lg"
+                fallbackClassName="rounded-lg"
+              />
               <div className="grid flex-1 text-start text-sm leading-tight">
                 <span className="truncate font-semibold">{email}</span>
                 <span className="truncate text-xs text-muted-foreground">
@@ -112,11 +115,13 @@ export function NavUser({ email, role = "user" }: NavUserProps) {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarFallback className="rounded-lg">
-                    {accountInitials(email)}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatar
+                  email={email}
+                  name={me?.display_name}
+                  src={me?.avatar_url}
+                  className="h-8 w-8 rounded-lg"
+                  fallbackClassName="rounded-lg"
+                />
                 <div className="grid min-w-0 flex-1 text-start text-sm leading-tight">
                   <span className="truncate font-semibold">{email}</span>
                   <span className="truncate text-xs text-muted-foreground">

@@ -20,12 +20,12 @@ import (
 	"github.com/vortanixapp/panel/internal/api/db"
 	"github.com/vortanixapp/panel/internal/api/handlers"
 	"github.com/vortanixapp/panel/internal/api/jobwake"
-	"github.com/vortanixapp/panel/internal/api/mail"
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
 	"github.com/vortanixapp/panel/internal/api/relay"
 	"github.com/vortanixapp/panel/internal/api/storage"
 	"github.com/vortanixapp/panel/pkg/httplog"
 	"github.com/vortanixapp/panel/pkg/httpprom"
+	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/netaddr"
 	"github.com/vortanixapp/panel/pkg/oauth"
 	"github.com/vortanixapp/panel/pkg/panelsecret"
@@ -96,9 +96,11 @@ func main() {
 
 	h := handlers.New(pools.Write, pools.Reader(), tokens, redisCache, relayClient, eggCDN, handlers.HandlerDeps{
 		OAuth: oauthRegistry,
-		Mail: mail.Config{
-			Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser,
-			Pass: cfg.SMTPPass, From: cfg.MailFrom, DevExpose: cfg.MailDevExposeURL,
+		Mail: mailer.Config{
+			Host: cfg.SMTPHost, Port: cfg.SMTPPort, Scheme: cfg.SMTPScheme,
+			User: cfg.SMTPUser, Pass: cfg.SMTPPass,
+			FromAddress: cfg.MailFrom, FromName: cfg.MailFromName,
+			DevExpose: cfg.MailDevExposeURL,
 		},
 		FrontendURL:      cfg.FrontendURL,
 		APIPublicURL:     apiPublicURL,

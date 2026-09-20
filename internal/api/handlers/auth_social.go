@@ -552,9 +552,10 @@ func (h *Handler) SendEmailVerification(w http.ResponseWriter, r *http.Request) 
 	}
 	verifyURL := h.buildSignedVerifyURL(claims.UserID, email)
 	resp := map[string]any{"ok": true, "status": "verification-link-sent", "message": "Письмо для подтверждения отправлено."}
-	if h.mail.Enabled() {
-		subject, body := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID), h.mailBrand(ctx, r), verifyURL)
-		_ = h.mail.Send(email, subject, body)
+	if h.mailConfigured(ctx) {
+		msg := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID), h.mailBrand(ctx, r), verifyURL)
+		msg.To = email
+		_ = h.sendMail(ctx, "mail.verify", claims.UserID, email, msg)
 	} else if h.mail.DevExpose {
 		resp["verification_url"] = verifyURL
 	}
@@ -597,15 +598,14 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) maybeSendVerificationEmail(userID, email string) {
-	if !h.mail.Enabled() && !h.mail.DevExpose {
+	ctx := context.Background()
+	if !h.mailConfigured(ctx) {
 		return
 	}
 	verifyURL := h.buildSignedVerifyURL(userID, email)
-	if h.mail.Enabled() {
-		ctx := context.Background()
-		subject, body := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, nil), verifyURL)
-		_ = h.mail.Send(email, subject, body)
-	}
+	msg := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, nil), verifyURL)
+	msg.To = email
+	h.sendMailAsync("mail.verify", userID, email, msg)
 }
 
 func publicProviderKey(stored string) string {

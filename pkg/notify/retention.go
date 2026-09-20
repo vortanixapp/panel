@@ -40,5 +40,21 @@ func Cleanup(ctx context.Context, db DB) (int64, error) {
 			break
 		}
 	}
+	for {
+		tag, err := db.Exec(ctx, `
+			DELETE FROM core.mail_log
+			WHERE id IN (
+				SELECT id FROM core.mail_log
+				WHERE created_at < now() - interval '90 days'
+				LIMIT $1
+			)
+		`, cleanupBatch)
+		if err != nil {
+			return removed, err
+		}
+		if tag.RowsAffected() < cleanupBatch {
+			break
+		}
+	}
 	return removed, nil
 }

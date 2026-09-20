@@ -9,14 +9,12 @@ export const SETTINGS_TABS: { id: SettingsTab; labelKey: string }[] = [
   { id: "files", labelKey: "admin.settings.tab.files" },
 ];
 
-export const MAIL_MAILERS = [
-  "smtp",
-  "sendmail",
-  "mailgun",
-  "ses",
-  "postmark",
-  "log",
-  "array",
+export const MAIL_MAILERS = ["smtp", "log", "array"] as const;
+
+export const MAIL_SCHEMES = [
+  { value: "", labelKey: "admin.settings.mail.scheme_auto" },
+  { value: "smtp", labelKey: "admin.settings.mail.scheme_starttls" },
+  { value: "smtps", labelKey: "admin.settings.mail.scheme_ssl" },
 ] as const;
 
 export const OAUTH_PROVIDERS = [

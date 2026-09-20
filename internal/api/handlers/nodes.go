@@ -7,10 +7,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/vortanixapp/panel/internal/api/cache"
-	"github.com/vortanixapp/panel/internal/api/mail"
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
 	"github.com/vortanixapp/panel/internal/api/relay"
 	"github.com/vortanixapp/panel/internal/api/storage"
+	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/oauth"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 )
@@ -23,7 +23,7 @@ type Handler struct {
 	relay            *relay.Client
 	eggCDN           *storage.EggCDN
 	oauth            *oauth.Registry
-	mail             mail.Config
+	mail             mailer.Config
 	frontendURL      string
 	apiPublicURL     string
 	jwtSecret        string
@@ -58,7 +58,7 @@ func New(db, readDB *pgxpool.Pool, tokens *paneljwt.Manager, c *cache.Cache, rel
 
 type HandlerDeps struct {
 	OAuth            *oauth.Registry
-	Mail             mail.Config
+	Mail             mailer.Config
 	FrontendURL      string
 	APIPublicURL     string
 	JWTSecret        string

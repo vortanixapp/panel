@@ -141,15 +141,14 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 
 	resetURL := strings.TrimRight(envOr("FRONTEND_URL", "http://localhost:3000"), "/") +
 		"/reset-password?token=" + url.QueryEscape(token)
-	if h.mail.Enabled() {
-		subject, body := mail.PasswordResetEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, r), resetURL)
-		if err := h.mail.Send(req.Email, subject, body); err != nil {
-			log.Printf("forgot-password: письмо на %s не отправлено: %v", req.Email, err)
-		}
+	if h.mailConfigured(ctx) {
+		msg := mail.PasswordResetEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, r), resetURL)
+		msg.To = req.Email
+		_ = h.sendMail(ctx, "mail.reset", userID, req.Email, msg)
 	} else if h.mail.DevExpose {
-		log.Printf("forgot-password: SMTP не настроен, ссылка для %s: %s", req.Email, resetURL)
+		log.Printf("восстановление пароля: почта не настроена, ссылка для %s: %s", req.Email, resetURL)
 	} else {
-		log.Printf("forgot-password: SMTP не настроен, письмо для %s не отправлено", req.Email)
+		log.Printf("восстановление пароля: почта не настроена, письмо для %s не отправлено", req.Email)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "sent"})

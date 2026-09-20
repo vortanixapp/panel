@@ -3,6 +3,7 @@ export type StoredAccount = {
   email: string;
   role: string;
   isCurrent: boolean;
+  avatarUrl: string | null;
 };
 
 export type AccessClaims = {
@@ -54,7 +55,14 @@ export function parseAccountCookie(raw: string): AccessClaims | null {
   }
 }
 
-export function accountInitials(email: string): string {
+export function accountInitials(email: string, name?: string | null): string {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (words.length > 1) {
+    return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+  }
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
   const local = email.split("@")[0] ?? email;
   return local.slice(0, 2).toUpperCase();
 }

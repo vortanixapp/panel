@@ -1,6 +1,7 @@
 package i18n
 
 var catalogRU = map[string]string{
+	"mail.group.system":         "Письма панели",
 	"mail.verify.subject":       "Подтверждение email",
 	"mail.verify.title":         "Подтвердите email",
 	"mail.verify.body":          "Чтобы завершить регистрацию, подтвердите адрес электронной почты.",

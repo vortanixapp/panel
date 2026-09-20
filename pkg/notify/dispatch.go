@@ -136,7 +136,7 @@ func publish(ctx context.Context, db DB, payload string) {
 }
 
 func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error) {
-	r := Recipient{UserID: userID, Prefs: Prefs{Email: true}}
+	r := Recipient{UserID: userID, Prefs: Prefs{Email: true}, StatusEmail: true}
 	var routes []byte
 	err := db.QueryRow(ctx, `
 		SELECT u.email,
@@ -151,7 +151,9 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		       COALESCE(c.quiet_from, 1380),
 		       COALESCE(c.quiet_to, 480),
 		       COALESCE(c.quiet_critical, true),
-		       COALESCE(NULLIF(p.timezone, ''), NULLIF(c.quiet_tz, ''), '')
+		       COALESCE(NULLIF(p.timezone, ''), NULLIF(c.quiet_tz, ''), ''),
+		       COALESCE((SELECT s.value #>> '{}' FROM core.tenant_settings s
+		                 WHERE s.key = 'vtx_mail.server_status_notifications'), '1') <> '0'
 		FROM core.users u
 		LEFT JOIN core.user_profiles p
 		       ON p.user_id = u.id
@@ -160,7 +162,8 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		WHERE u.id = $1
 	`, userID).Scan(&r.Email, &r.Locale, &r.Prefs.Email, &r.Prefs.Telegram,
 		&r.Prefs.Discord, &r.Prefs.TelegramChatID, &r.Prefs.DiscordWebhook, &routes,
-		&r.Quiet.Enabled, &r.Quiet.From, &r.Quiet.To, &r.Quiet.Critical, &r.Quiet.TimeZone)
+		&r.Quiet.Enabled, &r.Quiet.From, &r.Quiet.To, &r.Quiet.Critical, &r.Quiet.TimeZone,
+		&r.StatusEmail)
 	if err != nil {
 		return Recipient{}, err
 	}

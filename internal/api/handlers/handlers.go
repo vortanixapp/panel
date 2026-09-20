@@ -404,17 +404,28 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	ctx := r.Context()
 	email := claims.Email
+	var displayName, avatarURL *string
+	avatarVersion := 0
 	if claims.UserID != "" {
 		var stored string
-		if h.dbOf(r.Context()).QueryRow(r.Context(), `SELECT email FROM core.users WHERE id = $1`, claims.UserID).Scan(&stored) == nil && stored != "" {
+		err := h.dbOf(ctx).QueryRow(ctx, `
+			SELECT u.email, p.display_name, p.avatar_url, COALESCE(p.avatar_version, 0)
+			FROM core.users u
+			LEFT JOIN core.user_profiles p ON p.user_id = u.id
+			WHERE u.id = $1
+		`, claims.UserID).Scan(&stored, &displayName, &avatarURL, &avatarVersion)
+		if err == nil && stored != "" {
 			email = stored
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"user_id": claims.UserID,
-		"email":   email,
-		"role":    claims.Role,
+		"user_id":      claims.UserID,
+		"email":        email,
+		"role":         claims.Role,
+		"display_name": displayName,
+		"avatar_url":   versionedAvatarURL(h.avatarPublicURL(r, avatarURL), avatarVersion),
 	})
 }
 

@@ -17,6 +17,7 @@ import (
 
 	"github.com/vortanixapp/panel/internal/api/mail"
 	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 )
@@ -112,31 +113,33 @@ func (h *Handler) AdminSettingsTestMail(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "message": "Укажите email для тестового письма"})
 		return
 	}
+	ctx := r.Context()
 	to := strings.TrimSpace(body.TestMailTo)
-	cfg := h.mailConfigFromTenant(r.Context())
-	mailer := h.tenantSettingString(r.Context(), "mail.default")
-	if mailer == "" {
-		mailer = "smtp"
-	}
-	if mailer == "log" || mailer == "array" {
+	cfg := h.mailerConfig(ctx)
+	if cfg.Silent() {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
-			"ok": false, "message": fmt.Sprintf(`Сейчас выбран mailer "%s": письмо не будет отправлено на email. Выберите mailer "smtp" в настройках и повторите.`, mailer),
+			"ok": false, "message": fmt.Sprintf(`Сейчас выбран режим "%s": письмо не уйдёт на почту. Выберите режим "smtp" в настройках и повторите.`, cfg.MailerName()),
 		})
 		return
 	}
-	if !cfg.Enabled() {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "message": "SMTP не настроен"})
+	if !cfg.Configured() {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "message": "SMTP не настроен: укажите адрес сервера"})
 		return
 	}
-	subject, bodyHTML := mail.TestEmail(i18n.ForUser(r.Context(), h.dbOf(r.Context()), claims.UserID), h.mailBrand(r.Context(), r), to)
-	if err := cfg.Send(to, subject, bodyHTML); err != nil {
+	if !mailer.ValidAddress(to) {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "message": "Адрес получателя выглядит неверно"})
+		return
+	}
+	msg := mail.TestEmail(i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID), h.mailBrand(ctx, r), to)
+	msg.To = to
+	if err := h.sendMail(ctx, "mail.test", claims.UserID, to, msg); err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
-			"ok": false, "message": fmt.Sprintf("Не удалось отправить тестовое письмо (mailer: %s): %s", mailer, err.Error()),
+			"ok": false, "message": "Не удалось отправить тестовое письмо: " + err.Error(),
 		})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok": true, "message": fmt.Sprintf("Тестовое письмо отправлено на %s (mailer: %s)", to, mailer),
+		"ok": true, "message": fmt.Sprintf("Тестовое письмо отправлено на %s от %s", to, cfg.From()),
 	})
 }
 
@@ -234,11 +237,9 @@ func (h *Handler) AdminCutoverReadiness(w http.ResponseWriter, r *http.Request) 
 	}
 	ctx := r.Context()
 	values := h.loadTenantSettingStrings(ctx)
-	mailer := strings.TrimSpace(values["mail.default"])
-	if mailer == "" {
-		mailer = "smtp"
-	}
-	smtpConfigured := h.mailConfigFromTenant(ctx).Enabled()
+	mailCfg := mailer.FromSettings(h.mail, values)
+	mailerName := mailCfg.MailerName()
+	smtpConfigured := mailCfg.Configured()
 	enabledProviders, providersWithWebhook := h.paymentReadinessCounts(ctx)
 	oauthProviders := map[string]bool{
 		"google":  strings.TrimSpace(envOr("SOCIAL_GOOGLE_CLIENT_ID", "")) != "",
@@ -253,7 +254,7 @@ func (h *Handler) AdminCutoverReadiness(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	blockers := []map[string]any{}
-	if !smtpConfigured || mailer == "log" || mailer == "array" {
+	if !mailCfg.Enabled() {
 		blockers = append(blockers, map[string]any{"key": "mail"})
 	}
 	if !oauthReady {
@@ -266,7 +267,7 @@ func (h *Handler) AdminCutoverReadiness(w http.ResponseWriter, r *http.Request) 
 		"ok": len(blockers) == 0,
 		"checks": map[string]any{
 			"mail": map[string]any{
-				"mailer":          mailer,
+				"mailer":          mailerName,
 				"smtp_configured": smtpConfigured,
 			},
 			"oauth": map[string]any{
@@ -444,24 +445,6 @@ func (h *Handler) saveBrandingFile(file io.Reader, filename, base string) (strin
 	}
 	out.Close()
 	return "branding/" + base + ext, nil
-}
-
-func (h *Handler) mailConfigFromTenant(ctx context.Context) mail.Config {
-	host := h.tenantSettingString(ctx, "mail.mailers.smtp.host")
-	port := h.tenantSettingString(ctx, "mail.mailers.smtp.port")
-	user := h.tenantSettingString(ctx, "mail.mailers.smtp.username")
-	pass := h.tenantSettingString(ctx, "mail.mailers.smtp.password")
-	from := h.tenantSettingString(ctx, "mail.from.address")
-	if host == "" {
-		return h.mail
-	}
-	if port == "" {
-		port = "587"
-	}
-	if from == "" {
-		from = h.mail.From
-	}
-	return mail.Config{Host: host, Port: port, User: user, Pass: pass, From: from}
 }
 
 func (h *Handler) telegramGetMe(token string) (string, error) {

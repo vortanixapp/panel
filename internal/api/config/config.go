@@ -34,9 +34,11 @@ type Config struct {
 	TelegramBotToken    string
 	SMTPHost            string
 	SMTPPort            string
+	SMTPScheme          string
 	SMTPUser            string
 	SMTPPass            string
 	MailFrom            string
+	MailFromName        string
 	MailDevExposeURL    bool
 	UploadDir           string
 	SecretsKey          string
@@ -77,9 +79,11 @@ func Load() Config {
 		TelegramBotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
 		SMTPHost:         getEnv("SMTP_HOST", ""),
 		SMTPPort:         getEnv("SMTP_PORT", "587"),
+		SMTPScheme:       getEnv("SMTP_SCHEME", ""),
 		SMTPUser:         getEnv("SMTP_USER", ""),
 		SMTPPass:         getEnv("SMTP_PASS", ""),
 		MailFrom:         getEnv("MAIL_FROM", "noreply@localhost"),
+		MailFromName:     getEnv("MAIL_FROM_NAME", ""),
 		MailDevExposeURL: getEnv("MAIL_DEV_EXPOSE_URL", "false") == "true",
 		UploadDir:        getEnv("UPLOAD_DIR", "data/uploads"),
 		SecretsKey:       getEnv("SECRETS_KEY", ""),

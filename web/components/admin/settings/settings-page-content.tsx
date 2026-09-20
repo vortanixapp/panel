@@ -23,6 +23,7 @@ import {
   FILES_STORAGE_DRIVERS,
   isSettingsTab,
   MAIL_MAILERS,
+  MAIL_SCHEMES,
   OAUTH_PROVIDERS,
   SETTINGS_KEY_MAP,
   SETTINGS_TABS,
@@ -51,6 +52,7 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
 
   const [tab, setTab] = useState<SettingsTab>(() => {
     if (initialTab) return initialTab;
@@ -139,6 +141,18 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
 
   const val = (key: string) => values[key] ?? "";
   const flag = (key: string) => values[key] === "1";
+  const mailerValue = val("mail.default") || "smtp";
+  const mailerOptions = MAIL_MAILERS.includes(
+    mailerValue as (typeof MAIL_MAILERS)[number]
+  )
+    ? MAIL_MAILERS
+    : [mailerValue, ...MAIL_MAILERS];
+  const schemeStored = val("mail.mailers.smtp.scheme");
+  const schemeValue = schemeStored === "smtps" || schemeStored === "smtp" ? schemeStored : "";
+  const schemeOptions = MAIL_SCHEMES.map((item) => ({
+    value: item.value,
+    label: t(item.labelKey),
+  }));
   const setFlag = (key: string) => (checked: boolean) =>
     updateValue(key, checked ? "1" : "0");
 
@@ -397,17 +411,16 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
             >
               <FieldGrid cols={4}>
                 <SelectField
-                  label="Mailer"
-                  value={val("mail.default") || "smtp"}
+                  label={t("admin.settings.mail.mailer")}
+                  value={mailerValue}
                   onChange={(v) => updateValue("mail.default", v)}
-                  options={MAIL_MAILERS}
+                  options={mailerOptions}
                 />
-                <TextField
-                  mono
-                  label="Scheme"
-                  value={val("mail.mailers.smtp.scheme")}
+                <SelectField
+                  label={t("admin.settings.mail.scheme")}
+                  value={schemeValue}
                   onChange={(v) => updateValue("mail.mailers.smtp.scheme", v)}
-                  placeholder="tls"
+                  options={schemeOptions}
                 />
                 <TextField
                   mono

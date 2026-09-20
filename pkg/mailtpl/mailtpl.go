@@ -10,7 +10,13 @@ import (
 
 const DefaultAccent = "#6366f1"
 
-var hexColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+var (
+	hexColor    = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+	htmlTag     = regexp.MustCompile(`(?s)<[^>]*>`)
+	blankLines  = regexp.MustCompile("\n{3,}")
+	lineBreaks  = regexp.MustCompile(`(?i)<br\s*/?>`)
+	blockBreaks = regexp.MustCompile(`(?i)</(p|div|tr|h[1-6]|li)>`)
+)
 
 type Brand struct {
 	Name    string
@@ -99,4 +105,36 @@ func Render(b Brand, m Message) string {
 	sb.WriteString(`<p style="margin:16px 0 0;font-size:12px;color:#8a8c90">` + name + `</p>`)
 	sb.WriteString(`</td></tr></table></body></html>`)
 	return sb.String()
+}
+
+func PlainText(b Brand, m Message) string {
+	parts := make([]string, 0, 4)
+	if title := strings.TrimSpace(m.Title); title != "" {
+		parts = append(parts, title)
+	}
+	if body := StripHTML(m.Body); body != "" {
+		parts = append(parts, body)
+	}
+	if url := strings.TrimSpace(m.ActionURL); url != "" {
+		if label := strings.TrimSpace(m.ActionLabel); label != "" {
+			parts = append(parts, label+": "+url)
+		} else {
+			parts = append(parts, url)
+		}
+	}
+	parts = append(parts, b.name())
+	return strings.Join(parts, "\n\n")
+}
+
+func StripHTML(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = lineBreaks.ReplaceAllString(s, "\n")
+	s = blockBreaks.ReplaceAllString(s, "\n\n")
+	s = htmlTag.ReplaceAllString(s, "")
+	s = html.UnescapeString(s)
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimSpace(line)
+	}
+	return strings.TrimSpace(blankLines.ReplaceAllString(strings.Join(lines, "\n"), "\n\n"))
 }

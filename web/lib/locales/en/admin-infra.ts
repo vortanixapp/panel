@@ -141,6 +141,11 @@ export const adminInfra = {
 
   "admin.settings.mail.description":
     "Transport for panel email: confirmations, invoices, notifications",
+  "admin.settings.mail.mailer": "Sending mode",
+  "admin.settings.mail.scheme": "Encryption",
+  "admin.settings.mail.scheme_auto": "By port",
+  "admin.settings.mail.scheme_starttls": "STARTTLS (587)",
+  "admin.settings.mail.scheme_ssl": "SSL/TLS (465)",
   "admin.settings.mail.test_to": "Email for the test message",
   "admin.settings.mail.send_test": "Send a test email",
   "admin.settings.mail.test_sent": "Test email sent",

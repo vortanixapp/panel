@@ -9,8 +9,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/vortanixapp/panel/internal/worker/mail"
+	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/mailtpl"
+)
+
+const (
+	mailingSendTimeout = 30 * time.Second
+	mailLogErrorLimit  = 500
 )
 
 func (r *Runner) MailingLoop(ctx context.Context, wake <-chan struct{}) {
@@ -88,47 +93,59 @@ func (r *Runner) processMailingOne(ctx context.Context) bool {
 
 	cfg := r.mailConfig(ctx)
 	if !cfg.Enabled() {
-		r.finishMailing(ctx, jobID, pl.MailingID, 0, 0)
-		r.failJobDirect(ctx, jobID, "smtp not configured for tenant")
-		_, _ = r.db.Exec(ctx, `UPDATE core.mailings SET status = 'failed' WHERE id = $1`, pl.MailingID)
+		reason := "SMTP не настроен"
+		if cfg.Silent() {
+			reason = "выбран режим " + cfg.MailerName() + ", письма не отправляются"
+		}
+		r.failJobDirect(ctx, jobID, reason)
+		_, _ = r.db.Exec(ctx, `UPDATE core.mailings SET status = 'failed', finished_at = now() WHERE id = $1`, pl.MailingID)
 		return true
 	}
 
 	rows, err := r.db.Query(ctx, `
-		SELECT id::text, email FROM core.users WHERE status = 'active'
+		SELECT id::text, email FROM core.users
+		WHERE status = 'active' AND email NOT LIKE '%@telegram.local'
+		ORDER BY created_at
 	`)
 	if err != nil {
 		r.failJobDirect(ctx, jobID, err.Error())
-		_, _ = r.db.Exec(ctx, `UPDATE core.mailings SET status = 'failed' WHERE id = $1`, pl.MailingID)
+		_, _ = r.db.Exec(ctx, `UPDATE core.mailings SET status = 'failed', finished_at = now() WHERE id = $1`, pl.MailingID)
 		return true
 	}
 	type recipient struct{ id, email string }
 	var recipients []recipient
 	for rows.Next() {
 		var rec recipient
-		if rows.Scan(&rec.id, &rec.email) == nil {
+		if rows.Scan(&rec.id, &rec.email) == nil && mailer.ValidAddress(rec.email) {
 			recipients = append(recipients, rec)
 		}
 	}
 	rows.Close()
 
-	brand := r.mailBrand(ctx)
+	msg := mailingMessage(r.mailBrand(ctx), subject, body, isHTML)
 	sent := 0
 	for _, rec := range recipients {
-		sendErr := cfg.Send(rec.email, subject, mailingBody(brand, body, isHTML))
+		letter := msg
+		letter.To = rec.email
+		sendCtx, cancel := context.WithTimeout(ctx, mailingSendTimeout)
+		sendErr := cfg.Send(sendCtx, letter)
+		cancel()
+		status, failure := "sent", ""
 		if sendErr == nil {
 			sent++
 			_, _ = r.db.Exec(ctx, `
-				INSERT INTO core.mailing_deliveries ( mailing_id, user_id, channel, address, status, sent_at)
-				VALUES ( $1, $2, 'email', $3, 'sent', now())
+				INSERT INTO core.mailing_deliveries (mailing_id, user_id, channel, address, status, sent_at)
+				VALUES ($1, $2, 'email', $3, 'sent', now())
 			`, pl.MailingID, rec.id, rec.email)
 		} else {
-			log.Printf("mailing %s: send to %s failed: %v", pl.MailingID, rec.email, sendErr)
+			status, failure = "failed", sendErr.Error()
+			log.Printf("рассылка %s: письмо на %s не отправлено: %v", pl.MailingID, rec.email, sendErr)
 			_, _ = r.db.Exec(ctx, `
-				INSERT INTO core.mailing_deliveries ( mailing_id, user_id, channel, address, status, error)
-				VALUES ( $1, $2, 'email', $3, 'failed', $4)
-			`, pl.MailingID, rec.id, rec.email, sendErr.Error())
+				INSERT INTO core.mailing_deliveries (mailing_id, user_id, channel, address, status, error)
+				VALUES ($1, $2, 'email', $3, 'failed', $4)
+			`, pl.MailingID, rec.id, rec.email, failure)
 		}
+		r.logMail(ctx, cfg, "mailing", rec.id, rec.email, subject, status, failure)
 	}
 
 	r.finishMailing(ctx, jobID, pl.MailingID, len(recipients), sent)
@@ -137,7 +154,7 @@ func (r *Runner) processMailingOne(ctx context.Context) bool {
 
 func (r *Runner) finishMailing(ctx context.Context, jobID, mailingID string, total, sent int) {
 	status := "completed"
-	if sent < total {
+	if total > 0 && sent == 0 {
 		status = "failed"
 	}
 	_, _ = r.db.Exec(ctx, `
@@ -157,22 +174,29 @@ func (r *Runner) failJobDirect(ctx context.Context, jobID, msg string) {
 	_, _ = r.db.Exec(ctx, `UPDATE core.jobs SET status = 'failed', result = $2::jsonb WHERE id = $1`, jobID, result)
 }
 
-func (r *Runner) mailConfig(ctx context.Context) mail.Config {
-	host := r.tenantSettingString(ctx, "mail.mailers.smtp.host")
-	port := r.tenantSettingString(ctx, "mail.mailers.smtp.port")
-	user := r.tenantSettingString(ctx, "mail.mailers.smtp.username")
-	pass := r.tenantSettingString(ctx, "mail.mailers.smtp.password")
-	from := r.tenantSettingString(ctx, "mail.from.address")
-	if host == "" {
-		return r.mail
+func (r *Runner) mailConfig(ctx context.Context) mailer.Config {
+	return mailer.FromSettings(r.mail, r.tenantSettings(ctx))
+}
+
+func (r *Runner) tenantSettings(ctx context.Context) map[string]string {
+	out := map[string]string{}
+	rows, err := r.db.Query(ctx, `SELECT key, value FROM core.tenant_settings`)
+	if err != nil {
+		return out
 	}
-	if port == "" {
-		port = "587"
+	defer rows.Close()
+	for rows.Next() {
+		var key string
+		var raw []byte
+		if rows.Scan(&key, &raw) != nil {
+			continue
+		}
+		var value string
+		if json.Unmarshal(raw, &value) == nil {
+			out[key] = r.secrets.MustDecrypt(value)
+		}
 	}
-	if from == "" {
-		from = r.mail.From
-	}
-	return mail.Config{Host: host, Port: port, User: user, Pass: pass, From: from}
+	return out
 }
 
 func (r *Runner) tenantSettingString(ctx context.Context, key string) string {
@@ -190,12 +214,28 @@ func (r *Runner) tenantSettingString(ctx context.Context, key string) string {
 	return ""
 }
 
-func mailingBody(brand mailtpl.Brand, body string, isHTML bool) string {
+func mailingMessage(brand mailtpl.Brand, subject, body string, isHTML bool) mailer.Message {
+	content := mailtpl.Message{Body: mailtpl.Paragraphs(body)}
 	if isHTML {
-		if strings.Contains(strings.ToLower(body), "<html") {
-			return body
-		}
-		return mailtpl.Render(brand, mailtpl.Message{Body: body})
+		content.Body = body
 	}
-	return mailtpl.Render(brand, mailtpl.Message{Body: mailtpl.Paragraphs(body)})
+	out := mailer.Message{
+		Subject: subject,
+		HTML:    mailtpl.Render(brand, content),
+		Text:    mailtpl.PlainText(brand, content),
+	}
+	if isHTML && strings.Contains(strings.ToLower(body), "<html") {
+		out.HTML = body
+	}
+	return out
+}
+
+func (r *Runner) logMail(ctx context.Context, cfg mailer.Config, template, userID, to, subject, status, failure string) {
+	if len([]rune(failure)) > mailLogErrorLimit {
+		failure = string([]rune(failure)[:mailLogErrorLimit])
+	}
+	_, _ = r.db.Exec(ctx, `
+		INSERT INTO core.mail_log (template, to_address, subject, status, error, mailer, user_id)
+		VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::uuid)
+	`, template, to, subject, status, failure, cfg.MailerName(), userID)
 }

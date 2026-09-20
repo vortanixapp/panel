@@ -15,8 +15,8 @@ import (
 
 	"github.com/vortanixapp/panel/internal/worker/jobs"
 	"github.com/vortanixapp/panel/internal/worker/jobwake"
-	"github.com/vortanixapp/panel/internal/worker/mail"
 	"github.com/vortanixapp/panel/internal/worker/relay"
+	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/netaddr"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 	"strings"
@@ -28,12 +28,14 @@ func main() {
 	relayURL := env("RELAY_URL", "http://localhost:8082")
 	secret := env("INTERNAL_SECRET", "dev-internal-secret")
 	natsURL := env("NATS_URL", "")
-	mailCfg := mail.Config{
-		Host: env("SMTP_HOST", ""),
-		Port: env("SMTP_PORT", "587"),
-		User: env("SMTP_USER", ""),
-		Pass: env("SMTP_PASS", ""),
-		From: env("MAIL_FROM", "noreply@localhost"),
+	mailCfg := mailer.Config{
+		Host:        env("SMTP_HOST", ""),
+		Port:        env("SMTP_PORT", "587"),
+		Scheme:      env("SMTP_SCHEME", ""),
+		User:        env("SMTP_USER", ""),
+		Pass:        env("SMTP_PASS", ""),
+		FromAddress: env("MAIL_FROM", "noreply@localhost"),
+		FromName:    env("MAIL_FROM_NAME", ""),
 	}
 	telegramBotToken := env("TELEGRAM_BOT_TOKEN", "")
 	panelURL := strings.TrimRight(env("FRONTEND_URL", env("APP_URL", "")), "/")

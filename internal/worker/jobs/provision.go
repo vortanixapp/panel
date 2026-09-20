@@ -15,14 +15,14 @@ import (
 	"github.com/vortanixapp/panel/pkg/portalloc"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 
-	"github.com/vortanixapp/panel/internal/worker/mail"
 	"github.com/vortanixapp/panel/internal/worker/relay"
+	"github.com/vortanixapp/panel/pkg/mailer"
 )
 
 type Runner struct {
 	db        *pgxpool.Pool
 	relay     *relay.Client
-	mail      mail.Config
+	mail      mailer.Config
 	secrets   *secretbox.Box
 	heartbeat *Heartbeat
 
@@ -30,7 +30,7 @@ type Runner struct {
 	panelURL         string
 }
 
-func New(db *pgxpool.Pool, relayClient *relay.Client, mailCfg mail.Config, secrets *secretbox.Box) *Runner {
+func New(db *pgxpool.Pool, relayClient *relay.Client, mailCfg mailer.Config, secrets *secretbox.Box) *Runner {
 	return &Runner{db: db, relay: relayClient, mail: mailCfg, secrets: secrets, heartbeat: newHeartbeat()}
 }
 

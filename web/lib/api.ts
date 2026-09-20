@@ -145,7 +145,13 @@ async function refreshSession(): Promise<void> {
 
 export async function savedAccounts() {
   return apiFetch<{
-    accounts: { id: string; email: string; role: string; is_current: boolean }[];
+    accounts: {
+      id: string;
+      email: string;
+      role: string;
+      is_current: boolean;
+      avatar_url?: string | null;
+    }[];
     current_id: string;
   }>("/v1/auth/accounts");
 }
@@ -637,6 +643,8 @@ export async function fetchMe() {
     role: string;
     tenant_id: string;
     tenant_slug: string;
+    display_name?: string | null;
+    avatar_url?: string | null;
   }>("/v1/me");
 }
 
@@ -5228,6 +5236,105 @@ export async function deleteAdminMap(id: string, force = false) {
 export async function fetchAdminMailings() {
   return apiFetch<{ mailings: unknown[] }>("/v1/admin/mailings");
 }
+
+export type MailTemplateField = {
+  name: string;
+  key: string;
+  value: string;
+  default: string;
+  multiline: boolean;
+  optional: boolean;
+};
+
+export type MailTemplate = {
+  id: string;
+  name: string;
+  fields: MailTemplateField[];
+  params: string[];
+  customized: boolean;
+};
+
+export type MailTemplateGroup = {
+  id: string;
+  label: string;
+  templates: MailTemplate[];
+};
+
+export type MailTemplatesResponse = {
+  locale: string;
+  languages: { code: string; name: string }[];
+  groups: MailTemplateGroup[];
+  mail: { ready: boolean; mailer: string; from: string };
+};
+
+export type MailLogEntry = {
+  id: string;
+  template: string;
+  to: string;
+  subject: string;
+  status: string;
+  error: string;
+  mailer: string;
+  user_email: string;
+  created_at: string;
+};
+
+export async function fetchMailTemplates(locale: string) {
+  return apiFetch<MailTemplatesResponse>(
+    `/v1/admin/mail-templates?locale=${encodeURIComponent(locale)}`
+  );
+}
+
+export async function saveMailTemplate(
+  id: string,
+  locale: string,
+  values: Record<string, string>
+) {
+  return apiFetch<{ status: string; locale: string }>(
+    `/v1/admin/mail-templates/${encodeURIComponent(id)}`,
+    { method: "PUT", body: JSON.stringify({ locale, values }) }
+  );
+}
+
+export async function resetMailTemplate(id: string, locale: string) {
+  return apiFetch<{ status: string; locale: string }>(
+    `/v1/admin/mail-templates/${encodeURIComponent(id)}?locale=${encodeURIComponent(locale)}`,
+    { method: "DELETE" }
+  );
+}
+
+export async function previewMailTemplate(
+  id: string,
+  locale: string,
+  values: Record<string, string>
+) {
+  return apiFetch<{ subject: string; html: string; text: string }>(
+    `/v1/admin/mail-templates/${encodeURIComponent(id)}/preview`,
+    { method: "POST", body: JSON.stringify({ locale, values }) }
+  );
+}
+
+export async function sendMailTemplateTest(
+  id: string,
+  locale: string,
+  values: Record<string, string>,
+  to: string
+) {
+  return apiFetch<{ status: string; to: string }>(
+    `/v1/admin/mail-templates/${encodeURIComponent(id)}/test`,
+    { method: "POST", body: JSON.stringify({ locale, values, to }) }
+  );
+}
+
+export async function fetchMailLog(status: string, limit = 50) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (status) params.set("status", status);
+  return apiFetch<{
+    items: MailLogEntry[];
+    week: { sent: number; failed: number; skipped: number };
+  }>(`/v1/admin/mail-log?${params.toString()}`);
+}
+
 
 export type AdminPaymentProviderField = {
   key: string;

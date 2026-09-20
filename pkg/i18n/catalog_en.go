@@ -1,6 +1,7 @@
 package i18n
 
 var catalogEN = map[string]string{
+	"mail.group.system":         "Panel emails",
 	"mail.verify.subject":       "Confirm your email",
 	"mail.verify.title":         "Confirm your email",
 	"mail.verify.body":          "To finish signing up, confirm your email address.",

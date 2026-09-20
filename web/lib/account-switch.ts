@@ -16,6 +16,7 @@ export async function loadAccounts(): Promise<StoredAccount[]> {
       email: a.email,
       role: a.role,
       isCurrent: a.is_current,
+      avatarUrl: a.avatar_url ?? null,
     }));
   } catch {
     return [];

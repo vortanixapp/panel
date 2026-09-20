@@ -7,23 +7,20 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
 const notifyCleanupInterval = 6 * time.Hour
 
 func (r *Runner) notifyConfig(ctx context.Context) notify.Config {
-	m := r.mailConfig(ctx)
-	token := strings.TrimSpace(r.tenantSettingString(ctx, "telegram.notifications.bot_token"))
+	values := r.tenantSettings(ctx)
+	token := strings.TrimSpace(values["telegram.notifications.bot_token"])
 	if token == "" {
 		token = strings.TrimSpace(r.telegramBotToken)
 	}
 	return notify.Config{
-		SMTPHost:         m.Host,
-		SMTPPort:         m.Port,
-		SMTPUser:         m.User,
-		SMTPPass:         m.Pass,
-		MailFrom:         m.From,
+		Mail:             mailer.FromSettings(r.mail, values),
 		Brand:            r.mailBrand(ctx),
 		TelegramBotToken: token,
 	}

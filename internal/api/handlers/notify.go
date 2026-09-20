@@ -12,13 +12,8 @@ import (
 )
 
 func (h *Handler) notifyConfig(ctx context.Context, r *http.Request) notify.Config {
-	m := h.mailConfigFromTenant(ctx)
 	return notify.Config{
-		SMTPHost:         m.Host,
-		SMTPPort:         m.Port,
-		SMTPUser:         m.User,
-		SMTPPass:         m.Pass,
-		MailFrom:         m.From,
+		Mail:             h.mailerConfig(ctx),
 		Brand:            h.mailBrand(ctx, r),
 		TelegramBotToken: h.notifyTelegramToken(ctx),
 	}

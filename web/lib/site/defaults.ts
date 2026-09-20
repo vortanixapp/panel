@@ -121,6 +121,7 @@ const ADMIN_SIDEBAR: BuiltinItem[] = [
       { ref: "admin.news", labelKey: "nav.admin.news", url: "/admin/news", icon: "newspaper" },
       { ref: "admin.promo", labelKey: "nav.admin.promo", url: "/admin/promo", icon: "gift" },
       { ref: "admin.mailings", labelKey: "nav.admin.mailings", url: "/admin/mailings", icon: "mail" },
+      { ref: "admin.mails", labelKey: "nav.admin.mails", url: "/admin/mails", icon: "mail-open" },
     ],
   },
   {

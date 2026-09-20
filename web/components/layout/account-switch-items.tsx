@@ -7,13 +7,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { accountInitials, type StoredAccount } from "@/lib/accounts";
+import { UserAvatar } from "@/components/user-avatar";
+import { type StoredAccount } from "@/lib/accounts";
 import { goToAccount, loadAccounts, prepareSwitch } from "@/lib/account-switch";
 import { activeAccountId } from "@/lib/api";
 import { roleLabel } from "@/lib/rbac";
@@ -77,11 +77,12 @@ export function AccountSwitchItems() {
               }}
               className="gap-2"
             >
-              <Avatar className="size-6">
-                <AvatarFallback className="text-[10px]">
-                  {accountInitials(account.email)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                email={account.email}
+                src={account.avatarUrl}
+                className="size-6"
+                fallbackClassName="text-[10px]"
+              />
               <div className="grid min-w-0 flex-1 leading-tight">
                 <span className="truncate text-[13px]">{account.email}</span>
                 <span className="truncate text-[11px] text-muted-foreground">

@@ -17,6 +17,14 @@ func (h *Handler) SavedAccounts(w http.ResponseWriter, r *http.Request) {
 		current = claims.UserID
 	}
 
+	ids := make([]string, 0, len(list))
+	for _, item := range list {
+		if item.ID != "" {
+			ids = append(ids, item.ID)
+		}
+	}
+	avatars := h.avatarsByUser(r, ids)
+
 	out := make([]map[string]any, 0, len(list))
 	for _, item := range list {
 		if item.ID == "" {
@@ -27,6 +35,7 @@ func (h *Handler) SavedAccounts(w http.ResponseWriter, r *http.Request) {
 			"email":      item.Email,
 			"role":       item.Role,
 			"is_current": item.ID == current,
+			"avatar_url": avatars[item.ID],
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"accounts": out, "current_id": current})
@@ -126,4 +135,30 @@ func (h *Handler) ForgetAccount(w http.ResponseWriter, r *http.Request) {
 	}
 	h.forgetLogin(w, r, strings.TrimSpace(body.UserID))
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (h *Handler) avatarsByUser(r *http.Request, ids []string) map[string]*string {
+	out := map[string]*string{}
+	if len(ids) == 0 {
+		return out
+	}
+	ctx := r.Context()
+	rows, err := h.dbOf(ctx).Query(ctx, `
+		SELECT user_id::text, avatar_url, COALESCE(avatar_version, 0)
+		FROM core.user_profiles
+		WHERE user_id = ANY($1::uuid[]) AND avatar_url IS NOT NULL
+	`, ids)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var stored *string
+		var version int
+		if rows.Scan(&id, &stored, &version) == nil {
+			out[id] = versionedAvatarURL(h.avatarPublicURL(r, stored), version)
+		}
+	}
+	return out
 }

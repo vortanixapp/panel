@@ -495,6 +495,12 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/mailings", h.CreateMailing)
 			r.Post("/mailings/{id}/send", h.SendMailing)
 			r.Delete("/mailings/{id}", h.DeleteMailing)
+			r.Get("/mail-templates", h.AdminMailTemplates)
+			r.Put("/mail-templates/{id}", h.AdminMailTemplateSave)
+			r.Delete("/mail-templates/{id}", h.AdminMailTemplateReset)
+			r.Post("/mail-templates/{id}/preview", h.AdminMailTemplatePreview)
+			r.Post("/mail-templates/{id}/test", h.AdminMailTemplateTest)
+			r.Get("/mail-log", h.AdminMailLog)
 		})
 	})
 }

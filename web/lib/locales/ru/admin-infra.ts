@@ -141,6 +141,11 @@ export const adminInfra = {
 
   "admin.settings.mail.description":
     "Транспорт для писем панели: подтверждения, счета, уведомления",
+  "admin.settings.mail.mailer": "Режим отправки",
+  "admin.settings.mail.scheme": "Шифрование",
+  "admin.settings.mail.scheme_auto": "По порту",
+  "admin.settings.mail.scheme_starttls": "STARTTLS (587)",
+  "admin.settings.mail.scheme_ssl": "SSL/TLS (465)",
   "admin.settings.mail.test_to": "Email для тестового письма",
   "admin.settings.mail.send_test": "Отправить тестовое письмо",
   "admin.settings.mail.test_sent": "Тестовое письмо отправлено",

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import useDialogState from "@/hooks/use-dialog-state";
 import { useMe } from "@/hooks/use-queries";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,7 +19,7 @@ import {
   AccountSwitchItems,
   ActiveAccountCheck,
 } from "@/components/layout/account-switch-items";
-import { accountInitials } from "@/lib/accounts";
+import { UserAvatar } from "@/components/user-avatar";
 import { useBrand } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 
@@ -41,9 +40,12 @@ export function ProfileDropdown() {
               variant="ghost"
               className="relative h-9 gap-2 rounded-full px-1.5 pr-3 max-sm:pr-1.5"
             >
-              <Avatar className="h-7 w-7">
-                <AvatarFallback>{accountInitials(email)}</AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                email={email}
+                name={me?.display_name}
+                src={me?.avatar_url}
+                className="h-7 w-7"
+              />
               <span className="flex min-w-0 flex-col items-start leading-tight max-sm:hidden">
                 <span className="max-w-[160px] truncate text-xs font-medium">
                   {email}
@@ -55,15 +57,24 @@ export function ProfileDropdown() {
             </Button>
           ) : (
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>{accountInitials(email)}</AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                email={email}
+                name={me?.display_name}
+                src={me?.avatar_url}
+                className="h-8 w-8"
+              />
             </Button>
           )}
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex items-center gap-2">
+              <UserAvatar
+                email={email}
+                name={me?.display_name}
+                src={me?.avatar_url}
+                className="size-8 shrink-0"
+              />
               <div className="flex min-w-0 flex-col gap-1.5">
                 <p className="truncate text-sm font-medium leading-none">{email}</p>
                 <p className="text-xs leading-none text-muted-foreground">

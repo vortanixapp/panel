@@ -50,6 +50,8 @@ type Recipient struct {
 
 	Prefs Prefs
 	Quiet Quiet
+
+	StatusEmail bool
 }
 
 type Prefs struct {
@@ -175,10 +177,17 @@ type route struct {
 	target  string
 }
 
+func statusEmailKind(kind Kind) bool {
+	return kind == KindServerReady || kind == KindServerFailed
+}
+
 func routesFor(e Event, r Recipient) []route {
 	def := DefFor(e.Kind)
 	out := make([]route, 0, len(def.Channels))
 	for _, c := range def.Channels {
+		if c == ChannelEmail && !r.StatusEmail && statusEmailKind(e.Kind) {
+			continue
+		}
 		if c == ChannelEmail && def.Required {
 			if target, ok := r.address(c); ok {
 				out = append(out, route{channel: c, target: target})
