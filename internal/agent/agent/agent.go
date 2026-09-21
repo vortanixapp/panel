@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -629,27 +630,58 @@ func (a *Agent) handleCommand(data []byte) {
 		return
 	case protocol.ActionConsole:
 		sessionID, _ := cmd.Payload["session_id"].(string)
-		execErr = docker.StartConsoleStream(ctx, cmd.ServerID, sessionID, func(line string) {
-			out, _ := json.Marshal(protocol.ConsoleOutputMessage{
-				Type: protocol.MsgConsoleOutput, SessionID: sessionID,
-				ServerID: cmd.ServerID, Data: line,
-			})
-			_ = a.send(out)
-		})
+		if detach, _ := cmd.Payload["detach"].(bool); detach {
+			docker.StopConsole(sessionID)
+			break
+		}
+		leased, _ := cmd.Payload["lease"].(bool)
+		docker.AttachConsole(cmd.ServerID, sessionID, leased, a.consoleEmitter(cmd.ServerID, sessionID))
 	case protocol.ActionConsoleIn:
 		sessionID, _ := cmd.Payload["session_id"].(string)
 		input, _ := cmd.Payload["data"].(string)
-		execErr = docker.ConsoleInput(ctx, cmd.ServerID, input)
-		_ = sessionID
+		gameID, _ := cmd.Payload["game_id"].(string)
+		go a.consoleInput(cmd.ID, cmd.ServerID, sessionID, gameID, input)
+		return
 	}
 
-	if cmd.Action == protocol.ActionConsole || cmd.Action == protocol.ActionConsoleIn {
+	if cmd.Action == protocol.ActionConsole {
 		a.sendAck(cmd.ID, execErr == nil, execErr, nil)
 		return
 	}
 
 	a.sendStatus(cmd.ServerID, status, "")
 	a.sendAck(cmd.ID, execErr == nil, execErr, nil)
+}
+
+func (a *Agent) consoleEmitter(serverID, sessionID string) docker.ConsoleEmit {
+	return func(kind, code, data string) {
+		if kind == protocol.ConsoleFrameOutput {
+			kind = ""
+		}
+		out, _ := json.Marshal(protocol.ConsoleOutputMessage{
+			Type: protocol.MsgConsoleOutput, SessionID: sessionID, ServerID: serverID,
+			Data: data, Kind: kind, Code: code,
+		})
+		_ = a.send(out)
+	}
+}
+
+func (a *Agent) consoleInput(cmdID, serverID, sessionID, gameID, input string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	emit := a.consoleEmitter(serverID, sessionID)
+	reply, err := docker.SendConsoleCommand(ctx, serverID, gameID, input)
+	switch {
+	case errors.Is(err, docker.ErrConsoleStopped):
+		emit(protocol.ConsoleFrameNotice, "input_stopped", "")
+	case errors.Is(err, docker.ErrConsoleNoStdin):
+		emit(protocol.ConsoleFrameNotice, "input_no_stdin", "")
+	case err != nil:
+		emit(protocol.ConsoleFrameNotice, "input_failed", err.Error())
+	case reply.Output != "":
+		emit(protocol.ConsoleFrameReply, reply.Via, reply.Output)
+	}
+	a.sendAck(cmdID, err == nil, err, map[string]any{"via": reply.Via})
 }
 
 func (a *Agent) sendInstallProgress(serverID, stage string, percent int, message, line string) {

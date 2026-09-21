@@ -132,35 +132,6 @@ func (c *Client) CommandSyncBinary(
 	return &out, nil
 }
 
-type ConsoleStartRequest struct {
-	SessionID string `json:"session_id"`
-	ServerID  string `json:"server_id"`
-	NodeID    string `json:"node_id"`
-}
-
-func (c *Client) StartConsole(ctx context.Context, req ConsoleStartRequest) error {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-	return c.post(ctx, c.baseURL+"/internal/v1/console/start", body)
-}
-
-type ConsoleInputRequest struct {
-	SessionID string `json:"session_id"`
-	ServerID  string `json:"server_id"`
-	NodeID    string `json:"node_id"`
-	Data      string `json:"data"`
-}
-
-func (c *Client) ConsoleInput(ctx context.Context, req ConsoleInputRequest) error {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-	return c.post(ctx, c.baseURL+"/internal/v1/console/input", body)
-}
-
 func (c *Client) post(ctx context.Context, url string, body []byte) error {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {

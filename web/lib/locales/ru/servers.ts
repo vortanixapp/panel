@@ -768,5 +768,13 @@ export const servers = {
   "servers.console.error": "Ошибка: {message}",
   "servers.console.connected": "Консоль подключена",
   "servers.console.reconnecting": "Соединение потеряно, переподключаемся…",
+  "servers.console.notice_waiting_start": "Сервер остановлен. Новые строки появятся здесь сразу после запуска",
+  "servers.console.notice_node_offline": "Узел с сервером не отвечает, переподключаемся…",
+  "servers.console.notice_no_permission": "У вас нет права отправлять команды на этот сервер",
+  "servers.console.notice_stream_unavailable": "Консоль временно недоступна, переподключаемся…",
+  "servers.console.notice_input_stopped": "Команда не отправлена: сервер не запущен",
+  "servers.console.notice_input_no_stdin":
+    "Команда не отправлена: сервер запущен до обновления панели. Перезапустите его, и консоль начнёт принимать команды",
+  "servers.console.notice_input_failed": "Команда не отправлена: {detail}",
   "servers.metrics.chart_empty": "Метрики появятся когда сервер запущен",
 };

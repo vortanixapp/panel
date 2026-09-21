@@ -506,8 +506,10 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 	case protocol.MsgConsoleOutput:
 		sessionID, _ := env["session_id"].(string)
 		dataStr, _ := env["data"].(string)
+		kind, _ := env["kind"].(string)
+		code, _ := env["code"].(string)
 		if sessionID != "" {
-			events.PublishConsoleOutput(ctx, h.redis, sessionID, dataStr)
+			events.PublishConsoleOutput(ctx, h.redis, sessionID, kind, code, dataStr)
 		}
 	case protocol.MsgAck:
 		var ack protocol.AckMessage
@@ -687,6 +689,7 @@ func (h *Handler) InternalConsoleStart(w http.ResponseWriter, r *http.Request) {
 	cmdID := uuid.NewString()
 	err := h.sendToNode(req.NodeID, cmdID, protocol.ActionConsole, req.ServerID, map[string]any{
 		"session_id": req.SessionID,
+		"lease":      true,
 	})
 	if err != nil {
 		writeError(w, http.StatusBadGateway, "node offline")
@@ -699,6 +702,7 @@ type consoleInputRequest struct {
 	SessionID string `json:"session_id"`
 	ServerID  string `json:"server_id"`
 	NodeID    string `json:"node_id"`
+	GameID    string `json:"game_id"`
 	Data      string `json:"data"`
 }
 
@@ -714,7 +718,7 @@ func (h *Handler) InternalConsoleInput(w http.ResponseWriter, r *http.Request) {
 	}
 	cmdID := uuid.NewString()
 	if err := h.sendToNode(req.NodeID, cmdID, protocol.ActionConsoleIn, req.ServerID, map[string]any{
-		"session_id": req.SessionID, "data": req.Data,
+		"session_id": req.SessionID, "data": req.Data, "game_id": req.GameID,
 	}); err != nil {
 		writeError(w, http.StatusBadGateway, "node offline")
 		return
@@ -728,7 +732,17 @@ func (h *Handler) InternalConsoleStop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req consoleStartRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.SessionID == "" {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if err := h.sendToNode(req.NodeID, uuid.NewString(), protocol.ActionConsole, req.ServerID, map[string]any{
+		"session_id": req.SessionID,
+		"detach":     true,
+	}); err != nil {
+		writeError(w, http.StatusBadGateway, "node offline")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "stopped"})
 }
 

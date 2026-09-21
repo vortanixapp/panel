@@ -23,7 +23,27 @@ const TONE: Record<LineKind, string> = {
   ready: "text-[var(--vx-info)]",
   stop: "text-[var(--vx-warn)]",
   map: "text-[var(--vx-violet)]",
+  input: "text-[var(--vx-fg-strong)]",
+  reply: "text-[var(--vx-fg)]",
+  notice: "text-[var(--vx-warn)]",
 };
+
+const NOTICES = new Set([
+  "waiting_start",
+  "node_offline",
+  "no_permission",
+  "stream_unavailable",
+  "input_stopped",
+  "input_no_stdin",
+  "input_failed",
+]);
+
+function noticeText(t: ReturnType<typeof useT>, line: ConsoleLine): string {
+  if (NOTICES.has(line.value)) {
+    return t(`servers.console.notice_${line.value}`, { detail: line.text });
+  }
+  return line.text || line.value;
+}
 
 function keep(line: ConsoleLine, filter: LogFilter): boolean {
   switch (filter) {
@@ -151,8 +171,22 @@ export function ConsoleLogView({
                       <span className="font-semibold">{line.player}</span>{" "}
                       {t(`servers.console.event_${line.kind}`)}
                     </>
+                  ) : line.kind === "input" ? (
+                    <>
+                      <span className="text-[var(--vx-info)]">› </span>
+                      {line.text}
+                    </>
+                  ) : line.kind === "reply" ? (
+                    <>
+                      <span className={cn("me-2 inline-block w-9 text-[10.5px] uppercase", VX_FAINT)}>
+                        {line.value}
+                      </span>
+                      {line.text}
+                    </>
+                  ) : line.kind === "notice" ? (
+                    <span className="italic">— {noticeText(t, line)}</span>
                   ) : (
-                    line.text || line.raw
+                    line.text
                   )}
                 </span>
               </div>

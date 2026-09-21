@@ -34,8 +34,8 @@ func init() {
 		Key:       "arkse",
 		SharedBy:  []string{"arksa"},
 		Title:     "ARK",
-		Note:      "ARK не принимает команды через консоль — управляйте сервером по RCON или из игры",
-		Timestamp: `^(?<time>\d{4}\.\d{2}\.\d{2}_\d{2}\.\d{2}\.\d{2}):\s*`,
+		Note:      "Команды идут через RCON: включите RCONEnabled=True, задайте RCONPort и ServerAdminPassword в GameUserSettings.ini и перезапустите сервер",
+		Timestamp: `^\d{4}\.\d{2}\.\d{2}_(?<time>\d{2}\.\d{2}\.\d{2}):\s*`,
 		Rules: []Rule{
 			{Kind: KindJoin, Pattern: `(?<player>[^:]+) joined this ARK!`},
 			{Kind: KindLeave, Pattern: `(?<player>[^:]+) left this ARK!`},
@@ -43,12 +43,21 @@ func init() {
 			{Kind: KindError, Pattern: `(?i)\b(error|fatal|assertion failed)\b`},
 			{Kind: KindWarn, Pattern: `(?i)\bwarning\b`},
 		},
+		Commands: []Command{
+			{ID: "players", Label: "Кто на сервере", Template: "ListPlayers"},
+			{ID: "broadcast", Label: "Сообщение всем", Template: "Broadcast {text}",
+				Args: []Arg{{Name: "text", Label: "Текст", Kind: "text"}}},
+			{ID: "save", Label: "Сохранить мир", Template: "SaveWorld"},
+			{ID: "wild_dinos", Label: "Обновить диких динозавров", Template: "DestroyWildDinos",
+				Hint: "Дикие динозавры исчезнут и появятся заново"},
+			{ID: "exit", Label: "Остановить сервер", Template: "DoExit", Danger: true},
+		},
 	})
 
 	register(Profile{
 		Key:       "valheim",
 		Title:     "Valheim",
-		Timestamp: `^(?<time>\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}):\s*`,
+		Timestamp: `^\d{2}/\d{2}/\d{4} (?<time>\d{2}:\d{2}:\d{2}):\s*`,
 		Note:      "Valheim не принимает команды через консоль — используйте внутриигровую консоль администратора",
 		Rules: []Rule{
 			{Kind: KindJoin, Pattern: `Got character ZDOID from (?<player>.+?) : `},
@@ -62,7 +71,8 @@ func init() {
 	register(Profile{
 		Key:       "7d2d",
 		Title:     "7 Days to Die",
-		Timestamp: `^(?<time>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\s+[\d.]+\s*`,
+		Note:      "Команды идут через Telnet: задайте TelnetPassword в serverconfig.xml и перезапустите сервер",
+		Timestamp: `^\d{4}-\d{2}-\d{2}T(?<time>\d{2}:\d{2}:\d{2})\s+[\d.]+\s*`,
 		Rules: []Rule{
 			{Kind: KindChat, Pattern: `Chat \(from [^)]*\): '(?<player>[^']+)': (?<text>.*)$`},
 			{Kind: KindJoin, Pattern: `GMSG: Player '(?<player>[^']+)' joined the game`},
@@ -108,7 +118,7 @@ func init() {
 	register(Profile{
 		Key:       "factorio",
 		Title:     "Factorio",
-		Timestamp: `^(?<time>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\s*`,
+		Timestamp: `^\d{4}-\d{2}-\d{2} (?<time>\d{2}:\d{2}:\d{2})\s*`,
 		Rules: []Rule{
 			{Kind: KindChat, Pattern: `\[CHAT\] (?<player>[^:]+): (?<text>.*)$`},
 			{Kind: KindJoin, Pattern: `\[JOIN\] (?<player>.+?) joined the game`},
@@ -130,11 +140,25 @@ func init() {
 	register(Profile{
 		Key:   "palworld",
 		Title: "Palworld",
-		Note:  "Palworld не принимает команды через консоль — включите RCON в настройках сервера",
+		Note:  "Команды идут через RCON: включите RCONEnabled=True и задайте AdminPassword в PalWorldSettings.ini, затем перезапустите сервер",
 		Rules: []Rule{
 			{Kind: KindReady, Pattern: `Running Palworld dedicated server|Setting breakpad minidump`},
 			{Kind: KindError, Pattern: `(?i)\b(error|fatal|assertion failed)\b`},
 			{Kind: KindWarn, Pattern: `(?i)\bwarning\b`},
+		},
+		Commands: []Command{
+			{ID: "info", Label: "О сервере", Template: "Info"},
+			{ID: "players", Label: "Кто на сервере", Template: "ShowPlayers"},
+			{ID: "broadcast", Label: "Сообщение всем", Template: "Broadcast {text}",
+				Args: []Arg{{Name: "text", Label: "Текст", Kind: "text"}},
+				Hint: "Старые версии Palworld обрезают сообщение на первом пробеле, тогда пишите через _"},
+			{ID: "save", Label: "Сохранить мир", Template: "Save"},
+			{ID: "shutdown", Label: "Выключить с отсчётом", Template: "Shutdown {seconds} {text}", Danger: true,
+				Args: []Arg{
+					{Name: "seconds", Label: "Через сколько секунд", Placeholder: "60", Kind: "text"},
+					{Name: "text", Label: "Сообщение", Kind: "text", Optional: true},
+				}},
+			{ID: "exit", Label: "Остановить сразу", Template: "DoExit", Danger: true},
 		},
 	})
 }

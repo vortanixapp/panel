@@ -114,7 +114,7 @@ func buildRunArgs(serverID, gameID string, limits map[string]any, image string, 
 	cname := ContainerName(serverID)
 	mem := memoryLimit(limits)
 	args := []string{
-		"run", "-d", "--name", cname,
+		"run", "-d", "-i", "--name", cname,
 		"--label", "vortanix.server_id=" + serverID,
 		"--label", "vortanix.managed=true",
 		"-m", mem,

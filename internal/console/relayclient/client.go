@@ -23,19 +23,38 @@ func New(baseURL, secret string) *Client {
 	}
 }
 
+type ConsoleSessionRequest struct {
+	SessionID string `json:"session_id"`
+	ServerID  string `json:"server_id"`
+	NodeID    string `json:"node_id"`
+}
+
 type ConsoleInputRequest struct {
 	SessionID string `json:"session_id"`
 	ServerID  string `json:"server_id"`
 	NodeID    string `json:"node_id"`
+	GameID    string `json:"game_id"`
 	Data      string `json:"data"`
 }
 
+func (c *Client) StartConsole(ctx context.Context, req ConsoleSessionRequest) error {
+	return c.post(ctx, "/internal/v1/console/start", req)
+}
+
+func (c *Client) StopConsole(ctx context.Context, req ConsoleSessionRequest) error {
+	return c.post(ctx, "/internal/v1/console/stop", req)
+}
+
 func (c *Client) ConsoleInput(ctx context.Context, req ConsoleInputRequest) error {
-	body, err := json.Marshal(req)
+	return c.post(ctx, "/internal/v1/console/input", req)
+}
+
+func (c *Client) post(ctx context.Context, path string, payload any) error {
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/internal/v1/console/input", bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}

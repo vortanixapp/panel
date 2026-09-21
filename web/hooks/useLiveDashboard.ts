@@ -13,12 +13,12 @@ export type TenantEvent = {
   message?: string;
 };
 
-export function useLiveDashboard(onEvent: (ev: TenantEvent) => void) {
+export function useLiveDashboard(onEvent: (ev: TenantEvent) => void, enabled: boolean) {
   const cb = useRef(onEvent);
   cb.current = onEvent;
 
   useEffect(() => {
-    if (!hasSession()) return;
+    if (!enabled || !hasSession()) return;
 
     const ws = new WebSocket(`${CONSOLE_URL}/v1/dashboard/stream`);
 
@@ -28,6 +28,13 @@ export function useLiveDashboard(onEvent: (ev: TenantEvent) => void) {
       } catch {}
     };
 
-    return () => ws.close();
-  }, []);
+    return () => {
+      ws.onmessage = null;
+      if (ws.readyState === WebSocket.CONNECTING) {
+        ws.onopen = () => ws.close();
+        return;
+      }
+      ws.close();
+    };
+  }, [enabled]);
 }

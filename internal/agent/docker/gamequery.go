@@ -2,7 +2,6 @@ package docker
 
 import (
 	"context"
-	"fmt"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -200,23 +199,12 @@ func readCurrentMap(ctx context.Context, serverID, gameID string) string {
 }
 
 func ExecConsoleCommand(ctx context.Context, serverID, gameID, command string) (string, error) {
-	cname := ContainerName(serverID)
-	game := normalizeGame(gameID)
-	command = formatKickBanCommand(game, command)
-
-	switch {
-	case isMcJavaGame(game):
-		return execMcRcon(ctx, cname, command)
-	case isSourceGame(game):
-		if out, err := execSourceRcon(ctx, cname, game, command); err == nil {
-			return out, nil
-		}
-		fallthrough
-	default:
-		out, err := exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c",
-			"echo "+shellQuote(command)+" >> /data/console_commands.log && echo ok").CombinedOutput()
-		return strings.TrimSpace(string(out)), err
+	command = formatKickBanCommand(normalizeGame(gameID), command)
+	reply, err := SendConsoleCommand(ctx, serverID, gameID, command)
+	if err != nil {
+		return "", err
 	}
+	return reply.Output, nil
 }
 
 func formatKickBanCommand(game, command string) string {
@@ -266,83 +254,6 @@ func shellQuoteInner(s string) string {
 		return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
 	}
 	return s
-}
-
-func execMcRcon(ctx context.Context, cname, command string) (string, error) {
-	cmdQ := shellQuote(command)
-	script := "if command -v rcon-cli >/dev/null 2>&1; then rcon-cli " + cmdQ + "; " +
-		"elif command -v mcrcon >/dev/null 2>&1; then mcrcon " + cmdQ + "; else echo ok; fi"
-	out, err := exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c", script).CombinedOutput()
-	return strings.TrimSpace(string(out)), err
-}
-
-func execSourceRcon(ctx context.Context, cname, game, command string) (string, error) {
-	pass := readRconPassword(ctx, cname, game)
-	if pass == "" {
-		return "", fmt.Errorf("rcon password not found")
-	}
-	port := readRconPort(ctx, cname, game)
-	cmdQ := shellQuote(command)
-	passQ := shellQuote(pass)
-	script := fmt.Sprintf(
-		`if command -v mcrcon >/dev/null 2>&1; then mcrcon -H 127.0.0.1 -P %d -p %s %s; `+
-			`elif command -v rcon-cli >/dev/null 2>&1; then rcon-cli --host 127.0.0.1 --port %d --password %s %s; `+
-			`else echo ok; fi`,
-		port, passQ, cmdQ, port, passQ, cmdQ)
-	out, err := exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c", script).CombinedOutput()
-	return strings.TrimSpace(string(out)), err
-}
-
-func readRconPassword(ctx context.Context, cname, game string) string {
-	paths := rconConfigPaths(game)
-	for _, p := range paths {
-		out, err := exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c",
-			"grep -E '^\\s*rcon_password\\s+' "+shellQuote(p)+" 2>/dev/null | tail -1").Output()
-		if err != nil || len(out) == 0 {
-			continue
-		}
-		parts := strings.Fields(strings.TrimSpace(string(out)))
-		if len(parts) >= 2 {
-			return strings.Trim(parts[1], `"`)
-		}
-	}
-	out, err := exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c",
-		"grep -E '^rcon\\.password=' /data/server.properties 2>/dev/null | tail -1").Output()
-	if err == nil && len(out) > 0 {
-		if idx := strings.Index(string(out), "="); idx >= 0 {
-			return strings.TrimSpace(string(out)[idx+1:])
-		}
-	}
-	return ""
-}
-
-func readRconPort(ctx context.Context, cname, game string) int {
-	if isMcJavaGame(game) {
-		out, _ := exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c",
-			"grep -E '^rcon\\.port=' /data/server.properties 2>/dev/null | tail -1").Output()
-		if len(out) > 0 {
-			if idx := strings.Index(string(out), "="); idx >= 0 {
-				if n, err := strconv.Atoi(strings.TrimSpace(string(out)[idx+1:])); err == nil && n > 0 {
-					return n
-				}
-			}
-		}
-		return 25575
-	}
-	return 27015
-}
-
-func rconConfigPaths(game string) []string {
-	switch normalizeGame(game) {
-	case "cs16", "cstrike":
-		return []string{"/data/server.cfg", "/data/cstrike/server.cfg"}
-	case "css":
-		return []string{"/data/cstrike/cfg/server.cfg"}
-	case "cs2":
-		return []string{"/data/game/csgo/cfg/server.cfg"}
-	default:
-		return []string{"/data/server.cfg"}
-	}
 }
 
 var ansiEscape = regexp.MustCompile(`\x1B\[[0-?]*[ -/]*[@-~]`)

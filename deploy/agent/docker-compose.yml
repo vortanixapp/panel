@@ -8,6 +8,7 @@ services:
       args:
         COMPONENT: vortanix-agent
     restart: unless-stopped
+    network_mode: bridge
     user: "0:0"
     cap_add:
       - SYS_ADMIN

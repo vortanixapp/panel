@@ -10,8 +10,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
-	"github.com/vortanixapp/panel/internal/api/relay"
-	"github.com/vortanixapp/panel/pkg/protocol"
 )
 
 func (h *Handler) consoleCommandAllowed(ctx context.Context, claims *paneljwt.Claims, serverID string) bool {
@@ -43,39 +41,30 @@ func (h *Handler) CreateConsoleTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	canCommand := h.consoleCommandAllowed(ctx, claims, serverID)
 
-	var nodeID, status string
+	var nodeID, gameID string
 	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT node_id::text, status FROM core.servers WHERE id = $1
-	`, serverID).Scan(&nodeID, &status)
+		SELECT COALESCE(node_id::text, ''), COALESCE(game_id, '') FROM core.servers WHERE id = $1
+	`, serverID).Scan(&nodeID, &gameID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "server not found")
+		return
+	}
+	if nodeID == "" {
+		writeError(w, http.StatusConflict, "сервер ещё не размещён на узле")
 		return
 	}
 
 	ticket := uuid.NewString()
 	sessionID := uuid.NewString()
-	ticketData := protocol.ConsoleTicket{
-		ServerID: serverID,
-		NodeID:   nodeID,
-		UserID:   claims.UserID,
-	}
-	_ = h.cache.SetConsoleTicket(ctx, ticket, map[string]any{
+	if err := h.cache.SetConsoleTicket(ctx, ticket, map[string]any{
 		"server_id":   serverID,
 		"node_id":     nodeID,
+		"game_id":     gameID,
 		"user_id":     claims.UserID,
 		"session_id":  sessionID,
 		"can_command": canCommand,
-	}, 30*time.Second)
-
-	_ = h.cache.SetJSON(ctx, "console:session:"+sessionID, ticketData, 2*time.Hour)
-
-	err = h.relay.StartConsole(ctx, relay.ConsoleStartRequest{
-		SessionID: sessionID,
-		ServerID:  serverID,
-		NodeID:    nodeID,
-	})
-	if err != nil {
-		writeError(w, http.StatusBadGateway, "failed to start console: "+err.Error())
+	}, 30*time.Second); err != nil {
+		writeError(w, http.StatusServiceUnavailable, "console unavailable")
 		return
 	}
 

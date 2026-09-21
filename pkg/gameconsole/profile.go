@@ -148,16 +148,21 @@ func Generic() *Profile {
 			Key:       "generic",
 			Title:     "Общий разбор",
 			Timestamp: genericTimestamp,
+			Trim:      []string{genericTrim},
 			Rules:     rules,
 		}
 	})
 	return genericBase
 }
 
-const genericTimestamp = `^\[?(?<time>\d{1,2}:\d{2}:\d{2}(?:[.,]\d+)?|\d{4}[-./]\d{2}[-./]\d{2}[ T_]\d{2}[:.]\d{2}[:.]\d{2}(?:[.,]\d+)?)\]?\s*`
+const genericTimestamp = `^\[?(?:\d{4}[-./]\d{2}[-./]\d{2}[ T_])?(?<time>\d{1,2}:\d{2}:\d{2})(?:[.,:]\d+)?(?:\s+(?:INFO|WARN|WARNING|ERROR|SEVERE|FATAL|DEBUG|TRACE|NOTICE)\b)?\]?:?\s*`
+
+const genericTrim = `^\[(?:[^\]]*/)?(?:INFO|WARN|WARNING|ERROR|SEVERE|FATAL|DEBUG|TRACE|NOTICE|CRITICAL)\]:?\s*`
 
 func genericRules() []Rule {
 	return []Rule{
+		{Kind: KindError, Pattern: `\[(?:[^\]]*/)?(?:ERROR|SEVERE|FATAL)\]`},
+		{Kind: KindWarn, Pattern: `\[(?:[^\]]*/)?WARN(?:ING)?\]`},
 		{Kind: KindError, Pattern: `(?i)\b(error|fatal|severe|exception|traceback|segmentation fault|failed to)\b`},
 		{Kind: KindWarn, Pattern: `(?i)\b(warn(?:ing)?|deprecated|can't keep up|cannot keep up)\b`},
 	}

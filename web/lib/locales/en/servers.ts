@@ -769,5 +769,13 @@ export const servers = {
   "servers.console.error": "Error: {message}",
   "servers.console.connected": "Console connected",
   "servers.console.reconnecting": "Connection lost, reconnecting…",
+  "servers.console.notice_waiting_start": "The server is stopped. New lines will appear here as soon as it starts",
+  "servers.console.notice_node_offline": "The server's node is not responding, reconnecting…",
+  "servers.console.notice_no_permission": "You are not allowed to send commands to this server",
+  "servers.console.notice_stream_unavailable": "The console is temporarily unavailable, reconnecting…",
+  "servers.console.notice_input_stopped": "Command not sent: the server is not running",
+  "servers.console.notice_input_no_stdin":
+    "Command not sent: the server was started before the panel update. Restart it and the console will accept commands",
+  "servers.console.notice_input_failed": "Command not sent: {detail}",
   "servers.metrics.chart_empty": "Metrics appear once the server is running",
 };

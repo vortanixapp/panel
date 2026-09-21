@@ -10,6 +10,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { LegalAcceptanceGate } from "@/components/legal/legal-acceptance-gate";
 import { useLiveSync } from "@/hooks/use-live-sync";
+import { isStaffRole } from "@/lib/rbac";
 import type { PanelVariant } from "@/lib/panel-paths";
 import { VxPageLoader } from "@/components/vx/loader";
 import { useT } from "@/hooks/use-translations";
@@ -31,7 +32,7 @@ export function DashboardLayout({
   const { data: me, isError, isLoading, error } = useMe();
   const adminMenu = useAdminSiteMenu(variant);
 
-  useLiveSync();
+  useLiveSync(isStaffRole(me?.role));
 
   useEffect(() => {
     if (!hasStoredSession()) {

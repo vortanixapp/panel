@@ -1,18 +1,15 @@
 package docker
 
 import (
-	"bufio"
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/fs"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -24,57 +21,6 @@ type Stats struct {
 	DiskTotalMB int
 	StartedAt   string
 	Uptime      string
-}
-
-var consoleSessions sync.Map
-
-func StartConsoleStream(ctx context.Context, serverID, sessionID string, onLine func(string)) error {
-	if _, loaded := consoleSessions.Load(sessionID); loaded {
-		return nil
-	}
-	cctx, cancel := context.WithCancel(ctx)
-	consoleSessions.Store(sessionID, cancel)
-
-	go func() {
-		defer func() {
-			cancel()
-			consoleSessions.Delete(sessionID)
-		}()
-		cname := ContainerName(serverID)
-		cmd := exec.CommandContext(cctx, "docker", "logs", "-f", "--tail", "100", cname)
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			onLine("[console] failed to attach logs: " + err.Error() + "\r\n")
-			return
-		}
-		stderr, _ := cmd.StderrPipe()
-		_ = cmd.Start()
-		read := func(r io.Reader) {
-			sc := bufio.NewScanner(r)
-			for sc.Scan() {
-				onLine(sc.Text() + "\r\n")
-			}
-		}
-		go read(stdout)
-		go read(stderr)
-		_ = cmd.Wait()
-	}()
-	return nil
-}
-
-func StopConsoleStream(sessionID string) {
-	if v, ok := consoleSessions.LoadAndDelete(sessionID); ok {
-		if cancel, ok := v.(context.CancelFunc); ok {
-			cancel()
-		}
-	}
-}
-
-func ConsoleInput(ctx context.Context, serverID, data string) error {
-	cname := ContainerName(serverID)
-	cmd := exec.CommandContext(ctx, "docker", "exec", "-i", cname, "sh", "-c", "cat")
-	cmd.Stdin = strings.NewReader(data)
-	return cmd.Run()
 }
 
 func CollectStats(ctx context.Context, serverID string) (Stats, error) {

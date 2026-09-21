@@ -1,5 +1,7 @@
 package protocol
 
+import "encoding/json"
+
 const (
 	MsgHello           = "hello"
 	MsgHeartbeat       = "heartbeat"
@@ -69,6 +71,30 @@ type ConsoleOutputMessage struct {
 	SessionID string `json:"session_id"`
 	ServerID  string `json:"server_id"`
 	Data      string `json:"data"`
+	Kind      string `json:"kind,omitempty"`
+	Code      string `json:"code,omitempty"`
+}
+
+const (
+	ConsoleFrameOutput = "output"
+	ConsoleFrameNotice = "notice"
+	ConsoleFrameReply  = "reply"
+)
+
+type ConsoleFrame struct {
+	Type string `json:"type"`
+	Code string `json:"code,omitempty"`
+	Data string `json:"data,omitempty"`
+}
+
+func EncodeConsoleFrame(kind, code, data string) []byte {
+	switch kind {
+	case ConsoleFrameNotice, ConsoleFrameReply:
+	default:
+		kind = ConsoleFrameOutput
+	}
+	b, _ := json.Marshal(ConsoleFrame{Type: kind, Code: code, Data: data})
+	return b
 }
 
 type AckMessage struct {
@@ -103,12 +129,6 @@ type TenantEvent struct {
 
 	Percent *int   `json:"percent,omitempty"`
 	Message string `json:"message,omitempty"`
-}
-
-type ConsoleTicket struct {
-	ServerID string `json:"server_id"`
-	NodeID   string `json:"node_id"`
-	UserID   string `json:"user_id"`
 }
 
 func TenantEventsChannel() string {

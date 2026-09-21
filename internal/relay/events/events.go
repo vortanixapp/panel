@@ -23,8 +23,8 @@ func PublishTenantEvent(ctx context.Context, rdb *redis.Client, ev protocol.Tena
 	_ = rdb.Publish(ctx, TenantChannel(), b).Err()
 }
 
-func PublishConsoleOutput(ctx context.Context, rdb *redis.Client, sessionID, data string) {
-	_ = rdb.Publish(ctx, ConsoleChannel(sessionID), data).Err()
+func PublishConsoleOutput(ctx context.Context, rdb *redis.Client, sessionID, kind, code, data string) {
+	_ = rdb.Publish(ctx, ConsoleChannel(sessionID), protocol.EncodeConsoleFrame(kind, code, data)).Err()
 }
 
 func StoreMetricPoint(ctx context.Context, rdb *redis.Client, serverID string, cpu float64, memUsed, memLimit int) error {

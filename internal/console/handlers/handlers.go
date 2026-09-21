@@ -22,6 +22,9 @@ const (
 	consolePingPeriod = 25 * time.Second
 	consoleWriteWait  = 10 * time.Second
 	consoleReadLimit  = 64 << 10
+
+	consoleLeasePeriod = 60 * time.Second
+	consoleRelayWait   = 10 * time.Second
 )
 
 type Handler struct {
@@ -63,9 +66,11 @@ func (h *Handler) ConsoleWS(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid or expired ticket")
 		return
 	}
-	sessionID, _ := data["session_id"].(string)
-	serverID, _ := data["server_id"].(string)
-	nodeID, _ := data["node_id"].(string)
+	session := relayclient.ConsoleSessionRequest{}
+	session.SessionID, _ = data["session_id"].(string)
+	session.ServerID, _ = data["server_id"].(string)
+	session.NodeID, _ = data["node_id"].(string)
+	gameID, _ := data["game_id"].(string)
 	canCommand, _ := data["can_command"].(bool)
 	_ = h.redis.Del(ctx, "console:ticket:"+ticket)
 
@@ -74,9 +79,6 @@ func (h *Handler) ConsoleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
-
-	pubsub := h.redis.Subscribe(ctx, protocol.ConsoleChannel(sessionID))
-	defer pubsub.Close()
 
 	conn.SetReadLimit(consoleReadLimit)
 	_ = conn.SetReadDeadline(time.Now().Add(consolePongWait))
@@ -91,13 +93,33 @@ func (h *Handler) ConsoleWS(w http.ResponseWriter, r *http.Request) {
 		_ = conn.SetWriteDeadline(time.Now().Add(consoleWriteWait))
 		return conn.WriteMessage(kind, payload)
 	}
+	notice := func(code string) {
+		_ = write(websocket.TextMessage, protocol.EncodeConsoleFrame(protocol.ConsoleFrameNotice, code, ""))
+	}
 
+	pubsub := h.redis.Subscribe(ctx, protocol.ConsoleChannel(session.SessionID))
+	defer pubsub.Close()
+	if _, err := pubsub.Receive(ctx); err != nil {
+		notice("stream_unavailable")
+		return
+	}
+
+	defer h.stopConsole(ctx, session)
+	if err := h.startConsole(ctx, session); err != nil {
+		notice("node_offline")
+		return
+	}
+
+	streamCtx, stopStream := context.WithCancel(ctx)
+	defer stopStream()
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		defer conn.Close()
-		ticker := time.NewTicker(consolePingPeriod)
-		defer ticker.Stop()
+		ping := time.NewTicker(consolePingPeriod)
+		defer ping.Stop()
+		lease := time.NewTicker(consoleLeasePeriod)
+		defer lease.Stop()
 		messages := pubsub.Channel()
 		for {
 			select {
@@ -108,11 +130,13 @@ func (h *Handler) ConsoleWS(w http.ResponseWriter, r *http.Request) {
 				if write(websocket.TextMessage, []byte(msg.Payload)) != nil {
 					return
 				}
-			case <-ticker.C:
+			case <-ping.C:
 				if write(websocket.PingMessage, nil) != nil {
 					return
 				}
-			case <-ctx.Done():
+			case <-lease.C:
+				_ = h.startConsole(streamCtx, session)
+			case <-streamCtx.Done():
 				return
 			}
 		}
@@ -131,15 +155,36 @@ func (h *Handler) ConsoleWS(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		if !canCommand {
-			_ = write(websocket.TextMessage,
-				[]byte(`{"type":"error","data":"нет права вводить команды на этом сервере"}`))
+			notice("no_permission")
 			continue
 		}
-		_ = h.relay.ConsoleInput(ctx, relayclient.ConsoleInputRequest{
-			SessionID: sessionID, ServerID: serverID, NodeID: nodeID, Data: input.Data,
+		if strings.TrimSpace(input.Data) == "" {
+			continue
+		}
+		sendCtx, cancel := context.WithTimeout(ctx, consoleRelayWait)
+		err = h.relay.ConsoleInput(sendCtx, relayclient.ConsoleInputRequest{
+			SessionID: session.SessionID, ServerID: session.ServerID, NodeID: session.NodeID,
+			GameID: gameID, Data: input.Data,
 		})
+		cancel()
+		if err != nil {
+			notice("node_offline")
+		}
 	}
+	stopStream()
 	<-done
+}
+
+func (h *Handler) startConsole(ctx context.Context, session relayclient.ConsoleSessionRequest) error {
+	ctx, cancel := context.WithTimeout(ctx, consoleRelayWait)
+	defer cancel()
+	return h.relay.StartConsole(ctx, session)
+}
+
+func (h *Handler) stopConsole(ctx context.Context, session relayclient.ConsoleSessionRequest) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), consoleRelayWait)
+	defer cancel()
+	_ = h.relay.StopConsole(ctx, session)
 }
 
 func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {

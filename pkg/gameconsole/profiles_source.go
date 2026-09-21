@@ -5,7 +5,7 @@ func init() {
 		Key:       "cs2",
 		SharedBy:  []string{"cs16", "css", "tf2", "gmod"},
 		Title:     "Source",
-		Timestamp: `^L (?<time>\d{2}/\d{2}/\d{4} - \d{2}:\d{2}:\d{2}):\s*`,
+		Timestamp: `^L \d{2}/\d{2}/\d{4} - (?<time>\d{2}:\d{2}:\d{2}):\s*`,
 		Rules: []Rule{
 			{Kind: KindChat, Pattern: `"(?<player>[^"<]+)<\d+><[^>]*><[^>]*>" say(?:_team)? "(?<text>[^"]*)"`},
 			{Kind: KindJoin, Pattern: `"(?<player>[^"<]+)<\d+><[^>]*><[^>]*>" connected`},
