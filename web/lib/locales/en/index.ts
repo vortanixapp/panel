@@ -1,3 +1,4 @@
+import { adminAgents } from "./admin-agents";
 import { adminContent } from "./admin-content";
 import { adminInfra } from "./admin-infra";
 import { auth } from "./auth";
@@ -30,6 +31,7 @@ export const EN = {
   ...settings,
   ...dashboard,
   ...adminInfra,
+  ...adminAgents,
   ...adminContent,
   ...template,
 };

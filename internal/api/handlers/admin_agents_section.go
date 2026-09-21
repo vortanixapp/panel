@@ -370,7 +370,7 @@ func (h *Handler) GetAdminAgentEvents(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN core.users u ON u.id = e.actor_id
 		WHERE e.node_id::text = $1
 		  AND ($2::bigint = 0 OR e.id < $2)
-		  AND (cardinality($3::text[]) = 0 OR e.kind = ANY($3::text[]))
+		  AND (COALESCE(cardinality($3::text[]), 0) = 0 OR e.kind = ANY($3::text[]))
 		ORDER BY e.id DESC
 		LIMIT $4
 	`, id, before, kinds, limit+1)

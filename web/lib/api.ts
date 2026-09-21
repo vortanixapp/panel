@@ -3604,6 +3604,406 @@ export async function installAdminAgent(id: string) {
   });
 }
 
+export type AgentState = "online" | "offline" | "never_connected";
+
+export type AgentLabel =
+  | "updating"
+  | "update_failed"
+  | "restarting"
+  | "outdated"
+  | "legacy"
+  | "disk_low";
+
+export type AgentUpdateInfo = {
+  status?: string;
+  target?: string;
+  from?: string;
+  method?: string;
+  source?: string;
+  error?: string;
+  started_at?: string;
+  updated_at?: string;
+  finished_at?: string;
+};
+
+export type AgentResources = {
+  source?: string;
+  measured_at?: string;
+  cpu_percent?: number | null;
+  ram_percent?: number | null;
+  disk_percent?: number | null;
+  ram_total_mb?: number;
+  ram_used_mb?: number;
+  disk_total_mb?: number;
+  disk_free_mb?: number;
+};
+
+export type AgentRow = {
+  id: string;
+  name: string;
+  code: string;
+  country: string;
+  region: string;
+  host: string;
+  state: AgentState;
+  is_online: boolean;
+  labels: AgentLabel[];
+  version: string;
+  outdated: boolean;
+  proto: number;
+  platform: string;
+  auto_update: boolean;
+  ssh: boolean;
+  maintenance: boolean;
+  resources: AgentResources;
+  servers: { total: number; running: number };
+  update?: AgentUpdateInfo;
+  uptime_sec?: number;
+  host_uptime_sec?: number;
+  last_seen?: string;
+  connected_at?: string;
+  remote_addr?: string;
+  rtt_ms?: number;
+};
+
+export type AgentsSummary = Record<
+  | "total"
+  | "online"
+  | "offline"
+  | "never_connected"
+  | "outdated"
+  | "updating"
+  | "update_failed"
+  | "disk_low"
+  | "legacy"
+  | "restarting",
+  number
+>;
+
+export type AgentsList = {
+  summary: AgentsSummary;
+  target_version: string;
+  auto_enabled: boolean;
+  agents: AgentRow[];
+};
+
+export type AgentFacts = {
+  hostname?: string;
+  os?: string;
+  kernel?: string;
+  arch?: string;
+  cpus?: number;
+  cpu_model?: string;
+  mem_total_mb?: number;
+  uptime_sec?: number;
+  data_dir?: string;
+  quota?: boolean;
+  docker?: {
+    version?: string;
+    api?: string;
+    cgroup?: string;
+    cgroup_driver?: string;
+    storage_driver?: string;
+    root_dir?: string;
+    memory_limit?: boolean;
+  };
+  docker_error?: string;
+  agent?: {
+    version?: string;
+    proto?: number;
+    image?: string;
+    container_name?: string;
+    restart_policy?: string;
+    network_mode?: string;
+    started_at?: string;
+  };
+};
+
+export type AgentView = AgentRow & {
+  target_version: string;
+  caps: string[];
+  boot_id: string;
+  facts?: AgentFacts;
+  connection: {
+    rtt_ms?: number | null;
+    remote_addr?: string;
+    connected_at?: string;
+    disconnected_at?: string;
+    disconnect_reason?: string;
+  };
+};
+
+export type AgentViewer = {
+  can_write: boolean;
+  can_power: boolean;
+  can_ssh_exec: boolean;
+};
+
+export async function fetchAgents() {
+  return apiFetch<AgentsList>("/v1/admin/daemons");
+}
+
+export async function fetchAgentView(id: string) {
+  return apiFetch<{ agent_view: AgentView; viewer: AgentViewer }>(`/v1/admin/daemons/${id}`);
+}
+
+export type AgentMetricRange = "1h" | "24h" | "7d";
+export type AgentMetricPoint = { t: string; v: number | null; max: number | null };
+
+export async function fetchAgentMetrics(id: string, range: AgentMetricRange) {
+  return apiFetch<{ range: AgentMetricRange; bucket_sec: number; series: Record<string, AgentMetricPoint[]> }>(
+    `/v1/admin/daemons/${id}/metrics?range=${range}`
+  );
+}
+
+export type AgentEvent = {
+  id: number;
+  kind: string;
+  level: "info" | "success" | "warn" | "error";
+  data: Record<string, unknown>;
+  created_at: string;
+  actor?: string;
+};
+
+export async function fetchAgentEvents(id: string, group: string, before?: number) {
+  const q = new URLSearchParams({ limit: "40" });
+  if (group) q.set("group", group);
+  if (before) q.set("before", String(before));
+  return apiFetch<{ events: AgentEvent[]; has_more: boolean; next_before?: number }>(
+    `/v1/admin/daemons/${id}/events?${q}`
+  );
+}
+
+export type AgentLogLine = { ts?: string; text: string };
+
+export async function fetchAgentLogs(id: string, opts: { cursor?: string; before?: string; tail?: number }) {
+  const q = new URLSearchParams();
+  if (opts.cursor) q.set("cursor", opts.cursor);
+  if (opts.before) q.set("before", opts.before);
+  q.set("tail", String(opts.tail ?? 300));
+  return apiFetch<{
+    source: "relay" | "ssh";
+    lines?: AgentLogLine[];
+    logs?: string[];
+    cursor?: string;
+    first?: string;
+    truncated?: boolean;
+    error?: string;
+  }>(`/v1/admin/daemons/${id}/logs?${q}`);
+}
+
+export type AgentContainer = {
+  id: string;
+  name: string;
+  server_id?: string;
+  kind: "server" | "agent" | "agent_previous" | "helper" | "mysql" | "other";
+  image: string;
+  state: string;
+  status: string;
+  exit_code: number;
+  created_at: string;
+  started_at?: string;
+  restarts: number;
+  health?: string;
+  cpu_pct: number;
+  mem_used_mb: number;
+  mem_limit_mb: number;
+  ports: string[];
+  server?: { id: string; name: string; status: string; owner: string };
+  status_mismatch?: boolean;
+  abandoned?: boolean;
+};
+
+export type PanelServerRef = { id: string; name: string; status: string; owner: string };
+
+export async function fetchAgentContainers(id: string) {
+  return apiFetch<{
+    limited: boolean;
+    reason?: string;
+    error?: string;
+    containers: AgentContainer[];
+    missing: PanelServerRef[];
+    servers?: PanelServerRef[];
+  }>(`/v1/admin/daemons/${id}/containers`);
+}
+
+export type NodeTaskStatus = "queued" | "sent" | "running" | "done" | "failed" | "expired";
+
+export type NodeTask<R = Record<string, unknown>> = {
+  id: string;
+  action: string;
+  method: "relay" | "ssh";
+  status: NodeTaskStatus;
+  progress?: { stage?: string; done?: number; total?: number };
+  result?: R;
+  error?: string;
+  error_code?: string;
+  created_at: string;
+  finished_at?: string;
+};
+
+export type NodeTaskPair<R> = { running: NodeTask<R> | null; last: NodeTask<R> | null };
+
+export async function fetchAgentTask<R = Record<string, unknown>>(id: string, taskId: string) {
+  return apiFetch<{ task: NodeTask<R> }>(`/v1/admin/daemons/${id}/tasks/${taskId}`);
+}
+
+export type StartedTask = { task_id: string; method?: "relay" | "ssh"; already_running?: boolean };
+
+export type AgentDiskReport = {
+  data_dir: string;
+  total_mb: number;
+  used_mb: number;
+  free_mb: number;
+  used_percent: number;
+  inodes_percent: number;
+  quota: boolean;
+  servers: { server_id: string; used_mb: number; source: string; known: boolean }[];
+  docker?: {
+    images_bytes: number;
+    images_reclaimable_bytes: number;
+    images_count: number;
+    containers_bytes: number;
+    containers_reclaimable_bytes: number;
+    volumes_bytes: number;
+    volumes_reclaimable_bytes: number;
+    build_cache_bytes: number;
+    build_cache_reclaimable_bytes: number;
+  };
+  docker_error?: string;
+  plugin_cache_bytes: number;
+  duration_ms: number;
+};
+
+export async function fetchAgentDisk(id: string) {
+  return apiFetch<NodeTaskPair<{ report: AgentDiskReport }>>(`/v1/admin/daemons/${id}/disk`);
+}
+
+export async function startAgentDisk(id: string) {
+  return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/disk`, { method: "POST", body: "{}" });
+}
+
+export type CleanupItem = {
+  id: string;
+  category: string;
+  name: string;
+  size_bytes: number;
+  selected: boolean;
+  running?: boolean;
+  server_id?: string;
+  created_at?: string;
+};
+
+export type CleanupResult = {
+  removed: CleanupItem[];
+  skipped: { id: string; name: string; reason: string }[];
+  freed_bytes: number;
+};
+
+export async function previewAgentCleanup(id: string) {
+  return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/cleanup/preview`, { method: "POST", body: "{}" });
+}
+
+export async function applyAgentCleanup(id: string, items: string[]) {
+  return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/cleanup/apply`, {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+}
+
+export type AgentCheck = {
+  id: string;
+  status: "ok" | "warn" | "fail" | "skip";
+  data?: Record<string, unknown>;
+  error?: string;
+};
+
+export async function fetchAgentDiagnostics(id: string) {
+  return apiFetch<NodeTaskPair<{ checks: AgentCheck[] }> & { panel_checks: AgentCheck[] }>(
+    `/v1/admin/daemons/${id}/diagnostics`
+  );
+}
+
+export async function startAgentDiagnostics(id: string) {
+  return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/diagnostics`, { method: "POST", body: "{}" });
+}
+
+export async function restartAgent(id: string, force = false) {
+  return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/restart`, {
+    method: "POST",
+    body: JSON.stringify({ force }),
+  });
+}
+
+export async function updateAgent(id: string) {
+  return apiFetch<{ id: string; ok: boolean; method: string }>(`/v1/admin/daemons/${id}/update`, {
+    method: "POST",
+    body: "{}",
+  });
+}
+
+export async function updateAgents(body: { node_ids?: string[]; outdated?: boolean }) {
+  return apiFetch<{ results: { id: string; ok: boolean; error?: string }[]; started: number }>(
+    "/v1/admin/daemons/update",
+    { method: "POST", body: JSON.stringify(body) }
+  );
+}
+
+export async function setAgentAutoUpdate(id: string, autoUpdate: boolean) {
+  return apiFetch<{ ok: boolean }>(`/v1/admin/daemons/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ auto_update: autoUpdate }),
+  });
+}
+
+export async function setAgentsAutoUpdate(nodeIds: string[], autoUpdate: boolean) {
+  return apiFetch<{ ok: boolean }>("/v1/admin/daemons", {
+    method: "PATCH",
+    body: JSON.stringify({ node_ids: nodeIds, auto_update: autoUpdate }),
+  });
+}
+
+export async function setAgentsAutoEnabled(enabled: boolean) {
+  return apiFetch<{ ok: boolean }>("/v1/admin/daemons/settings", {
+    method: "PATCH",
+    body: JSON.stringify({ auto_enabled: enabled }),
+  });
+}
+
+export async function agentSSHInstall(id: string) {
+  return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/ssh-install`, { method: "POST", body: "{}" });
+}
+
+export async function agentSSHCheck(id: string) {
+  return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/ssh-check`, { method: "POST", body: "{}" });
+}
+
+export async function agentInstallScript(id: string) {
+  return apiFetch<{ agent_token?: string; relay_url?: string; env_file?: string; script?: string }>(
+    `/v1/admin/daemons/${id}/install-script`,
+    { method: "POST", body: "{}" }
+  );
+}
+
+export async function agentSSHExec(id: string, cmd: string) {
+  return apiFetch<{
+    output: string;
+    ok: boolean;
+    exit_code: number;
+    duration_ms: number;
+    truncated: boolean;
+    error?: string;
+  }>(`/v1/admin/daemons/${id}/ssh-exec`, { method: "POST", body: JSON.stringify({ cmd }) });
+}
+
+export function apiErrorCode(err: unknown): string {
+  if (err instanceof ApiError) {
+    const code = err.data?.code;
+    return typeof code === "string" ? code : "";
+  }
+  return "";
+}
+
 export async function fetchAdminGames() {
   return apiFetch<{ games: AdminGameListItem[] }>("/v1/admin/games");
 }

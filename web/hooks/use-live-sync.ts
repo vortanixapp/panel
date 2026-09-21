@@ -12,6 +12,10 @@ export function useLiveSync(enabled: boolean) {
     if (ev.type === "node.status" && ev.node_id && ev.status) {
       patchNodeStatus(qc, ev.node_id, ev.status);
     }
+    if ((ev.type === "node.status" || ev.type === "node.task" || ev.type === "node.agent") && ev.node_id) {
+      qc.invalidateQueries({ queryKey: queryKeys.agents, exact: true });
+      qc.invalidateQueries({ queryKey: queryKeys.agent(ev.node_id), exact: true });
+    }
     if (ev.type === "server.status" && ev.server_id && ev.status) {
       patchServerStatus(qc, ev.server_id, ev.status);
     }

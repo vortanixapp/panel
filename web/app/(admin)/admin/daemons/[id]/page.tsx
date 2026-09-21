@@ -1,5 +1,10 @@
-import { AgentDetailContent } from "@/components/admin/agents/agent-detail-content";
+import { Suspense } from "react";
+import { AgentShell } from "@/components/admin/agents/agent-shell";
 
 export default function AdminAgentDetailPage() {
-  return <AgentDetailContent />;
+  return (
+    <Suspense>
+      <AgentShell />
+    </Suspense>
+  );
 }

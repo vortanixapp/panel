@@ -1,5 +1,10 @@
-import { DaemonsPageContent } from "@/components/admin/agents/daemons-page-content";
+import { Suspense } from "react";
+import { AgentsPage } from "@/components/admin/agents/agents-page";
 
 export default function AdminDaemonsPage() {
-  return <DaemonsPageContent />;
+  return (
+    <Suspense>
+      <AgentsPage />
+    </Suspense>
+  );
 }
