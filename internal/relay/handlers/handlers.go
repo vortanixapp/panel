@@ -39,6 +39,7 @@ type Handler struct {
 	upgr    websocket.Upgrader
 
 	serverNodes sync.Map
+	events      eventLimiter
 
 	panelURL string
 }
@@ -270,11 +271,12 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 			log.Printf("agent hello node_id mismatch: connection=%s hello=%s", c.NodeID, helloNode)
 		}
 		version, _ := env["version"].(string)
-		var prevVersion string
+		var prevVersion, prevBoot string
 		_ = c.DB.QueryRow(ctx, `
-			SELECT COALESCE(version, '') FROM core.node_daemons WHERE node_id = $1
-		`, c.NodeID).Scan(&prevVersion)
+			SELECT COALESCE(version, ''), COALESCE(boot_id, '') FROM core.node_daemons WHERE node_id = $1
+		`, c.NodeID).Scan(&prevVersion, &prevBoot)
 		h.saveDaemonState(ctx, c, env)
+		h.storeHello(ctx, c, env, prevBoot)
 		if version != "" && prevVersion != "" && normalizeVersion(prevVersion) != normalizeVersion(version) {
 			_ = nodeevents.Record(ctx, c.DB, c.NodeID, nodeevents.VersionChanged, nodeevents.Info,
 				map[string]any{"from": normalizeVersion(prevVersion), "to": normalizeVersion(version)}, "")
@@ -337,105 +339,7 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 		if serverID == "" || status == "" || !h.nodeOwnsServer(ctx, c, serverID) {
 			return
 		}
-		var prevStatus string
-		_ = c.DB.QueryRow(ctx, `
-			SELECT COALESCE(status, '') FROM core.servers WHERE id = $1
-		`, serverID).Scan(&prevStatus)
-		runtimeStatus := status
-		provStatus := ""
-		switch status {
-		case "running":
-			runtimeStatus = "running"
-			provStatus = "ready"
-		case "error":
-			runtimeStatus = "offline"
-			provStatus = "failed"
-		case "stopped":
-			runtimeStatus = "stopped"
-		case "installing":
-			runtimeStatus = "offline"
-			provStatus = "provisioning"
-		}
-		if provStatus == "ready" {
-			var prevProv, name string
-			err := c.DB.QueryRow(ctx, `
-				WITH prev AS (
-					SELECT provisioning_status FROM core.servers
-					WHERE id = $4
-				)
-				UPDATE core.servers s
-				SET status = $1, runtime_status = $2, provisioning_status = $3, provisioning_error = NULL
-				FROM prev
-				WHERE s.id = $4
-				RETURNING prev.provisioning_status, s.name
-			`, status, runtimeStatus, provStatus, serverID).Scan(&prevProv, &name)
-			if err == nil && prevProv != "ready" {
-				h.notifyServerOwner(ctx, c.DB, serverID, notify.Event{
-					Kind:   notify.KindServerReady,
-					Title:  i18n.Key("notify.server_ready.title"),
-					Body:   i18n.Key("notify.server_ready.body", i18n.Params{"name": name}),
-					Action: h.serverAction("notify.action.open_server", serverID, ""),
-					Meta:   map[string]any{"server_id": serverID},
-				})
-			}
-		} else if provStatus == "failed" {
-			if errMsg == "" {
-				errMsg = "container failed to start"
-			}
-			var prevProv, name string
-			err := c.DB.QueryRow(ctx, `
-				WITH prev AS (
-					SELECT provisioning_status FROM core.servers
-					WHERE id = $5
-				)
-				UPDATE core.servers s
-				SET status = $1, runtime_status = $2, provisioning_status = $3, provisioning_error = $4
-				FROM prev
-				WHERE s.id = $5
-				RETURNING prev.provisioning_status, s.name
-			`, status, runtimeStatus, provStatus, errMsg, serverID).Scan(&prevProv, &name)
-			if err == nil && prevProv != "failed" {
-				params := i18n.Params{"name": name, "reason": errMsg}
-				e := notify.Event{
-					Kind:   notify.KindServerDown,
-					Title:  i18n.Key("notify.server_down.title"),
-					Body:   i18n.Key("notify.server_down.body", params),
-					Action: h.serverAction("notify.action.open_server", serverID, ""),
-					Meta:   map[string]any{"server_id": serverID, "error": errMsg},
-				}
-				if prevProv == "provisioning" || prevProv == "pending" {
-					e.Kind = notify.KindServerFailed
-					e.Title = i18n.Key("notify.server_failed.title")
-					e.Body = i18n.Key("notify.server_failed.body", params)
-				}
-				h.notifyServerOwner(ctx, c.DB, serverID, e)
-			}
-		} else if provStatus != "" {
-			execLogged(ctx, c.DB, `
-				UPDATE core.servers
-				SET status = $1, runtime_status = $2, provisioning_status = $3
-				WHERE id = $4
-			`, status, runtimeStatus, provStatus, serverID)
-		} else {
-			execLogged(ctx, c.DB, `
-				UPDATE core.servers SET status = $1, runtime_status = $2 WHERE id = $3
-			`, status, runtimeStatus, serverID)
-		}
-		_ = h.redis.Set(ctx, "srv:"+serverID+":status", status, 30*time.Second)
-		_ = h.redis.Del(ctx, "panel:servers")
-		events.PublishTenantEvent(ctx, h.redis, protocol.TenantEvent{
-			Type: "server.status", ServerID: serverID, Status: status,
-		})
-		if prevStatus != status {
-			emitWebhook(ctx, c.DB, "server.status", map[string]any{
-				"server_id":       serverID,
-				"node_id":         c.NodeID,
-				"status":          status,
-				"runtime_status":  runtimeStatus,
-				"previous_status": prevStatus,
-				"error":           errMsg,
-			})
-		}
+		h.applyServerStatus(ctx, c, serverID, status, errMsg)
 	case protocol.MsgInstallProgress:
 		serverID, _ := env["server_id"].(string)
 		if serverID == "" || !h.nodeOwnsServer(ctx, c, serverID) {
@@ -542,8 +446,16 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 	case protocol.MsgAck:
 		var ack protocol.AckMessage
 		if json.Unmarshal(data, &ack) == nil && ack.CommandID != "" {
-			h.waiter.Complete(ack)
+			if !h.waiter.Complete(ack) {
+				h.completeTask(ctx, c, ack)
+			}
 		}
+	case protocol.MsgTaskProgress:
+		h.taskProgress(ctx, c, data)
+	case protocol.MsgNodeEvent:
+		h.agentEvent(ctx, c, data)
+	case protocol.MsgStateSnapshot:
+		h.reconcileSnapshot(ctx, c, data)
 	default:
 		log.Printf("relay: неизвестный тип сообщения от узла %s: %q", c.NodeID, typ)
 	}
@@ -586,11 +498,20 @@ func (h *Handler) InternalCommand(w http.ResponseWriter, r *http.Request) {
 	if req.CommandID == "" {
 		req.CommandID = uuid.NewString()
 	}
-	if err := h.sendToNode(nodeID, req.CommandID, req.Action, req.ServerID, req.Payload); err != nil {
-		writeError(w, http.StatusBadGateway, "node offline")
+	if !h.gate(w, nodeID, req.Action) {
 		return
 	}
-	writeJSON(w, http.StatusAccepted, map[string]string{"command_id": req.CommandID, "status": "sent"})
+	if err := h.sendToNode(nodeID, req.CommandID, req.Action, req.ServerID, req.Payload); err != nil {
+		writeCoded(w, http.StatusBadGateway, "node offline", protocol.CodeNodeOffline)
+		return
+	}
+	resp := map[string]string{"command_id": req.CommandID, "status": "sent"}
+	if c := h.hub.Get(nodeID); c != nil {
+		if boot := c.BootID(); boot != "" {
+			resp["boot_id"] = boot
+		}
+	}
+	writeJSON(w, http.StatusAccepted, resp)
 }
 
 func (h *Handler) InternalCommandSync(w http.ResponseWriter, r *http.Request) {
@@ -607,15 +528,18 @@ func (h *Handler) InternalCommandSync(w http.ResponseWriter, r *http.Request) {
 	if req.CommandID == "" {
 		req.CommandID = uuid.NewString()
 	}
+	if !h.gate(w, nodeID, req.Action) {
+		return
+	}
 	waitCh := h.waiter.Register(req.CommandID)
 	defer h.waiter.Cancel(req.CommandID)
 	if err := h.sendToNode(nodeID, req.CommandID, req.Action, req.ServerID, req.Payload); err != nil {
-		writeError(w, http.StatusBadGateway, "node offline")
+		writeCoded(w, http.StatusBadGateway, "node offline", protocol.CodeNodeOffline)
 		return
 	}
 	ack, ok := h.waiter.Wait(req.CommandID, waitCh, 12*time.Second)
 	if !ok {
-		writeError(w, http.StatusGatewayTimeout, "agent command timeout")
+		writeCoded(w, http.StatusGatewayTimeout, "agent command timeout", protocol.CodeTaskTimeout)
 		return
 	}
 	if !ack.OK {
@@ -623,7 +547,7 @@ func (h *Handler) InternalCommandSync(w http.ResponseWriter, r *http.Request) {
 		if msg == "" {
 			msg = "agent command failed"
 		}
-		writeError(w, http.StatusBadGateway, msg)
+		writeCoded(w, http.StatusBadGateway, msg, ack.Code)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -667,20 +591,23 @@ func (h *Handler) InternalCommandSyncBinary(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusBadRequest, "failed reading binary")
 		return
 	}
+	if !h.gate(w, nodeID, req.Action) {
+		return
+	}
 	waitCh := h.waiter.Register(req.CommandID)
 	defer h.waiter.Cancel(req.CommandID)
 	if err := h.sendToNode(nodeID, req.CommandID, req.Action, req.ServerID, req.Payload); err != nil {
-		writeError(w, http.StatusBadGateway, "node offline")
+		writeCoded(w, http.StatusBadGateway, "node offline", protocol.CodeNodeOffline)
 		return
 	}
 	packet := append([]byte(req.CommandID+"\n"), raw...)
 	if err := h.hub.SendBinary(nodeID, packet); err != nil {
-		writeError(w, http.StatusBadGateway, "node offline")
+		writeCoded(w, http.StatusBadGateway, "node offline", protocol.CodeNodeOffline)
 		return
 	}
 	ack, ok := h.waiter.Wait(req.CommandID, waitCh, 20*time.Second)
 	if !ok {
-		writeError(w, http.StatusGatewayTimeout, "agent command timeout")
+		writeCoded(w, http.StatusGatewayTimeout, "agent command timeout", protocol.CodeTaskTimeout)
 		return
 	}
 	if !ack.OK {
@@ -688,7 +615,7 @@ func (h *Handler) InternalCommandSyncBinary(w http.ResponseWriter, r *http.Reque
 		if msg == "" {
 			msg = "agent command failed"
 		}
-		writeError(w, http.StatusBadGateway, msg)
+		writeCoded(w, http.StatusBadGateway, msg, ack.Code)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -921,4 +848,106 @@ func normalizeVersion(v string) string {
 		}
 	}
 	return strings.TrimPrefix(v, "v")
+}
+
+func (h *Handler) applyServerStatus(ctx context.Context, c *hub.AgentConn, serverID, status, errMsg string) {
+	var prevStatus string
+	_ = c.DB.QueryRow(ctx, `
+		SELECT COALESCE(status, '') FROM core.servers WHERE id = $1
+	`, serverID).Scan(&prevStatus)
+	runtimeStatus := status
+	provStatus := ""
+	switch status {
+	case "running":
+		runtimeStatus = "running"
+		provStatus = "ready"
+	case "error":
+		runtimeStatus = "offline"
+		provStatus = "failed"
+	case "stopped":
+		runtimeStatus = "stopped"
+	case "installing":
+		runtimeStatus = "offline"
+		provStatus = "provisioning"
+	}
+	if provStatus == "ready" {
+		var prevProv, name string
+		err := c.DB.QueryRow(ctx, `
+			WITH prev AS (
+				SELECT provisioning_status FROM core.servers
+				WHERE id = $4
+			)
+			UPDATE core.servers s
+			SET status = $1, runtime_status = $2, provisioning_status = $3, provisioning_error = NULL
+			FROM prev
+			WHERE s.id = $4
+			RETURNING prev.provisioning_status, s.name
+		`, status, runtimeStatus, provStatus, serverID).Scan(&prevProv, &name)
+		if err == nil && prevProv != "ready" {
+			h.notifyServerOwner(ctx, c.DB, serverID, notify.Event{
+				Kind:   notify.KindServerReady,
+				Title:  i18n.Key("notify.server_ready.title"),
+				Body:   i18n.Key("notify.server_ready.body", i18n.Params{"name": name}),
+				Action: h.serverAction("notify.action.open_server", serverID, ""),
+				Meta:   map[string]any{"server_id": serverID},
+			})
+		}
+	} else if provStatus == "failed" {
+		if errMsg == "" {
+			errMsg = "container failed to start"
+		}
+		var prevProv, name string
+		err := c.DB.QueryRow(ctx, `
+			WITH prev AS (
+				SELECT provisioning_status FROM core.servers
+				WHERE id = $5
+			)
+			UPDATE core.servers s
+			SET status = $1, runtime_status = $2, provisioning_status = $3, provisioning_error = $4
+			FROM prev
+			WHERE s.id = $5
+			RETURNING prev.provisioning_status, s.name
+		`, status, runtimeStatus, provStatus, errMsg, serverID).Scan(&prevProv, &name)
+		if err == nil && prevProv != "failed" {
+			params := i18n.Params{"name": name, "reason": errMsg}
+			e := notify.Event{
+				Kind:   notify.KindServerDown,
+				Title:  i18n.Key("notify.server_down.title"),
+				Body:   i18n.Key("notify.server_down.body", params),
+				Action: h.serverAction("notify.action.open_server", serverID, ""),
+				Meta:   map[string]any{"server_id": serverID, "error": errMsg},
+			}
+			if prevProv == "provisioning" || prevProv == "pending" {
+				e.Kind = notify.KindServerFailed
+				e.Title = i18n.Key("notify.server_failed.title")
+				e.Body = i18n.Key("notify.server_failed.body", params)
+			}
+			h.notifyServerOwner(ctx, c.DB, serverID, e)
+		}
+	} else if provStatus != "" {
+		execLogged(ctx, c.DB, `
+			UPDATE core.servers
+			SET status = $1, runtime_status = $2, provisioning_status = $3
+			WHERE id = $4
+		`, status, runtimeStatus, provStatus, serverID)
+	} else {
+		execLogged(ctx, c.DB, `
+			UPDATE core.servers SET status = $1, runtime_status = $2 WHERE id = $3
+		`, status, runtimeStatus, serverID)
+	}
+	_ = h.redis.Set(ctx, "srv:"+serverID+":status", status, 30*time.Second)
+	_ = h.redis.Del(ctx, "panel:servers")
+	events.PublishTenantEvent(ctx, h.redis, protocol.TenantEvent{
+		Type: "server.status", ServerID: serverID, Status: status,
+	})
+	if prevStatus != status {
+		emitWebhook(ctx, c.DB, "server.status", map[string]any{
+			"server_id":       serverID,
+			"node_id":         c.NodeID,
+			"status":          status,
+			"runtime_status":  runtimeStatus,
+			"previous_status": prevStatus,
+			"error":           errMsg,
+		})
+	}
 }

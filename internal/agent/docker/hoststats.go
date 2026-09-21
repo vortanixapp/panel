@@ -39,6 +39,28 @@ func CollectHostStats() HostStats {
 	return out
 }
 
+func HostUptimeSeconds() int64 {
+	return hostUptimeSeconds()
+}
+
+func HostDataDir() string {
+	return hostDiskPath()
+}
+
+func HostCPUModel() string {
+	raw, err := os.ReadFile("/proc/cpuinfo")
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		key, value, ok := strings.Cut(line, ":")
+		if ok && strings.TrimSpace(key) == "model name" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
 func hostUptimeSeconds() int64 {
 	raw, err := os.ReadFile("/proc/uptime")
 	if err != nil {

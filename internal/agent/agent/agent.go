@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +17,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -36,6 +39,9 @@ type Agent struct {
 	nodeID              string
 	version             string
 	startedAt           time.Time
+	bootID              string
+	relayCaps           atomic.Value
+	clockSkewMs         atomic.Int64
 	conn                *websocket.Conn
 	writeMu             sync.Mutex
 	out                 outbox
@@ -111,8 +117,10 @@ func New() *Agent {
 		nodeID:              os.Getenv("NODE_ID"),
 		version:             buildinfo.Current(),
 		startedAt:           time.Now(),
+		bootID:              newBootID(),
 		pendingBinaryWrites: map[string]binaryWritePending{},
 	}
+	a.relayCaps.Store(map[string]bool{})
 	a.disp = newDispatcher(func(j job, err error, code string) {
 		a.sendAckCode(j.id, false, err, nil, code)
 	})
@@ -168,10 +176,18 @@ func (a *Agent) connect() error {
 		return err
 	})
 
-	hello, _ := json.Marshal(map[string]string{
-		"type":    protocol.MsgHello,
-		"node_id": a.nodeID,
-		"version": a.version,
+	a.relayCaps.Store(map[string]bool{})
+	hostInfo, agentInfo := a.collectFacts(context.Background())
+	hello, _ := json.Marshal(map[string]any{
+		"type":       protocol.MsgHello,
+		"node_id":    a.nodeID,
+		"version":    a.version,
+		"proto":      protocol.ProtoVersion,
+		"caps":       agentCaps,
+		"boot_id":    a.bootID,
+		"started_at": a.startedAt.UTC().Format(time.RFC3339Nano),
+		"host_info":  hostInfo,
+		"agent_info": agentInfo,
 	})
 	_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
 	if err := conn.WriteMessage(websocket.TextMessage, hello); err != nil {
@@ -253,8 +269,28 @@ func (a *Agent) loop() {
 			a.handleBinaryMessage(data)
 			continue
 		}
+		if messageType(data) == protocol.MsgWelcome {
+			a.onWelcome(data)
+			continue
+		}
 		a.handleCommand(data)
 	}
+}
+
+func messageType(data []byte) string {
+	var env struct {
+		Type string `json:"type"`
+	}
+	_ = json.Unmarshal(data, &env)
+	return env.Type
+}
+
+func newBootID() string {
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 16)
+	}
+	return hex.EncodeToString(buf)
 }
 
 func (a *Agent) expireBinaryWrites() {
@@ -404,6 +440,17 @@ func (a *Agent) handleCommand(data []byte) {
 		return
 	case protocol.ActionAgentUpdate:
 		a.startSelfUpdate(cmd)
+		return
+	case protocol.ActionAgentRestart:
+		go a.restartSelf(cmd)
+		return
+	case protocol.ActionNodeInfo:
+		a.disp.nodeReadJob(job{id: cmd.ID, action: cmd.Action, timeout: time.Minute,
+			run: func(ctx context.Context) { a.nodeInfo(ctx, cmd) }})
+		return
+	case protocol.ActionAgentLogs:
+		a.disp.nodeReadJob(job{id: cmd.ID, action: cmd.Action, timeout: time.Minute,
+			run: func(ctx context.Context) { a.agentLogs(ctx, cmd) }})
 		return
 	}
 

@@ -20,6 +20,39 @@ type AgentConn struct {
 
 	pingSentAt atomic.Int64
 	rttMs      atomic.Int64
+
+	protoMu sync.RWMutex
+	proto   int
+	caps    map[string]bool
+	bootID  string
+}
+
+func (c *AgentConn) SetProtocol(proto int, caps []string, bootID string) {
+	set := make(map[string]bool, len(caps))
+	for _, capability := range caps {
+		set[capability] = true
+	}
+	c.protoMu.Lock()
+	c.proto, c.caps, c.bootID = proto, set, bootID
+	c.protoMu.Unlock()
+}
+
+func (c *AgentConn) HasCap(capability string) bool {
+	c.protoMu.RLock()
+	defer c.protoMu.RUnlock()
+	return c.caps[capability]
+}
+
+func (c *AgentConn) Proto() int {
+	c.protoMu.RLock()
+	defer c.protoMu.RUnlock()
+	return c.proto
+}
+
+func (c *AgentConn) BootID() string {
+	c.protoMu.RLock()
+	defer c.protoMu.RUnlock()
+	return c.bootID
 }
 
 type OutboundMessage struct {

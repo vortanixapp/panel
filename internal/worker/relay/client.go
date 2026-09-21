@@ -48,13 +48,7 @@ func (c *Client) SendCommand(ctx context.Context, nodeID string, req CommandRequ
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		var errBody map[string]string
-		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		msg := errBody["error"]
-		if msg == "" {
-			msg = resp.Status
-		}
-		return fmt.Errorf("relay: %s", msg)
+		return decodeError(resp)
 	}
 	return nil
 }
@@ -83,13 +77,7 @@ func (c *Client) CommandSync(ctx context.Context, nodeID string, req CommandRequ
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		var errBody map[string]string
-		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		msg := errBody["error"]
-		if msg == "" {
-			msg = resp.Status
-		}
-		return nil, fmt.Errorf("relay: %s", msg)
+		return nil, decodeError(resp)
 	}
 	var out CommandSyncResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
