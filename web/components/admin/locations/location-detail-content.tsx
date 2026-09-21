@@ -590,7 +590,7 @@ export function LocationDetailContent() {
                 <Row label={t("admin.location.ssh_user")}>{sshUser || "—"}</Row>
                 <Row label={t("admin.location.port")}>{sshPort}</Row>
                 <Row label={t("common.password")}>
-                  {location.ssh_password ? "••••••••" : t("admin.location.not_set")}
+                  {location.ssh_password_set ? "••••••••" : t("admin.location.not_set")}
                 </Row>
                 <Row label={t("admin.location.host_key")}>
                   {hostKey ? (
@@ -682,7 +682,7 @@ export function LocationDetailContent() {
 
         <LocationAgentSetupCard
           locationId={id}
-          agentToken={String(location.agent_token ?? "")}
+          agentToken=""
         />
       </div>
 

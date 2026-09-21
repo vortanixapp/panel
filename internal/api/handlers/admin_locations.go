@@ -186,13 +186,13 @@ func locationCode(loc *locationRow, meta map[string]any) string {
 	return loc.FQDN
 }
 
-func locationMapFromRow(loc *locationRow, includeSecrets bool) map[string]any {
+func locationMapFromRow(loc *locationRow, showMySQLPasswords bool) map[string]any {
 	meta := parseMetaMap(loc.Meta)
 	code := locationCode(loc, meta)
 	ipPool := metaStringSlice(meta, "ip_pool")
-	mysqlInstances := meta["mysql_instances"]
-	if mysqlInstances == nil {
-		mysqlInstances = []any{}
+	var mysqlInstances any = []any{}
+	if raw, ok := meta["mysql_instances"].([]any); ok {
+		mysqlInstances = maskMySQLInstances(raw, showMySQLPasswords)
 	}
 	var dockerImages any
 	if len(loc.DockerImages) > 0 {
@@ -228,17 +228,107 @@ func locationMapFromRow(loc *locationRow, includeSecrets bool) map[string]any {
 		"maintenance_reason":  loc.MaintenanceReason,
 		"maintenance_until":   timeOrNil(loc.MaintenanceUntil),
 	}
-	if includeSecrets {
-		sshPass := metaString(meta, "ssh_password")
-		if sshPass == "" && loc.SSHPassword != nil {
-			sshPass = *loc.SSHPassword
+	out["node_id"] = loc.ID
+	out["ssh_password_set"] = hasSSHPassword(loc, meta)
+	out["agent_token_set"] = strings.TrimSpace(loc.AgentToken) != ""
+	out["mysql_root_password_set"] = metaString(meta, "mysql_root_password") != ""
+	return out
+}
+
+func isSecretKey(key string) bool {
+	k := strings.ToLower(key)
+	return strings.Contains(k, "password") || strings.Contains(k, "secret") || strings.Contains(k, "token")
+}
+
+func maskMySQLInstances(list []any, show bool) []any {
+	out := make([]any, 0, len(list))
+	for _, item := range list {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
 		}
-		out["ssh_password"] = sshPass
-		out["mysql_root_password_decrypted"] = metaString(meta, "mysql_root_password")
-		out["node_id"] = loc.ID
-		out["agent_token"] = loc.AgentToken
+		copyItem := make(map[string]any, len(m))
+		for k, v := range m {
+			if isSecretKey(k) && !show {
+				copyItem[k+"_set"] = strings.TrimSpace(fmt.Sprint(v)) != ""
+				continue
+			}
+			copyItem[k] = v
+		}
+		out = append(out, copyItem)
 	}
 	return out
+}
+
+func mysqlInstanceIdentity(m map[string]any) string {
+	for _, k := range []string{"key", "container", "name"} {
+		if v := strings.TrimSpace(fmt.Sprint(m[k])); v != "" && m[k] != nil {
+			return k + ":" + v
+		}
+	}
+	if m["port"] != nil {
+		return "port:" + fmt.Sprint(m["port"])
+	}
+	return ""
+}
+
+func keepMySQLSecrets(incoming []map[string]any, stored any) []map[string]any {
+	prev := map[string]map[string]any{}
+	if list, ok := stored.([]any); ok {
+		for _, item := range list {
+			if m, ok := item.(map[string]any); ok {
+				if id := mysqlInstanceIdentity(m); id != "" {
+					prev[id] = m
+				}
+			}
+		}
+	}
+	for _, m := range incoming {
+		old := prev[mysqlInstanceIdentity(m)]
+		for k := range m {
+			if strings.HasSuffix(k, "_set") && isSecretKey(strings.TrimSuffix(k, "_set")) {
+				delete(m, k)
+			}
+		}
+		if old == nil {
+			continue
+		}
+		for k, v := range old {
+			if !isSecretKey(k) {
+				continue
+			}
+			if cur, ok := m[k]; !ok || strings.TrimSpace(fmt.Sprint(cur)) == "" || cur == nil {
+				m[k] = v
+			}
+		}
+	}
+	return incoming
+}
+
+var locationListMetaKeys = []string{"code", "ip_pool", "phpmyadmin_port", "mysql_host", "mysql_port", "service_statuses"}
+
+func publicLocationMeta(meta map[string]any) map[string]any {
+	out := map[string]any{}
+	for _, k := range locationListMetaKeys {
+		if v, ok := meta[k]; ok {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func (h *Handler) viewerCan(r *http.Request, permission string) bool {
+	if key, ok := apiKeyFromContext(r.Context()); ok {
+		return key.Scopes[permission]
+	}
+	claims, ok := tenantClaims(r.Context())
+	if !ok {
+		return false
+	}
+	if isAdminRole(claims.Role) {
+		return true
+	}
+	return h.rbacCan(r.Context(), claims, permission)
 }
 
 func (h *Handler) ListAdminLocations(w http.ResponseWriter, r *http.Request) {
@@ -303,7 +393,7 @@ func (h *Handler) ListAdminLocations(w http.ResponseWriter, r *http.Request) {
 			"agent_state": agentPresenceState(daemonStatus, daemonLastSeen),
 			"ssh_host":    sshHost, "ssh_user": sshUser, "ssh_configured": sshConfigured,
 			"ip_address":    ipAddress,
-			"meta":          metaMap,
+			"meta":          publicLocationMeta(metaMap),
 			"servers_count": serversCount, "tariffs_count": tariffsCount,
 			"created_at":         createdAt,
 			"maintenance_mode":   maintenance,
@@ -444,7 +534,7 @@ func (h *Handler) GetAdminLocation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"location":        locationMapFromRow(loc, true),
+		"location":        locationMapFromRow(loc, h.viewerCan(r, "admin.locations.write")),
 		"serverMetrics":   serverMetrics,
 		"serviceStatuses": serviceStatuses,
 		"metrics_stale":   metricsStale,
@@ -472,7 +562,7 @@ func (h *Handler) GetAdminLocationEdit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"location": locationMapFromRow(loc, false)})
+	writeJSON(w, http.StatusOK, map[string]any{"location": locationMapFromRow(loc, h.viewerCan(r, "admin.locations.write"))})
 }
 
 func (h *Handler) PutAdminLocation(w http.ResponseWriter, r *http.Request) {
@@ -503,7 +593,7 @@ func (h *Handler) saveAdminLocation(w http.ResponseWriter, r *http.Request, full
 			meta["ip_pool"] = pool
 		}
 		if mi := parseMysqlInstancesInput(body["mysql_instances"]); body["mysql_instances"] != nil {
-			meta["mysql_instances"] = mi
+			meta["mysql_instances"] = keepMySQLSecrets(mi, meta["mysql_instances"])
 		}
 	} else {
 		if v, ok := body["code"]; ok {
@@ -513,7 +603,7 @@ func (h *Handler) saveAdminLocation(w http.ResponseWriter, r *http.Request, full
 			meta["ip_pool"] = parseIpPoolInput(body["ip_pool"])
 		}
 		if _, ok := body["mysql_instances"]; ok {
-			meta["mysql_instances"] = parseMysqlInstancesInput(body["mysql_instances"])
+			meta["mysql_instances"] = keepMySQLSecrets(parseMysqlInstancesInput(body["mysql_instances"]), meta["mysql_instances"])
 		}
 	}
 	if v, ok := body["phpmyadmin_port"]; ok {
@@ -673,10 +763,15 @@ func (h *Handler) DeleteAdminLocation(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetAdminLocationInstallScript(w http.ResponseWriter, r *http.Request) {
-	_, id, loc, ok := h.adminLocationContext(w, r)
+	claims, id, loc, ok := h.adminLocationContext(w, r)
 	if !ok {
 		return
 	}
+	if !h.viewerCan(r, "admin.locations.write") && !h.viewerCan(r, "admin.daemons.write") {
+		writeError(w, http.StatusForbidden, "Команда установки содержит токен агента и доступна только с правом управления")
+		return
+	}
+	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "agent.install_script", "node:"+id, nil)
 	token := strings.TrimSpace(loc.AgentToken)
 	if token == "" {
 		var err error

@@ -117,18 +117,22 @@ func (r *Runner) processNodeSetup(ctx context.Context) bool {
 		return true
 	}
 
-	commands, cmdErr := setupCommands(pl.Component, node.Meta, node.AgentToken, node.ID, relayURL, relayPin)
+	commands, cmdErr := setupCommands(pl.Component, node.Meta, node.ID, relayURL, relayPin)
 	if cmdErr != nil {
 		r.failNodeSetup(ctx, jobID, pl.NodeID, pl.Component, cmdErr.Error(), progress)
 		return true
 	}
 	hubUser, hubToken := r.dockerHubCreds(ctx)
-	logins := append(registryLoginCommands(pl.Component, r.licenseKey(ctx)),
-		dockerHubLoginCommands(pl.Component, hubUser, hubToken)...)
-	commands = append(logins, commands...)
+	regLogin, regSecrets := registryLoginCommands(pl.Component, r.licenseKey(ctx))
+	hubLogin, hubSecrets := dockerHubLoginCommands(pl.Component, hubUser, hubToken)
+	commands = append(append(regLogin, hubLogin...), commands...)
+	secrets := mergeSecrets(regSecrets, hubSecrets)
+	if pl.Component == "daemon" {
+		secrets = mergeSecrets(secrets, agentSecrets(node.AgentToken))
+	}
 
 	cfg := r.sshConfig(node, 0)
-	if err := sshclient.Run(cfg, commands, progress); err != nil {
+	if err := sshclient.RunInput(cfg, commands, secrets, progress); err != nil {
 		r.failNodeSetup(ctx, jobID, pl.NodeID, pl.Component, err.Error(), progress)
 		return true
 	}

@@ -128,6 +128,31 @@ func (c Config) dial() (*ssh.Client, error) {
 }
 
 func Run(cfg Config, commands []string, log io.Writer) error {
+	return RunInput(cfg, commands, nil, log)
+}
+
+const readSecretsScript = "while IFS= read -r __vtx_kv && [ -n \"$__vtx_kv\" ]; do export \"$__vtx_kv\"; done\nunset __vtx_kv\n"
+
+func secretsInput(secrets map[string]string) (string, error) {
+	var b strings.Builder
+	for k, v := range secrets {
+		if k == "" || strings.Trim(k, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_") != "" {
+			return "", fmt.Errorf("ssh: недопустимое имя переменной %q", k)
+		}
+		if strings.ContainsAny(v, "\n\r") {
+			return "", fmt.Errorf("ssh: значение %s содержит перевод строки", k)
+		}
+		b.WriteString(k + "=" + v + "\n")
+	}
+	b.WriteString("\n")
+	return b.String(), nil
+}
+
+func RunInput(cfg Config, commands []string, secrets map[string]string, log io.Writer) error {
+	input, err := secretsInput(secrets)
+	if err != nil {
+		return err
+	}
 	if cfg.Host == "" || cfg.User == "" || !cfg.hasAuth() {
 		return fmt.Errorf("ssh host, user and password are required")
 	}
@@ -146,9 +171,10 @@ func Run(cfg Config, commands []string, log io.Writer) error {
 	var tail limitedBuffer
 	session.Stdout = io.MultiWriter(log, &tail)
 	session.Stderr = io.MultiWriter(log, &tail)
+	session.Stdin = strings.NewReader(input)
 
 	script := strings.Join(commands, "\n")
-	wrapped := "set -e\nexport DEBIAN_FRONTEND=noninteractive\n" + script + "\n"
+	wrapped := "set -e\nexport DEBIAN_FRONTEND=noninteractive\n" + readSecretsScript + script + "\n"
 	if err := runSession(session, "/bin/bash -lc "+shellQuote(wrapped), cfg.execTimeout()); err != nil {
 		if msg := lastLines(tail.String(), 10); msg != "" {
 			return fmt.Errorf("%s", msg)

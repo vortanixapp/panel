@@ -9,7 +9,7 @@ import (
 
 const defaultAgentImage = "ghcr.io/vortanixapp/vortanix-agent:latest"
 
-func setupCommands(component string, meta map[string]any, agentToken, nodeID, relayURL, relayPin string) ([]string, error) {
+func setupCommands(component string, meta map[string]any, nodeID, relayURL, relayPin string) ([]string, error) {
 	switch component {
 	case "packages":
 		return []string{
@@ -30,7 +30,7 @@ func setupCommands(component string, meta map[string]any, agentToken, nodeID, re
 	case "quota":
 		return diskQuotaCommands(meta), nil
 	case "daemon":
-		return daemonAgentCommands(agentToken, nodeID, relayURL, relayPin, ""), nil
+		return daemonAgentCommands(nodeID, relayURL, relayPin, ""), nil
 	default:
 		return nil, fmt.Errorf("unknown setup component: %s", component)
 	}
@@ -196,7 +196,27 @@ func phpMyAdminPortOf(meta map[string]any) int {
 	return defaultPhpMyAdminPort
 }
 
-func daemonAgentCommands(agentToken, nodeID, relayURL, relayPin, version string) []string {
+const (
+	secretAgentToken  = "VTX_AGENT_TOKEN"
+	secretRegistryKey = "VTX_REGISTRY_KEY"
+	secretHubToken    = "VTX_HUB_TOKEN"
+)
+
+func agentSecrets(token string) map[string]string {
+	return map[string]string{secretAgentToken: token}
+}
+
+func mergeSecrets(parts ...map[string]string) map[string]string {
+	out := map[string]string{}
+	for _, p := range parts {
+		for k, v := range p {
+			out[k] = v
+		}
+	}
+	return out
+}
+
+func daemonAgentCommands(nodeID, relayURL, relayPin, version string) []string {
 	if relayURL == "" {
 		relayURL = "ws://127.0.0.1:8082/v1/agent/connect"
 	}
@@ -206,8 +226,12 @@ func daemonAgentCommands(agentToken, nodeID, relayURL, relayPin, version string)
 		"sudo mkdir -p /var/lib/vortanix/servers /opt/vortanix/plugin-cache",
 		fmt.Sprintf("sudo docker pull %s", image),
 		"sudo docker rm -f vortanix-agent 2>/dev/null || true",
-		fmt.Sprintf("sudo docker run -d --name vortanix-agent --restart unless-stopped --user 0:0 --cap-add SYS_ADMIN -e RELAY_URL=%q -e RELAY_PIN=%q -e AGENT_TOKEN=%q -e NODE_ID=%q -e VORTANIX_VERSION=%q -e VORTANIX_DATA_DIR=/var/lib/vortanix/servers -v /var/run/docker.sock:/var/run/docker.sock -v /dev:/dev -v /var/lib/vortanix/servers:/var/lib/vortanix/servers -v /opt/vortanix:/opt/vortanix %s",
-			relayURL, relayPin, agentToken, nodeID, versionLabelOf(image, version), image),
+		"VTX_ENV_FILE=$(mktemp)",
+		"trap 'rm -f \"$VTX_ENV_FILE\"' EXIT",
+		"printf 'AGENT_TOKEN=%s\\n' \"$" + secretAgentToken + "\" > \"$VTX_ENV_FILE\"",
+		fmt.Sprintf("sudo docker run -d --name vortanix-agent --restart unless-stopped --user 0:0 --cap-add SYS_ADMIN --env-file \"$VTX_ENV_FILE\" -e RELAY_URL=%q -e RELAY_PIN=%q -e NODE_ID=%q -e VORTANIX_VERSION=%q -e VORTANIX_DATA_DIR=/var/lib/vortanix/servers -v /var/run/docker.sock:/var/run/docker.sock -v /dev:/dev -v /var/lib/vortanix/servers:/var/lib/vortanix/servers -v /opt/vortanix:/opt/vortanix %s",
+			relayURL, relayPin, nodeID, versionLabelOf(image, version), image),
+		"rm -f \"$VTX_ENV_FILE\"",
 	}, agentImageCleanupCommands(image)...)
 }
 
@@ -303,40 +327,40 @@ func isLoopbackAddr(s string) bool {
 		strings.HasPrefix(s, "0.0.0.0") || strings.HasPrefix(s, "[::1]")
 }
 
-func registryLoginCommands(component, licenseKey string) []string {
+func registryLoginCommands(component, licenseKey string) ([]string, map[string]string) {
 	if licenseKey == "" {
-		return nil
+		return nil, nil
 	}
 	switch component {
 	case "daemon", "images":
 	default:
-		return nil
+		return nil, nil
 	}
 	host := strings.Trim(strings.TrimSpace(envOr("REGISTRY_HOST", "")), "/")
 	if host == "" {
-		return nil
+		return nil, nil
 	}
 	return []string{
-		fmt.Sprintf("printf '%%s' %s | sudo docker login %s --username vortanix --password-stdin",
-			shellQuote(licenseKey), host),
-	}
+		fmt.Sprintf("printf '%%s' \"$%s\" | sudo docker login %s --username vortanix --password-stdin",
+			secretRegistryKey, shellQuote(host)),
+	}, map[string]string{secretRegistryKey: licenseKey}
 }
 
-func dockerHubLoginCommands(component, user, token string) []string {
+func dockerHubLoginCommands(component, user, token string) ([]string, map[string]string) {
 	if component != "images" {
-		return nil
+		return nil, nil
 	}
 	if user == "" || token == "" {
 		user = strings.TrimSpace(os.Getenv("DOCKERHUB_USER"))
 		token = strings.TrimSpace(os.Getenv("DOCKERHUB_TOKEN"))
 	}
 	if user == "" || token == "" {
-		return nil
+		return nil, nil
 	}
 	return []string{
-		fmt.Sprintf("printf '%%s' %s | sudo docker login --username %s --password-stdin",
-			shellQuote(token), shellQuote(user)),
-	}
+		fmt.Sprintf("printf '%%s' \"$%s\" | sudo docker login --username %s --password-stdin",
+			secretHubToken, shellQuote(user)),
+	}, map[string]string{secretHubToken: token}
 }
 
 func mirrored(image string) string {

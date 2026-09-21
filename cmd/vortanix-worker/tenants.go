@@ -61,6 +61,7 @@ func startLoops(ctx context.Context, runner *jobs.Runner, wake <-chan struct{}) 
 	go runner.BackupScheduleLoop(ctx)
 	go runner.NotifyDeliveryLoop(ctx)
 	go runner.HealthWatchLoop(ctx)
+	go runner.AgentWatchLoop(ctx)
 	go runner.StaleJobsLoop(ctx)
 	go runner.UpdatesLoop(ctx)
 }

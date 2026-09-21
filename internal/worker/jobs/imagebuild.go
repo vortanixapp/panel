@@ -84,11 +84,12 @@ func (r *Runner) buildNodeImages(ctx context.Context, jobID string, node *nodeSS
 	cfg := r.sshConfig(node, imageBuildTimeout)
 
 	hubUser, hubToken := r.dockerHubCreds(ctx)
-	prepare := append(registryLoginCommands("images", r.licenseKey(ctx)),
-		dockerHubLoginCommands("images", hubUser, hubToken)...)
+	regLogin, regSecrets := registryLoginCommands("images", r.licenseKey(ctx))
+	hubLogin, hubSecrets := dockerHubLoginCommands("images", hubUser, hubToken)
+	prepare := append(regLogin, hubLogin...)
 	prepare = append(prepare, imagePrepareCommands(ref)...)
 	fmt.Fprintf(progress, "Образов к сборке: %d\n", len(targets))
-	if err := sshclient.Run(cfg, prepare, progress); err != nil {
+	if err := sshclient.RunInput(cfg, prepare, mergeSecrets(regSecrets, hubSecrets), progress); err != nil {
 		for _, t := range targets {
 			r.markImageState(ctx, node.ID, t, "failed", err.Error(), ref)
 		}

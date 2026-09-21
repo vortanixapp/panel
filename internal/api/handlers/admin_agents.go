@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -30,115 +29,6 @@ func relayHost() string {
 		raw = raw[:idx]
 	}
 	return raw
-}
-
-func (h *Handler) ListAdminAgents(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	rows, err := h.readerOf(r.Context()).Query(r.Context(), `
-		SELECT n.id::text, n.name, COALESCE(n.meta->>'code', n.fqdn, ''), COALESCE(n.country, ''),
-			COALESCE(n.region, ''), n.ssh_host, n.status, n.last_seen_at,
-			COALESCE(d.status, 'unknown'), COALESCE(d.version, ''), COALESCE(d.platform, ''),
-			d.pid, d.last_seen_at, d.started_at, d.connected_at, COALESCE(d.remote_addr, ''), d.rtt_ms
-		FROM core.nodes n
-		LEFT JOIN core.node_daemons d ON d.node_id = n.id
-		ORDER BY COALESCE(n.sort_order, 0), n.name
-	`)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer rows.Close()
-
-	list := []map[string]any{}
-	for rows.Next() {
-		var id, name, code, country, region string
-		var sshHost *string
-		var nodeStatus string
-		var nodeLastSeen *time.Time
-		var daemonStatus, version, platform, remoteAddr string
-		var pid, rtt *int
-		var daemonLastSeen, startedAt, connectedAt *time.Time
-		if rows.Scan(&id, &name, &code, &country, &region, &sshHost, &nodeStatus, &nodeLastSeen,
-			&daemonStatus, &version, &platform, &pid, &daemonLastSeen,
-			&startedAt, &connectedAt, &remoteAddr, &rtt) != nil {
-			continue
-		}
-		lastSeen := nodeLastSeen
-		if daemonLastSeen != nil && (lastSeen == nil || daemonLastSeen.After(*lastSeen)) {
-			lastSeen = daemonLastSeen
-		}
-		isOnline := agentDaemonOnline(daemonStatus, daemonLastSeen)
-		item := map[string]any{
-			"id": id, "location_id": id, "node_id": id,
-			"name": name, "code": code, "country": country, "region": region,
-			"host": strPtr(sshHost), "status": daemonStatus, "is_online": isOnline,
-			"state":   agentPresenceState(daemonStatus, daemonLastSeen),
-			"version": version, "platform": platform,
-			"location": map[string]any{
-				"id": id, "name": name, "code": code, "region": region,
-			},
-		}
-		if pid != nil {
-			item["pid"] = *pid
-		}
-		if secs, ok := agentUptimeSeconds(isOnline, startedAt, connectedAt); ok {
-			item["uptime_sec"] = secs
-		}
-		if connectedAt != nil {
-			item["connected_at"] = connectedAt.Format(time.RFC3339)
-		}
-		if remoteAddr != "" {
-			item["remote_addr"] = remoteAddr
-		}
-		if rtt != nil {
-			item["rtt_ms"] = *rtt
-		}
-		if lastSeen != nil {
-			item["last_seen"] = lastSeen.Format(time.RFC3339)
-			item["last_seen_human"] = formatLastSeenHuman(*lastSeen)
-		}
-		list = append(list, item)
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"agents": list, "daemons": list})
-}
-
-func (h *Handler) GetAdminAgentShow(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	loc, err := h.loadLocationRow(r, id)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "location not found")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	meta := parseMetaMap(loc.Meta)
-	daemon := h.loadAgentInfo(r, id)
-	cpuMetrics, ramMetrics := h.loadAgentChartMetrics(r, id)
-	location := map[string]any{
-		"id": id, "name": loc.Name, "code": metaString(meta, "code"),
-		"ssh_host": strPtr(loc.SSHHost), "country": strPtr(loc.Country),
-		"region": strPtr(loc.Region), "ip_address": strPtr(loc.IPAddress),
-	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"location": location,
-		"agent":    daemon,
-		"daemon":   daemon,
-		"metrics": map[string]any{
-			"agent_cpu_usage":  cpuMetrics,
-			"agent_ram_usage":  ramMetrics,
-			"daemon_cpu_usage": cpuMetrics,
-			"daemon_ram_usage": ramMetrics,
-		},
-	})
 }
 
 func (h *Handler) GetAdminAgentLogs(w http.ResponseWriter, r *http.Request) {
@@ -240,44 +130,6 @@ func (h *Handler) GetAdminAgentServers(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"servers": servers})
-}
-
-func (h *Handler) PostAdminAgentExec(w http.ResponseWriter, r *http.Request) {
-	claims, id, loc, ok := h.adminLocationContext(w, r)
-	if !ok {
-		return
-	}
-	var body struct {
-		Cmd string `json:"cmd"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid json")
-		return
-	}
-	cmd := strings.TrimSpace(body.Cmd)
-	if cmd == "" {
-		writeError(w, http.StatusUnprocessableEntity, "Command is required")
-		return
-	}
-	meta := parseMetaMap(loc.Meta)
-	if !hasSSHConfigured(loc, meta) {
-		writeError(w, http.StatusBadRequest, "SSH is not configured for this location")
-		return
-	}
-	cfg, err := h.nodeSSHConfigTOFU(loc, meta)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	out, runErr := sshclient.RunCapture(cfg, cmd)
-	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "agent.exec", "node:"+id, map[string]any{"cmd": cmd})
-	resp := map[string]any{"stdout": out, "output": out, "ok": runErr == nil}
-	if runErr != nil {
-		resp["error"] = runErr.Error()
-		writeJSON(w, http.StatusOK, resp)
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) loadAgentInfo(r *http.Request, nodeID string) map[string]any {

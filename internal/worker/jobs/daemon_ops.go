@@ -113,7 +113,20 @@ func (r *Runner) claimDaemonJob(ctx context.Context, jobType string) (string, []
 	return jobID, payload, true
 }
 
+func (r *Runner) settleSSHTask(ctx context.Context, jobID string, execErr error) {
+	status, msg := "done", ""
+	if execErr != nil {
+		status, msg = "failed", execErr.Error()
+	}
+	_, _ = r.db.Exec(ctx, `
+		UPDATE core.node_tasks
+		SET status = $2, error = NULLIF($3, ''), finished_at = now(), updated_at = now()
+		WHERE job_id = $1::uuid AND status IN ('queued', 'sent', 'running')
+	`, jobID, status, msg)
+}
+
 func (r *Runner) finishDaemonJob(ctx context.Context, jobID string, execErr error, ok map[string]any) {
+	r.settleSSHTask(ctx, jobID, execErr)
 	if execErr != nil {
 		result, _ := json.Marshal(map[string]string{"error": execErr.Error()})
 		_, _ = r.db.Exec(ctx, `UPDATE core.jobs SET status = 'failed', result = $2::jsonb WHERE id = $1`, jobID, result)
@@ -128,6 +141,10 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 	if !ok {
 		return false
 	}
+	_, _ = r.db.Exec(ctx, `
+		UPDATE core.node_tasks SET status = 'running', updated_at = now()
+		WHERE job_id = $1::uuid AND status IN ('queued', 'sent')
+	`, jobID)
 
 	var pl struct {
 		NodeID string         `json:"node_id"`
@@ -139,6 +156,7 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 	node, err := r.loadNodeSSH(ctx, r.db, pl.NodeID)
 	if err != nil {
 		r.failJobGeneric(ctx, r.db, jobID, err.Error())
+		r.settleSSHTask(ctx, jobID, err)
 		if pl.Action == "update" {
 			r.failAgentUpdate(ctx, pl.NodeID, err.Error())
 		}
@@ -157,12 +175,13 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 		}
 	case "install":
 		relayURL, relayPin := r.relayTarget(ctx)
-		cmds, cmdErr := setupCommands("daemon", node.Meta, node.AgentToken, node.ID, relayURL, relayPin)
+		cmds, cmdErr := setupCommands("daemon", node.Meta, node.ID, relayURL, relayPin)
 		if cmdErr != nil {
 			execErr = cmdErr
 			break
 		}
-		execErr = sshclient.Run(cfg, r.withRegistryLogin(ctx, cmds), &out)
+		cmds, secrets := r.withRegistryLogin(ctx, cmds)
+		execErr = sshclient.RunInput(cfg, cmds, mergeSecrets(secrets, agentSecrets(node.AgentToken)), &out)
 		if execErr != nil {
 			_ = nodeevents.Record(ctx, r.db, pl.NodeID, nodeevents.ReinstallFailed, nodeevents.Error,
 				map[string]any{"error": execErr.Error()}, "")
@@ -172,8 +191,8 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 	case "update":
 		version, _ := pl.Params["version"].(string)
 		relayURL, relayPin := r.relayTarget(ctx)
-		cmds := daemonAgentCommands(node.AgentToken, node.ID, relayURL, relayPin, version)
-		execErr = sshclient.Run(cfg, r.withRegistryLogin(ctx, cmds), &out)
+		cmds, secrets := r.withRegistryLogin(ctx, daemonAgentCommands(node.ID, relayURL, relayPin, version))
+		execErr = sshclient.RunInput(cfg, cmds, mergeSecrets(secrets, agentSecrets(node.AgentToken)), &out)
 		if execErr != nil {
 			r.failAgentUpdate(ctx, pl.NodeID, execErr.Error())
 		}
@@ -222,12 +241,12 @@ func (r *Runner) purgeDaemonJobs(ctx context.Context) {
 	}
 }
 
-func (r *Runner) withRegistryLogin(ctx context.Context, cmds []string) []string {
-	logins := registryLoginCommands("daemon", r.licenseKey(ctx))
+func (r *Runner) withRegistryLogin(ctx context.Context, cmds []string) ([]string, map[string]string) {
+	logins, secrets := registryLoginCommands("daemon", r.licenseKey(ctx))
 	if len(logins) == 0 {
-		return cmds
+		return cmds, nil
 	}
-	return append(logins, cmds...)
+	return append(logins, cmds...), secrets
 }
 
 func (r *Runner) processDaemonPull(ctx context.Context) bool {

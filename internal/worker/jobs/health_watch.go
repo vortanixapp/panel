@@ -154,10 +154,15 @@ func (r *Runner) checkLowBalances(ctx context.Context) {
 
 func (r *Runner) checkNodeDiskSpace(ctx context.Context) {
 	rows, err := r.db.Query(ctx, `
-		SELECT n.id::text, COALESCE(n.fqdn, ''),
+		SELECT n.id::text, COALESCE(n.name, n.fqdn, ''),
+		       CASE WHEN d.stats_at > now() - interval '10 minutes'
+		            THEN COALESCE((d.stats->'host'->>'disk_total_mb')::float8, 0) ELSE 0 END,
+		       CASE WHEN d.stats_at > now() - interval '10 minutes'
+		            THEN COALESCE((d.stats->'host'->>'disk_free_mb')::float8, 0) ELSE 0 END,
 		       COALESCE(m.total, ''), COALESCE(m.avail, '')
 		FROM core.nodes n
-		JOIN LATERAL (
+		LEFT JOIN core.node_daemons d ON d.node_id = n.id
+		LEFT JOIN LATERAL (
 			SELECT
 				MAX(text_value) FILTER (WHERE metric_type = 'disk_total') AS total,
 				MAX(text_value) FILTER (WHERE metric_type = 'disk_available') AS avail
@@ -166,7 +171,6 @@ func (r *Runner) checkNodeDiskSpace(ctx context.Context) {
 			  AND metric_type IN ('disk_total', 'disk_available')
 			  AND measured_at > now() - interval '6 hours'
 		) m ON true
-		WHERE m.total IS NOT NULL AND m.avail IS NOT NULL
 		LIMIT 500
 	`)
 	if err != nil {
@@ -182,12 +186,20 @@ func (r *Runner) checkNodeDiskSpace(ctx context.Context) {
 	var list []lowDisk
 	for rows.Next() {
 		var nodeID, name, totalText, availText string
-		if rows.Scan(&nodeID, &name, &totalText, &availText) != nil {
+		var totalMB, freeMB float64
+		if rows.Scan(&nodeID, &name, &totalMB, &freeMB, &totalText, &availText) != nil {
 			continue
 		}
-		total, okTotal := parseSizeBytes(totalText)
-		avail, okAvail := parseSizeBytes(availText)
-		if !okTotal || !okAvail || total <= 0 || avail >= total*diskLowFreeRatio {
+		total, avail := totalMB*1024*1024, freeMB*1024*1024
+		if totalMB <= 0 {
+			var okTotal, okAvail bool
+			total, okTotal = parseSizeBytes(totalText)
+			avail, okAvail = parseSizeBytes(availText)
+			if !okTotal || !okAvail {
+				continue
+			}
+		}
+		if total <= 0 || avail >= total*diskLowFreeRatio {
 			continue
 		}
 		list = append(list, lowDisk{
@@ -214,7 +226,7 @@ func (r *Runner) checkNodeDiskSpace(ctx context.Context) {
 				"free":    sizeMsg(ld.avail),
 				"total":   sizeMsg(ld.total),
 			}),
-			Action: r.panelAction("notify.action.locations", "/admin/locations"),
+			Action: r.panelAction("notify.action.agent", "/admin/daemons/"+ld.nodeID),
 			Meta: map[string]any{
 				"node_id": ld.nodeID, "free_bytes": ld.avail, "total_bytes": ld.total,
 			},

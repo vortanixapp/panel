@@ -588,8 +588,13 @@ func (h *Handler) PostAdminAgentRestart(w http.ResponseWriter, r *http.Request) 
 			"агент не может перезапуститься сам, а SSH для ноды не настроен")
 		return
 	}
-	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "agent.restart", "node:"+nodeID, map[string]any{"method": "ssh"})
-	h.enqueueDaemonJob(w, r, "restart", nil)
+	taskID, err := h.startSSHTask(r.Context(), nodeID, "restart", claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "задача не поставлена в очередь")
+		return
+	}
+	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "agent.restart", "node:"+nodeID, map[string]any{"method": "ssh", "task_id": taskID})
+	writeJSON(w, http.StatusAccepted, map[string]any{"task_id": taskID, "method": "ssh"})
 }
 
 func (h *Handler) agentLogsViaRelay(r *http.Request, nodeID string) (map[string]any, error) {

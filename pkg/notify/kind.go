@@ -56,6 +56,8 @@ const (
 	KindStaffNodeOffline  Kind = "staff.node_offline"
 	KindStaffNodeOnline   Kind = "staff.node_online"
 	KindDiskLow           Kind = "disk.low"
+	KindAgentOutdated     Kind = "staff.agent_outdated"
+	KindAgentUpdateFailed Kind = "staff.agent_update_failed"
 	KindPanelUpdate       Kind = "panel.update"
 	KindPanelUpdateFailed Kind = "panel.update_failed"
 )
@@ -145,6 +147,8 @@ var defs = map[Kind]Def{
 	KindStaffNodeOffline:  {Group: GroupStaff, Icon: "ri-cloud-off-line", Severity: SeverityCritical, Channels: channelsAll},
 	KindStaffNodeOnline:   {Group: GroupStaff, Icon: "ri-cloud-line", Severity: SeveritySuccess, Channels: channelsAll},
 	KindDiskLow:           {Group: GroupStaff, Icon: "ri-hard-drive-2-line", Severity: SeverityWarning, Channels: channelsAll},
+	KindAgentOutdated:     {Group: GroupStaff, Icon: "ri-refresh-line", Severity: SeverityWarning, Channels: channelsEmail},
+	KindAgentUpdateFailed: {Group: GroupStaff, Icon: "ri-error-warning-line", Severity: SeverityCritical, Channels: channelsAll},
 	KindPanelUpdate:       {Group: GroupStaff, Icon: "ri-download-2-line", Severity: SeverityInfo, Channels: channelsEmail},
 	KindPanelUpdateFailed: {Group: GroupStaff, Icon: "ri-error-warning-line", Severity: SeverityCritical, Channels: channelsAll},
 }
