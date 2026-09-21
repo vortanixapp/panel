@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/vortanixapp/panel/pkg/protocol"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
@@ -145,9 +146,23 @@ func (h *Handler) GetAdminAgentLogs(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	var relayErr error
+	if link, err := h.loadAgentLink(r.Context(), id); err == nil && link.can(protocol.CapAgentLogs) {
+		res, err := h.agentLogsViaRelay(r, id)
+		if err == nil {
+			res["location_id"] = id
+			writeJSON(w, http.StatusOK, res)
+			return
+		}
+		relayErr = err
+	}
 	meta := parseMetaMap(loc.Meta)
 	if !hasSSHConfigured(loc, meta) {
-		writeError(w, http.StatusBadRequest, "SSH is not configured for this location")
+		if relayErr != nil {
+			writeRelayError(w, relayErr)
+			return
+		}
+		writeCodedError(w, http.StatusConflict, "ssh_not_configured", "Журнал недоступен: агент не в сети или устарел, а SSH для ноды не настроен")
 		return
 	}
 	tail := 200
@@ -173,6 +188,7 @@ func (h *Handler) GetAdminAgentLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	resp := map[string]any{
+		"source":      "ssh",
 		"location_id": id,
 		"hostname":    cfg.Host,
 		"logs":        lines,

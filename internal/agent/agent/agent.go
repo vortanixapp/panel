@@ -43,6 +43,8 @@ type Agent struct {
 	bootID              string
 	relayCaps           atomic.Value
 	clockSkewMs         atomic.Int64
+	reconnects          atomic.Int64
+	connectedOnce       atomic.Bool
 	conn                *websocket.Conn
 	writeMu             sync.Mutex
 	out                 outbox
@@ -224,6 +226,9 @@ func (a *Agent) connect() error {
 	a.conn = conn
 	a.writeMu.Unlock()
 
+	if a.connectedOnce.Swap(true) {
+		a.reconnects.Add(1)
+	}
 	log.Printf("connected to relay as node=%s", a.nodeID)
 	if len(pending) > 0 {
 		log.Printf("доставлено %d сообщений, накопленных без связи", len(pending))
@@ -466,6 +471,9 @@ func (a *Agent) handleCommand(data []byte) {
 	case protocol.ActionAgentLogs:
 		a.disp.nodeReadJob(job{id: cmd.ID, action: cmd.Action, timeout: time.Minute,
 			run: func(ctx context.Context) { a.agentLogs(ctx, cmd) }})
+		return
+	}
+	if a.routeNodeOp(cmd) {
 		return
 	}
 

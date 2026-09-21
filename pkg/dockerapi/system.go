@@ -103,3 +103,65 @@ func (c *Client) LogsRange(ctx context.Context, id string, since, until time.Tim
 func unixNano(t time.Time) string {
 	return fmt.Sprintf("%d.%09d", t.Unix(), t.Nanosecond())
 }
+
+type DiskUsage struct {
+	LayersSize int64 `json:"LayersSize"`
+	Images     []struct {
+		ID         string   `json:"Id"`
+		RepoTags   []string `json:"RepoTags"`
+		Size       int64    `json:"Size"`
+		SharedSize int64    `json:"SharedSize"`
+		Containers int64    `json:"Containers"`
+	} `json:"Images"`
+	Containers []struct {
+		ID     string   `json:"Id"`
+		Names  []string `json:"Names"`
+		SizeRw int64    `json:"SizeRw"`
+		State  string   `json:"State"`
+	} `json:"Containers"`
+	Volumes []struct {
+		Name      string `json:"Name"`
+		UsageData struct {
+			Size     int64 `json:"Size"`
+			RefCount int64 `json:"RefCount"`
+		} `json:"UsageData"`
+	} `json:"Volumes"`
+	BuildCache []struct {
+		ID    string `json:"ID"`
+		Size  int64  `json:"Size"`
+		InUse bool   `json:"InUse"`
+	} `json:"BuildCache"`
+}
+
+func (c *Client) SystemDF(ctx context.Context) (*DiskUsage, error) {
+	var out DiskUsage
+	if err := c.call(ctx, http.MethodGet, "/system/df", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) PruneBuildCache(ctx context.Context) (int64, error) {
+	var out struct {
+		SpaceReclaimed int64 `json:"SpaceReclaimed"`
+	}
+	if err := c.call(ctx, http.MethodPost, "/build/prune", nil, nil, &out); err != nil {
+		return 0, err
+	}
+	return out.SpaceReclaimed, nil
+}
+
+type Distribution struct {
+	Descriptor struct {
+		Digest string `json:"digest"`
+		Size   int64  `json:"size"`
+	} `json:"Descriptor"`
+}
+
+func (c *Client) DistributionInspect(ctx context.Context, ref string) (*Distribution, error) {
+	var out Distribution
+	if err := c.call(ctx, http.MethodGet, "/distribution/"+ref+"/json", nil, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

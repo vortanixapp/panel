@@ -40,6 +40,33 @@ func (c *Client) SendCommand(ctx context.Context, nodeID string, req CommandRequ
 	return c.post(ctx, url, body)
 }
 
+func (c *Client) SendTask(ctx context.Context, nodeID string, req CommandRequest) (string, error) {
+	body, err := json.Marshal(req)
+	if err != nil {
+		return "", err
+	}
+	url := fmt.Sprintf("%s/internal/v1/nodes/%s/command", c.baseURL, nodeID)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Internal-Secret", c.secret)
+	resp, err := c.http.Do(httpReq)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return "", decodeError(resp)
+	}
+	var out struct {
+		BootID string `json:"boot_id"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return out.BootID, nil
+}
+
 type CommandSyncResponse struct {
 	CommandID string         `json:"command_id"`
 	OK        bool           `json:"ok"`

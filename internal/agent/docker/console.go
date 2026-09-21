@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -49,14 +50,20 @@ func CollectStats(ctx context.Context, serverID string) (Stats, error) {
 	return st, nil
 }
 
-func CollectRunningStats(ctx context.Context) (map[string]Stats, error) {
+var statsCache struct {
+	sync.Mutex
+	byName map[string]Stats
+	at     time.Time
+}
+
+func collectAllStats(ctx context.Context) (map[string]Stats, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "docker", "stats", "--no-stream", "--format", "{{json .}}").Output()
 	if err != nil {
 		return nil, err
 	}
-	stats := map[string]Stats{}
+	byName := map[string]Stats{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -70,13 +77,40 @@ func CollectRunningStats(ctx context.Context) (map[string]Stats, error) {
 		if json.Unmarshal([]byte(line), &raw) != nil {
 			continue
 		}
-		id := ServerIDFromContainer(raw.Name)
-		if id == "" {
-			continue
-		}
 		cpu, _ := strconv.ParseFloat(strings.TrimSuffix(raw.CPUPerc, "%"), 64)
 		used, limit := parseMemUsage(raw.MemUsage)
-		stats[id] = Stats{CPUPct: cpu, MemUsedMB: used, MemLimitMB: limit}
+		byName[raw.Name] = Stats{CPUPct: cpu, MemUsedMB: used, MemLimitMB: limit}
+	}
+	statsCache.Lock()
+	statsCache.byName, statsCache.at = byName, time.Now()
+	statsCache.Unlock()
+	return byName, nil
+}
+
+func recentStats(ctx context.Context, maxAge time.Duration) map[string]Stats {
+	statsCache.Lock()
+	byName, at := statsCache.byName, statsCache.at
+	statsCache.Unlock()
+	if byName != nil && time.Since(at) < maxAge {
+		return byName
+	}
+	fresh, err := collectAllStats(ctx)
+	if err != nil {
+		return byName
+	}
+	return fresh
+}
+
+func CollectRunningStats(ctx context.Context) (map[string]Stats, error) {
+	byName, err := collectAllStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stats := map[string]Stats{}
+	for name, st := range byName {
+		if id := ServerIDFromContainer(name); id != "" {
+			stats[id] = st
+		}
 	}
 	return stats, nil
 }

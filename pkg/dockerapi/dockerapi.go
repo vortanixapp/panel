@@ -99,18 +99,48 @@ type Image struct {
 	Config map[string]any `json:"Config"`
 }
 
+type Port struct {
+	IP          string `json:"IP"`
+	PrivatePort int    `json:"PrivatePort"`
+	PublicPort  int    `json:"PublicPort"`
+	Type        string `json:"Type"`
+}
+
 type Summary struct {
-	ID     string            `json:"Id"`
-	Names  []string          `json:"Names"`
-	Image  string            `json:"Image"`
-	State  string            `json:"State"`
-	Labels map[string]string `json:"Labels"`
+	ID      string            `json:"Id"`
+	Names   []string          `json:"Names"`
+	Image   string            `json:"Image"`
+	ImageID string            `json:"ImageID"`
+	Created int64             `json:"Created"`
+	State   string            `json:"State"`
+	Status  string            `json:"Status"`
+	Ports   []Port            `json:"Ports"`
+	Labels  map[string]string `json:"Labels"`
+}
+
+func (s Summary) CleanName() string {
+	if len(s.Names) == 0 {
+		return ""
+	}
+	return strings.TrimPrefix(s.Names[0], "/")
 }
 
 type ImageSummary struct {
 	ID          string   `json:"Id"`
 	RepoTags    []string `json:"RepoTags"`
 	RepoDigests []string `json:"RepoDigests"`
+	Created     int64    `json:"Created"`
+	Size        int64    `json:"Size"`
+}
+
+func (i ImageSummary) Tags() []string {
+	var out []string
+	for _, t := range i.RepoTags {
+		if t != "" && t != "<none>:<none>" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 func (c *Client) request(ctx context.Context, method, path string, query url.Values, body any) (*http.Response, error) {
