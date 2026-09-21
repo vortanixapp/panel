@@ -332,6 +332,9 @@ export const servers = {
   "servers.cron.job_toggle": "Задача активна",
   "servers.cron.delete_confirm": "Удалить cron-задачу?",
   "servers.cron.new_title": "Новая cron-задача",
+  "servers.cron.tz_hint": "Расписание считается по часовому поясу {tz}: он берётся из профиля владельца сервера. Задача выполняется, только когда сервер запущен.",
+  "servers.cron.next_run": "Следующий запуск: {date}",
+  "servers.cron.invalid_schedule": "Ошибка в расписании, задача не выполняется",
 
   "servers.metrics.live_title": "CPU / RAM (live)",
   "servers.metrics.scale_max": "шкала до {value}%",

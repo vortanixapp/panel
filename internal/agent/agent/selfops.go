@@ -199,10 +199,10 @@ func (a *Agent) sendStateSnapshot() {
 	_ = a.send(msg)
 }
 
-func (a *Agent) nodeEvent(kind, level string, data map[string]any) {
+func (a *Agent) nodeEvent(kind, level string, data map[string]any) bool {
 	if !a.relayHas(protocol.CapNodeEvents) {
-		return
+		return false
 	}
 	msg, _ := json.Marshal(protocol.NodeEventMessage{Type: protocol.MsgNodeEvent, Kind: kind, Level: level, Data: data})
-	_ = a.send(msg)
+	return a.send(msg) == nil
 }

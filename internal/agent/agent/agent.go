@@ -28,6 +28,7 @@ import (
 	"github.com/vortanixapp/panel/internal/agent/docker"
 	"github.com/vortanixapp/panel/internal/agent/selfupdate"
 	"github.com/vortanixapp/panel/pkg/buildinfo"
+	"github.com/vortanixapp/panel/pkg/nodeevents"
 	"github.com/vortanixapp/panel/pkg/protocol"
 	"github.com/vortanixapp/panel/pkg/relaytls"
 )
@@ -50,6 +51,8 @@ type Agent struct {
 	reportOnce          sync.Once
 	disp                *dispatcher
 	ops                 opsRegistry
+	cron                *cronScheduler
+	firewall            *firewallKeeper
 	metricsBusy         atomic.Bool
 	serversRunning      atomic.Int64
 	serversTotal        atomic.Int64
@@ -124,6 +127,16 @@ func New() *Agent {
 	a.disp = newDispatcher(func(j job, err error, code string) {
 		a.sendAckCode(j.id, false, err, nil, code)
 	})
+	a.cron = newCronScheduler(func(serverID string, run docker.CronRun) bool {
+		return a.nodeEvent(string(nodeevents.CronFailed), string(nodeevents.Warn), map[string]any{
+			"server_id": serverID, "job_id": run.JobID, "exit_code": run.ExitCode, "error": run.Error,
+		})
+	})
+	a.firewall = newFirewallKeeper(func(serverID string, err error) bool {
+		return a.nodeEvent(string(nodeevents.FirewallFailed), string(nodeevents.Error), map[string]any{
+			"server_id": serverID, "error": err.Error(),
+		})
+	})
 	return a
 }
 
@@ -131,6 +144,8 @@ func (a *Agent) Run() {
 	if a.relayURL == "" || a.token == "" || a.nodeID == "" {
 		log.Fatal("RELAY_URL, AGENT_TOKEN and NODE_ID are required")
 	}
+	go a.cron.run()
+	go a.firewall.watch()
 	backoff := reconnectMin
 	for {
 		if err := a.connect(); err != nil {
@@ -577,6 +592,7 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 		for _, err := range docker.CleanupServerTraces(ctx, cmd.ServerID) {
 			log.Printf("очистка следов сервера %s: %v", cmd.ServerID, err)
 		}
+		a.cron.drop(cmd.ServerID)
 		a.sendStatus(cmd.ServerID, status, "")
 		a.sendAck(cmd.ID, execErr == nil, execErr, nil)
 		return
@@ -778,8 +794,16 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 			a.sendAck(cmd.ID, false, parseErr, nil)
 			return
 		}
-		execErr = docker.SyncCron(ctx, cmd.ServerID, jobs)
-		a.sendAck(cmd.ID, execErr == nil, execErr, map[string]any{"jobs": len(jobs)})
+		tz, _ := cmd.Payload["tz"].(string)
+		invalid, syncErr := docker.SyncCron(cmd.ServerID, jobs, tz)
+		if syncErr != nil {
+			a.sendAck(cmd.ID, false, syncErr, nil)
+			return
+		}
+		a.cron.load(cmd.ServerID)
+		a.sendAck(cmd.ID, true, nil, map[string]any{
+			"jobs": len(jobs), "invalid": invalid, "tz": docker.CronLocationName(tz), "scheduler": true,
+		})
 		return
 	case protocol.ActionFirewallSync:
 		rules, parseErr := docker.DecodeFirewallRules(cmd.Payload["rules"])
@@ -788,6 +812,9 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 			return
 		}
 		execErr = docker.SyncFirewall(ctx, cmd.ServerID, rules)
+		if execErr != nil {
+			a.firewall.report(cmd.ServerID, execErr)
+		}
 		a.sendAck(cmd.ID, execErr == nil, execErr, map[string]any{"rules": len(rules)})
 		return
 	case protocol.ActionPortsSync:

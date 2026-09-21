@@ -5,8 +5,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/vortanixapp/panel/pkg/cronexpr"
 )
 
 func (h *Handler) PatchServer(w http.ResponseWriter, r *http.Request) {
@@ -144,17 +147,28 @@ func (h *Handler) ServerCronList(w http.ResponseWriter, r *http.Request) {
 			rows.Close()
 		}
 	}()
+	tz := h.serverCronTimezone(r.Context(), id)
+	loc, _ := time.LoadLocation(tz)
+	now := time.Now()
 	list := []map[string]any{}
 	if rows != nil {
 		for rows.Next() {
 			var cid, sched, cmd string
 			var en bool
 			if rows.Scan(&cid, &sched, &cmd, &en) == nil {
-				list = append(list, map[string]any{"id": cid, "schedule": sched, "command": cmd, "enabled": en})
+				item := map[string]any{"id": cid, "schedule": sched, "command": cmd, "enabled": en}
+				if expr, err := cronexpr.Parse(sched); err != nil {
+					item["invalid"] = true
+				} else if en {
+					if next := expr.Next(now, loc); !next.IsZero() {
+						item["next_run"] = next.UTC().Format(time.RFC3339)
+					}
+				}
+				list = append(list, item)
 			}
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"jobs": list})
+	writeJSON(w, http.StatusOK, map[string]any{"jobs": list, "timezone": tz})
 }
 
 func (h *Handler) ServerCronCreate(w http.ResponseWriter, r *http.Request) {
@@ -168,6 +182,16 @@ func (h *Handler) ServerCronCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Schedule == "" || body.Command == "" {
 		writeError(w, http.StatusBadRequest, "schedule and command required")
+		return
+	}
+	body.Schedule = strings.Join(strings.Fields(body.Schedule), " ")
+	body.Command = strings.TrimSpace(body.Command)
+	if _, err := cronexpr.Parse(body.Schedule); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, "Расписание: "+err.Error())
+		return
+	}
+	if len(body.Command) > 2000 || strings.ContainsAny(body.Command, "\r\n") {
+		writeError(w, http.StatusUnprocessableEntity, "Команда должна быть одной строкой не длиннее 2000 символов")
 		return
 	}
 	var cid string

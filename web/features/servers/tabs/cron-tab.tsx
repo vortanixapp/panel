@@ -28,10 +28,11 @@ import {
   fetchServerCron,
   toggleServerCronJob,
 } from "@/lib/api";
+import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
-const GRID = "grid-cols-[130px_minmax(0,1fr)_70px_70px] sm:grid-cols-[150px_minmax(0,1fr)_90px_80px]";
+const GRID = "grid-cols-[150px_minmax(0,1fr)_70px_70px] sm:grid-cols-[190px_minmax(0,1fr)_90px_80px]";
 
 export function ServerCronTab() {
   const t = useT();
@@ -87,6 +88,15 @@ export function ServerCronTab() {
   if (isLoading) return <Skeleton className="h-[320px] w-full rounded-[14px]" />;
 
   const jobs = data?.jobs ?? [];
+  const timeZone = data?.timezone || "UTC";
+  const formatRun = (iso: string) =>
+    new Date(iso).toLocaleString(localeTag(), {
+      timeZone,
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   return (
     <>
@@ -104,6 +114,9 @@ export function ServerCronTab() {
         }
         flush
       >
+        <p className={cn("px-[18px] pt-3 text-[11.5px] leading-[1.6]", VX_FAINT)}>
+          {t("servers.cron.tz_hint", { tz: timeZone })}
+        </p>
         <div className="overflow-x-auto px-[18px] pt-1.5 pb-4">
           <div className="min-w-[440px]">
             <div
@@ -132,7 +145,18 @@ export function ServerCronTab() {
                     VX_ROW_LINE
                   )}
                 >
-                  <span className="font-mono text-[12px]">{job.schedule}</span>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="font-mono text-[12px]">{job.schedule}</span>
+                    {job.invalid ? (
+                      <span className="text-[10.5px] text-[var(--vx-danger)]">
+                        {t("servers.cron.invalid_schedule")}
+                      </span>
+                    ) : job.next_run ? (
+                      <span className={cn("text-[10.5px]", VX_FAINT)}>
+                        {t("servers.cron.next_run", { date: formatRun(job.next_run) })}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="truncate font-mono text-[12px] text-[var(--vx-dim)]">
                     {job.command}
                   </span>

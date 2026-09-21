@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/vortanixapp/panel/pkg/protocol"
 )
@@ -174,8 +176,56 @@ func (h *Handler) pushCronState(ctx context.Context, nodeID, serverID string) er
 	if err != nil {
 		return err
 	}
-	_, err = h.agentCommand(ctx, nodeID, serverID, protocol.ActionCronSync, map[string]any{"jobs": jobs})
+	_, err = h.agentCommand(ctx, nodeID, serverID, protocol.ActionCronSync, map[string]any{
+		"jobs": jobs,
+		"tz":   h.serverCronTimezone(ctx, serverID),
+	})
 	return err
+}
+
+func (h *Handler) serverCronTimezone(ctx context.Context, serverID string) string {
+	var tz string
+	_ = h.dbOf(ctx).QueryRow(ctx, `
+		SELECT COALESCE(p.timezone, '')
+		FROM core.servers s
+		LEFT JOIN core.user_profiles p ON p.user_id = s.user_id
+		WHERE s.id = $1
+	`, serverID).Scan(&tz)
+	if tz == "" {
+		return "UTC"
+	}
+	if _, err := time.LoadLocation(tz); err != nil {
+		return "UTC"
+	}
+	return tz
+}
+
+func (h *Handler) resyncUserCron(userID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	rows, err := h.dbOf(ctx).Query(ctx, `
+		SELECT DISTINCT s.id::text, s.node_id::text
+		FROM core.servers s
+		JOIN core.server_cron_jobs j ON j.server_id = s.id
+		WHERE s.user_id = $1 AND s.node_id IS NOT NULL
+	`, userID)
+	if err != nil {
+		return
+	}
+	type target struct{ serverID, nodeID string }
+	var list []target
+	for rows.Next() {
+		var t target
+		if rows.Scan(&t.serverID, &t.nodeID) == nil {
+			list = append(list, t)
+		}
+	}
+	rows.Close()
+	for _, t := range list {
+		if err := h.pushCronState(ctx, t.nodeID, t.serverID); err != nil {
+			log.Printf("cron сервера %s не обновлён после смены часового пояса: %v", t.serverID, err)
+		}
+	}
 }
 
 func (h *Handler) pushFirewallState(ctx context.Context, nodeID, serverID string) error {

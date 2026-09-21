@@ -176,6 +176,8 @@ func (r *Runner) runMigration(ctx context.Context, pl migratePayload) error {
 		return fmt.Errorf("запуск на новой ноде: %w", err)
 	}
 
+	r.moveServerAgentState(ctx, pl.ServerID, srv.NodeID, pl.ToNodeID)
+
 	r.migrationStage(ctx, pl.MigrationID, "running", "cleanup")
 	r.cleanupSource(ctx, srcCfg, pl.ServerID, pl.RemoveSource)
 

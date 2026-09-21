@@ -3,9 +3,12 @@ package docker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"os/exec"
 	"strings"
+	"sync"
 )
 
 type FirewallRule struct {
@@ -16,71 +19,142 @@ type FirewallRule struct {
 	Enabled  bool   `json:"enabled"`
 }
 
-func SyncFirewall(ctx context.Context, serverID string, rules []FirewallRule) error {
-	if err := ensureIptables(ctx); err != nil {
-		return err
-	}
+var errContainerNotRunning = errors.New("контейнер сервера не запущен")
 
+var (
+	firewallLocksMu sync.Mutex
+	firewallLocks   = map[string]*sync.Mutex{}
+)
+
+func firewallLock(serverID string) func() {
+	firewallLocksMu.Lock()
+	mu, ok := firewallLocks[serverID]
+	if !ok {
+		mu = &sync.Mutex{}
+		firewallLocks[serverID] = mu
+	}
+	firewallLocksMu.Unlock()
+	mu.Lock()
+	return mu.Unlock
+}
+
+func SyncFirewall(ctx context.Context, serverID string, rules []FirewallRule) error {
+	for _, r := range rules {
+		if _, err := ruleProtocol(r); err != nil {
+			return err
+		}
+		if r.PortFrom < 0 || r.PortFrom > 65535 || (r.PortTo != nil && (*r.PortTo < 0 || *r.PortTo > 65535)) {
+			return errors.New("порты правила вне диапазона 0–65535")
+		}
+	}
 	if err := writeStateFile(serverID, stateFirewallFile, map[string]any{"rules": rules}); err != nil {
 		return err
 	}
+	return ApplyFirewall(ctx, serverID)
+}
 
+func ApplyFirewall(ctx context.Context, serverID string) error {
+	defer firewallLock(serverID)()
+	rules, _ := ReadFirewallState(serverID)
+	chain := firewallChainName(serverID)
+	enabled := enabledRules(rules)
+	if len(enabled) == 0 {
+		_, err := HostShell(ctx, firewallRemoveScript(chain))
+		return err
+	}
 	ip, err := containerIP(ctx, serverID)
+	if errors.Is(err, errContainerNotRunning) {
+		_, err = HostShell(ctx, dropJumpsScript(chain))
+		return err
+	}
 	if err != nil {
 		return err
 	}
-
-	chain := firewallChainName(serverID)
-	if err := iptables(ctx, "-N", chain); err != nil {
+	script, err := firewallApplyScript(chain, ip, enabled)
+	if err != nil {
 		return err
 	}
-	if err := iptables(ctx, "-F", chain); err != nil {
-		return err
-	}
+	_, err = HostShell(ctx, script)
+	return err
+}
 
-	enabled := make([]FirewallRule, 0, len(rules))
+func HasFirewallRules(serverID string) bool {
+	rules, _ := ReadFirewallState(serverID)
+	return len(enabledRules(rules)) > 0
+}
+
+func enabledRules(rules []FirewallRule) []FirewallRule {
+	out := make([]FirewallRule, 0, len(rules))
 	for _, r := range rules {
 		if r.Enabled && r.PortFrom > 0 {
-			enabled = append(enabled, r)
+			out = append(out, r)
 		}
 	}
+	return out
+}
 
-	if len(enabled) == 0 {
-		removeFirewallJump(ctx, ip, chain)
-		_ = iptables(ctx, "-X", chain)
-		return nil
+func ruleProtocol(r FirewallRule) (string, error) {
+	proto := strings.ToLower(strings.TrimSpace(r.Protocol))
+	if proto == "" {
+		proto = "tcp"
 	}
-
-	for _, r := range enabled {
-		proto := strings.ToLower(strings.TrimSpace(r.Protocol))
-		if proto == "" {
-			proto = "tcp"
-		}
-		if proto != "tcp" && proto != "udp" {
-			return fmt.Errorf("unsupported protocol %q", r.Protocol)
-		}
-		dport := formatPortRange(r.PortFrom, r.PortTo)
-		if err := iptables(ctx, "-A", chain, "-p", proto, "--dport", dport, "-j", "DROP"); err != nil {
-			return err
-		}
+	if proto != "tcp" && proto != "udp" {
+		return "", fmt.Errorf("неподдерживаемый протокол %q", r.Protocol)
 	}
+	return proto, nil
+}
 
-	return ensureFirewallJump(ctx, ip, chain)
+func firewallApplyScript(chain, ip string, rules []FirewallRule) (string, error) {
+	parsed := net.ParseIP(ip)
+	if parsed == nil || parsed.To4() == nil {
+		return "", fmt.Errorf("неверный адрес контейнера %q", ip)
+	}
+	var b strings.Builder
+	b.WriteString("set -e\n")
+	b.WriteString("iptables -w -N DOCKER-USER 2>/dev/null || true\n")
+	fmt.Fprintf(&b, "iptables -w -N %s 2>/dev/null || true\n", chain)
+	fmt.Fprintf(&b, "iptables -w -F %s\n", chain)
+	for _, r := range rules {
+		proto, err := ruleProtocol(r)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&b, "iptables -w -A %s -p %s --dport %s -j DROP\n", chain, proto, formatPortRange(r.PortFrom, r.PortTo))
+	}
+	b.WriteString(dropJumpsScript(chain))
+	fmt.Fprintf(&b, "iptables -w -I DOCKER-USER 1 -d %s/32 -j %s\n", parsed.To4().String(), chain)
+	return b.String(), nil
+}
+
+func firewallRemoveScript(chain string) string {
+	return dropJumpsScript(chain) +
+		fmt.Sprintf("iptables -w -F %s 2>/dev/null || true\niptables -w -X %s 2>/dev/null || true\n", chain, chain)
+}
+
+func dropJumpsScript(chain string) string {
+	return fmt.Sprintf(
+		"iptables -w -S DOCKER-USER 2>/dev/null | grep -e ' -j %s$' | sed 's/^-A /-D /' | while read -r rule; do iptables -w $rule; done\n",
+		chain,
+	)
 }
 
 func containerIP(ctx context.Context, serverID string) (string, error) {
 	cname := ContainerName(serverID)
 	out, err := exec.CommandContext(ctx, "docker", "inspect", "-f",
-		"{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}", cname).Output()
+		"{{.State.Running}} {{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}", cname).Output()
 	if err != nil {
-		return "", fmt.Errorf("container not found")
+		return "", errContainerNotRunning
 	}
-	for _, ip := range strings.Fields(string(out)) {
+	fields := strings.Fields(string(out))
+	if len(fields) == 0 || fields[0] != "true" {
+		return "", errContainerNotRunning
+	}
+	for _, ip := range fields[1:] {
 		if ip != "" {
 			return ip, nil
 		}
 	}
-	return "", fmt.Errorf("container has no IP (is it running?)")
+	return "", fmt.Errorf("у контейнера нет адреса в сети Docker")
 }
 
 func firewallChainName(serverID string) string {
@@ -99,40 +173,6 @@ func formatPortRange(from int, to *int) string {
 	return fmt.Sprintf("%d", from)
 }
 
-func ensureIptables(ctx context.Context) error {
-	if err := exec.CommandContext(ctx, "sh", "-c", "command -v iptables >/dev/null 2>&1").Run(); err != nil {
-		return fmt.Errorf("iptables not available")
-	}
-	_ = exec.CommandContext(ctx, "sh", "-c", "iptables -L DOCKER-USER >/dev/null 2>&1 || iptables -N DOCKER-USER >/dev/null 2>&1 || true").Run()
-	return nil
-}
-
-func iptables(ctx context.Context, args ...string) error {
-	cmd := append([]string{"iptables"}, args...)
-	err := exec.CommandContext(ctx, cmd[0], cmd[1:]...).Run()
-	if err == nil {
-		return nil
-	}
-	if len(args) >= 2 && args[0] == "-N" {
-		return nil
-	}
-	return err
-}
-
-func ensureFirewallJump(ctx context.Context, ip, chain string) error {
-	check := fmt.Sprintf("iptables -C DOCKER-USER -d %s -j %s >/dev/null 2>&1", ip, chain)
-	insert := fmt.Sprintf("iptables -I DOCKER-USER 1 -d %s -j %s", ip, chain)
-	return exec.CommandContext(ctx, "sh", "-c", check+" || "+insert).Run()
-}
-
-func removeFirewallJump(ctx context.Context, ip, chain string) {
-	script := fmt.Sprintf(
-		"while iptables -C DOCKER-USER -d %s -j %s >/dev/null 2>&1; do iptables -D DOCKER-USER -d %s -j %s; done",
-		ip, chain, ip, chain,
-	)
-	_ = exec.CommandContext(ctx, "sh", "-c", script).Run()
-}
-
 func DecodeFirewallRules(raw any) ([]FirewallRule, error) {
 	if raw == nil {
 		return []FirewallRule{}, nil
@@ -146,10 +186,6 @@ func DecodeFirewallRules(raw any) ([]FirewallRule, error) {
 		return nil, err
 	}
 	return rules, nil
-}
-
-func FirewallChainForServer(serverID string) string {
-	return firewallChainName(serverID)
 }
 
 func ReadFirewallState(serverID string) ([]FirewallRule, error) {

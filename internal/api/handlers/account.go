@@ -356,10 +356,16 @@ func (h *Handler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "Не удалось сохранить профиль")
 			return
 		}
-		query := "UPDATE core.user_profiles SET " + strings.Join(sets, ", ") + ", updated_at = now() WHERE user_id = $1"
-		if _, err := db.Exec(ctx, query, args...); err != nil {
+		var prevZone string
+		_ = db.QueryRow(ctx, `SELECT COALESCE(timezone, '') FROM core.user_profiles WHERE user_id = $1`, claims.UserID).Scan(&prevZone)
+		query := "UPDATE core.user_profiles SET " + strings.Join(sets, ", ") + ", updated_at = now() WHERE user_id = $1 RETURNING COALESCE(timezone, '')"
+		var zone string
+		if err := db.QueryRow(ctx, query, args...).Scan(&zone); err != nil {
 			writeError(w, http.StatusInternalServerError, "Не удалось сохранить профиль")
 			return
+		}
+		if zone != prevZone {
+			go h.resyncUserCron(claims.UserID)
 		}
 	}
 	h.writeAccount(w, r, claims)

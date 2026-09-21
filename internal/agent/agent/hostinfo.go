@@ -20,6 +20,8 @@ var agentCaps = []string{
 	protocol.CapNodeInfo,
 	protocol.CapAgentLogs,
 	protocol.CapAgentRestart,
+	protocol.CapFirewallHost,
+	protocol.CapCronScheduler,
 }
 
 type dockerFacts struct {

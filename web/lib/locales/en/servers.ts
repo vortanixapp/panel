@@ -334,6 +334,9 @@ export const servers = {
   "servers.cron.job_toggle": "Job enabled",
   "servers.cron.delete_confirm": "Delete this cron job?",
   "servers.cron.new_title": "New cron job",
+  "servers.cron.tz_hint": "Schedules use the {tz} time zone from the server owner's profile. A job runs only while the server is running.",
+  "servers.cron.next_run": "Next run: {date}",
+  "servers.cron.invalid_schedule": "Invalid schedule, the job does not run",
 
   "servers.metrics.live_title": "CPU / RAM (live)",
   "servers.metrics.scale_max": "scale to {value}%",

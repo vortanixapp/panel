@@ -1,14 +1,18 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"regexp"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/vortanixapp/panel/pkg/cronexpr"
 )
 
 type CronJob struct {
@@ -18,109 +22,78 @@ type CronJob struct {
 	Enabled  bool   `json:"enabled"`
 }
 
-var cronScheduleRe = regexp.MustCompile(`^[0-9*/,-]+$`)
+type CronState struct {
+	Jobs []CronJob `json:"jobs"`
+	TZ   string    `json:"tz,omitempty"`
+}
 
-func SyncCron(ctx context.Context, serverID string, jobs []CronJob) error {
+type CronRun struct {
+	JobID      string    `json:"job_id"`
+	StartedAt  time.Time `json:"started_at"`
+	DurationMs int64     `json:"duration_ms"`
+	ExitCode   int       `json:"exit_code"`
+	Error      string    `json:"error,omitempty"`
+	Output     string    `json:"output,omitempty"`
+}
+
+const (
+	stateCronRunsFile = "cron_runs.json"
+	cronRunsKeep      = 50
+	cronOutputMax     = 4 << 10
+)
+
+var cronRunsMu sync.Mutex
+
+func SyncCron(serverID string, jobs []CronJob, tz string) ([]string, error) {
+	invalid := []string{}
 	for i, j := range jobs {
-		sched, err := validateCronSchedule(j.Schedule)
-		if err != nil {
-			return fmt.Errorf("job %s: %w", j.ID, err)
-		}
 		cmd, err := validateCronCommand(j.Command)
 		if err != nil {
-			return fmt.Errorf("job %s: %w", j.ID, err)
+			return nil, fmt.Errorf("задание %s: %w", j.ID, err)
 		}
-		jobs[i].Schedule = sched
 		jobs[i].Command = cmd
-	}
-
-	if err := writeStateFile(serverID, stateCronFile, map[string]any{"jobs": jobs}); err != nil {
-		return err
-	}
-
-	cronPath := cronFilePath(serverID)
-	enabled := make([]CronJob, 0, len(jobs))
-	for _, j := range jobs {
-		if j.Enabled && strings.TrimSpace(j.Schedule) != "" && strings.TrimSpace(j.Command) != "" {
-			enabled = append(enabled, j)
+		jobs[i].Schedule = strings.Join(strings.Fields(j.Schedule), " ")
+		if _, err := cronexpr.Parse(jobs[i].Schedule); err != nil {
+			invalid = append(invalid, j.ID)
 		}
 	}
-	if len(enabled) == 0 {
-		_ = os.Remove(cronPath)
-		return nil
+	if err := writeStateFile(serverID, stateCronFile, CronState{Jobs: jobs, TZ: CronLocationName(tz)}); err != nil {
+		return nil, err
 	}
-
-	cname := ContainerName(serverID)
-	lines := make([]string, 0, len(enabled))
-	for _, j := range enabled {
-		line := fmt.Sprintf(
-			"%s root docker exec %s sh -lc %s >/dev/null 2>&1 # %s",
-			j.Schedule,
-			shellQuote(cname),
-			shellQuote(j.Command),
-			cronComment(j.ID),
-		)
-		lines = append(lines, line)
-	}
-	content := strings.Join(lines, "\n") + "\n"
-	tmp := cronPath + ".tmp"
-	if err := os.WriteFile(tmp, []byte(content), 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, cronPath)
+	return invalid, nil
 }
 
-func cronFilePath(serverID string) string {
-	safe := strings.ReplaceAll(serverID, "-", "")
-	if len(safe) > 32 {
-		safe = safe[:32]
+func CronLocationName(tz string) string {
+	tz = strings.TrimSpace(tz)
+	if tz == "" || tz == "Local" {
+		return ""
 	}
-	return filepath.Join("/etc/cron.d", "vortanix-"+safe)
+	if _, err := time.LoadLocation(tz); err != nil {
+		return ""
+	}
+	return tz
 }
 
-func validateCronSchedule(expr string) (string, error) {
-	expr = strings.TrimSpace(expr)
-	parts := strings.Fields(expr)
-	if len(parts) != 5 {
-		return "", fmt.Errorf("schedule must have 5 fields (min hour dom mon dow)")
+func ReadCronState(serverID string) (CronState, bool) {
+	var state CronState
+	if !readStateFile(serverID, stateCronFile, &state) {
+		return CronState{}, false
 	}
-	for _, p := range parts {
-		if p == "*" {
-			continue
-		}
-		if !cronScheduleRe.MatchString(p) {
-			return "", fmt.Errorf("schedule contains invalid characters")
-		}
-	}
-	return strings.Join(parts, " "), nil
+	return state, true
 }
 
 func validateCronCommand(cmd string) (string, error) {
 	cmd = strings.TrimSpace(cmd)
 	if cmd == "" {
-		return "", fmt.Errorf("command is required")
+		return "", errors.New("команда не указана")
 	}
 	if len(cmd) > 2000 {
-		return "", fmt.Errorf("command is too long")
+		return "", errors.New("команда длиннее 2000 символов")
 	}
 	if strings.ContainsAny(cmd, "\n\r") {
-		return "", fmt.Errorf("command must be a single line")
+		return "", errors.New("команда должна быть одной строкой")
 	}
 	return cmd, nil
-}
-
-func cronComment(id string) string {
-	var b strings.Builder
-	for _, r := range id {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
-			b.WriteRune(r)
-		}
-		if b.Len() >= 64 {
-			break
-		}
-	}
-	return b.String()
 }
 
 func DecodeCronJobs(raw any) ([]CronJob, error) {
@@ -138,18 +111,68 @@ func DecodeCronJobs(raw any) ([]CronJob, error) {
 	return jobs, nil
 }
 
-func CronFileForServer(serverID string) string {
-	return cronFilePath(serverID)
-}
-
-func ReadCronFile(serverID string) (string, error) {
-	b, err := os.ReadFile(cronFilePath(serverID))
-	if os.IsNotExist(err) {
-		return "", nil
+func RunCronJob(ctx context.Context, serverID string, job CronJob) CronRun {
+	run := CronRun{JobID: job.ID, StartedAt: time.Now().UTC()}
+	var out bytes.Buffer
+	cmd := exec.CommandContext(ctx, "docker", "exec", ContainerName(serverID), "sh", "-lc", job.Command)
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	run.DurationMs = time.Since(run.StartedAt).Milliseconds()
+	text := out.Bytes()
+	if len(text) > cronOutputMax {
+		text = text[len(text)-cronOutputMax:]
 	}
-	return string(b), err
+	run.Output = strings.TrimSpace(string(text))
+	var exitErr *exec.ExitError
+	switch {
+	case err == nil:
+	case ctx.Err() != nil:
+		run.ExitCode = -1
+		run.Error = "задание не уложилось в отведённое время"
+	case errors.As(err, &exitErr):
+		run.ExitCode = exitErr.ExitCode()
+		run.Error = fmt.Sprintf("команда завершилась с кодом %d", run.ExitCode)
+	default:
+		run.ExitCode = -1
+		run.Error = err.Error()
+	}
+	return run
 }
 
-func EnsureCronInstalled(ctx context.Context) error {
-	return exec.CommandContext(ctx, "sh", "-c", "command -v crontab >/dev/null 2>&1 || test -d /etc/cron.d").Run()
+func RecordCronRun(serverID string, run CronRun) {
+	cronRunsMu.Lock()
+	defer cronRunsMu.Unlock()
+	var runs []CronRun
+	readStateFile(serverID, stateCronRunsFile, &runs)
+	runs = append(runs, run)
+	if len(runs) > cronRunsKeep {
+		runs = runs[len(runs)-cronRunsKeep:]
+	}
+	_ = writeStateFile(serverID, stateCronRunsFile, runs)
+}
+
+func StateServers(ctx context.Context) []string {
+	seen := map[string]bool{}
+	var ids []string
+	add := func(id string) {
+		if safeServerID(id) && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+	base := envOr("VORTANIX_STATE_DIR", "/opt/vortanix/state")
+	if entries, err := os.ReadDir(base); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				add(e.Name())
+			}
+		}
+	}
+	if managed, err := ListManagedServerIDs(ctx); err == nil {
+		for _, id := range managed {
+			add(id)
+		}
+	}
+	return ids
 }

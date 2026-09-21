@@ -3032,7 +3032,15 @@ export async function resetServerMysqlUserPassword(serverId: string, username: s
 
 export async function fetchServerCron(serverId: string) {
   return apiFetch<{
-    jobs: { id: string; schedule: string; command: string; enabled: boolean }[];
+    jobs: {
+      id: string;
+      schedule: string;
+      command: string;
+      enabled: boolean;
+      next_run?: string;
+      invalid?: boolean;
+    }[];
+    timezone?: string;
   }>(`/v1/servers/${serverId}/cron/list`, { method: "POST" });
 }
 
