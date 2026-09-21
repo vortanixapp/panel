@@ -12,6 +12,7 @@ type AgentStats struct {
 	CPUPercent float64 `json:"cpu_percent"`
 	RAMPercent float64 `json:"ram_percent"`
 	RAMUsedMB  int64   `json:"ram_used_mb"`
+	UptimeSec  int64   `json:"uptime_sec"`
 }
 
 var prevAgentCPU struct {

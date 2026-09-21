@@ -49,6 +49,50 @@ func CollectStats(ctx context.Context, serverID string) (Stats, error) {
 	return st, nil
 }
 
+func CollectRunningStats(ctx context.Context) (map[string]Stats, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "docker", "stats", "--no-stream", "--format", "{{json .}}").Output()
+	if err != nil {
+		return nil, err
+	}
+	stats := map[string]Stats{}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var raw struct {
+			Name     string `json:"Name"`
+			CPUPerc  string `json:"CPUPerc"`
+			MemUsage string `json:"MemUsage"`
+		}
+		if json.Unmarshal([]byte(line), &raw) != nil {
+			continue
+		}
+		id := ServerIDFromContainer(raw.Name)
+		if id == "" {
+			continue
+		}
+		cpu, _ := strconv.ParseFloat(strings.TrimSuffix(raw.CPUPerc, "%"), 64)
+		used, limit := parseMemUsage(raw.MemUsage)
+		stats[id] = Stats{CPUPct: cpu, MemUsedMB: used, MemLimitMB: limit}
+	}
+	return stats, nil
+}
+
+func ServerIDFromContainer(name string) string {
+	name = strings.TrimPrefix(strings.TrimSpace(name), "/")
+	raw := strings.TrimPrefix(name, "vortanix-")
+	if raw == name || len(raw) != 32 {
+		return ""
+	}
+	if _, err := hex.DecodeString(raw); err != nil {
+		return ""
+	}
+	return raw[0:8] + "-" + raw[8:12] + "-" + raw[12:16] + "-" + raw[16:20] + "-" + raw[20:32]
+}
+
 func CollectStatsExtended(ctx context.Context, serverID string, diskLimitMB int) (Stats, error) {
 	st, err := CollectStats(ctx, serverID)
 	if err != nil {

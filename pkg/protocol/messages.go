@@ -102,6 +102,7 @@ type AckMessage struct {
 	CommandID string         `json:"command_id"`
 	OK        bool           `json:"ok"`
 	Error     string         `json:"error,omitempty"`
+	Code      string         `json:"code,omitempty"`
 	Result    map[string]any `json:"result,omitempty"`
 }
 
