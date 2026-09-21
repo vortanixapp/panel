@@ -12,8 +12,6 @@ import (
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
-const nodeOfflineGrace = 2 * time.Minute
-
 func (h *Handler) notifyServerOwner(ctx context.Context, db *pgxpool.Pool, serverID string, e notify.Event) {
 	r, err := notify.LoadServerOwner(ctx, db, serverID)
 	if err != nil {
@@ -43,21 +41,6 @@ func nodeLabel(nodeName string) i18n.Msg {
 		return i18n.Key("notify.node_offline.unnamed")
 	}
 	return i18n.Raw(nodeName)
-}
-
-func (h *Handler) scheduleNodeOffline(db *pgxpool.Pool, nodeID, nodeName string, lastSeen *time.Time) {
-	time.AfterFunc(nodeOfflineGrace, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		var still bool
-		if err := db.QueryRow(ctx, `
-			SELECT status = 'offline' AND last_seen_at IS NOT DISTINCT FROM $2
-			FROM core.nodes WHERE id = $1
-		`, nodeID, lastSeen).Scan(&still); err != nil || !still {
-			return
-		}
-		h.notifyNodeOffline(ctx, db, nodeID, nodeName, lastSeen)
-	})
 }
 
 func (h *Handler) notifyNodeOffline(ctx context.Context, db *pgxpool.Pool, nodeID, nodeName string, lastSeen *time.Time) {

@@ -215,7 +215,7 @@ func RunCapture(cfg Config, command string) (string, error) {
 	var buf bytes.Buffer
 	session.Stdout = &buf
 	session.Stderr = &buf
-	if err := session.Run("/bin/bash -lc " + shellQuote(command)); err != nil {
+	if err := runSession(session, "/bin/bash -lc "+shellQuote(command), cfg.execTimeout()); err != nil {
 		return buf.String(), err
 	}
 	return buf.String(), nil

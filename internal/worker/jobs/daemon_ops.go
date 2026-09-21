@@ -10,16 +10,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
+	"github.com/vortanixapp/panel/pkg/nodeevents"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 func (r *Runner) DaemonLoop(ctx context.Context, wake <-chan struct{}) {
 	ticker := time.NewTicker(15 * time.Second)
 	staleTicker := time.NewTicker(2 * time.Minute)
+	purgeTicker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 	defer staleTicker.Stop()
+	defer purgeTicker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
@@ -33,6 +34,8 @@ func (r *Runner) DaemonLoop(ctx context.Context, wake <-chan struct{}) {
 		case <-staleTicker.C:
 			r.enqueueStaleDaemonPulls(ctx)
 			r.drainDaemonJobs(ctx)
+		case <-purgeTicker.C:
+			r.purgeDaemonJobs(ctx)
 		}
 	}
 }
@@ -52,7 +55,8 @@ func (r *Runner) enqueueStaleDaemonPulls(ctx context.Context) {
 		  )
 		  AND NOT EXISTS (
 		    SELECT 1 FROM core.node_metrics m
-		    WHERE m.node_id = n.id AND m.measured_at > NOW() - INTERVAL '5 minutes'
+		    WHERE m.node_id = n.id AND m.metric_type = 'cpu_usage'
+		      AND m.measured_at > NOW() - INTERVAL '5 minutes'
 		  )
 		ORDER BY n.last_seen_at NULLS FIRST
 		LIMIT 10
@@ -84,26 +88,46 @@ func (r *Runner) drainDaemonJobs(ctx context.Context) {
 	r.processServerDestroys(ctx)
 }
 
-func (r *Runner) processDaemonJob(ctx context.Context) bool {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return false
-	}
-	defer tx.Rollback(ctx)
+const (
+	daemonActionTimeout = 20 * time.Minute
+	daemonPullTimeout   = 2 * time.Minute
+)
 
+func (r *Runner) claimDaemonJob(ctx context.Context, jobType string) (string, []byte, bool) {
 	var jobID string
 	var payload []byte
-	err = tx.QueryRow(ctx, `
-		SELECT id::text, payload
-		FROM core.jobs
-		WHERE type = 'daemon_action' AND status = 'pending' AND attempts < 5
-		ORDER BY created_at ASC LIMIT 1
-		FOR UPDATE SKIP LOCKED
-	`).Scan(&jobID, &payload)
+	err := r.db.QueryRow(ctx, `
+		UPDATE core.jobs SET status = 'running', attempts = attempts + 1
+		WHERE id = (
+			SELECT id FROM core.jobs
+			WHERE type = $1 AND status = 'pending' AND attempts < 5
+			ORDER BY created_at ASC
+			LIMIT 1
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING id::text, payload
+	`, jobType).Scan(&jobID, &payload)
 	if err != nil {
+		return "", nil, false
+	}
+	return jobID, payload, true
+}
+
+func (r *Runner) finishDaemonJob(ctx context.Context, jobID string, execErr error, ok map[string]any) {
+	if execErr != nil {
+		result, _ := json.Marshal(map[string]string{"error": execErr.Error()})
+		_, _ = r.db.Exec(ctx, `UPDATE core.jobs SET status = 'failed', result = $2::jsonb WHERE id = $1`, jobID, result)
+		return
+	}
+	result, _ := json.Marshal(ok)
+	_, _ = r.db.Exec(ctx, `UPDATE core.jobs SET status = 'completed', result = $2::jsonb WHERE id = $1`, jobID, result)
+}
+
+func (r *Runner) processDaemonJob(ctx context.Context) bool {
+	jobID, payload, ok := r.claimDaemonJob(ctx, "daemon_action")
+	if !ok {
 		return false
 	}
-	_, _ = tx.Exec(ctx, `UPDATE core.jobs SET status = 'running', attempts = attempts + 1 WHERE id = $1`, jobID)
 
 	var pl struct {
 		NodeID string         `json:"node_id"`
@@ -112,19 +136,25 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 	}
 	_ = json.Unmarshal(payload, &pl)
 
-	node, err := r.loadNodeSSH(ctx, tx, pl.NodeID)
+	node, err := r.loadNodeSSH(ctx, r.db, pl.NodeID)
 	if err != nil {
-		r.failJobGeneric(ctx, tx, jobID, err.Error())
-		_ = tx.Commit(ctx)
+		r.failJobGeneric(ctx, r.db, jobID, err.Error())
+		if pl.Action == "update" {
+			r.failAgentUpdate(ctx, pl.NodeID, err.Error())
+		}
 		return true
 	}
-	cfg := r.sshConfig(node, 0)
+	cfg := r.sshConfig(node, daemonActionTimeout)
 
 	var execErr error
 	var out bytes.Buffer
 	switch pl.Action {
 	case "restart":
-		_, execErr = sshclient.RunCapture(cfg, "sudo docker restart vortanix-agent 2>/dev/null || true")
+		_, execErr = sshclient.RunCapture(cfg, "sudo docker restart vortanix-agent")
+		if execErr == nil {
+			_ = nodeevents.Record(ctx, r.db, pl.NodeID, nodeevents.RestartRequested, nodeevents.Info,
+				map[string]any{"method": "ssh"}, "")
+		}
 	case "install":
 		relayURL, relayPin := r.relayTarget(ctx)
 		cmds, cmdErr := setupCommands("daemon", node.Meta, node.AgentToken, node.ID, relayURL, relayPin)
@@ -133,30 +163,63 @@ func (r *Runner) processDaemonJob(ctx context.Context) bool {
 			break
 		}
 		execErr = sshclient.Run(cfg, r.withRegistryLogin(ctx, cmds), &out)
+		if execErr != nil {
+			_ = nodeevents.Record(ctx, r.db, pl.NodeID, nodeevents.ReinstallFailed, nodeevents.Error,
+				map[string]any{"error": execErr.Error()}, "")
+		} else {
+			_ = nodeevents.Record(ctx, r.db, pl.NodeID, nodeevents.ReinstallDone, nodeevents.Success, nil, "")
+		}
 	case "update":
 		version, _ := pl.Params["version"].(string)
 		relayURL, relayPin := r.relayTarget(ctx)
 		cmds := daemonAgentCommands(node.AgentToken, node.ID, relayURL, relayPin, version)
 		execErr = sshclient.Run(cfg, r.withRegistryLogin(ctx, cmds), &out)
+		if execErr != nil {
+			r.failAgentUpdate(ctx, pl.NodeID, execErr.Error())
+		}
 	case "refresh":
-		execErr = r.collectNodeMetrics(ctx, tx, pl.NodeID, node)
+		execErr = r.collectNodeMetrics(ctx, pl.NodeID, node)
 	default:
 		execErr = fmt.Errorf("unknown daemon action: %s", pl.Action)
 	}
 
 	if execErr != nil {
-		msg := execErr.Error()
-		result, _ := json.Marshal(map[string]string{"error": msg})
-		_, _ = tx.Exec(ctx, `UPDATE core.jobs SET status = 'failed', result = $2::jsonb WHERE id = $1`, jobID, result)
-		_ = tx.Commit(ctx)
-		log.Printf("daemon_action %s на ноде %s: %s", pl.Action, pl.NodeID, msg)
-		return true
+		log.Printf("daemon_action %s на ноде %s: %s", pl.Action, pl.NodeID, execErr)
 	}
-
-	result, _ := json.Marshal(map[string]any{"ok": true, "action": pl.Action})
-	_, _ = tx.Exec(ctx, `UPDATE core.jobs SET status = 'completed', result = $2::jsonb WHERE id = $1`, jobID, result)
-	_ = tx.Commit(ctx)
+	r.finishDaemonJob(ctx, jobID, execErr, map[string]any{"ok": true, "action": pl.Action})
 	return true
+}
+
+func (r *Runner) failAgentUpdate(ctx context.Context, nodeID, msg string) {
+	tag, err := r.db.Exec(ctx, `
+		UPDATE core.nodes
+		SET agent_update = agent_update || jsonb_build_object(
+			'status', 'failed', 'error', $2::text, 'updated_at', now(), 'finished_at', now())
+		WHERE id = $1 AND agent_update->>'status' IN ('pending', 'pulling', 'restarting')
+	`, nodeID, msg)
+	if err != nil || tag.RowsAffected() == 0 {
+		return
+	}
+	_ = nodeevents.Record(ctx, r.db, nodeID, nodeevents.UpdateFailed, nodeevents.Error,
+		map[string]any{"error": msg, "method": "ssh"}, "")
+}
+
+func (r *Runner) purgeDaemonJobs(ctx context.Context) {
+	tag, err := r.db.Exec(ctx, `
+		DELETE FROM core.jobs
+		WHERE status IN ('completed', 'failed', 'cancelled')
+		  AND (
+			(type = 'daemon_pull' AND created_at < now() - interval '3 days')
+			OR (type = 'daemon_action' AND created_at < now() - interval '30 days')
+		  )
+	`)
+	if err != nil {
+		log.Printf("daemon: очистка старых задач: %v", err)
+		return
+	}
+	if n := tag.RowsAffected(); n > 0 {
+		log.Printf("daemon: удалено %d старых задач обхода нод", n)
+	}
 }
 
 func (r *Runner) withRegistryLogin(ctx context.Context, cmds []string) []string {
@@ -168,50 +231,26 @@ func (r *Runner) withRegistryLogin(ctx context.Context, cmds []string) []string 
 }
 
 func (r *Runner) processDaemonPull(ctx context.Context) bool {
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
+	jobID, payload, ok := r.claimDaemonJob(ctx, "daemon_pull")
+	if !ok {
 		return false
 	}
-	defer tx.Rollback(ctx)
-
-	var jobID string
-	var payload []byte
-	err = tx.QueryRow(ctx, `
-		SELECT id::text, payload
-		FROM core.jobs
-		WHERE type = 'daemon_pull' AND status = 'pending' AND attempts < 5
-		ORDER BY created_at ASC LIMIT 1
-		FOR UPDATE SKIP LOCKED
-	`).Scan(&jobID, &payload)
-	if err != nil {
-		return false
-	}
-	_, _ = tx.Exec(ctx, `UPDATE core.jobs SET status = 'running', attempts = attempts + 1 WHERE id = $1`, jobID)
-
 	var pl struct {
 		NodeID string `json:"node_id"`
 	}
 	_ = json.Unmarshal(payload, &pl)
-	node, err := r.loadNodeSSH(ctx, tx, pl.NodeID)
+	node, err := r.loadNodeSSH(ctx, r.db, pl.NodeID)
 	if err != nil {
-		r.failJobGeneric(ctx, tx, jobID, err.Error())
-		_ = tx.Commit(ctx)
+		r.failJobGeneric(ctx, r.db, jobID, err.Error())
 		return true
 	}
-	if err := r.collectNodeMetrics(ctx, tx, pl.NodeID, node); err != nil {
-		result, _ := json.Marshal(map[string]string{"error": err.Error()})
-		_, _ = tx.Exec(ctx, `UPDATE core.jobs SET status = 'failed', result = $2::jsonb WHERE id = $1`, jobID, result)
-		_ = tx.Commit(ctx)
-		return true
-	}
-	result, _ := json.Marshal(map[string]string{"ok": "true"})
-	_, _ = tx.Exec(ctx, `UPDATE core.jobs SET status = 'completed', result = $2::jsonb WHERE id = $1`, jobID, result)
-	_ = tx.Commit(ctx)
+	err = r.collectNodeMetrics(ctx, pl.NodeID, node)
+	r.finishDaemonJob(ctx, jobID, err, map[string]any{"ok": "true"})
 	return true
 }
 
-func (r *Runner) collectNodeMetrics(ctx context.Context, tx pgx.Tx, nodeID string, node *nodeSSH) error {
-	cfg := r.sshConfig(node, 0)
+func (r *Runner) collectNodeMetrics(ctx context.Context, nodeID string, node *nodeSSH) error {
+	cfg := r.sshConfig(node, daemonPullTimeout)
 
 	script := `
 set +e
@@ -301,6 +340,12 @@ printf 'MYSQL_INSTANCES:%s\n' "$( (cat /opt/vortanix/mysql-instances.json 2>/dev
 		}
 	}
 
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	now := time.Now()
 	insertMetric := func(metricType string, value float64, text *string) {
 		_, _ = tx.Exec(ctx, `
@@ -359,15 +404,23 @@ printf 'MYSQL_INSTANCES:%s\n' "$( (cat /opt/vortanix/mysql-instances.json 2>/dev
 	}
 	platform := textMetrics["OS"]
 	_, _ = tx.Exec(ctx, `
-		INSERT INTO core.node_daemons ( node_id, status, version, platform, pid)
-		VALUES ( $1, 'offline', NULLIF($2, ''), NULLIF($3, ''), $4)
+		INSERT INTO core.node_daemons (node_id, status, platform, pid, host)
+		VALUES ($1, 'offline', NULLIF($2, ''), $3,
+			CASE WHEN $4::text = '' THEN '{}'::jsonb
+			     ELSE jsonb_build_object('agent', jsonb_build_object('image', $4::text)) END)
 		ON CONFLICT (node_id) DO UPDATE SET
-			version = COALESCE(NULLIF(EXCLUDED.version, ''), core.node_daemons.version),
 			platform = COALESCE(NULLIF(EXCLUDED.platform, ''), core.node_daemons.platform),
 			pid = COALESCE(EXCLUDED.pid, core.node_daemons.pid),
+			host = CASE WHEN $4::text = '' THEN core.node_daemons.host
+			            ELSE core.node_daemons.host || jsonb_build_object('agent',
+			                COALESCE(core.node_daemons.host->'agent', '{}'::jsonb)
+			                || jsonb_build_object('image', $4::text)) END,
 			updated_at = now()
-	`, nodeID, agentImage, platform, pidVal)
+	`, nodeID, platform, pidVal, agentImage)
 
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
 	log.Printf("daemon_pull: node %s cpu=%.1f ram=%.1f", nodeID, cpuUsage, ramUsage)
 	return nil
 }

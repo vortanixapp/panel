@@ -1,9 +1,9 @@
 package hub
 
 import (
-	"encoding/json"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -11,10 +11,15 @@ import (
 )
 
 type AgentConn struct {
-	NodeID string
-	DB     *pgxpool.Pool
-	Conn   *websocket.Conn
-	Send   chan OutboundMessage
+	NodeID      string
+	DB          *pgxpool.Pool
+	Conn        *websocket.Conn
+	Send        chan OutboundMessage
+	ConnectedAt time.Time
+	RemoteAddr  string
+
+	pingSentAt atomic.Int64
+	rttMs      atomic.Int64
 }
 
 type OutboundMessage struct {
@@ -56,40 +61,42 @@ func (h *Hub) Unregister(nodeID string, conn *AgentConn) bool {
 }
 
 func (h *Hub) SendCommand(nodeID string, payload []byte) error {
-	h.mu.RLock()
-	c, ok := h.agents[nodeID]
-	h.mu.RUnlock()
-	if !ok {
-		return ErrNodeOffline
-	}
-	select {
-	case c.Send <- OutboundMessage{MessageType: websocket.TextMessage, Data: payload}:
-		return nil
-	default:
-		return ErrNodeOffline
-	}
+	return h.send(nodeID, OutboundMessage{MessageType: websocket.TextMessage, Data: payload})
 }
 
 func (h *Hub) SendBinary(nodeID string, payload []byte) error {
+	return h.send(nodeID, OutboundMessage{MessageType: websocket.BinaryMessage, Data: payload})
+}
+
+func (h *Hub) send(nodeID string, msg OutboundMessage) error {
 	h.mu.RLock()
+	defer h.mu.RUnlock()
 	c, ok := h.agents[nodeID]
-	h.mu.RUnlock()
 	if !ok {
 		return ErrNodeOffline
 	}
 	select {
-	case c.Send <- OutboundMessage{MessageType: websocket.BinaryMessage, Data: payload}:
+	case c.Send <- msg:
 		return nil
 	default:
 		return ErrNodeOffline
 	}
 }
 
-func (h *Hub) IsOnline(nodeID string) bool {
+func (h *Hub) Get(nodeID string) *AgentConn {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	_, ok := h.agents[nodeID]
-	return ok
+	return h.agents[nodeID]
+}
+
+func (h *Hub) Connected() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	ids := make([]string, 0, len(h.agents))
+	for id := range h.agents {
+		ids = append(ids, id)
+	}
+	return ids
 }
 
 const (
@@ -97,6 +104,20 @@ const (
 	PongWait     = 70 * time.Second
 	writeWait    = 10 * time.Second
 )
+
+func (c *AgentConn) MarkPong() {
+	sent := c.pingSentAt.Load()
+	if sent == 0 {
+		return
+	}
+	if rtt := time.Since(time.Unix(0, sent)); rtt >= 0 && rtt < PongWait {
+		c.rttMs.Store(rtt.Milliseconds())
+	}
+}
+
+func (c *AgentConn) RTT() int {
+	return int(c.rttMs.Load())
+}
 
 func (c *AgentConn) WritePump() {
 	ticker := time.NewTicker(PingInterval)
@@ -115,6 +136,7 @@ func (c *AgentConn) WritePump() {
 			}
 		case <-ticker.C:
 			_ = c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+			c.pingSentAt.Store(time.Now().UnixNano())
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				log.Printf("ping error node=%s: %v", c.NodeID, err)
 				return
@@ -128,9 +150,3 @@ var ErrNodeOffline = errOffline{}
 type errOffline struct{}
 
 func (errOffline) Error() string { return "node offline" }
-
-func DecodeEnvelope(data []byte) (map[string]any, error) {
-	var m map[string]any
-	err := json.Unmarshal(data, &m)
-	return m, err
-}

@@ -40,7 +40,7 @@ func (h *Handler) ListAdminAgents(w http.ResponseWriter, r *http.Request) {
 		SELECT n.id::text, n.name, COALESCE(n.meta->>'code', n.fqdn, ''), COALESCE(n.country, ''),
 			COALESCE(n.region, ''), n.ssh_host, n.status, n.last_seen_at,
 			COALESCE(d.status, 'unknown'), COALESCE(d.version, ''), COALESCE(d.platform, ''),
-			d.pid, d.uptime_sec, d.last_seen_at
+			d.pid, d.last_seen_at, d.started_at, d.connected_at, COALESCE(d.remote_addr, ''), d.rtt_ms
 		FROM core.nodes n
 		LEFT JOIN core.node_daemons d ON d.node_id = n.id
 		ORDER BY COALESCE(n.sort_order, 0), n.name
@@ -57,12 +57,12 @@ func (h *Handler) ListAdminAgents(w http.ResponseWriter, r *http.Request) {
 		var sshHost *string
 		var nodeStatus string
 		var nodeLastSeen *time.Time
-		var daemonStatus, version, platform string
-		var pid *int
-		var uptime *float64
-		var daemonLastSeen *time.Time
+		var daemonStatus, version, platform, remoteAddr string
+		var pid, rtt *int
+		var daemonLastSeen, startedAt, connectedAt *time.Time
 		if rows.Scan(&id, &name, &code, &country, &region, &sshHost, &nodeStatus, &nodeLastSeen,
-			&daemonStatus, &version, &platform, &pid, &uptime, &daemonLastSeen) != nil {
+			&daemonStatus, &version, &platform, &pid, &daemonLastSeen,
+			&startedAt, &connectedAt, &remoteAddr, &rtt) != nil {
 			continue
 		}
 		lastSeen := nodeLastSeen
@@ -74,6 +74,7 @@ func (h *Handler) ListAdminAgents(w http.ResponseWriter, r *http.Request) {
 			"id": id, "location_id": id, "node_id": id,
 			"name": name, "code": code, "country": country, "region": region,
 			"host": strPtr(sshHost), "status": daemonStatus, "is_online": isOnline,
+			"state":   agentPresenceState(daemonStatus, daemonLastSeen),
 			"version": version, "platform": platform,
 			"location": map[string]any{
 				"id": id, "name": name, "code": code, "region": region,
@@ -82,8 +83,17 @@ func (h *Handler) ListAdminAgents(w http.ResponseWriter, r *http.Request) {
 		if pid != nil {
 			item["pid"] = *pid
 		}
-		if uptime != nil {
-			item["uptime_sec"] = *uptime
+		if secs, ok := agentUptimeSeconds(isOnline, startedAt, connectedAt); ok {
+			item["uptime_sec"] = secs
+		}
+		if connectedAt != nil {
+			item["connected_at"] = connectedAt.Format(time.RFC3339)
+		}
+		if remoteAddr != "" {
+			item["remote_addr"] = remoteAddr
+		}
+		if rtt != nil {
+			item["rtt_ms"] = *rtt
 		}
 		if lastSeen != nil {
 			item["last_seen"] = lastSeen.Format(time.RFC3339)
@@ -264,14 +274,16 @@ func (h *Handler) loadAgentInfo(r *http.Request, nodeID string) map[string]any {
 	meta := parseMetaMap(metaRaw)
 	containerRunning, containerKnown := agentContainerRunning(meta)
 
-	var daemonStatus, version, platform string
-	var pid *int
-	var uptime *float64
-	var daemonLastSeen *time.Time
+	var daemonStatus, version, platform, remoteAddr, disconnectReason string
+	var pid, rtt *int
+	var daemonLastSeen, startedAt, connectedAt, disconnectedAt *time.Time
 	err := h.readerOf(r.Context()).QueryRow(r.Context(), `
-		SELECT status, COALESCE(version,''), COALESCE(platform,''), pid, uptime_sec, last_seen_at
+		SELECT status, COALESCE(version,''), COALESCE(platform,''), pid, last_seen_at,
+			started_at, connected_at, disconnected_at, COALESCE(disconnect_reason, ''),
+			COALESCE(remote_addr, ''), rtt_ms
 		FROM core.node_daemons WHERE node_id = $1
-	`, nodeID).Scan(&daemonStatus, &version, &platform, &pid, &uptime, &daemonLastSeen)
+	`, nodeID).Scan(&daemonStatus, &version, &platform, &pid, &daemonLastSeen,
+		&startedAt, &connectedAt, &disconnectedAt, &disconnectReason, &remoteAddr, &rtt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		daemonStatus = "unknown"
 	} else if err != nil {
@@ -297,6 +309,7 @@ func (h *Handler) loadAgentInfo(r *http.Request, nodeID string) map[string]any {
 		"container_running": containerRunning,
 		"container_known":   containerKnown,
 		"is_online":         isOnline,
+		"state":             agentPresenceState(daemonStatus, daemonLastSeen),
 		"version":           version,
 		"platform":          platform,
 		"container":         agentContainerName,
@@ -305,8 +318,21 @@ func (h *Handler) loadAgentInfo(r *http.Request, nodeID string) map[string]any {
 	if pid != nil {
 		out["pid"] = *pid
 	}
-	if uptime != nil {
-		out["uptime_sec"] = *uptime
+	if secs, ok := agentUptimeSeconds(isOnline, startedAt, connectedAt); ok {
+		out["uptime_sec"] = secs
+	}
+	if connectedAt != nil {
+		out["connected_at"] = connectedAt.Format(time.RFC3339)
+	}
+	if disconnectedAt != nil {
+		out["disconnected_at"] = disconnectedAt.Format(time.RFC3339)
+		out["disconnect_reason"] = disconnectReason
+	}
+	if remoteAddr != "" {
+		out["remote_addr"] = remoteAddr
+	}
+	if rtt != nil {
+		out["rtt_ms"] = *rtt
 	}
 	if lastSeen != nil {
 		out["last_seen"] = lastSeen.Format(time.RFC3339)

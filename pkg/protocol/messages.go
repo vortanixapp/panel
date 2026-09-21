@@ -129,6 +129,7 @@ type TenantEvent struct {
 
 	Percent *int   `json:"percent,omitempty"`
 	Message string `json:"message,omitempty"`
+	TaskID  string `json:"task_id,omitempty"`
 }
 
 func TenantEventsChannel() string {

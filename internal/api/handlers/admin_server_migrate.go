@@ -42,26 +42,8 @@ func (h *Handler) AdminServerMigrationTargets(w http.ResponseWriter, r *http.Req
 	rows, err := h.readerOf(ctx).Query(ctx, `
 		SELECT n.id::text, n.name, COALESCE(n.fqdn, ''), n.status,
 		       COALESCE(n.maintenance_mode, false),
-		       (SELECT COUNT(*)::int FROM core.servers s WHERE s.node_id = n.id),
-		       m.cpu_usage, m.ram_usage, m.ram_total, m.disk_total, m.disk_used, m.disk_available
+		       (SELECT COUNT(*)::int FROM core.servers s WHERE s.node_id = n.id)
 		FROM core.nodes n
-		LEFT JOIN LATERAL (
-			SELECT
-				MAX(value) FILTER (WHERE metric_type = 'cpu_usage')           AS cpu_usage,
-				MAX(value) FILTER (WHERE metric_type = 'ram_usage')           AS ram_usage,
-				MAX(text_value) FILTER (WHERE metric_type = 'ram_total')      AS ram_total,
-				MAX(text_value) FILTER (WHERE metric_type = 'disk_total')     AS disk_total,
-				MAX(text_value) FILTER (WHERE metric_type = 'disk_used')      AS disk_used,
-				MAX(text_value) FILTER (WHERE metric_type = 'disk_available') AS disk_available
-			FROM (
-				SELECT DISTINCT ON (metric_type) metric_type, value, text_value, measured_at
-				FROM core.node_metrics
-				WHERE node_id = n.id
-				  AND metric_type IN ('cpu_usage', 'ram_usage', 'ram_total',
-				                      'disk_total', 'disk_used', 'disk_available')
-				ORDER BY metric_type, measured_at DESC
-			) latest
-		) m ON TRUE
 		WHERE n.id::text <> $1
 		ORDER BY n.name
 	`, currentNode)
@@ -69,30 +51,41 @@ func (h *Handler) AdminServerMigrationTargets(w http.ResponseWriter, r *http.Req
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
-	defer rows.Close()
-
-	nodes := []map[string]any{}
+	type targetNode struct {
+		id, name, fqdn, status string
+		maintenance            bool
+		servers                int
+	}
+	var targets []targetNode
+	var ids []string
 	for rows.Next() {
-		var id, name, fqdn, status string
-		var maintenance bool
-		var servers int
-		var cpu, ramPercent *float64
-		var ramTotal, diskTotal, diskUsed, diskAvail *string
-		if rows.Scan(&id, &name, &fqdn, &status, &maintenance, &servers,
-			&cpu, &ramPercent, &ramTotal, &diskTotal, &diskUsed, &diskAvail) != nil {
+		var t targetNode
+		if rows.Scan(&t.id, &t.name, &t.fqdn, &t.status, &t.maintenance, &t.servers) != nil {
 			continue
 		}
+		targets = append(targets, t)
+		ids = append(ids, t.id)
+	}
+	rows.Close()
+	resources := h.loadNodeResources(ctx, ids)
 
-		ramTotalMB := parseHumanSizeMB(strPtr(ramTotal))
+	nodes := []map[string]any{}
+	for _, t := range targets {
+		id, name, fqdn, status, maintenance, servers := t.id, t.name, t.fqdn, t.status, t.maintenance, t.servers
+		res := resources[id]
+		if res == nil {
+			res = &nodeResources{}
+		}
+		cpu, ramPercent := res.CPUPercent, res.RAMPercent
+		ramTotalMB := res.RAMTotalMB
 		freeRAM := 0.0
-		if ramTotalMB > 0 && ramPercent != nil {
+		if ramTotalMB > 0 && res.RAMUsedMB > 0 {
+			freeRAM = ramTotalMB - res.RAMUsedMB
+		} else if ramTotalMB > 0 && ramPercent != nil {
 			freeRAM = ramTotalMB * (1 - *ramPercent/100)
 		}
-		freeDisk := parseHumanSizeMB(strPtr(diskAvail))
-		diskTotalMB := parseHumanSizeMB(strPtr(diskTotal))
-		if freeDisk == 0 && diskTotalMB > 0 {
-			freeDisk = diskTotalMB - parseHumanSizeMB(strPtr(diskUsed))
-		}
+		freeDisk := res.DiskFreeMB
+		diskTotalMB := res.DiskTotalMB
 
 		known := ramTotalMB > 0 || diskTotalMB > 0
 		fits := true

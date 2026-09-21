@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -21,6 +23,7 @@ import (
 	"github.com/vortanixapp/panel/internal/relay/hub"
 	"github.com/vortanixapp/panel/internal/relay/metricsclient"
 	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/nodeevents"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/protocol"
 	"github.com/vortanixapp/panel/pkg/secretbox"
@@ -163,11 +166,14 @@ func (h *Handler) AgentConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("agent connected node=%s remote=%s", nodeID, r.RemoteAddr)
+	remote := clientAddr(r)
+	log.Printf("agent connected node=%s remote=%s", nodeID, remote)
 
 	agent := &hub.AgentConn{
 		NodeID: nodeID, DB: db, Conn: conn,
-		Send: make(chan hub.OutboundMessage, 64),
+		Send:        make(chan hub.OutboundMessage, 64),
+		ConnectedAt: time.Now(),
+		RemoteAddr:  remote,
 	}
 	h.hub.Register(agent)
 	var prevStatus, nodeName string
@@ -189,11 +195,23 @@ func (h *Handler) AgentConnect(w http.ResponseWriter, r *http.Request) {
 		}()
 	}
 	if _, err := db.Exec(ctx, `
-		INSERT INTO core.node_daemons ( node_id, status, last_seen_at)
-		VALUES ( $1, 'online', now())
-		ON CONFLICT (node_id) DO UPDATE SET status = 'online', last_seen_at = now(), updated_at = now()
-	`, nodeID); err != nil {
+		INSERT INTO core.node_daemons (node_id, status, last_seen_at, connected_at, remote_addr)
+		VALUES ($1, 'online', now(), now(), NULLIF($2, ''))
+		ON CONFLICT (node_id) DO UPDATE SET
+			status              = 'online',
+			last_seen_at        = now(),
+			connected_at        = now(),
+			remote_addr         = NULLIF($2, ''),
+			disconnected_at     = NULL,
+			disconnect_reason   = NULL,
+			offline_notified_at = NULL,
+			updated_at          = now()
+	`, nodeID, remote); err != nil {
 		log.Printf("relay: демон узла %s не записан: %v", nodeID, err)
+	}
+	if err := nodeevents.Record(ctx, db, nodeID, nodeevents.Connect, nodeevents.Success,
+		map[string]any{"remote_addr": remote}, ""); err != nil {
+		log.Printf("relay: событие подключения узла %s не записано: %v", nodeID, err)
 	}
 	_ = h.redis.Del(ctx, "panel:nodes")
 	events.PublishTenantEvent(ctx, h.redis, protocol.TenantEvent{
@@ -205,40 +223,26 @@ func (h *Handler) AgentConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) readPump(c *hub.AgentConn) {
+	reason := "network"
 	defer func() {
 		if !h.hub.Unregister(c.NodeID, c) {
 			return
 		}
-		ctx := context.Background()
-		var nodeName string
-		var lastSeen *time.Time
-		if c.DB.QueryRow(ctx, `
-			UPDATE core.nodes SET status = 'offline' WHERE id = $1 AND status <> 'offline'
-			RETURNING COALESCE(fqdn, ''), last_seen_at
-		`, c.NodeID).Scan(&nodeName, &lastSeen) == nil {
-			h.scheduleNodeOffline(c.DB, c.NodeID, nodeName, lastSeen)
-			emitWebhook(ctx, c.DB, "node.offline", map[string]any{
-				"node_id":   c.NodeID,
-				"node_name": nodeName,
-			})
-		}
-		execLogged(ctx, c.DB, `
-			UPDATE core.node_daemons SET status = 'offline', updated_at = now() WHERE node_id = $1
-		`, c.NodeID)
-		_ = h.redis.Del(ctx, "panel:nodes")
-		events.PublishTenantEvent(ctx, h.redis, protocol.TenantEvent{
-			Type: "node.status", NodeID: c.NodeID, Status: "offline",
-		})
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		h.markNodeOffline(ctx, c.DB, c.NodeID, reason)
 	}()
 
 	_ = c.Conn.SetReadDeadline(time.Now().Add(hub.PongWait))
 	c.Conn.SetPongHandler(func(string) error {
+		c.MarkPong()
 		return c.Conn.SetReadDeadline(time.Now().Add(hub.PongWait))
 	})
 
 	for {
 		_, data, err := c.Conn.ReadMessage()
 		if err != nil {
+			reason = disconnectReason(err)
 			log.Printf("agent disconnected node=%s: %v", c.NodeID, err)
 			return
 		}
@@ -265,8 +269,17 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 		if helloNode != "" && helloNode != c.NodeID {
 			log.Printf("agent hello node_id mismatch: connection=%s hello=%s", c.NodeID, helloNode)
 		}
+		version, _ := env["version"].(string)
+		var prevVersion string
+		_ = c.DB.QueryRow(ctx, `
+			SELECT COALESCE(version, '') FROM core.node_daemons WHERE node_id = $1
+		`, c.NodeID).Scan(&prevVersion)
 		h.saveDaemonState(ctx, c, env)
-		if version, _ := env["version"].(string); version != "" {
+		if version != "" && prevVersion != "" && normalizeVersion(prevVersion) != normalizeVersion(version) {
+			_ = nodeevents.Record(ctx, c.DB, c.NodeID, nodeevents.VersionChanged, nodeevents.Info,
+				map[string]any{"from": normalizeVersion(prevVersion), "to": normalizeVersion(version)}, "")
+		}
+		if version != "" {
 			execLogged(ctx, c.DB, `
 				UPDATE core.nodes
 				SET agent_update = agent_update || jsonb_build_object(
@@ -293,6 +306,21 @@ func (h *Handler) handleAgentMessage(c *hub.AgentConn, data []byte) {
 				|| CASE WHEN $2::text IN ('done', 'failed') THEN jsonb_build_object('finished_at', now()) ELSE '{}'::jsonb END
 			WHERE id = $1
 		`, c.NodeID, stage, target, errMsg)
+		kind, level := nodeevents.UpdateStage, nodeevents.Info
+		switch stage {
+		case "done":
+			kind, level = nodeevents.UpdateDone, nodeevents.Success
+		case "failed":
+			kind, level = nodeevents.UpdateFailed, nodeevents.Error
+		}
+		data := map[string]any{"stage": stage}
+		if target != "" {
+			data["target"] = normalizeVersion(target)
+		}
+		if errMsg != "" {
+			data["error"] = errMsg
+		}
+		_ = nodeevents.Record(ctx, c.DB, c.NodeID, kind, level, data, "")
 	case protocol.MsgHeartbeat:
 		tag, err := c.DB.Exec(ctx,
 			`UPDATE core.nodes SET last_seen_at = now(), status = 'online' WHERE id = $1`, c.NodeID)
@@ -767,73 +795,130 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 
 func (h *Handler) saveDaemonState(ctx context.Context, c *hub.AgentConn, env map[string]any) {
 	version, _ := env["version"].(string)
+	var stats any
+	snapshot := map[string]any{}
+	for _, key := range []string{"host", "agent", "servers", "queue"} {
+		if part, ok := env[key].(map[string]any); ok && len(part) > 0 {
+			snapshot[key] = part
+		}
+	}
+	if len(snapshot) > 0 {
+		if raw, err := json.Marshal(snapshot); err == nil {
+			stats = string(raw)
+		}
+	}
 	execLogged(ctx, c.DB, `
-		INSERT INTO core.node_daemons (node_id, status, version, last_seen_at)
-		VALUES ($1, 'online', NULLIF($2, ''), now())
+		INSERT INTO core.node_daemons (node_id, status, version, last_seen_at, stats, stats_at, rtt_ms)
+		VALUES ($1, 'online', NULLIF($2, ''), now(), COALESCE($3::jsonb, '{}'::jsonb),
+			CASE WHEN $3::jsonb IS NULL THEN NULL ELSE now() END, NULLIF($4::int, 0))
 		ON CONFLICT (node_id) DO UPDATE SET
 			status       = 'online',
 			version      = COALESCE(NULLIF($2, ''), core.node_daemons.version),
 			last_seen_at = now(),
+			stats        = COALESCE($3::jsonb, core.node_daemons.stats),
+			stats_at     = CASE WHEN $3::jsonb IS NULL THEN core.node_daemons.stats_at ELSE now() END,
+			rtt_ms       = COALESCE(NULLIF($4::int, 0), core.node_daemons.rtt_ms),
 			updated_at   = now()
-	`, c.NodeID, version)
+	`, c.NodeID, version, stats, c.RTT())
 
-	h.saveAgentStats(ctx, c, env)
-	h.saveHostStats(ctx, c, env)
+	h.saveMetrics(ctx, c, env)
 }
 
-func (h *Handler) saveAgentStats(ctx context.Context, c *hub.AgentConn, env map[string]any) {
-	raw, ok := env["agent"].(map[string]any)
-	if !ok {
+func (h *Handler) saveMetrics(ctx context.Context, c *hub.AgentConn, env map[string]any) {
+	var types []string
+	var values []float64
+	add := func(src map[string]any, field, metricType string) {
+		if v, ok := src[field].(float64); ok {
+			types = append(types, metricType)
+			values = append(values, v)
+		}
+	}
+	if host, ok := env["host"].(map[string]any); ok {
+		add(host, "cpu_percent", "cpu_usage")
+		add(host, "ram_percent", "ram_usage")
+		add(host, "disk_percent", "disk_usage")
+	}
+	if agent, ok := env["agent"].(map[string]any); ok {
+		add(agent, "cpu_percent", "agent_cpu_usage")
+		add(agent, "ram_percent", "agent_ram_usage")
+		add(agent, "ram_used_mb", "agent_ram_mb")
+	}
+	if len(types) == 0 {
 		return
 	}
-	for field, metricType := range map[string]string{
-		"cpu_percent": "agent_cpu_usage",
-		"ram_percent": "agent_ram_usage",
-	} {
-		v, ok := raw[field].(float64)
-		if !ok {
-			continue
-		}
-		execLogged(ctx, c.DB, `
-			INSERT INTO core.node_metrics (node_id, metric_type, value, measured_at)
-			VALUES ($1, $2, $3, now())
-		`, c.NodeID, metricType, v)
-	}
+	execLogged(ctx, c.DB, `
+		INSERT INTO core.node_metrics (node_id, metric_type, value, measured_at)
+		SELECT $1, t, v, now() FROM unnest($2::text[], $3::float8[]) AS x(t, v)
+	`, c.NodeID, types, values)
 }
 
-func (h *Handler) saveHostStats(ctx context.Context, c *hub.AgentConn, env map[string]any) {
-	raw, ok := env["host"].(map[string]any)
-	if !ok || len(raw) == 0 {
-		return
+func (h *Handler) markNodeOffline(ctx context.Context, db *pgxpool.Pool, nodeID, reason string) {
+	var nodeName string
+	var lastSeen *time.Time
+	if db.QueryRow(ctx, `
+		UPDATE core.nodes SET status = 'offline' WHERE id = $1 AND status <> 'offline'
+		RETURNING COALESCE(fqdn, ''), last_seen_at
+	`, nodeID).Scan(&nodeName, &lastSeen) == nil {
+		emitWebhook(ctx, db, "node.offline", map[string]any{
+			"node_id":   nodeID,
+			"node_name": nodeName,
+		})
 	}
-	metrics := map[string]string{
-		"cpu_percent":   "cpu_usage",
-		"ram_percent":   "ram_usage",
-		"disk_percent":  "disk_usage",
-		"ram_total_mb":  "ram_total_mb",
-		"ram_used_mb":   "ram_used_mb",
-		"disk_total_mb": "disk_total_mb",
-		"disk_used_mb":  "disk_used_mb",
+	execLogged(ctx, db, `
+		UPDATE core.node_daemons
+		SET status = 'offline', disconnected_at = now(), disconnect_reason = NULLIF($2, ''), updated_at = now()
+		WHERE node_id = $1
+	`, nodeID, reason)
+	if err := nodeevents.Record(ctx, db, nodeID, nodeevents.Disconnect, nodeevents.Warn,
+		map[string]any{"reason": reason}, ""); err != nil {
+		log.Printf("relay: событие отключения узла %s не записано: %v", nodeID, err)
 	}
-	if q, ok := raw["disk_quota"].(bool); ok {
-		v := 0.0
-		if q {
-			v = 1
-		}
-		execLogged(ctx, c.DB, `
-			INSERT INTO core.node_metrics (node_id, metric_type, value, measured_at)
-			VALUES ($1, 'disk_quota', $2, now())
-		`, c.NodeID, v)
-	}
+	_ = h.redis.Del(ctx, "panel:nodes")
+	events.PublishTenantEvent(ctx, h.redis, protocol.TenantEvent{
+		Type: "node.status", NodeID: nodeID, Status: "offline",
+	})
+}
 
-	for field, metricType := range metrics {
-		v, ok := raw[field].(float64)
-		if !ok {
-			continue
+func clientAddr(r *http.Request) string {
+	if r.TLS == nil {
+		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+			if first := strings.TrimSpace(strings.Split(fwd, ",")[0]); first != "" {
+				return first
+			}
 		}
-		execLogged(ctx, c.DB, `
-			INSERT INTO core.node_metrics (node_id, metric_type, value, measured_at)
-			VALUES ($1, $2, $3, now())
-		`, c.NodeID, metricType, v)
+		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+			return realIP
+		}
 	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func disconnectReason(err error) string {
+	var closeErr *websocket.CloseError
+	if errors.As(err, &closeErr) {
+		switch closeErr.Code {
+		case websocket.CloseNormalClosure, websocket.CloseGoingAway:
+			return "closed"
+		}
+		return "network"
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return "timeout"
+	}
+	return "network"
+}
+
+func normalizeVersion(v string) string {
+	v = strings.TrimSpace(v)
+	if strings.ContainsAny(v, "/:") {
+		if idx := strings.LastIndex(v, ":"); idx >= 0 {
+			v = v[idx+1:]
+		}
+	}
+	return strings.TrimPrefix(v, "v")
 }

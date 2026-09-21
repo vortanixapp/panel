@@ -696,7 +696,7 @@ func (h *Handler) nodeMetricsFresh(r *http.Request, nodeID string) bool {
 	_ = h.readerOf(r.Context()).QueryRow(r.Context(), `
 		SELECT EXISTS(
 			SELECT 1 FROM core.node_metrics
-			WHERE node_id = $1 AND measured_at > NOW() - INTERVAL '5 minutes'
+			WHERE node_id = $1 AND metric_type = 'cpu_usage' AND measured_at > NOW() - INTERVAL '5 minutes'
 		)
 	`, nodeID).Scan(&fresh)
 	return fresh

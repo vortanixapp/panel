@@ -68,36 +68,11 @@ func (h *Handler) loadNodeCapacity(ctx context.Context, nodeID string) (*nodeCap
 		}
 	}
 
-	var ramTotal, diskTotal, diskUsed, diskAvail *string
-	_ = h.readerOf(ctx).QueryRow(ctx, `
-		SELECT
-			MAX(text_value) FILTER (WHERE metric_type = 'ram_total'),
-			MAX(text_value) FILTER (WHERE metric_type = 'disk_total'),
-			MAX(text_value) FILTER (WHERE metric_type = 'disk_used'),
-			MAX(text_value) FILTER (WHERE metric_type = 'disk_available')
-		FROM (
-			SELECT DISTINCT ON (metric_type) metric_type, text_value, measured_at
-			FROM core.node_metrics
-			WHERE node_id = $1
-			  AND metric_type IN ('ram_total', 'disk_total', 'disk_used', 'disk_available')
-			ORDER BY metric_type, measured_at DESC
-		) latest
-	`, nodeID).Scan(&ramTotal, &diskTotal, &diskUsed, &diskAvail)
-
-	var quotaVal *float64
-	_ = h.readerOf(ctx).QueryRow(ctx, `
-		SELECT value FROM core.node_metrics
-		WHERE node_id = $1 AND metric_type = 'disk_quota'
-		ORDER BY measured_at DESC LIMIT 1
-	`, nodeID).Scan(&quotaVal)
-
-	c.DiskQuota = boolPtrFromMetric(quotaVal)
-
-	c.NodeRAMMB = parseHumanSizeMB(strPtr(ramTotal))
-	c.NodeDiskMB = parseHumanSizeMB(strPtr(diskTotal))
-	c.FreeDiskMB = parseHumanSizeMB(strPtr(diskAvail))
-	if c.FreeDiskMB == 0 && c.NodeDiskMB > 0 {
-		c.FreeDiskMB = c.NodeDiskMB - parseHumanSizeMB(strPtr(diskUsed))
+	if res := h.loadNodeResources(ctx, []string{nodeID})[nodeID]; res != nil {
+		c.DiskQuota = res.DiskQuota
+		c.NodeRAMMB = res.RAMTotalMB
+		c.NodeDiskMB = res.DiskTotalMB
+		c.FreeDiskMB = res.DiskFreeMB
 	}
 	c.MetricsKnown = c.NodeRAMMB > 0 || c.NodeDiskMB > 0
 	return c, nil
@@ -289,12 +264,4 @@ func (h *Handler) nodeCapacityReason(ctx context.Context, nodeID, gameID string)
 		return "на локации не хватает памяти для этой игры"
 	}
 	return ""
-}
-
-func boolPtrFromMetric(v *float64) *bool {
-	if v == nil {
-		return nil
-	}
-	b := *v > 0
-	return &b
 }

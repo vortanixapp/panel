@@ -54,6 +54,8 @@ func main() {
 	if metricsURL == "" {
 		go purgeMetricPoints(ctx, pool, env("METRICS_RETENTION_DAYS", "7"))
 	}
+	go purgeNodeData(ctx, pool, env("NODE_METRICS_RETENTION_DAYS", "8"))
+	go h.RunSweeper(ctx)
 	prom := httpprom.New("agent-relay")
 	r := chi.NewRouter()
 	r.Get("/v1/agent/connect", h.AgentConnect)
@@ -135,6 +137,75 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+const purgeBatch = 20000
+
+func purgeNodeData(ctx context.Context, pool *pgxpool.Pool, days string) {
+	keep, err := strconv.Atoi(days)
+	if err != nil || keep <= 0 {
+		keep = 8
+	}
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for {
+		purgeBatched(ctx, pool, "метрики узлов", `
+			DELETE FROM core.node_metrics WHERE id IN (
+				SELECT id FROM core.node_metrics
+				WHERE measured_at < now() - make_interval(days => $1)
+				  AND text_value IS NULL
+				LIMIT 20000)
+		`, keep)
+		purgeBatched(ctx, pool, "сведения узлов", `
+			DELETE FROM core.node_metrics WHERE id IN (
+				SELECT o.id FROM core.node_metrics o
+				WHERE o.text_value IS NOT NULL
+				  AND o.measured_at < now() - make_interval(days => $1)
+				  AND EXISTS (
+					SELECT 1 FROM core.node_metrics x
+					WHERE x.node_id = o.node_id AND x.metric_type = o.metric_type
+					  AND x.measured_at > o.measured_at)
+				LIMIT 20000)
+		`, keep)
+		purgeBatched(ctx, pool, "события узлов", `
+			DELETE FROM core.node_events WHERE id IN (
+				SELECT id FROM core.node_events
+				WHERE created_at < now() - interval '90 days'
+				LIMIT 20000)
+		`)
+		purgeBatched(ctx, pool, "задачи узлов", `
+			DELETE FROM core.node_tasks WHERE id IN (
+				SELECT id FROM core.node_tasks
+				WHERE status IN ('done', 'failed', 'expired')
+				  AND COALESCE(finished_at, updated_at) < now() - interval '30 days'
+				LIMIT 20000)
+		`)
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+func purgeBatched(ctx context.Context, pool *pgxpool.Pool, label, sql string, args ...any) {
+	var total int64
+	for i := 0; i < 50; i++ {
+		batchCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		tag, err := pool.Exec(batchCtx, sql, args...)
+		cancel()
+		if err != nil {
+			log.Printf("relay: очистка (%s): %v", label, err)
+			return
+		}
+		total += tag.RowsAffected()
+		if tag.RowsAffected() < purgeBatch {
+			break
+		}
+	}
+	if total > 0 {
+		log.Printf("relay: очистка (%s): удалено %d строк", label, total)
+	}
 }
 
 func purgeMetricPoints(ctx context.Context, pool *pgxpool.Pool, days string) {
