@@ -27,6 +27,7 @@ import { isServerExpired, serverProvisioning } from "@/lib/server-lifecycle";
 import { cn } from "@/lib/utils";
 import { useMe, useServerDetail } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 type ServerFriend = {
   id: string;
@@ -207,8 +208,8 @@ export function ServerFriendsTab() {
                     size="sm"
                     className="border-[rgba(224,122,122,0.3)] bg-transparent text-[var(--vx-danger)]"
                     disabled={removeMutation.isPending}
-                    onClick={() => {
-                      if (!confirm(t("servers.friends.revoke_confirm"))) return;
+                    onClick={async () => {
+                      if (!await confirmAction(t("servers.friends.revoke_confirm"))) return;
                       removeMutation.mutate(friend.id);
                     }}
                   >

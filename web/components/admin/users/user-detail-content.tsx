@@ -24,6 +24,7 @@ import {
 import { userDisplayName, userInitials } from "./users-page-content";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { confirmAction, promptAction } from "@/components/action-dialog";
 
 const CURRENCIES = ["RUB", "USD", "EUR"];
 
@@ -92,7 +93,7 @@ export function UserDetailContent() {
   const onToggleBlock = async () => {
     if (!user) return;
     if (
-      !window.confirm(
+      !await confirmAction(
         user.is_blocked
           ? t("admin.users.unblock_user_confirm", { email: user.email })
           : t("admin.users.block_user_confirm", { email: user.email })
@@ -110,7 +111,7 @@ export function UserDetailContent() {
   const onImpersonate = async () => {
     if (!user) return;
     if (
-      !window.confirm(
+      !await confirmAction(
         t("admin.users.impersonate_confirm", { email: user.email })
       )
     )
@@ -147,7 +148,7 @@ export function UserDetailContent() {
   };
 
   const onIdentification = async (identified: boolean) => {
-    const note = window.prompt(
+    const note = await promptAction(
       identified ? t("admin.users.identify_prompt") : t("admin.users.unidentify_prompt")
     );
     if (note === null) return;
@@ -176,7 +177,7 @@ export function UserDetailContent() {
 
   const onDelete = async () => {
     if (!user) return;
-    if (!window.confirm(t("admin.users.delete_confirm", { email: user.email }))) return;
+    if (!await confirmAction(t("admin.users.delete_confirm", { email: user.email }))) return;
     try {
       await deletePanelUser(id);
       toast.success(t("admin.users.deleted"));

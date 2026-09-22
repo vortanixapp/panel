@@ -17,6 +17,7 @@ import {
   useNodes,
 } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 export function NodesPageContent({ variant = "admin" }: { variant?: PanelVariant }) {
   const t = useT();
@@ -55,7 +56,7 @@ export function NodesPageContent({ variant = "admin" }: { variant?: PanelVariant
   }
 
   async function onDelete(id: string) {
-    if (!confirm(t("admin.nodes.delete_confirm"))) return;
+    if (!await confirmAction(t("admin.nodes.delete_confirm"))) return;
     await deleteNode.mutateAsync(id);
     toast.success(t("admin.nodes.deleted"));
   }

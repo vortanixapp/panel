@@ -27,6 +27,7 @@ import {
   type AdminMap,
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 type FormState = {
   id?: string;
@@ -118,13 +119,13 @@ export function MapsPageContent() {
   });
 
   async function onDelete(m: AdminMap) {
-    if (!confirm(t("admin.maps.delete_confirm", { name: m.name }))) return;
+    if (!await confirmAction(t("admin.maps.delete_confirm", { name: m.name }))) return;
     try {
       await remove.mutateAsync({ id: m.id, force: false });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       if (!msg.includes("force=1")) return;
-      if (!confirm(`${msg}\n\n${t("admin.maps.delete_force")}`)) return;
+      if (!await confirmAction(`${msg}\n\n${t("admin.maps.delete_force")}`)) return;
       remove.mutate({ id: m.id, force: true });
     }
   }

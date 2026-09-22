@@ -29,6 +29,7 @@ import {
   type AdminLocationListItem,
 } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
+import { confirmAction } from "@/components/action-dialog";
 
 const COLUMNS =
   "grid-cols-[minmax(220px,1.3fr)_minmax(220px,1.3fr)_150px_140px_210px]";
@@ -63,7 +64,7 @@ export function LocationsPageContent() {
   });
 
   async function onDelete(id: string, name: string) {
-    if (!confirm(t("admin.locations.delete_confirm", { name }))) return;
+    if (!await confirmAction(t("admin.locations.delete_confirm", { name }))) return;
     await deleteMut.mutateAsync(id);
   }
 

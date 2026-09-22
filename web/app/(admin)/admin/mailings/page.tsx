@@ -16,6 +16,7 @@ import {
   sendAdminMailing,
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 type Mailing = { id: string; subject: string; status: string };
 
@@ -125,9 +126,9 @@ export default function AdminMailingsPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          !confirm(
+                          !await confirmAction(
                             t("admin.mailings.delete_confirm", { subject: m.subject })
                           )
                         )

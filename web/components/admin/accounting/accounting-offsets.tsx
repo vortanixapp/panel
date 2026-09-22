@@ -22,6 +22,7 @@ import {
 import { money } from "@/lib/accounting-period";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { promptAction } from "@/components/action-dialog";
 
 const FILTERS = ["active", "pending", "failed", "manual", "sent", "skipped"] as const;
 const STATUSES: ReceiptOffset["status"][] = ["pending", "failed", "manual", "sent", "skipped"];
@@ -56,8 +57,8 @@ export function AccountingOffsets() {
     }
   };
 
-  const markSent = (offset: ReceiptOffset) => {
-    const reference = window.prompt(t("admin.accounting.offsets.reference_prompt"));
+  const markSent = async (offset: ReceiptOffset) => {
+    const reference = await promptAction(t("admin.accounting.offsets.reference_prompt"));
     if (reference === null || !reference.trim()) return;
     void run(offset.id, () => markReceiptOffsetSent(offset.id, reference.trim()));
   };

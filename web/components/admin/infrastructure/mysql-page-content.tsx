@@ -24,6 +24,7 @@ import {
   updateAdminMysqlInstance,
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 export function AdminMysqlPageContent() {
   const t = useT();
@@ -206,9 +207,9 @@ export function AdminMysqlPageContent() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => {
+                        onClick={async () => {
                           if (
-                            !confirm(
+                            !await confirmAction(
                               t("admin.mysql.delete_confirm", { key: inst.key })
                             )
                           )

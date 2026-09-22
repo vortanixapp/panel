@@ -13,6 +13,7 @@ import type { BrandingPayload } from "@/lib/appearance";
 import type { I18nPayload } from "@/lib/i18n";
 import type { SiteDocument, Viewer } from "@/lib/site/types";
 import { Toaster } from "@/components/ui/sonner";
+import { ActionDialogHost } from "@/components/action-dialog";
 import { AuthSessionProvider } from "@/components/auth/auth-session-provider";
 import { CookieBanner } from "@/components/legal/cookie-banner";
 import { VxRouteProgress } from "@/components/vx/loader";
@@ -57,6 +58,7 @@ export function Providers({
                   <VxRouteProgress />
                   <AuthSessionProvider>{children}</AuthSessionProvider>
                   <Toaster richColors closeButton />
+                  <ActionDialogHost />
                   <CookieBanner />
                 </SiteProvider>
               </BrandProvider>

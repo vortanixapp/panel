@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 export function GamesPageContent() {
   const t = useT();
@@ -44,7 +45,7 @@ export function GamesPageContent() {
   });
 
   async function onDelete(id: string, name: string) {
-    if (!confirm(t("admin.games.delete_confirm", { name }))) return;
+    if (!await confirmAction(t("admin.games.delete_confirm", { name }))) return;
     await deleteMut.mutateAsync(id);
   }
 

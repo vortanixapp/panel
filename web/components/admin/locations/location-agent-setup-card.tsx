@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
+import { confirmAction } from "@/components/action-dialog";
 
 type Props = {
   locationId: string;
@@ -129,8 +130,8 @@ export function LocationAgentSetupCard({
             size="sm"
             className="h-8 text-xs"
             disabled={busy}
-            onClick={() => {
-              if (!confirm(t("admin.agent_setup.regen_confirm"))) return;
+            onClick={async () => {
+              if (!await confirmAction(t("admin.agent_setup.regen_confirm"))) return;
               regenMut.mutate();
             }}
           >

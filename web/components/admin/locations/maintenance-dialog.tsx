@@ -23,6 +23,7 @@ import {
   type AdminLocationListItem,
 } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
+import { confirmAction } from "@/components/action-dialog";
 
 export function MaintenanceDialog({
   location,
@@ -157,8 +158,8 @@ export function MaintenanceDialog({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                if (!confirm(t("admin.maintenance.stop_all_confirm"))) return;
+              onClick={async () => {
+                if (!await confirmAction(t("admin.maintenance.stop_all_confirm"))) return;
                 bulkMut.mutate("stop");
               }}
               disabled={bulkMut.isPending}
@@ -203,9 +204,9 @@ export function MaintenanceDialog({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  !confirm(
+                  !await confirmAction(
                     t("admin.maintenance.extend_confirm", { days: extendDays })
                   )
                 )

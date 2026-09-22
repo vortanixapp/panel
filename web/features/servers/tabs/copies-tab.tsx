@@ -39,6 +39,7 @@ import {
 import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 type ScheduleForm = Omit<ServerBackupSchedule, "last_run_at" | "last_error">;
 
@@ -360,9 +361,9 @@ export function ServerCopiesTab() {
                   size="sm"
                   className="border-[rgba(224,122,122,0.3)] bg-transparent text-[var(--vx-danger)]"
                   disabled={deleteMutation.isPending}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      !confirm(
+                      !await confirmAction(
                         t("servers.copies.delete_confirm", { name: entry.name })
                       )
                     )
@@ -423,9 +424,9 @@ export function ServerCopiesTab() {
                     <Btn
                       size="sm"
                       disabled={remoteRestoreMutation.isPending}
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          !confirm(
+                          !await confirmAction(
                             t("servers.copies.remote_restore_confirm", {
                               name: backup.filename,
                             })
@@ -441,9 +442,9 @@ export function ServerCopiesTab() {
                       size="sm"
                       className="border-[rgba(224,122,122,0.3)] bg-transparent text-[var(--vx-danger)]"
                       disabled={remoteDeleteMutation.isPending}
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          !confirm(
+                          !await confirmAction(
                             t("servers.copies.remote_delete_confirm", {
                               name: backup.filename,
                             })

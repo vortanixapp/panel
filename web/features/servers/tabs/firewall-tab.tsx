@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 const GRID = "grid-cols-[90px_90px_minmax(0,1fr)_70px] sm:grid-cols-[110px_110px_minmax(0,1fr)_80px]";
 
@@ -151,8 +152,8 @@ export function ServerFirewallTab() {
                 <button
                   type="button"
                   disabled={deleteMutation.isPending}
-                  onClick={() => {
-                    if (!confirm(t("servers.firewall.delete_confirm"))) return;
+                  onClick={async () => {
+                    if (!await confirmAction(t("servers.firewall.delete_confirm"))) return;
                     deleteMutation.mutate(rule.id);
                   }}
                   className="justify-self-end font-sans text-[11.5px] text-[var(--vx-danger)] transition-opacity hover:opacity-80 disabled:opacity-40"

@@ -23,6 +23,7 @@ import {
 import { money } from "@/lib/accounting-period";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { confirmAction, promptAction } from "@/components/action-dialog";
 
 export function AccountingRefunds() {
   const t = useT();
@@ -48,9 +49,9 @@ export function AccountingRefunds() {
     }
   };
 
-  const viaGateway = (request: BalanceRefundRequest) => {
+  const viaGateway = async (request: BalanceRefundRequest) => {
     const left = request.amount - request.refunded;
-    if (!window.confirm(t("admin.accounting.refunds.gateway_confirm", { amount: money(left), currency: request.currency }))) {
+    if (!await confirmAction(t("admin.accounting.refunds.gateway_confirm", { amount: money(left), currency: request.currency }))) {
       return;
     }
     void run(request.id, async () => {
@@ -59,8 +60,8 @@ export function AccountingRefunds() {
     });
   };
 
-  const manual = (request: BalanceRefundRequest) => {
-    const reference = window.prompt(t("admin.accounting.refunds.reference_prompt"));
+  const manual = async (request: BalanceRefundRequest) => {
+    const reference = await promptAction(t("admin.accounting.refunds.reference_prompt"));
     if (reference === null) return;
     if (!reference.trim()) {
       toast.error(t("admin.accounting.refunds.reference_required"));
@@ -72,8 +73,8 @@ export function AccountingRefunds() {
     });
   };
 
-  const reject = (request: BalanceRefundRequest) => {
-    const note = window.prompt(t("admin.accounting.refunds.reject_prompt"));
+  const reject = async (request: BalanceRefundRequest) => {
+    const note = await promptAction(t("admin.accounting.refunds.reject_prompt"));
     if (note === null || !note.trim()) return;
     void run(request.id, async () => {
       await rejectAdminRefundRequest(request.id, note.trim());

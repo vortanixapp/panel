@@ -18,6 +18,7 @@ import {
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { confirmAction } from "@/components/action-dialog";
 
 function mysqlLabel(engine?: string | null) {
   switch (engine) {
@@ -111,8 +112,8 @@ export function TariffDetailContent({ id }: { id: string }) {
           <Button
             variant="outline"
             disabled={actionMut.isPending}
-            onClick={() => {
-              if (confirm(t("admin.tariffs.duplicate_confirm"))) {
+            onClick={async () => {
+              if (await confirmAction(t("admin.tariffs.duplicate_confirm"))) {
                 actionMut.mutate("duplicate");
               }
             }}
@@ -123,8 +124,8 @@ export function TariffDetailContent({ id }: { id: string }) {
           <Button
             variant="destructive"
             disabled={actionMut.isPending}
-            onClick={() => {
-              if (confirm(t("admin.tariffs.delete_this_confirm"))) {
+            onClick={async () => {
+              if (await confirmAction(t("admin.tariffs.delete_this_confirm"))) {
                 actionMut.mutate("delete");
               }
             }}

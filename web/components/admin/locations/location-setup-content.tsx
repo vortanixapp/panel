@@ -18,6 +18,7 @@ import {
 import { LOCATION_SETUP_STEPS, setupStatusLabel } from "@/lib/location-setup";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 const STATUS_CLASSES: Record<string, string> = {
   installed: "border-emerald-500/40 text-emerald-500",
@@ -112,7 +113,7 @@ export function LocationSetupContent() {
   }, [data]);
 
   async function runStep(component: string, endpoint: string, installed = false) {
-    if (installed && !window.confirm(t("admin.setup.run_again_confirm"))) return;
+    if (installed && !await confirmAction(t("admin.setup.run_again_confirm"))) return;
     setRunning(true);
     setActiveComponent(component);
     setLog("");

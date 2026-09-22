@@ -64,6 +64,7 @@ import {
 } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { buildPhraseCatalog, LanguageEditor } from "./language-editor";
+import { confirmAction } from "@/components/action-dialog";
 
 const ADMIN_LANGUAGES_KEY = ["admin-languages"] as const;
 
@@ -135,9 +136,9 @@ export function LanguagePageContent() {
     onError: (err) => toast.error(errorMessage(err, t("common.delete_failed"))),
   });
 
-  function select(code: string) {
+  async function select(code: string) {
     if (code === selected) return;
-    if (editorDirty && !window.confirm(t("admin.language.discard_confirm"))) {
+    if (editorDirty && !await confirmAction(t("admin.language.discard_confirm"))) {
       return;
     }
     setSelected(code);

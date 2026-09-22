@@ -17,6 +17,7 @@ export const common = {
   "common.close": "Закрыть",
   "common.back": "Назад",
   "common.next": "Далее",
+  "common.action_confirm_title": "Подтвердите действие",
   "common.confirm": "Подтвердить",
   "common.apply": "Применить",
   "common.reset": "Сбросить",

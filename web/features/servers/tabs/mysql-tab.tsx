@@ -33,6 +33,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useServerDetail } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 type MysqlExtras = {
   mysql_instances?: Array<Record<string, unknown>>;
@@ -239,8 +240,8 @@ export function ServerMysqlTab() {
             <Btn
               size="sm"
               className="h-8 border-[rgba(224,122,122,0.3)] bg-transparent text-[var(--vx-danger)]"
-              onClick={() => {
-                if (!confirm(t("servers.mysql.delete_confirm"))) return;
+              onClick={async () => {
+                if (!await confirmAction(t("servers.mysql.delete_confirm"))) return;
                 deleteMutation.mutate();
               }}
               disabled={deleteMutation.isPending}
@@ -319,9 +320,9 @@ export function ServerMysqlTab() {
                 {db}
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      !confirm(t("servers.mysql.db_delete_confirm", { name: db }))
+                      !await confirmAction(t("servers.mysql.db_delete_confirm", { name: db }))
                     )
                       return;
                     deleteDatabaseMutation.mutate(db);
@@ -384,9 +385,9 @@ export function ServerMysqlTab() {
                 {user.username}@{user.host}
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      !confirm(
+                      !await confirmAction(
                         t("servers.mysql.user_delete_confirm", {
                           name: user.username,
                         })

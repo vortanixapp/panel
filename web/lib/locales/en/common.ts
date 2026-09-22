@@ -17,6 +17,7 @@ export const common = {
   "common.close": "Close",
   "common.back": "Back",
   "common.next": "Next",
+  "common.action_confirm_title": "Confirm the action",
   "common.confirm": "Confirm",
   "common.apply": "Apply",
   "common.reset": "Reset",

@@ -16,6 +16,7 @@ import {
   type ServerFtpAccount,
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 export function FtpAccountsCard({ serverId }: { serverId: string }) {
   const t = useT();
@@ -152,9 +153,9 @@ export function FtpAccountsCard({ serverId }: { serverId: string }) {
                           disabled={deleteMut.isPending}
                           aria-label={t("common.delete")}
                           title={t("common.delete")}
-                          onClick={() => {
+                          onClick={async () => {
                             if (
-                              confirm(
+                              await confirmAction(
                                 t("servers.ftp.account_delete_confirm", {
                                   name: a.username,
                                 })

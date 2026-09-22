@@ -64,6 +64,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useMe, useServerDetail, useServerMetrics } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 const OVERVIEW_BACKUPS = 3;
 
@@ -396,8 +397,8 @@ export function ServerOverviewTab() {
               <Btn
                 tone="primary"
                 disabled={lifecycleMutation.isPending}
-                onClick={() => {
-                  if (!confirm(t("servers.overview.reinstall_confirm"))) return;
+                onClick={async () => {
+                  if (!await confirmAction(t("servers.overview.reinstall_confirm"))) return;
                   lifecycleMutation.mutate("reinstall");
                 }}
               >
@@ -501,8 +502,8 @@ export function ServerOverviewTab() {
                         ? t("servers.overview.switch_version_hint")
                         : undefined
                     }
-                    onClick={() => {
-                      if (!confirm(t("servers.overview.switch_version_confirm")))
+                    onClick={async () => {
+                      if (!await confirmAction(t("servers.overview.switch_version_confirm")))
                         return;
                       lifecycleMutation.mutate(`version:${effectiveVersionId}`);
                     }}
@@ -548,8 +549,8 @@ export function ServerOverviewTab() {
                   <Btn
                     className="flex-1"
                     disabled={lifecycleMutation.isPending}
-                    onClick={() => {
-                      if (!confirm(t("servers.overview.reinstall_confirm"))) return;
+                    onClick={async () => {
+                      if (!await confirmAction(t("servers.overview.reinstall_confirm"))) return;
                       lifecycleMutation.mutate("reinstall");
                     }}
                   >

@@ -25,6 +25,7 @@ import {
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { confirmAction } from "@/components/action-dialog";
 
 type NewsForm = {
   id?: string;
@@ -357,9 +358,9 @@ export function NewsPageContent() {
                   size="sm"
                   variant="outline"
                   disabled={remove.isPending}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      !confirm(
+                      !await confirmAction(
                         t("admin.news.delete_confirm", { title: n.title })
                       )
                     )

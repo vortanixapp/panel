@@ -18,6 +18,7 @@ import {
   type NodeIPAddress,
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 const STATUS_LABEL_KEYS: Record<string, string> = {
   free: "admin.ips.status.free",
@@ -194,9 +195,9 @@ export function LocationIPsCard({ locationId }: { locationId: string }) {
                     variant="ghost"
                     size="sm"
                     className="h-7 text-xs"
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        !confirm(
+                        !await confirmAction(
                           t("admin.ips.delete_confirm", { address: ip.address })
                         )
                       )

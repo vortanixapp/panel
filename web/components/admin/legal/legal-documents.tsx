@@ -21,6 +21,7 @@ import {
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/components/action-dialog";
 
 const KEY = ["admin-legal-documents"];
 
@@ -64,7 +65,7 @@ export function LegalDocuments() {
   });
 
   const insertTemplate = async () => {
-    if (body.trim() && !window.confirm(t("admin.legal.template_confirm"))) return;
+    if (body.trim() && !await confirmAction(t("admin.legal.template_confirm"))) return;
     try {
       const template = await fetchAdminLegalTemplate(kind);
       setTitle(template.title);
@@ -183,8 +184,8 @@ export function LegalDocuments() {
 
           <Button
             disabled={publishMut.isPending || !body.trim()}
-            onClick={() => {
-              if (window.confirm(t("admin.legal.publish_confirm"))) publishMut.mutate();
+            onClick={async () => {
+              if (await confirmAction(t("admin.legal.publish_confirm"))) publishMut.mutate();
             }}
           >
             {t("admin.legal.publish")}

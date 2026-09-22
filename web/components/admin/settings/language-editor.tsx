@@ -47,6 +47,7 @@ import {
   type TranslateFn,
 } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/components/action-dialog";
 
 const PAGE_SIZE = 40;
 const PLACEHOLDER = /\{(\w+)\}/g;
@@ -354,8 +355,8 @@ export function LanguageEditor({
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function clearAll() {
-    if (!window.confirm(t("admin.language.clear_all_confirm"))) return;
+  async function clearAll() {
+    if (!await confirmAction(t("admin.language.clear_all_confirm"))) return;
     replaceDraft({});
   }
 

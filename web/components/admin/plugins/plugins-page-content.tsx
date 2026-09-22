@@ -28,6 +28,7 @@ import {
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
+import { confirmAction } from "@/components/action-dialog";
 
 type FormState = {
   id?: string;
@@ -150,13 +151,13 @@ export function PluginsPageContent() {
   });
 
   async function onDelete(p: AdminPlugin) {
-    if (!confirm(t("admin.plugins.delete_confirm", { name: p.name }))) return;
+    if (!await confirmAction(t("admin.plugins.delete_confirm", { name: p.name }))) return;
     try {
       await remove.mutateAsync({ id: p.id, force: false });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       if (!msg.includes("force=1")) return;
-      if (!confirm(`${msg}\n\n${t("admin.maps.delete_force")}`)) return;
+      if (!await confirmAction(`${msg}\n\n${t("admin.maps.delete_force")}`)) return;
       remove.mutate({ id: p.id, force: true });
     }
   }

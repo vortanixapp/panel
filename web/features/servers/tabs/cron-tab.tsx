@@ -31,6 +31,7 @@ import {
 import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 const GRID = "grid-cols-[150px_minmax(0,1fr)_70px_70px] sm:grid-cols-[190px_minmax(0,1fr)_90px_80px]";
 
@@ -169,8 +170,8 @@ export function ServerCronTab() {
                   <button
                     type="button"
                     disabled={deleteMutation.isPending}
-                    onClick={() => {
-                      if (!confirm(t("servers.cron.delete_confirm"))) return;
+                    onClick={async () => {
+                      if (!await confirmAction(t("servers.cron.delete_confirm"))) return;
                       deleteMutation.mutate(job.id);
                     }}
                     className="justify-self-end text-[11.5px] text-[var(--vx-danger)] transition-opacity hover:opacity-80 disabled:opacity-40"

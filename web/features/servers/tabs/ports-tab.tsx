@@ -27,6 +27,7 @@ import {
 } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/components/action-dialog";
 
 export function ServerPortsTab() {
   const t = useT();
@@ -171,9 +172,9 @@ export function ServerPortsTab() {
               <button
                 type="button"
                 disabled={deleteMutation.isPending || p.is_primary}
-                onClick={() => {
+                onClick={async () => {
                   if (
-                    !confirm(
+                    !await confirmAction(
                       t("servers.ports.delete_confirm", {
                         port: p.port,
                         protocol: p.protocol,

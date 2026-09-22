@@ -22,6 +22,7 @@ import {
   departmentName,
 } from "@/components/user/support/support-parts";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 type Draft = Partial<KBArticle>;
 
@@ -296,9 +297,9 @@ export function KBAdminPageContent() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          confirm(
+                          await confirmAction(
                             t("admin.kb.delete_confirm", { title: a.title })
                           )
                         ) {

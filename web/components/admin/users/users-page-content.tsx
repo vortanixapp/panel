@@ -21,6 +21,7 @@ import { isOwnerRole, isStaffRole, roleLabel } from "@/lib/rbac";
 import { useAdminUsers } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { confirmAction } from "@/components/action-dialog";
 
 const COLUMNS =
   "grid-cols-[100px_minmax(200px,1.3fr)_minmax(200px,1.4fr)_110px_140px_130px_120px_150px]";
@@ -106,13 +107,13 @@ export function UsersPageContent() {
     onSettled: () => setActionLoading(null),
   });
 
-  const handleAction = (
+  const handleAction = async (
     user: PanelUser,
     action: "toggle-block" | "delete" | "verify-email",
     confirmMsg?: string
   ) => {
     if (isOwnerRole(user.role)) return;
-    if (confirmMsg && !window.confirm(confirmMsg)) return;
+    if (confirmMsg && !await confirmAction(confirmMsg)) return;
     setActionLoading(user.id);
     userAction.mutate({ userId: user.id, action });
   };

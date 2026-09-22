@@ -21,6 +21,7 @@ import {
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
+import { confirmAction } from "@/components/action-dialog";
 
 const COLUMNS =
   "grid-cols-[minmax(220px,1.6fr)_110px_minmax(160px,1.2fr)_110px_minmax(160px,1.1fr)_90px_120px_132px]";
@@ -121,7 +122,7 @@ export function TariffsPageContent() {
   });
 
   async function onDelete(id: string, name: string) {
-    if (!confirm(t("admin.tariffs.delete_confirm", { name }))) return;
+    if (!await confirmAction(t("admin.tariffs.delete_confirm", { name }))) return;
     setActionLoading(id);
     try {
       await deleteMut.mutateAsync(id);

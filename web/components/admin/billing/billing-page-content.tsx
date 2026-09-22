@@ -31,6 +31,7 @@ import {
 import { providerDisplayName } from "@/lib/billing-providers";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { confirmAction } from "@/components/action-dialog";
 
 const STATUS_OPTIONS = [
   { value: "all", labelKey: "admin.billing.status.all" },
@@ -371,9 +372,9 @@ export function BillingPageContent() {
                     <Button
                       size="sm"
                       disabled={completeMut.isPending}
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          window.confirm(
+                          await confirmAction(
                             t("admin.billing.confirm_payment_prompt", {
                               amount: amountText(p),
                             })
@@ -391,9 +392,9 @@ export function BillingPageContent() {
                       variant="ghost"
                       size="sm"
                       disabled={cancelMut.isPending}
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          window.confirm(
+                          await confirmAction(
                             t("admin.billing.cancel_payment_prompt", {
                               amount: amountText(p),
                             })

@@ -15,6 +15,7 @@ import { dateLocaleTag } from "@/lib/i18n";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
 import { FieldGrid, SettingsCard, TextAreaField, TextField } from "./settings-ui";
+import { confirmAction } from "@/components/action-dialog";
 
 function errorText(err: unknown, fallback: string) {
   return err instanceof Error && err.message ? err.message : fallback;
@@ -174,8 +175,8 @@ export function SiteFilesCard() {
                 variant="outline"
                 size="sm"
                 disabled={deleteMut.isPending}
-                onClick={() => {
-                  if (confirm(t("admin.settings.site_files.delete_confirm", { name: file.name }))) {
+                onClick={async () => {
+                  if (await confirmAction(t("admin.settings.site_files.delete_confirm", { name: file.name }))) {
                     deleteMut.mutate(file.name);
                   }
                 }}

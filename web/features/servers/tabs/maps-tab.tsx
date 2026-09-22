@@ -15,6 +15,7 @@ import {
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 export function ServerMapsTab() {
   const t = useT();
@@ -126,9 +127,9 @@ export function ServerMapsTab() {
                     size="sm"
                     className="border-[rgba(224,122,122,0.3)] bg-transparent text-[var(--vx-danger)]"
                     disabled={!!actionKey}
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        !confirm(
+                        !await confirmAction(
                           t("servers.maps.delete_confirm", { name: row.name })
                         )
                       )

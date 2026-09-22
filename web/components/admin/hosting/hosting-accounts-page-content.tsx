@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { localeTag } from "@/lib/i18n";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -168,9 +169,9 @@ export function HostingAccountsPageContent() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
                           if (
-                            !confirm(
+                            !await confirmAction(
                               t("admin.hosting_accounts.suspend_confirm", {
                                 name: a.username,
                               })

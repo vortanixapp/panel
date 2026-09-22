@@ -34,6 +34,7 @@ import {
 import type { TranslateFn } from "@/lib/i18n";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
+import { confirmAction } from "@/components/action-dialog";
 
 const BUILDTOOLS_GAMES = ["mcspigot"];
 
@@ -565,8 +566,8 @@ export function GameEditContent() {
                         size="icon"
                         className="text-rose-500"
                         disabled={deleteVersionMut.isPending}
-                        onClick={() => {
-                          if (confirm(t("admin.games.version_delete_confirm"))) {
+                        onClick={async () => {
+                          if (await confirmAction(t("admin.games.version_delete_confirm"))) {
                             deleteVersionMut.mutate(v.id);
                           }
                         }}

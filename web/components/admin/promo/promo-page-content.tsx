@@ -30,6 +30,7 @@ import {
 } from "@/lib/api";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { confirmAction } from "@/components/action-dialog";
 
 type FormState = {
   id?: string;
@@ -575,9 +576,9 @@ export function PromoPageContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
+                      onClick={async () => {
                         if (
-                          !confirm(
+                          !await confirmAction(
                             t("admin.promo.delete_confirm", {
                               code: p.code || t("admin.promo.without_code"),
                             })
