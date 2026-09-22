@@ -32,6 +32,7 @@ export const nav = {
   "nav.admin.maps": "Карты",
   "nav.admin.news": "Новости",
   "nav.admin.promo": "Акции",
+  "nav.admin.daily_bonus": "Ежедневный бонус",
   "nav.admin.mailings": "Рассылка",
   "nav.admin.mails": "Письма",
   "nav.admin.settings": "Настройки",

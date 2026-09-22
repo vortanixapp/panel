@@ -692,7 +692,7 @@ func rbacResolveAdminPermission(path, method string) (permission string, bypass 
 		return readWrite("admin.maps.read", "admin.maps.write")
 	case "news":
 		return readWrite("admin.news.read", "admin.news.write")
-	case "promotions", "promo":
+	case "promotions", "promo", "daily-bonus":
 		return readWrite("admin.promotions.read", "admin.promotions.write")
 	case "mailings", "mail-templates", "mail-log":
 		return readWrite("admin.mailings.read", "admin.mailings.write")

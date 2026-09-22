@@ -351,7 +351,7 @@ func (h *Handler) loadBonusPrizes(ctx context.Context) []bonusPrize {
 		       COALESCE(color, ''), COALESCE(icon, ''), COALESCE(prize_duration_hours, 0),
 		       COALESCE(discount_type, '')
 		FROM core.daily_bonus_prizes
-		WHERE active = true
+		WHERE active = true AND weight > 0 AND value > 0
 		ORDER BY sort_order, created_at
 	`)
 	if err != nil {

@@ -5530,6 +5530,56 @@ export async function deleteAdminPromotion(id: string) {
   });
 }
 
+export type AdminBonusPrizeType = "balance" | "promo_rent" | "promo_renew" | "promo_game" | "promo_hosting";
+
+export type AdminBonusPrize = {
+  id: string;
+  label: string;
+  type: AdminBonusPrizeType;
+  value: number;
+  discount_type: "" | "percent" | "fixed";
+  weight: number;
+  color: string;
+  icon: string;
+  duration_hours: number;
+  active: boolean;
+  sort_order: number;
+  chance: number;
+  wins: number;
+};
+
+export type AdminBonusPrizeInput = Partial<Omit<AdminBonusPrize, "id" | "chance" | "wins">>;
+
+export type AdminDailyBonus = {
+  prizes: AdminBonusPrize[];
+  stats: { spins_24h: number; spins_7d: number; players_7d: number; balance_7d: number };
+  cooldown_hours: number;
+};
+
+export async function fetchAdminDailyBonus() {
+  return apiFetch<AdminDailyBonus>("/v1/admin/daily-bonus");
+}
+
+export async function createAdminBonusPrize(data: AdminBonusPrizeInput) {
+  return apiFetch<{ id: string }>("/v1/admin/daily-bonus/prizes", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAdminBonusPrize(id: string, data: AdminBonusPrizeInput) {
+  return apiFetch<{ status: string }>(`/v1/admin/daily-bonus/prizes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAdminBonusPrize(id: string) {
+  return apiFetch<{ status: string }>(`/v1/admin/daily-bonus/prizes/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export type AdminHostingAccount = {
   id: string;
   user_id: string;
