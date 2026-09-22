@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/internal/api/mail"
+	"github.com/vortanixapp/panel/pkg/buildinfo"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/secretbox"
@@ -38,8 +39,8 @@ func (h *Handler) GetAdminSettings(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"values":        values,
-		"panelVersion":  h.currentPanelVersion(values),
-		"panel_version": h.currentPanelVersion(values),
+		"panelVersion":  buildinfo.Current(),
+		"panel_version": buildinfo.Current(),
 	})
 }
 
@@ -409,18 +410,6 @@ func (h *Handler) resolveMaskedFTPPassword(ctx context.Context, input string) st
 		return input
 	}
 	return h.tenantSettingString(ctx, "files.storage.ftp.password")
-}
-
-func (h *Handler) currentPanelVersion(values map[string]string) string {
-	for _, k := range []string{"panel.version", "app.version"} {
-		if v := strings.TrimSpace(values[k]); v != "" {
-			return v
-		}
-	}
-	if v := strings.TrimSpace(envOr("APP_VERSION", "0.0.0")); v != "" {
-		return v
-	}
-	return "0.0.0"
 }
 
 func (h *Handler) saveBrandingFile(file io.Reader, filename, base string) (string, error) {
