@@ -9,16 +9,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (h *Handler) Features(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{
-		"features": []map[string]string{
-			{"title": "Игровые серверы", "description": "Docker-based hosting"},
-			{"title": "Консоль", "description": "Live WebSocket console"},
-			{"title": "Биллинг", "description": "Кошельки и пополнение"},
-		},
-	})
-}
-
 func (h *Handler) listGames(w http.ResponseWriter, r *http.Request, admin bool) {
 	_, ok := tenantClaims(r.Context())
 	if !ok {

@@ -152,8 +152,6 @@ const ADMIN_SIDEBAR: BuiltinItem[] = [
 
 const SITE_HEADER: BuiltinItem[] = [
   { ref: "site.pricing", labelKey: "landing.nav.pricing", url: "#pricing" },
-  { ref: "site.games", labelKey: "landing.nav.games", url: "/games" },
-  { ref: "site.features", labelKey: "landing.nav.features", url: "/features" },
   { ref: "site.faq", labelKey: "landing.nav.faq", url: "#faq" },
 ];
 
@@ -164,8 +162,6 @@ const SITE_FOOTER: BuiltinItem[] = [
     labelKey: "landing.footer.product",
     items: [
       { ref: "footer.pricing", labelKey: "landing.nav.pricing", url: "#pricing" },
-      { ref: "footer.games", labelKey: "landing.nav.games", url: "/games" },
-      { ref: "footer.features", labelKey: "landing.nav.features", url: "/features" },
       { ref: "footer.status", labelKey: "landing.footer.status", url: "/status" },
     ],
   },

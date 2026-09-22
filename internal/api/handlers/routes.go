@@ -60,7 +60,6 @@ func (h *Handler) mountProtected(r chi.Router) {
 
 		r.Get("/v1/games", h.ListGamesPublic)
 		r.Get("/v1/games/{slug}", h.GetGamePublic)
-		r.Get("/v1/features", h.Features)
 		r.Get("/v1/tariffs/public", h.ListTariffsPublic)
 
 		r.Get("/v1/trial", h.TrialStatus)

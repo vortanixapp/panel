@@ -2824,11 +2824,6 @@ export type Game = {
   active?: boolean;
 };
 
-export type Feature = {
-  title: string;
-  description: string;
-};
-
 export async function fetchGames() {
   return apiFetch<{ games: Game[] }>("/v1/games");
 }
@@ -2836,14 +2831,6 @@ export async function fetchGames() {
 export async function fetchGamesPublic() {
   const { games } = await fetchGames();
   return games;
-}
-
-export async function fetchGame(slug: string) {
-  return apiFetch<Game>(`/v1/games/${slug}`);
-}
-
-export async function fetchFeatures() {
-  return apiFetch<{ features: Feature[] }>("/v1/features");
 }
 
 export async function fetchTariffsPublic() {

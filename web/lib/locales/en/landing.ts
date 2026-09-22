@@ -1,21 +1,10 @@
 export const landing = {
-  "landing.catalog.games_title": "Game catalog",
-  "landing.catalog.games_subtitle": "Available games",
-  "landing.catalog.games_link": "Game catalog →",
-  "landing.catalog.back_to_games": "← Game catalog",
-  "landing.catalog.back_to_catalog": "← Catalog",
-  "landing.catalog.game_not_found": "Game not found",
-  "landing.catalog.features_title": "Features",
-  "landing.catalog.features_subtitle": "What the {brand} platform can do",
-  "landing.catalog.features_link": "Features →",
 
   "landing.meta.title": "game hosting",
   "landing.meta.description":
     "Servers for Minecraft, CS2, Rust and forty more games. Launch in a minute, dedicated cores for every server, DDoS protection on all plans.",
 
   "landing.nav.pricing": "Pricing",
-  "landing.nav.games": "Games",
-  "landing.nav.features": "Features",
   "landing.nav.faq": "FAQ",
   "landing.header.home_aria": "Home page",
   "landing.header.menu_aria": "Menu",

@@ -94,8 +94,6 @@ export const template = {
   "template.route.notifications": "Notifications",
   "template.route.settings": "Settings",
   "template.route.activity": "Activity",
-  "template.route.games": "Game catalog",
-  "template.route.features": "Features",
   "template.route.admin_dashboard": "Admin home",
   "template.route.admin_servers": "Servers",
   "template.route.admin_users": "Users",

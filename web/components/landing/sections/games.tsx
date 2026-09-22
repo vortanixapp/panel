@@ -38,7 +38,7 @@ export function GamesSection({ index }: { index: string }) {
               {t("landing.games.subtitle")}
             </p>
             <Link
-              href="/games"
+              href="/rent-server"
               className="group inline-flex w-fit items-center gap-1.5 text-[15px] font-medium"
             >
               {t("landing.games.all_link")}
@@ -51,7 +51,7 @@ export function GamesSection({ index }: { index: string }) {
           {FEATURED_GAMES.map((game, i) => (
             <Reveal key={game.name} delay={i * 0.06} className={cn("min-h-0", LAYOUT[i])}>
               <Link
-                href="/games"
+                href="/rent-server"
                 className="group relative flex h-full overflow-hidden rounded-2xl border border-border bg-card"
               >
                 <Image
@@ -94,7 +94,7 @@ export function GamesSection({ index }: { index: string }) {
             {MORE_GAMES.map((game) => (
               <Link
                 key={game.name}
-                href="/games"
+                href="/rent-server"
                 className="group flex min-w-[180px] flex-1 flex-col gap-1 border-r border-border px-5 py-4 transition-colors last:border-r-0 hover:bg-accent"
               >
                 <span className="text-[14.5px] font-medium whitespace-nowrap">{game.name}</span>

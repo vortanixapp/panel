@@ -29,8 +29,6 @@ export const REGISTRY_PAGES: RegistryPage[] = [
   { key: "/notifications", path: "/notifications", group: "cabinet", titleKey: "template.route.notifications", variant: "panel" },
   { key: "/settings", path: "/settings", group: "cabinet", titleKey: "template.route.settings", variant: "panel" },
   { key: "/activity", path: "/activity", group: "cabinet", titleKey: "template.route.activity", variant: "panel" },
-  { key: "/games", path: "/games", group: "cabinet", titleKey: "template.route.games", variant: "panel" },
-  { key: "/features", path: "/features", group: "cabinet", titleKey: "template.route.features", variant: "panel" },
   { key: "/admin/dashboard", path: "/admin/dashboard", group: "admin", titleKey: "template.route.admin_dashboard", variant: "panel" },
   { key: "/admin/servers", path: "/admin/servers", group: "admin", titleKey: "template.route.admin_servers", variant: "panel" },
   { key: "/admin/users", path: "/admin/users", group: "admin", titleKey: "template.route.admin_users", variant: "panel" },

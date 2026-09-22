@@ -1,21 +1,10 @@
 export const landing = {
-  "landing.catalog.games_title": "Каталог игр",
-  "landing.catalog.games_subtitle": "Доступные игры",
-  "landing.catalog.games_link": "Каталог игр →",
-  "landing.catalog.back_to_games": "← Каталог игр",
-  "landing.catalog.back_to_catalog": "← Каталог",
-  "landing.catalog.game_not_found": "Игра не найдена",
-  "landing.catalog.features_title": "Возможности",
-  "landing.catalog.features_subtitle": "Функции платформы {brand}",
-  "landing.catalog.features_link": "Возможности →",
 
   "landing.meta.title": "игровой хостинг",
   "landing.meta.description":
     "Серверы для Minecraft, CS2, Rust и ещё сорока игр. Запуск за минуту, ядра закреплены за вашим сервером, защита от DDoS на всех тарифах.",
 
   "landing.nav.pricing": "Цены",
-  "landing.nav.games": "Игры",
-  "landing.nav.features": "Возможности",
   "landing.nav.faq": "Вопросы",
   "landing.header.home_aria": "На главную",
   "landing.header.menu_aria": "Меню",

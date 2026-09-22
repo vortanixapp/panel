@@ -14,6 +14,8 @@ const LEGACY_REDIRECTS: Record<string, string> = {
   "/auth/reset-password": "/reset-password",
   "/auth/two-factor-challenge": "/two-factor-challenge",
   "/billing/topup": "/billing",
+  "/games": "/rent-server",
+  "/features": "/rent-server",
 };
 
 const PAYMENT_PATH = /^\/billing(?:\/topup)?\/payment\/([A-Za-z0-9-]{1,64})\/?$/;
@@ -56,9 +58,10 @@ function servedBeforeSetup(pathname: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (LEGACY_REDIRECTS[pathname]) {
+  const legacy = LEGACY_REDIRECTS[pathname] ?? (pathname.startsWith("/games/") ? "/rent-server" : undefined);
+  if (legacy) {
     const url = request.nextUrl.clone();
-    url.pathname = LEGACY_REDIRECTS[pathname];
+    url.pathname = legacy;
     return NextResponse.redirect(url);
   }
 
