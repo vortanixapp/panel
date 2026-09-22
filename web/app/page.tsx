@@ -8,9 +8,13 @@ import { loadRequestI18n } from "@/lib/i18n-server";
 export async function generateMetadata(): Promise<Metadata> {
   const [branding, { i18n }] = await Promise.all([loadServerBranding(), loadRequestI18n()]);
   const t = translator(i18n);
+  const title = `${brandTitle(branding)} — ${t("landing.meta.title")}`;
+  const description = branding?.site_description?.trim() || t("landing.meta.description");
   return {
-    title: { absolute: `${brandTitle(branding)} — ${t("landing.meta.title")}` },
-    description: branding?.site_description?.trim() || t("landing.meta.description"),
+    title: { absolute: title },
+    description,
+    openGraph: { type: "website", title, description, siteName: brandTitle(branding) },
+    twitter: { card: "summary", title, description },
   };
 }
 

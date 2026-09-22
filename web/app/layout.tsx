@@ -75,9 +75,12 @@ const ibmPlexSans = IBM_Plex_Sans({
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await loadServerBranding();
   const brand = brandTitle(branding);
+  const description = branding?.site_description?.trim() || "Game hosting control panel";
   return {
     title: { default: brand, template: `%s — ${brand}` },
-    description: branding?.site_description?.trim() || "Game hosting control panel",
+    description,
+    openGraph: { type: "website", title: brand, description, siteName: brand },
+    twitter: { card: "summary", title: brand, description },
     icons: {
       icon: [
         branding?.icon_url
