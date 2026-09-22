@@ -44,10 +44,6 @@ func (h *Handler) paymentReturnURL(paymentID string) string {
 	return h.paymentBaseURL() + "/billing/payment/" + paymentID
 }
 
-func (h *Handler) paymentCheckoutURL(paymentID string) string {
-	return h.paymentBaseURL() + "/v1/pay/" + paymentID
-}
-
 func (h *Handler) decodeProviderConfig(raw []byte) (map[string]any, bool) {
 	cfg := map[string]any{}
 	if len(raw) == 0 {

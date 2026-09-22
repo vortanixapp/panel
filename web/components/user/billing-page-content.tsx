@@ -22,6 +22,7 @@ import {
   type BillingData,
   type TopupProvider,
   type Transaction,
+  submitCheckoutForm,
 } from "@/lib/api";
 import { BILLING_PROVIDERS } from "@/lib/billing-providers";
 import { formatAmount } from "@/lib/format";
@@ -284,6 +285,10 @@ export function BillingPageContent() {
     },
     onSuccess: (res) => {
       void qc.invalidateQueries({ queryKey: queryKeys.billingTopup() });
+      if (res.checkout_form?.action) {
+        submitCheckoutForm(res.checkout_form);
+        return;
+      }
       const target = externalRedirect(res.redirect_url);
       if (target) {
         window.location.href = target;

@@ -10,6 +10,7 @@ import {
   openPaymentInvoice,
   openPaymentReceipt,
   type PaymentDetail,
+  submitCheckoutForm,
 } from "@/lib/api";
 import { formatAmount } from "@/lib/format";
 import { t } from "@/lib/i18n";
@@ -166,7 +167,16 @@ export function BillingPaymentDialog({ id, onClose }: { id: string | null; onClo
             {payment && tone === "pending" && payment.instructions && <BankDetails payment={payment} />}
 
             <div className="flex flex-col gap-2">
-              {payment && tone === "pending" && payment.checkout_url && (
+              {payment && tone === "pending" && payment.checkout_form?.action && (
+                <button
+                  type="button"
+                  className="vx-btn rounded-full py-3 text-center text-sm font-semibold"
+                  onClick={() => payment.checkout_form && submitCheckoutForm(payment.checkout_form)}
+                >
+                  {t("billing.payment.continue")}
+                </button>
+              )}
+              {payment && tone === "pending" && !payment.checkout_form?.action && payment.checkout_url && (
                 <a
                   href={payment.checkout_url}
                   className="vx-btn rounded-full py-3 text-center text-sm font-semibold"

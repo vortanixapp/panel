@@ -1795,10 +1795,33 @@ export type CreateTopupParams = {
   paymentMethodId?: string;
 };
 
+export type CheckoutForm = {
+  action: string;
+  method?: string;
+  fields?: { name: string; value: string }[] | null;
+};
+
+export function submitCheckoutForm(form: CheckoutForm) {
+  const el = document.createElement("form");
+  el.method = (form.method || "POST").toUpperCase() === "GET" ? "GET" : "POST";
+  el.action = form.action;
+  el.style.display = "none";
+  for (const field of form.fields ?? []) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = field.name;
+    input.value = field.value;
+    el.appendChild(input);
+  }
+  document.body.appendChild(el);
+  el.submit();
+}
+
 export type CreateTopupResult = {
   payment_id: string;
   status: string;
   redirect_url?: string;
+  checkout_form?: CheckoutForm | null;
   charge_amount?: number;
   charge_currency?: string;
 };
@@ -1817,6 +1840,7 @@ export type PaymentDetail = {
   fee_percent?: number | null;
   credited_amount?: number | null;
   checkout_url?: string;
+  checkout_form?: CheckoutForm | null;
   instructions?: Record<string, string>;
 };
 

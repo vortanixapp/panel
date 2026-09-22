@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"strings"
@@ -311,11 +310,10 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case checkout.Form != nil:
 		extra["checkout_form"] = checkout.Form
-		redirectURL = h.paymentCheckoutURL(paymentID)
 	case checkout.RedirectURL != "":
 		redirectURL = checkout.RedirectURL
+		extra["checkout_url"] = redirectURL
 	}
-	extra["checkout_url"] = redirectURL
 	if payments.ReceiptRequested(row.Config) {
 		extra["receipt"] = receipt
 	}
@@ -335,6 +333,7 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		"payment_id":      paymentID,
 		"status":          status,
 		"redirect_url":    redirectURL,
+		"checkout_form":   checkout.Form,
 		"credited_amount": creditedAmount,
 		"charge_amount":   quote.ChargeAmount,
 		"charge_currency": quote.ChargeCurrency,
@@ -383,7 +382,9 @@ func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request) {
 		"credited_amount": meta["credited_amount"],
 	}
 	if status == "pending" || status == "processing" {
-		if u, ok := meta["checkout_url"].(string); ok && u != "" && !strings.HasSuffix(u, "/payment/"+id) {
+		if form, ok := meta["checkout_form"].(map[string]any); ok && form["action"] != nil {
+			payment["checkout_form"] = form
+		} else if u, ok := meta["checkout_url"].(string); ok && u != "" && !strings.HasSuffix(u, "/payment/"+id) && !strings.Contains(u, "/v1/pay/") {
 			payment["checkout_url"] = u
 		}
 		if def, ok := payments.Definition(provider); ok && def.Manual {
@@ -397,65 +398,13 @@ func (h *Handler) GetPayment(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"payment": payment})
 }
 
-var checkoutPageTemplate = template.Must(template.New("checkout").Parse(`<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Переход к оплате</title>
-<style>
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font:15px system-ui,-apple-system,"Segoe UI",sans-serif;background:#0b0c0e;color:#e7e8ea}
-main{text-align:center;padding:24px}
-button{margin-top:16px;padding:10px 20px;border:0;border-radius:10px;background:#6366f1;color:#fff;font:inherit;cursor:pointer}
-</style>
-</head>
-<body>
-<main>
-<p>Переходим на страницу оплаты…</p>
-<form id="checkout" method="{{.Method}}" action="{{.Action}}">
-{{range .Fields}}<input type="hidden" name="{{.Name}}" value="{{.Value}}">
-{{end}}<button type="submit">Перейти к оплате</button>
-</form>
-</main>
-<script>document.getElementById("checkout").submit();</script>
-</body>
-</html>`))
-
 func (h *Handler) PaymentCheckoutPage(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if _, err := uuid.Parse(id); err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	ctx := r.Context()
-	var status string
-	var metaRaw []byte
-	if err := h.dbOf(ctx).QueryRow(ctx, `SELECT status, meta FROM core.payments WHERE id = $1`, id).Scan(&status, &metaRaw); err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	var meta struct {
-		CheckoutForm *payments.Form `json:"checkout_form"`
-	}
-	_ = json.Unmarshal(metaRaw, &meta)
-	if (status != "pending" && status != "processing") || meta.CheckoutForm == nil || meta.CheckoutForm.Action == "" {
-		http.Redirect(w, r, h.paymentReturnURL(id), http.StatusSeeOther)
-		return
-	}
-	method := strings.ToUpper(meta.CheckoutForm.Method)
-	if method != http.MethodGet {
-		method = http.MethodPost
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	if err := checkoutPageTemplate.Execute(w, map[string]any{
-		"Method": method,
-		"Action": template.URL(meta.CheckoutForm.Action),
-		"Fields": meta.CheckoutForm.Fields,
-	}); err != nil {
-		log.Printf("страница оплаты %s не отрисована: %v", id, err)
-	}
+	http.Redirect(w, r, h.paymentReturnURL(id), http.StatusSeeOther)
 }
 
 func (h *Handler) AdminCompletePayment(w http.ResponseWriter, r *http.Request) {
