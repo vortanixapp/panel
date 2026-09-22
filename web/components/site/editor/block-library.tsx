@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useEditor, type LibraryTarget } from "@/components/site/editor/editor-context";
 import { BLOCK_GROUPS, BLOCK_TYPES, createBlock, type BlockMeta } from "@/lib/site/blocks";
 import { customIdOf, insertBlock, isCustomKey, zoneBlocks } from "@/lib/site/doc";
@@ -65,7 +64,7 @@ export function BlockLibrary({ target, onClose }: { target: LibraryTarget | null
             />
           </div>
         </DialogHeader>
-        <ScrollArea className="min-h-0 flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="space-y-5 px-5 py-4">
             {groups.map(({ group, items }) => (
               <section key={group}>
@@ -106,7 +105,7 @@ export function BlockLibrary({ target, onClose }: { target: LibraryTarget | null
               <p className="py-8 text-center text-sm text-muted-foreground">{t("template.library.empty")}</p>
             ) : null}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
