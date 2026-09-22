@@ -35,10 +35,6 @@ import {
   toggleAdminLocation,
   deleteAdminLocation,
   runAdminLocationSetupStep,
-  pullAdminLocationDaemon,
-  refreshAdminLocationDaemon,
-  restartAdminLocationDaemon,
-  installAdminLocationDaemon,
   fetchAdminGames,
   fetchAdminGame,
   fetchAdminGameEdit,
@@ -463,14 +459,6 @@ export function useRunAdminLocationSetupStep(id: string) {
   return useMutation({
     mutationFn: (step: string) => runAdminLocationSetupStep(id, step),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.adminLocationSetup(id) }),
-  });
-}
-
-export function usePullAdminLocationDaemon(id: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => pullAdminLocationDaemon(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.adminLocation(id) }),
   });
 }
 

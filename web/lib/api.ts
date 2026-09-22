@@ -729,7 +729,7 @@ export async function fetchNodeInstall(id: string) {
     relay_url?: string;
     env_file?: string;
     fqdn?: string;
-  }>(`/v1/admin/locations/${id}/install`);
+  }>(`/v1/admin/locations/${id}/install`, { method: "POST", body: "{}" });
 }
 
 export async function regenerateAdminLocationAgentToken(id: string) {
@@ -3422,17 +3422,6 @@ export type MysqlInstance = {
 
 export type AdminLocationDetail = {
   location: Record<string, unknown>;
-  serverMetrics?: Record<string, unknown>;
-  serviceStatuses?: Record<string, { state: string; error: string | null; label: string }>;
-  metrics?: {
-    cpu_usage?: { t?: string; v?: number; value?: number; measured_at?: string }[];
-    ram_usage?: { t?: string; v?: number; value?: number; measured_at?: string }[];
-  };
-  cpuMetrics?: { t: string; v: number }[];
-  ramMetrics?: { t: string; v: number }[];
-  daemon?: Record<string, unknown>;
-  metrics_stale?: boolean;
-  sync_pending?: boolean;
 };
 
 export async function fetchAdminLocations() {
@@ -3499,109 +3488,6 @@ export async function runAdminLocationSetupStep(id: string, step: string) {
     `/v1/admin/locations/${id}/setup/${step}`,
     { method: "POST" }
   );
-}
-
-export async function pullAdminLocationDaemon(id: string) {
-  return apiFetch<{ status: string }>(`/v1/admin/locations/${id}/pull-daemon`, {
-    method: "POST",
-  });
-}
-
-export async function refreshAdminLocationDaemon(id: string) {
-  return apiFetch<{ status: string }>(`/v1/admin/locations/${id}/daemon/refresh`, {
-    method: "POST",
-  });
-}
-
-export async function restartAdminLocationDaemon(id: string) {
-  return apiFetch<{ status: string }>(`/v1/admin/locations/${id}/daemon/restart`, {
-    method: "POST",
-  });
-}
-
-export async function installAdminLocationDaemon(id: string) {
-  return apiFetch<{ status: string; log?: string }>(`/v1/admin/locations/${id}/daemon`, {
-    method: "POST",
-  });
-}
-
-export async function fetchAdminLocationDaemon(id: string) {
-  return apiFetch<Record<string, unknown>>(`/v1/admin/locations/${id}/daemon`);
-}
-
-export type AdminAgentListItem = {
-  id: string;
-  location_id: string;
-  name?: string;
-  code?: string;
-  country?: string;
-  region?: string;
-  host?: string;
-  status?: string;
-  is_online?: boolean;
-  version?: string;
-  platform?: string;
-  pid?: number;
-  uptime_sec?: number;
-  last_seen?: string;
-  last_seen_human?: string;
-  location?: { id: string; name: string; code: string; region?: string };
-};
-
-export async function fetchAdminAgents() {
-  const res = await apiFetch<{ agents: AdminAgentListItem[]; daemons?: AdminAgentListItem[] }>(
-    "/v1/admin/daemons"
-  );
-  return res.agents ?? res.daemons ?? [];
-}
-
-export async function fetchAdminAgent(id: string) {
-  return apiFetch<{
-    location: Record<string, unknown>;
-    agent: Record<string, unknown>;
-    daemon?: Record<string, unknown>;
-    metrics?: {
-      agent_cpu_usage?: { measured_at: string; value: number }[];
-      agent_ram_usage?: { measured_at: string; value: number }[];
-    };
-  }>(`/v1/admin/daemons/${id}`);
-}
-
-export async function fetchAdminAgentLogs(id: string, tail = 200) {
-  return apiFetch<{ logs: string[]; error?: string; hostname?: string; container_found?: boolean }>(
-    `/v1/admin/daemons/${id}/logs?tail=${tail}`
-  );
-}
-
-export async function fetchAdminAgentServers(id: string) {
-  return apiFetch<{ servers: Record<string, unknown>[] }>(
-    `/v1/admin/daemons/${id}/servers`
-  );
-}
-
-export async function execAdminAgentCommand(id: string, cmd: string) {
-  return apiFetch<{ stdout?: string; output?: string; error?: string; ok?: boolean }>(
-    `/v1/admin/daemons/${id}/exec`,
-    { method: "POST", body: JSON.stringify({ cmd }) }
-  );
-}
-
-export async function refreshAdminAgent(id: string) {
-  return apiFetch<{ status: string }>(`/v1/admin/daemons/${id}/refresh`, {
-    method: "POST",
-  });
-}
-
-export async function restartAdminAgent(id: string) {
-  return apiFetch<{ status: string }>(`/v1/admin/daemons/${id}/restart`, {
-    method: "POST",
-  });
-}
-
-export async function installAdminAgent(id: string) {
-  return apiFetch<{ status: string; log?: string }>(`/v1/admin/daemons/${id}/install`, {
-    method: "POST",
-  });
 }
 
 export type AgentState = "online" | "offline" | "never_connected";
@@ -5953,60 +5839,6 @@ export async function updateAdminUpdateSettings(
   return apiFetch<PanelAutoUpdate>("/v1/admin/updates/settings", {
     method: "PATCH",
     body: JSON.stringify(data),
-  });
-}
-
-export type AgentUpdateState = {
-  status: "pending" | "pulling" | "restarting" | "done" | "failed";
-  target?: string;
-  error?: string | null;
-  source?: string;
-  method?: "relay" | "ssh";
-  from?: string;
-  started_at?: string;
-  finished_at?: string;
-  updated_at?: string;
-};
-
-export type AdminAgentUpdateNode = {
-  id: string;
-  name: string;
-  code: string;
-  country: string;
-  online: boolean;
-  version: string;
-  outdated: boolean;
-  auto_update: boolean;
-  ssh: boolean;
-  last_seen?: string;
-  update?: AgentUpdateState;
-};
-
-export type AdminAgentUpdates = {
-  target_version: string;
-  image: string;
-  auto_enabled: boolean;
-  nodes: AdminAgentUpdateNode[];
-};
-
-export async function fetchAdminAgentUpdates() {
-  return apiFetch<AdminAgentUpdates>("/v1/admin/updates/agents");
-}
-
-export async function startAdminAgentUpdates(nodeIds: string[]) {
-  return apiFetch<{
-    started: number;
-    results: { id: string; ok: boolean; method: string; error?: string }[];
-  }>("/v1/admin/updates/agents", {
-    method: "POST",
-    body: JSON.stringify({ node_ids: nodeIds }),
-  });
-}
-
-export async function setAdminAgentAutoUpdate(nodeIds: string[], autoUpdate: boolean) {
-  return apiFetch<{ ok: boolean }>("/v1/admin/updates/agents", {
-    method: "PATCH",
-    body: JSON.stringify({ node_ids: nodeIds, auto_update: autoUpdate }),
   });
 }
 

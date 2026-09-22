@@ -1032,9 +1032,6 @@ export const adminContent = {
   "admin.updates.auto.window_hint": "Часы по времени сервера панели",
   "admin.updates.auto.skipped": "Автоустановка {version} не удалась и больше не повторяется — поставьте её кнопкой",
   "admin.updates.auto.needs_updater": "Заработает, когда будет подключена служба обновления",
-  "admin.updates.auto.agents": "Агенты",
-  "admin.updates.auto.agents_hint":
-    "Отстающие агенты сами получают версию панели на локациях, отмеченных в списке ниже. Проверка раз в 5 минут",
   "admin.updates.auto.saved": "Настройки сохранены",
 
   "admin.updates.install.title": "Установка панели",
@@ -1053,14 +1050,11 @@ export const adminContent = {
   "admin.updates.install.backup_first": "Перед ручным обновлением снимите копию базы: миграции идут только вперёд, отката нет",
   "admin.updates.install.copy_failed": "Не удалось скопировать",
 
+  "admin.updates.agents.open": "Открыть Vortanix Agent",
+  "admin.updates.agents.filter.update_failed": "С ошибкой",
   "admin.updates.agents.title": "Агенты на локациях",
   "admin.updates.agents.description":
     "Агенты обновляются до версии панели {version}. Игровые серверы при перезапуске агента не останавливаются",
-  "admin.updates.agents.description_dev":
-    "Панель собрана без номера версии: агенты берут образ {image}, автообновление не работает",
-  "admin.updates.agents.update_outdated": "Обновить отстающие ({count})",
-  "admin.updates.agents.auto_all_on": "Автообновление на всех",
-  "admin.updates.agents.auto_all_off": "Снять автообновление со всех",
   "admin.updates.agents.load_failed": "Не удалось загрузить список агентов",
   "admin.updates.agents.filter.all": "Все",
   "admin.updates.agents.filter.outdated": "Отстают",
@@ -1069,25 +1063,7 @@ export const adminContent = {
   "admin.updates.agents.filter.offline": "Не в сети",
   "admin.updates.agents.empty": "Локаций пока нет — агенты появятся, когда вы подключите первую",
   "admin.updates.agents.add_location": "Добавить локацию",
-  "admin.updates.agents.offline": "Не в сети",
-  "admin.updates.agents.seen": "был в сети {when}",
-  "admin.updates.agents.never": "Не подключался",
   "admin.updates.agents.current": "Актуален",
-  "admin.updates.agents.outdated": "Отстаёт",
-  "admin.updates.agents.status.pending": "Ожидает",
-  "admin.updates.agents.status.pulling": "Загружает образ",
-  "admin.updates.agents.status.restarting": "Перезапускается",
-  "admin.updates.agents.status.done": "Обновлён",
-  "admin.updates.agents.status.failed": "Ошибка",
-  "admin.updates.agents.via_ssh": "через SSH",
-  "admin.updates.agents.auto": "Авто",
-  "admin.updates.agents.auto_aria": "Автообновление агента на локации {name}",
-  "admin.updates.agents.update": "Обновить",
-  "admin.updates.agents.retry": "Повторить",
-  "admin.updates.agents.unreachable": "Агент не в сети, а доступ по SSH не настроен",
-  "admin.updates.agents.started": "Запущено обновлений: {count}",
   "admin.updates.agents.auto_hint":
     "На локациях с автообновлением агент получает новую версию сам, когда он в сети и отстаёт от панели",
-  "admin.updates.agents.old_hint":
-    "Агенты прошлых версий обновляться сами не умеют: один раз переустановите их командой из раздела «Локации» или настройте для локации SSH",
 };

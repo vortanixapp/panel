@@ -114,7 +114,7 @@ export function LocationsPageContent() {
                 >
                   <div>{t("common.location")}</div>
                   <div>IP / SSH</div>
-                  <div>Agent</div>
+                  <div>{t("admin.location.agent.title")}</div>
                   <div>{t("common.servers")}</div>
                   <div className="text-right">{t("common.actions")}</div>
                 </div>
@@ -181,9 +181,10 @@ export function LocationsPageContent() {
                       </div>
 
                       <div>
-                        <span
+                        <Link
+                          href={`/admin/daemons/${loc.id}`}
                           className={cn(
-                            "inline-flex items-center gap-2 text-xs",
+                            "inline-flex items-center gap-2 text-xs hover:underline",
                             loc.is_online ? "text-emerald-500" : "text-rose-500"
                           )}
                         >
@@ -196,7 +197,7 @@ export function LocationsPageContent() {
                           {loc.is_online
                             ? t("admin.infra.online")
                             : t("admin.infra.offline")}
-                        </span>
+                        </Link>
                       </div>
 
                       <div className="space-y-1">

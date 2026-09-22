@@ -628,17 +628,6 @@ func rbacResolveAdminPermission(path, method string) (permission string, bypass 
 		return readKey, false
 	}
 
-	if section == "locations" {
-		if strings.Contains(slashPath, "/daemon") || strings.Contains(slashPath, "/pull-daemon") {
-			return readWrite("admin.daemons.read", "admin.daemons.write")
-		}
-		if strings.Contains(slashPath, "/setup") {
-			return readWrite("admin.locations.read", "admin.locations.write")
-		}
-	}
-	if section == "daemons" {
-		return readWrite("admin.daemons.read", "admin.daemons.write")
-	}
 	if section == "games" && strings.Contains(slashPath, "/versions") {
 		return readWrite("admin.games.read", "admin.games.write")
 	}

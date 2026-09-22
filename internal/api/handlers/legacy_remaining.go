@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/vortanixapp/panel/internal/api/jobwake"
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
 	"github.com/vortanixapp/panel/internal/api/payments"
 	"github.com/vortanixapp/panel/internal/api/pricing"
@@ -659,47 +658,6 @@ func (h *Handler) AdminTariffDuplicate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"id": newID})
-}
-
-func (h *Handler) LocationPullDaemon(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	nodeID := chi.URLParam(r, "id")
-	h.enqueueLocationPull(r, nodeID)
-	writeJSON(w, http.StatusAccepted, map[string]string{"status": "pulling"})
-}
-
-func (h *Handler) enqueueLocationPull(r *http.Request, nodeID string) {
-	ctx := r.Context()
-	var pending bool
-	_ = h.dbOf(ctx).QueryRow(ctx, `
-		SELECT EXISTS(
-			SELECT 1 FROM core.jobs
-			WHERE type = 'daemon_pull' AND status IN ('pending', 'running')
-			  AND payload->>'node_id' = $1
-		)
-	`, nodeID).Scan(&pending)
-	if pending {
-		return
-	}
-	payload, _ := json.Marshal(map[string]string{"node_id": nodeID})
-	_, _ = h.dbOf(ctx).Exec(ctx, `
-		INSERT INTO core.jobs ( type, status, payload) VALUES ( 'daemon_pull', 'pending', $1::jsonb)
-	`, payload)
-	jobwake.Notify("daemon_pull")
-}
-
-func (h *Handler) nodeMetricsFresh(r *http.Request, nodeID string) bool {
-	var fresh bool
-	_ = h.readerOf(r.Context()).QueryRow(r.Context(), `
-		SELECT EXISTS(
-			SELECT 1 FROM core.node_metrics
-			WHERE node_id = $1 AND metric_type = 'cpu_usage' AND measured_at > NOW() - INTERVAL '5 minutes'
-		)
-	`, nodeID).Scan(&fresh)
-	return fresh
 }
 
 func (h *Handler) AdminMysqlIndex(w http.ResponseWriter, r *http.Request) {

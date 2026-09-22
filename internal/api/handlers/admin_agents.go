@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/vortanixapp/panel/pkg/protocol"
@@ -90,46 +89,6 @@ func (h *Handler) GetAdminAgentLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = claims
 	writeJSON(w, http.StatusOK, resp)
-}
-
-func (h *Handler) GetAdminAgentServers(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	rows, err := h.readerOf(r.Context()).Query(r.Context(), `
-		SELECT s.id::text, s.name, s.status, COALESCE(s.runtime_status, ''), COALESCE(s.provisioning_status, ''),
-			COALESCE(s.game_id, ''), COALESCE(g.name, ''), COALESCE(g.slug, g.code, ''),
-			COALESCE(u.email, ''), COALESCE(p.display_name, u.email, '')
-		FROM core.servers s
-		LEFT JOIN core.games g ON (g.id::text = s.game_id OR g.slug = s.game_id OR g.code = s.game_id)
-		LEFT JOIN core.users u ON u.id = s.user_id
-		LEFT JOIN core.user_profiles p ON p.user_id = u.id
-		WHERE s.node_id = $1
-		ORDER BY s.created_at DESC
-	`, id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	defer rows.Close()
-
-	servers := []map[string]any{}
-	for rows.Next() {
-		var sid, name, status, runtime, prov, gameID, gameName, gameSlug, userEmail, userName string
-		if rows.Scan(&sid, &name, &status, &runtime, &prov, &gameID, &gameName, &gameSlug, &userEmail, &userName) != nil {
-			continue
-		}
-		servers = append(servers, map[string]any{
-			"id": sid, "name": name, "status": status,
-			"runtime_status": runtime, "provisioning_status": prov,
-			"container_name": "vortanix-" + sid,
-			"game":           map[string]any{"code": gameSlug, "name": gameName, "id": gameID},
-			"user":           map[string]any{"email": userEmail, "name": userName},
-		})
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"servers": servers})
 }
 
 func (h *Handler) loadAgentInfo(r *http.Request, nodeID string) map[string]any {

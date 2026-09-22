@@ -1037,9 +1037,6 @@ export const adminContent = {
   "admin.updates.auto.window_hint": "Hours in the panel server's time zone",
   "admin.updates.auto.skipped": "Auto-installing {version} failed and will not be retried. Install it with the button",
   "admin.updates.auto.needs_updater": "Starts working once the update service is connected",
-  "admin.updates.auto.agents": "Agents",
-  "admin.updates.auto.agents_hint":
-    "Outdated agents get the panel version by themselves on locations checked in the list below. Checked every 5 minutes",
   "admin.updates.auto.saved": "Settings saved",
 
   "admin.updates.install.title": "Panel installation",
@@ -1058,14 +1055,11 @@ export const adminContent = {
   "admin.updates.install.backup_first": "Back up the database before a manual update: migrations only go forward, there is no rollback",
   "admin.updates.install.copy_failed": "Could not copy",
 
+  "admin.updates.agents.open": "Open Vortanix Agent",
+  "admin.updates.agents.filter.update_failed": "Failed",
   "admin.updates.agents.title": "Agents on locations",
   "admin.updates.agents.description":
     "Agents are updated to the panel version {version}. Game servers keep running while an agent restarts",
-  "admin.updates.agents.description_dev":
-    "The panel was built without a version number: agents use the image {image} and auto-update is off",
-  "admin.updates.agents.update_outdated": "Update outdated ({count})",
-  "admin.updates.agents.auto_all_on": "Auto-update everywhere",
-  "admin.updates.agents.auto_all_off": "Turn auto-update off everywhere",
   "admin.updates.agents.load_failed": "Could not load the agent list",
   "admin.updates.agents.filter.all": "All",
   "admin.updates.agents.filter.outdated": "Outdated",
@@ -1074,25 +1068,7 @@ export const adminContent = {
   "admin.updates.agents.filter.offline": "Offline",
   "admin.updates.agents.empty": "No locations yet. Agents appear once you connect the first one",
   "admin.updates.agents.add_location": "Add location",
-  "admin.updates.agents.offline": "Offline",
-  "admin.updates.agents.seen": "last seen {when}",
-  "admin.updates.agents.never": "Never connected",
   "admin.updates.agents.current": "Up to date",
-  "admin.updates.agents.outdated": "Outdated",
-  "admin.updates.agents.status.pending": "Pending",
-  "admin.updates.agents.status.pulling": "Pulling image",
-  "admin.updates.agents.status.restarting": "Restarting",
-  "admin.updates.agents.status.done": "Updated",
-  "admin.updates.agents.status.failed": "Failed",
-  "admin.updates.agents.via_ssh": "via SSH",
-  "admin.updates.agents.auto": "Auto",
-  "admin.updates.agents.auto_aria": "Agent auto-update on location {name}",
-  "admin.updates.agents.update": "Update",
-  "admin.updates.agents.retry": "Retry",
-  "admin.updates.agents.unreachable": "The agent is offline and SSH access is not configured",
-  "admin.updates.agents.started": "Updates started: {count}",
   "admin.updates.agents.auto_hint":
     "On locations with auto-update the agent gets the new version by itself while it is online and behind the panel",
-  "admin.updates.agents.old_hint":
-    "Agents of earlier versions cannot update themselves: reinstall them once with the command from the Locations section or set up SSH for the location",
 };

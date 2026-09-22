@@ -10,7 +10,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  fetchAdminAgentUpdates,
+  fetchAgents,
   fetchAdminPanelUpdateStatus,
   fetchAdminUpdates,
   startAdminPanelUpdate,
@@ -24,7 +24,7 @@ import { AgentsSection } from "./agents-section";
 import { AutoUpdateCard } from "./auto-update-card";
 import { InstallCard } from "./install-card";
 import { PanelStatus } from "./panel-status";
-import { agentBusy, formatRelative, summarizeAgents } from "./update-utils";
+import { agentsBusy, formatRelative, summarizeAgents } from "./update-utils";
 import { WhatsNewCard } from "./whats-new-card";
 
 export function UpdatesPageContent() {
@@ -42,9 +42,9 @@ export function UpdatesPageContent() {
     staleTime: 5 * 60_000,
   });
   const agents = useQuery({
-    queryKey: queryKeys.adminAgentUpdates,
-    queryFn: fetchAdminAgentUpdates,
-    refetchInterval: (query) => (query.state.data?.nodes.some(agentBusy) ? 3000 : 30_000),
+    queryKey: queryKeys.agents,
+    queryFn: fetchAgents,
+    refetchInterval: (query) => (query.state.data && agentsBusy(query.state.data) ? 3000 : 30_000),
   });
 
   const data = updates.data;
@@ -64,7 +64,7 @@ export function UpdatesPageContent() {
     if (statusJobState && statusJobState !== "running") {
       setWatching(false);
       void qc.invalidateQueries({ queryKey: queryKeys.adminUpdates });
-      void qc.invalidateQueries({ queryKey: queryKeys.adminAgentUpdates });
+      void qc.invalidateQueries({ queryKey: queryKeys.agents });
     }
   }, [statusJobState, qc]);
 
@@ -102,7 +102,7 @@ export function UpdatesPageContent() {
     job?.state === "succeeded" && pageVersion.current !== null && liveVersion && liveVersion !== pageVersion.current
       ? liveVersion
       : null;
-  const agentsSummary = agents.data ? summarizeAgents(agents.data.nodes) : null;
+  const agentsSummary = agents.data ? summarizeAgents(agents.data) : null;
   const manualVisible = manualOpen ?? (updater ? !updater.available : false);
 
   const openManual = () => {
@@ -169,7 +169,6 @@ export function UpdatesPageContent() {
               <div className="space-y-6">
                 <AutoUpdateCard
                   auto={data.auto}
-                  agentsAuto={agents.data ? agents.data.auto_enabled : null}
                   updaterAvailable={updater?.available === true}
                 />
                 <InstallCard data={data} manualOpen={manualVisible} onManualOpenChange={setManualOpen} />

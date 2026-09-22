@@ -1,4 +1,4 @@
-import type { AdminAgentUpdateNode } from "@/lib/api";
+import type { AgentsList } from "@/lib/api";
 import { localeTag } from "@/lib/i18n";
 
 export function validDate(value?: string | null): Date | null {
@@ -89,53 +89,16 @@ export function splitLogLine(line: string): { time: string; text: string } {
   return match ? { time: match[1], text: match[2] } : { time: "", text: line };
 }
 
-const BUSY_STATES = ["pending", "pulling", "restarting"];
-
-export function agentBusy(node: AdminAgentUpdateNode): boolean {
-  return BUSY_STATES.includes(node.update?.status ?? "");
-}
-
-export function agentFailed(node: AdminAgentUpdateNode): boolean {
-  return node.update?.status === "failed" && node.outdated;
-}
-
-export function agentReachable(node: AdminAgentUpdateNode): boolean {
-  return node.online || node.ssh;
-}
-
-export type AgentFilter = "all" | "outdated" | "updating" | "failed" | "offline";
-
-export function agentMatches(node: AdminAgentUpdateNode, filter: AgentFilter): boolean {
-  switch (filter) {
-    case "outdated":
-      return (node.outdated || !node.version) && !agentBusy(node);
-    case "updating":
-      return agentBusy(node);
-    case "failed":
-      return agentFailed(node) && !agentBusy(node);
-    case "offline":
-      return !node.online;
-    default:
-      return true;
-  }
-}
-
 export type AgentsSummary = {
   total: number;
   current: number;
-  outdated: number;
-  updating: number;
-  failed: number;
-  offline: number;
 };
 
-export function summarizeAgents(nodes: AdminAgentUpdateNode[]): AgentsSummary {
-  return {
-    total: nodes.length,
-    current: nodes.filter((n) => n.version && !n.outdated && !agentBusy(n)).length,
-    outdated: nodes.filter((n) => agentMatches(n, "outdated")).length,
-    updating: nodes.filter((n) => agentMatches(n, "updating")).length,
-    failed: nodes.filter((n) => agentMatches(n, "failed")).length,
-    offline: nodes.filter((n) => agentMatches(n, "offline")).length,
-  };
+export function summarizeAgents(list: AgentsList): AgentsSummary {
+  const s = list.summary;
+  return { total: s.total, current: Math.max(0, s.total - s.outdated - s.never_connected) };
+}
+
+export function agentsBusy(list: AgentsList): boolean {
+  return list.summary.updating > 0 || list.summary.restarting > 0;
 }

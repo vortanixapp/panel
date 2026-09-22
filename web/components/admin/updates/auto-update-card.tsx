@@ -6,7 +6,6 @@ import { Segmented, SelectField, SettingsCard } from "@/components/admin/setting
 import { Switch } from "@/components/ui/switch";
 import {
   updateAdminUpdateSettings,
-  type AdminAgentUpdates,
   type AdminUpdates,
   type PanelAutoUpdate,
 } from "@/lib/api";
@@ -21,7 +20,6 @@ const HOURS = Array.from({ length: 24 }, (_, h) => ({
 
 type Patch = Partial<{
   auto_enabled: boolean;
-  agents_auto_enabled: boolean;
   window_start: number;
   window_end: number;
 }>;
@@ -57,11 +55,9 @@ function Row({
 
 export function AutoUpdateCard({
   auto,
-  agentsAuto,
   updaterAvailable,
 }: {
   auto: PanelAutoUpdate;
-  agentsAuto: boolean | null;
   updaterAvailable: boolean;
 }) {
   const t = useT();
@@ -70,21 +66,11 @@ export function AutoUpdateCard({
 
   const save = useMutation({
     mutationFn: (patch: Patch) => updateAdminUpdateSettings(patch),
-    onMutate: (patch) => {
-      if (patch.agents_auto_enabled !== undefined) {
-        qc.setQueryData<AdminAgentUpdates>(queryKeys.adminAgentUpdates, (prev) =>
-          prev ? { ...prev, auto_enabled: patch.agents_auto_enabled === true } : prev
-        );
-      }
-    },
     onSuccess: (next) => {
       qc.setQueryData<AdminUpdates>(queryKeys.adminUpdates, (prev) => (prev ? { ...prev, auto: next } : prev));
       toast.success(t("admin.updates.auto.saved"));
     },
-    onError: (e: Error) => {
-      toast.error(t("admin.updates.action_failed", { error: e.message }));
-      void qc.invalidateQueries({ queryKey: queryKeys.adminAgentUpdates });
-    },
+    onError: (e: Error) => toast.error(t("admin.updates.action_failed", { error: e.message })),
   });
 
   return (
@@ -140,13 +126,6 @@ export function AutoUpdateCard({
             )}
           </div>
         </Row>
-        <Row
-          title={t("admin.updates.auto.agents")}
-          hint={t("admin.updates.auto.agents_hint")}
-          checked={agentsAuto === true}
-          disabled={agentsAuto === null || save.isPending}
-          onChange={(value) => save.mutate({ agents_auto_enabled: value })}
-        />
       </div>
     </SettingsCard>
   );

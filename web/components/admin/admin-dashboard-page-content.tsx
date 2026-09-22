@@ -529,7 +529,7 @@ export function AdminDashboardPageContent() {
               </div>
             </div>
             <Link
-              href="/admin/daemons"
+              href={stats.nodesOffline === 1 ? `/admin/daemons/${offlineNode.id}` : "/admin/daemons?filter=offline"}
               className="rounded-full border border-[var(--vx-border-strong)] px-[18px] py-[9px] text-[13px] font-semibold whitespace-nowrap text-[var(--vx-warn)] transition-colors hover:bg-[var(--vx-warn-tint)]"
             >
               {t("admin.dashboard.investigate")}
@@ -797,7 +797,7 @@ export function AdminDashboardPageContent() {
                     return (
                       <Link
                         key={n.id}
-                        href={`/admin/locations/${n.id}`}
+                        href={`/admin/daemons/${n.id}`}
                         className="grid grid-cols-[1.5fr_1fr_1fr_1fr_0.9fr] items-center gap-3 border-b border-[var(--vx-inset)] py-3.5 transition-colors hover:bg-[var(--vx-elevated)]"
                       >
                         <div className="flex min-w-0 items-center gap-2.5">

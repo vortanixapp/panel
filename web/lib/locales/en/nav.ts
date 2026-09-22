@@ -16,6 +16,7 @@ export const nav = {
   "nav.admin.users": "Users",
   "nav.admin.servers": "Servers",
   "nav.admin.locations": "Locations",
+  "nav.admin.daemons": "Vortanix Agent",
   "nav.admin.games": "Games",
   "nav.admin.tariffs": "Plans",
   "nav.admin.support": "Support",

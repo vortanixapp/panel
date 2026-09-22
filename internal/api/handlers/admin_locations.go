@@ -524,26 +524,8 @@ func (h *Handler) GetAdminLocation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serverMetrics := h.loadServerMetrics(r, id)
-	cpuMetrics, ramMetrics := h.loadChartMetrics(r, id)
-	serviceStatuses := buildServiceStatuses(loc)
-	daemon := h.loadDaemonInfo(r, id)
-	metricsStale := !h.nodeMetricsFresh(r, id)
-	if metricsStale && hasSSHConfigured(loc, parseMetaMap(loc.Meta)) {
-		h.enqueueLocationPull(r, id)
-	}
-
 	writeJSON(w, http.StatusOK, map[string]any{
-		"location":        locationMapFromRow(loc, h.viewerCan(r, "admin.locations.write")),
-		"serverMetrics":   serverMetrics,
-		"serviceStatuses": serviceStatuses,
-		"metrics_stale":   metricsStale,
-		"sync_pending":    metricsStale,
-		"metrics": map[string]any{
-			"cpu_usage": cpuMetrics,
-			"ram_usage": ramMetrics,
-		},
-		"daemon": daemon,
+		"location": locationMapFromRow(loc, h.viewerCan(r, "admin.locations.write")),
 	})
 }
 
@@ -1023,7 +1005,7 @@ func (h *Handler) GetAdminLocationSetup(w http.ResponseWriter, r *http.Request) 
 	}
 	meta := parseMetaMap(loc.Meta)
 	statuses := h.loadSetupStatuses(r, id, meta)
-	daemon := h.loadDaemonInfo(r, id)
+	daemon := h.loadAgentInfo(r, id)
 	isOnline := false
 	if daemon != nil {
 		if v, ok := daemon["is_online"].(bool); ok {
@@ -1149,143 +1131,6 @@ func (h *Handler) RunAdminLocationSetupStep(w http.ResponseWriter, r *http.Reque
 	`, payload)
 	jobwake.Notify("node_setup")
 	writeJSON(w, http.StatusAccepted, map[string]any{"success": true, "message": msg})
-}
-
-func (h *Handler) GetAdminLocationDaemon(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	id := chi.URLParam(r, "id")
-	agent := h.loadAgentInfo(r, id)
-	writeJSON(w, http.StatusOK, map[string]any{"agent": agent, "daemon": agent})
-}
-
-func (h *Handler) loadDaemonInfo(r *http.Request, nodeID string) map[string]any {
-	return h.loadAgentInfo(r, nodeID)
-}
-
-func (h *Handler) InstallAdminLocationDaemon(w http.ResponseWriter, r *http.Request) {
-	h.enqueueDaemonJob(w, r, "install", nil)
-}
-
-func (h *Handler) RefreshAdminLocationDaemon(w http.ResponseWriter, r *http.Request) {
-	h.enqueueDaemonJob(w, r, "refresh", nil)
-}
-
-func (h *Handler) RestartAdminLocationDaemon(w http.ResponseWriter, r *http.Request) {
-	h.enqueueDaemonJob(w, r, "restart", nil)
-}
-
-func (h *Handler) enqueueDaemonJob(w http.ResponseWriter, r *http.Request, action string, params map[string]any) {
-	_, ok := tenantClaims(r.Context())
-	if !ok {
-		return
-	}
-	nodeID := chi.URLParam(r, "id")
-	payload, _ := json.Marshal(map[string]any{"node_id": nodeID, "action": action, "params": params})
-	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-		INSERT INTO core.jobs ( type, status, payload) VALUES ( 'daemon_action', 'pending', $1::jsonb)
-	`, payload)
-	jobwake.Notify("daemon_action")
-	writeJSON(w, http.StatusAccepted, map[string]any{"status": action, "success": true})
-}
-
-func (h *Handler) loadServerMetrics(r *http.Request, nodeID string) map[string]any {
-	types := []string{"os_info", "cpu_model", "ram_total", "disk_total", "disk_used", "disk_available", "uptime"}
-	out := map[string]any{}
-	for _, t := range types {
-		var value float64
-		var textValue *string
-		var measuredAt time.Time
-		err := h.readerOf(r.Context()).QueryRow(r.Context(), `
-			SELECT value, text_value, measured_at FROM core.node_metrics
-			WHERE node_id = $1 AND metric_type = $2
-			ORDER BY measured_at DESC LIMIT 1
-		`, nodeID, t).Scan(&value, &textValue, &measuredAt)
-		if err != nil {
-			continue
-		}
-		item := map[string]any{"metric_type": t, "value": value, "measured_at": measuredAt.Format(time.RFC3339)}
-		if textValue != nil {
-			item["text_value"] = *textValue
-		}
-		out[t] = item
-	}
-	return out
-}
-
-func (h *Handler) loadChartMetrics(r *http.Request, nodeID string) ([]map[string]any, []map[string]any) {
-	load := func(metricType string) []map[string]any {
-		rows, err := h.readerOf(r.Context()).Query(r.Context(), `
-			SELECT value, measured_at FROM core.node_metrics
-			WHERE node_id = $1 AND metric_type = $2
-			ORDER BY measured_at DESC LIMIT 50
-		`, nodeID, metricType)
-		if err != nil {
-			return nil
-		}
-		defer rows.Close()
-		points := make([]map[string]any, 0)
-		for rows.Next() {
-			var value float64
-			var measuredAt time.Time
-			if rows.Scan(&value, &measuredAt) == nil {
-				points = append(points, map[string]any{
-					"t": measuredAt.Format(time.RFC3339), "v": value, "value": value, "measured_at": measuredAt.Format(time.RFC3339),
-				})
-			}
-		}
-		for i, j := 0, len(points)-1; i < j; i, j = i+1, j-1 {
-			points[i], points[j] = points[j], points[i]
-		}
-		return points
-	}
-	return load("cpu_usage"), load("ram_usage")
-}
-
-func buildServiceStatuses(loc *locationRow) map[string]map[string]any {
-	services := map[string]string{
-		"docker": "Docker", "mysql": "MySQL", "vortanix-sftp": "SFTP", "vortanix-agent": "Vortanix Agent",
-	}
-	out := map[string]map[string]any{}
-	for unit, label := range services {
-		out[unit] = map[string]any{"label": label, "state": "unknown", "error": nil}
-	}
-	meta := parseMetaMap(loc.Meta)
-	if loc.SSHHost == nil || *loc.SSHHost == "" || loc.SSHUser == nil || *loc.SSHUser == "" || !hasSSHPassword(loc, meta) {
-		for k := range out {
-			out[k]["state"] = "unconfigured"
-		}
-		return out
-	}
-	raw, ok := meta["service_statuses"].(map[string]any)
-	if !ok {
-		return out
-	}
-	for unit, entry := range raw {
-		em, ok := entry.(map[string]any)
-		if !ok {
-			continue
-		}
-		if _, exists := out[unit]; !exists {
-			label := unit
-			if l, ok := em["label"].(string); ok && l != "" {
-				label = l
-			}
-			out[unit] = map[string]any{"label": label, "state": "unknown", "error": nil}
-		}
-		if state, ok := em["state"].(string); ok && state != "" {
-			out[unit]["state"] = state
-		}
-		if label, ok := em["label"].(string); ok && label != "" {
-			out[unit]["label"] = label
-		}
-		if errVal, ok := em["error"]; ok {
-			out[unit]["error"] = errVal
-		}
-	}
-	return out
 }
 
 func (h *Handler) loadSetupStatuses(r *http.Request, nodeID string, meta map[string]any) map[string]string {

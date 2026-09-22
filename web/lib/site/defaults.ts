@@ -86,11 +86,11 @@ const ADMIN_SIDEBAR: BuiltinItem[] = [
     labelKey: "nav.group.infrastructure",
     items: [
       { ref: "admin.locations", labelKey: "nav.admin.locations", url: "/admin/locations", icon: "map-pin" },
+      { ref: "admin.daemons", labelKey: "nav.admin.daemons", url: "/admin/daemons", icon: "terminal" },
       { ref: "admin.images", labelKey: "nav.admin.images", url: "/admin/images", icon: "file-image" },
       { ref: "admin.mysql", labelText: "MySQL", url: "/admin/mysql", icon: "database" },
       { ref: "admin.games", labelKey: "nav.admin.games", url: "/admin/games", icon: "monitor" },
       { ref: "admin.tariffs", labelKey: "nav.admin.tariffs", url: "/admin/tariffs", icon: "tag" },
-      { ref: "admin.daemons", labelText: "Vortanix Agent", url: "/admin/daemons", icon: "terminal" },
       { ref: "admin.jobs", labelKey: "nav.admin.jobs", url: "/admin/jobs", icon: "list-checks" },
     ],
   },
