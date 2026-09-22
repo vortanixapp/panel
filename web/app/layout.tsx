@@ -77,7 +77,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const brand = brandTitle(branding);
   return {
     title: { default: brand, template: `%s — ${brand}` },
-    description: "Game hosting control panel",
+    description: branding?.site_description?.trim() || "Game hosting control panel",
     icons: {
       icon: [
         branding?.icon_url

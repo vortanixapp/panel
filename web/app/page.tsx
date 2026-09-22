@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = translator(i18n);
   return {
     title: { absolute: `${brandTitle(branding)} — ${t("landing.meta.title")}` },
-    description: t("landing.meta.description"),
+    description: branding?.site_description?.trim() || t("landing.meta.description"),
   };
 }
 

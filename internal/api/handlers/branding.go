@@ -30,6 +30,7 @@ func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
 		"legal":             h.publicLegalInfo(r.Context(), settings),
 		"brand_name":        name,
 		"panel_name":        title,
+		"site_description":  strings.TrimSpace(settings["app.site.description"]),
 		"logo_url":          logo,
 		"logo_dark_url":     h.brandingPublicURL(r, a.LogoDark),
 		"icon_url":          h.brandingPublicURL(r, a.Icon),
