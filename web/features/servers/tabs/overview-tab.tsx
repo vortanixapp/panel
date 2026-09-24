@@ -500,9 +500,9 @@ export function ServerOverviewTab() {
           <Panel title={t("servers.overview.panel_version")}>
             <div className="flex flex-col gap-3">
               {versions.length > 0 && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <select
-                    className={cn(VX_SELECT, "flex-1")}
+                    className={cn(VX_SELECT, "min-w-[150px] flex-1")}
                     value={effectiveVersionId}
                     onChange={(e) => setSelectedVersionId(e.target.value)}
                     disabled={lifecycleMutation.isPending}
@@ -565,9 +565,9 @@ export function ServerOverviewTab() {
                       ? t("servers.overview.runtime_php")
                       : t("servers.overview.runtime_java")}
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <select
-                      className={cn(VX_SELECT, "flex-1")}
+                      className={cn(VX_SELECT, "min-w-[150px] flex-1")}
                       value={runtimeValue}
                       onChange={(e) => setSelectedRuntime(e.target.value)}
                       disabled={runtimeMutation.isPending || runtimeQuery.isLoading}

@@ -21,7 +21,7 @@ export const VX_INPUT =
   "h-[34px] w-full rounded-[9px] border border-[var(--vx-border-2)] bg-[var(--vx-bg)] px-2.5 text-[12.5px] text-[var(--vx-fg)] outline-none transition-colors placeholder:text-[var(--vx-ghost)] focus:border-[var(--vx-border-hover)] disabled:cursor-not-allowed disabled:opacity-50";
 export const VX_INPUT_MONO = cn(VX_INPUT, "font-mono");
 export const VX_SELECT =
-  "h-[34px] rounded-[9px] border border-[var(--vx-border-2)] bg-[var(--vx-bg)] px-2.5 text-[12.5px] text-[var(--vx-fg)] outline-none transition-colors focus:border-[var(--vx-border-hover)] disabled:cursor-not-allowed disabled:opacity-50";
+  "h-[34px] min-w-0 rounded-[9px] border border-[var(--vx-border-2)] bg-[var(--vx-bg)] px-2.5 text-[12.5px] text-[var(--vx-fg)] outline-none transition-colors focus:border-[var(--vx-border-hover)] disabled:cursor-not-allowed disabled:opacity-50";
 export const VX_TEXTAREA =
   "w-full rounded-[10px] border border-[var(--vx-border-2)] bg-[var(--vx-code)] p-3 font-mono text-[12px] leading-[1.6] text-[var(--vx-dim)] outline-none transition-colors focus:border-[var(--vx-border-hover)] disabled:cursor-not-allowed disabled:opacity-50";
 
