@@ -37,6 +37,7 @@ export const queryKeys = {
   serverPlugins: (id: string) => ["servers", id, "plugins"] as const,
   serverMaps: (id: string) => ["servers", id, "maps"] as const,
   serverPorts: (id: string) => ["servers", id, "ports"] as const,
+  serverRuntime: (id: string) => ["servers", id, "runtime"] as const,
   serverMysql: (id: string) => ["servers", id, "mysql"] as const,
   monitoring: ["monitoring"] as const,
   monitoringServer: (id: string) => ["monitoring-server", id] as const,

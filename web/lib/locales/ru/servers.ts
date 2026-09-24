@@ -134,6 +134,17 @@ export const servers = {
     "Для смены версии сначала выключите сервер",
   "servers.overview.switch_version_confirm":
     "Сменить версию и переустановить сервер? Все данные будут удалены.",
+  "servers.overview.switch_version_keep_confirm":
+    "Сменить ядро сервера? Файлы и миры останутся на месте, будут заменены только файлы ядра.",
+  "servers.overview.keep_data": "Сохранить файлы сервера",
+  "servers.overview.keep_data_hint":
+    "Меняется только ядро, миры, плагины и настройки остаются. Снимите галочку, чтобы поставить версию начисто.",
+  "servers.overview.runtime_java": "Версия Java",
+  "servers.overview.runtime_php": "Версия PHP",
+  "servers.overview.runtime_auto": "Автоматически",
+  "servers.overview.runtime_hint":
+    "Применится при следующем запуске сервера.",
+  "servers.overview.runtime_saved": "Версия среды сохранена",
   "servers.overview.switch": "Сменить",
   "servers.overview.auto_restart": "Автоматический перезапуск",
   "servers.overview.maps_loading": "Загрузка карт…",

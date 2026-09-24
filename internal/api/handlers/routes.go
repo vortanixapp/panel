@@ -213,6 +213,8 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/{id}/update", h.UpdateServerGame)
 			r.Post("/{id}/reinstall", h.ReinstallServer)
 			r.Post("/{id}/version", h.ServerSwitchVersion)
+			r.Get("/{id}/runtime", h.GetServerRuntime)
+			r.Post("/{id}/runtime", h.SetServerRuntime)
 			r.Post("/{id}/auto-start", h.ServerAutoStart)
 			r.Post("/{id}/auto-renew", h.ServerAutoRenew)
 			r.Post("/{id}/startup-params", h.ServerStartupParams)

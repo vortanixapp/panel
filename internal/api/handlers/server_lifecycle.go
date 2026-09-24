@@ -19,13 +19,22 @@ func (h *Handler) UpdateServerGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	serverID := chi.URLParam(r, "id")
+	if !h.runGameUpdate(w, r, serverID) {
+		return
+	}
+	ctx := r.Context()
+	audit(ctx, h.dbOf(ctx), claims.UserID, "server.update", "server:"+serverID, nil)
+	writeJSON(w, http.StatusOK, map[string]any{"status": "updating"})
+}
+
+func (h *Handler) runGameUpdate(w http.ResponseWriter, r *http.Request, serverID string) bool {
 	ctx := r.Context()
 
 	spec := h.resolveInstallSpec(ctx, serverID)
 	if spec == nil {
 		writeError(w, http.StatusBadRequest,
 			"Для версии игры не указан источник файлов — обновлять нечего")
-		return
+		return false
 	}
 
 	var name, gameID, prevStatus, prevRuntime string
@@ -37,7 +46,7 @@ func (h *Handler) UpdateServerGame(w http.ResponseWriter, r *http.Request) {
 		FROM core.servers WHERE id = $1
 	`, serverID).Scan(&name, &gameID, &limitsRaw, &primaryPort, &prevStatus, &prevRuntime); err != nil {
 		writeError(w, http.StatusNotFound, "server not found")
-		return
+		return false
 	}
 	limits := map[string]any{}
 	_ = json.Unmarshal(limitsRaw, &limits)
@@ -60,16 +69,15 @@ func (h *Handler) UpdateServerGame(w http.ResponseWriter, r *http.Request) {
 
 	result, ok := h.agentCommandForServer(w, r, serverID, "update", payload)
 	if !ok {
-		return
+		return false
 	}
 	if _, started := result["status"]; !started {
 		h.restoreServerStatus(ctx, serverID, prevStatus, prevRuntime)
 		writeError(w, http.StatusConflict,
 			"Агент на ноде устарел и не умеет обновлять игру — обновите его на странице ноды")
-		return
+		return false
 	}
-	audit(ctx, h.dbOf(ctx), claims.UserID, "server.update", "server:"+serverID, nil)
-	writeJSON(w, http.StatusOK, map[string]any{"status": "updating", "result": result})
+	return true
 }
 
 func (h *Handler) ReinstallServer(w http.ResponseWriter, r *http.Request) {

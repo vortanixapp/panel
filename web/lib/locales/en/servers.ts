@@ -135,6 +135,17 @@ export const servers = {
     "Stop the server before switching versions",
   "servers.overview.switch_version_confirm":
     "Switch the version and reinstall the server? All data will be erased.",
+  "servers.overview.switch_version_keep_confirm":
+    "Switch the server core? Files and worlds stay in place, only core files are replaced.",
+  "servers.overview.keep_data": "Keep server files",
+  "servers.overview.keep_data_hint":
+    "Only the core changes, worlds, plugins and settings stay. Uncheck to install the version from scratch.",
+  "servers.overview.runtime_java": "Java version",
+  "servers.overview.runtime_php": "PHP version",
+  "servers.overview.runtime_auto": "Automatic",
+  "servers.overview.runtime_hint":
+    "Applies on the next server start.",
+  "servers.overview.runtime_saved": "Runtime version saved",
   "servers.overview.switch": "Switch",
   "servers.overview.auto_restart": "Automatic restart",
   "servers.overview.maps_loading": "Loading maps…",

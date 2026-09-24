@@ -47,6 +47,7 @@ import {
   createServerBackup,
   fetchBilling,
   fetchServerBackups,
+  fetchServerRuntime,
   fetchServerStatus,
   listServerMapsFolder,
   previewServerRenew,
@@ -54,6 +55,7 @@ import {
   renewServer,
   sendServerConsoleCommand,
   setServerAutoStart,
+  setServerRuntime,
   switchServerVersion,
   updateServerGame,
   type MetricPoint,
@@ -135,6 +137,8 @@ export function ServerOverviewTab() {
   const [renewPeriod, setRenewPeriod] = useState(30);
   const [renewPromoCode, setRenewPromoCode] = useState("");
   const [selectedVersionId, setSelectedVersionId] = useState("");
+  const [keepData, setKeepData] = useState(true);
+  const [selectedRuntime, setSelectedRuntime] = useState<string | null>(null);
   const [changeMapOpen, setChangeMapOpen] = useState(false);
   const [mapActionLoading, setMapActionLoading] = useState("");
   const [playerAction, setPlayerAction] = useState<{
@@ -203,7 +207,8 @@ export function ServerOverviewTab() {
     mutationFn: async (action: string) => {
       if (action === "reinstall") return reinstallServer(id);
       if (action === "update") return updateServerGame(id);
-      if (action.startsWith("version:")) return switchServerVersion(id, action.slice("version:".length));
+      if (action.startsWith("version:"))
+        return switchServerVersion(id, action.slice("version:".length), keepData);
       throw new Error("unknown action");
     },
     onSuccess: (_data, action) => {
@@ -213,6 +218,26 @@ export function ServerOverviewTab() {
       };
       toast.success(labels[action] ?? t("servers.overview.version_changed"));
       void queryClient.invalidateQueries({ queryKey: queryKeys.serverDetail(id) });
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : t("common.error")),
+  });
+
+  const runtimeQuery = useQuery({
+    queryKey: queryKeys.serverRuntime(id),
+    queryFn: () => fetchServerRuntime(id),
+    enabled: !!id,
+  });
+  const runtimeInfo = runtimeQuery.data;
+  const runtimeCurrent = runtimeInfo?.current ?? "";
+  const runtimeValue = selectedRuntime ?? runtimeCurrent;
+
+  const runtimeMutation = useMutation({
+    mutationFn: (version: string) => setServerRuntime(id, version),
+    onSuccess: () => {
+      toast.success(t("servers.overview.runtime_saved"));
+      setSelectedRuntime(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.serverRuntime(id) });
     },
     onError: (err) =>
       toast.error(err instanceof Error ? err.message : t("common.error")),
@@ -503,13 +528,71 @@ export function ServerOverviewTab() {
                         : undefined
                     }
                     onClick={async () => {
-                      if (!await confirmAction(t("servers.overview.switch_version_confirm")))
-                        return;
+                      const message = keepData
+                        ? t("servers.overview.switch_version_keep_confirm")
+                        : t("servers.overview.switch_version_confirm");
+                      if (!(await confirmAction(message))) return;
                       lifecycleMutation.mutate(`version:${effectiveVersionId}`);
                     }}
                   >
                     {t("servers.overview.switch")}
                   </Btn>
+                </div>
+              )}
+
+              {versions.length > 0 && (
+                <label className="flex items-start gap-2 text-[12px] leading-[1.35]">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={keepData}
+                    onChange={(e) => setKeepData(e.target.checked)}
+                    disabled={lifecycleMutation.isPending}
+                  />
+                  <span>
+                    {t("servers.overview.keep_data")}
+                    <span className={cn("block", VX_FAINT)}>
+                      {t("servers.overview.keep_data_hint")}
+                    </span>
+                  </span>
+                </label>
+              )}
+
+              {runtimeInfo?.supported && (runtimeInfo.versions?.length ?? 0) > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className={cn("text-[12px]", VX_MUTED)}>
+                    {runtimeInfo.kind === "php"
+                      ? t("servers.overview.runtime_php")
+                      : t("servers.overview.runtime_java")}
+                  </span>
+                  <div className="flex gap-2">
+                    <select
+                      className={cn(VX_SELECT, "flex-1")}
+                      value={runtimeValue}
+                      onChange={(e) => setSelectedRuntime(e.target.value)}
+                      disabled={runtimeMutation.isPending || runtimeQuery.isLoading}
+                    >
+                      <option value="">{t("servers.overview.runtime_auto")}</option>
+                      {(runtimeInfo.versions ?? []).map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                    <Btn
+                      disabled={
+                        runtimeMutation.isPending ||
+                        perms.can_files === false ||
+                        runtimeValue === runtimeCurrent
+                      }
+                      onClick={() => runtimeMutation.mutate(runtimeValue)}
+                    >
+                      {t("common.save")}
+                    </Btn>
+                  </div>
+                  <span className={cn("text-[11.5px]", VX_FAINT)}>
+                    {t("servers.overview.runtime_hint")}
+                  </span>
                 </div>
               )}
 

@@ -2519,11 +2519,29 @@ export async function saveServerStartupParams(id: string, startupParams: string)
   });
 }
 
-export async function switchServerVersion(id: string, versionId: string) {
+export async function switchServerVersion(id: string, versionId: string, keepData = false) {
   return apiFetch<{ status: string }>(`/v1/servers/${id}/version`, {
     method: "POST",
-    body: JSON.stringify({ version_id: versionId }),
+    body: JSON.stringify({ version_id: versionId, keep_data: keepData }),
   });
+}
+
+export type ServerRuntime = {
+  supported: boolean;
+  kind?: "java" | "php";
+  versions?: string[];
+  current?: string;
+};
+
+export async function fetchServerRuntime(id: string) {
+  return apiFetch<ServerRuntime>(`/v1/servers/${id}/runtime`);
+}
+
+export async function setServerRuntime(id: string, version: string) {
+  return apiFetch<{ status: string; kind: string; version: string }>(
+    `/v1/servers/${id}/runtime`,
+    { method: "POST", body: JSON.stringify({ version }) }
+  );
 }
 
 export async function previewServerRenew(id: string, period: number, promoCode?: string) {

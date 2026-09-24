@@ -297,6 +297,7 @@ func (h *Handler) ServerSwitchVersion(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		VersionID string `json:"version_id"`
+		KeepData  bool   `json:"keep_data"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.VersionID == "" {
@@ -312,6 +313,15 @@ func (h *Handler) ServerSwitchVersion(w http.ResponseWriter, r *http.Request) {
 	`, serverID, body.VersionID)
 	if err != nil || tag.RowsAffected() == 0 {
 		writeError(w, http.StatusBadRequest, "Эта версия недоступна для сервера")
+		return
+	}
+	if body.KeepData {
+		if !h.runGameUpdate(w, r, serverID) {
+			return
+		}
+		audit(ctx, h.dbOf(ctx), claims.UserID, "server.switch_version", "server:"+serverID,
+			map[string]any{"version_id": body.VersionID, "keep_data": true})
+		writeJSON(w, http.StatusOK, map[string]string{"status": "updating", "version_id": body.VersionID})
 		return
 	}
 	cmdID, status, err := h.startReinstall(ctx, serverID)
