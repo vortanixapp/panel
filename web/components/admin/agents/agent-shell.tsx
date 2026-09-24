@@ -39,6 +39,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { useNodeTask } from "@/hooks/use-node-task";
+import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
 const TABS = ["overview", "containers", "logs", "events", "diagnostics", "maintenance"] as const;
 type AgentTab = (typeof TABS)[number];
@@ -221,7 +222,7 @@ export function AgentShell() {
           </div>
 
           <div className="border-t border-[var(--vx-border)] px-3.5 py-[9px]">
-            <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div ref={wheelScrollX} className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {TABS.map((key) => {
                 const active = key === tab;
                 return (

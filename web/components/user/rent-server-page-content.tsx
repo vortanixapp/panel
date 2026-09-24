@@ -42,6 +42,7 @@ import {
   tariffRange,
 } from "@/lib/tariff-pricing";
 import { useT } from "@/hooks/use-translations";
+import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
 const STEPS = [
   { id: "game", num: 1, labelKey: "common.game" },
@@ -396,6 +397,7 @@ export function RentServerPageContent() {
             </p>
           </div>
           <div
+            ref={wheelScrollX}
             className={cn(
               "ml-auto flex items-center gap-1.5 rounded-[10px] border border-[var(--vx-border)] bg-[var(--vx-card)] p-1",
               "overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

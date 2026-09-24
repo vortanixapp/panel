@@ -39,6 +39,7 @@ import {
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
+import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
 function isFilter(v: string | null): v is AgentFilter {
   return v != null && (AGENT_FILTERS as readonly string[]).includes(v);
@@ -244,7 +245,7 @@ export function AgentsPage() {
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div ref={wheelScrollX} className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {AGENT_FILTERS.map((f) => {
               const on = f === filter;
               return (

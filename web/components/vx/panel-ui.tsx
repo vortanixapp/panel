@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { m } from "motion/react";
 import { cn } from "@/lib/utils";
+import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
 export const VX_PAGE_BG = "var(--vx-bg)";
 export const VX_CARD = "border border-[var(--vx-border)] bg-[var(--vx-card)]";
@@ -115,6 +116,7 @@ export function SubTabs({
   if (items.length < 2) return null;
   return (
     <div
+      ref={wheelScrollX}
       role="tablist"
       className={cn(
         "flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",

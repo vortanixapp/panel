@@ -124,6 +124,40 @@ func writeFileToHost(ctx context.Context, serverID, containerTarget string, cont
 	return nil
 }
 
+func mkdirOnHost(ctx context.Context, serverID, containerTarget string) error {
+	root, rel, err := openServerPath(serverID, containerTarget)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	if rel == "." {
+		return nil
+	}
+	if err := root.MkdirAll(rel, 0o755); err != nil {
+		return err
+	}
+	copyOwnership(ctx, root, filepath.Dir(rel), rel)
+	return nil
+}
+
+func deleteOnHost(serverID, containerTarget string) error {
+	root, rel, err := openServerPath(serverID, containerTarget)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	if rel == "." {
+		return fmt.Errorf("нельзя удалить корень данных сервера")
+	}
+	if _, err := root.Lstat(rel); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	return root.RemoveAll(rel)
+}
+
 func copyOwnership(ctx context.Context, root *os.Root, reference, target string) {
 	base := root.Name()
 	if reference == "." {

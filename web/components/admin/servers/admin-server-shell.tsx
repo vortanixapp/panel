@@ -53,6 +53,7 @@ import { isServerExpired, serverProvisioning } from "@/lib/server-lifecycle";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { useServerDetail } from "@/hooks/use-queries";
+import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
 const CHIP: Record<string, string> = {
   running: "border-[var(--vx-border-strong)] bg-[var(--vx-veil-strong)] text-[var(--vx-fg-strong)]",
@@ -333,7 +334,7 @@ export function AdminServerShell({
           </div>
 
           <div className="border-t border-[var(--vx-border)] px-3.5 py-[9px]">
-            <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div ref={wheelScrollX} className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {tabs.map((tab) => {
                 const active = tab.key === currentKey;
                 const disabled = isAdminServerTabDisabled(server, tab.key);

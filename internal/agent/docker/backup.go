@@ -16,7 +16,7 @@ func Mkdir(ctx context.Context, serverID, dir string) error {
 	if isServerRoot(target) {
 		return nil
 	}
-	return execInServer(ctx, serverID, target, `mkdir -p "$R"`).Run()
+	return mkdirOnHost(ctx, serverID, target)
 }
 
 func DeletePath(ctx context.Context, serverID, p string) error {
@@ -27,7 +27,7 @@ func DeletePath(ctx context.Context, serverID, p string) error {
 	if isServerRoot(target) {
 		return fmt.Errorf("нельзя удалить корень данных сервера")
 	}
-	return execInServer(ctx, serverID, target, `rm -rf "$R"`).Run()
+	return deleteOnHost(serverID, target)
 }
 
 func CreateBackup(ctx context.Context, serverID, name string) (string, int64, error) {
@@ -44,7 +44,7 @@ func CreateBackup(ctx context.Context, serverID, name string) (string, int64, er
 		"mkdir -p /data/backups && cd /data && tar -czf %s --exclude=backups .",
 		shellQuote(archive),
 	)
-	if err := exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c", script).Run(); err != nil {
+	if err := runCommand(exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c", script)); err != nil {
 		return "", 0, err
 	}
 	sizeOut, err := exec.CommandContext(ctx, "docker", "exec", cname, "sh", "-c",
@@ -93,12 +93,12 @@ func extractBackup(ctx context.Context, serverID, cname, name string) error {
 			"find /data -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true",
 		shellQuote(archive),
 	)
-	return exec.CommandContext(ctx, "docker", "run", "--rm",
+	return runCommand(exec.CommandContext(ctx, "docker", "run", "--rm",
 		"--network", "none",
 		"--entrypoint", "sh",
 		"-v", dataDir+":/data",
 		img, "-c", script,
-	).Run()
+	))
 }
 
 func containerImage(ctx context.Context, cname string) string {
