@@ -1,0 +1,15 @@
+Шрифты в этом каталоге распространяются по SIL Open Font License 1.1
+(https://openfontlicense.org) и загружены с Google Fonts.
+
+Inter — Rasmus Andersson
+Outfit — Smartsheet Inc., On Brand Investments
+DM Mono — Colophon Foundry, Jonathan Pierini, Riccardo Olocco
+Manrope — Mikhail Sharanda
+Rubik — Hubert & Fischer, Meir Sadan, Cyreal
+Montserrat — Julieta Ulanovsky, Sol Matas, Juan Pablo del Peral, Jacques Le Bailly
+IBM Plex Sans — IBM Corp.
+Unbounded — Grill Type
+Onest — Nikita Levinskiy
+JetBrains Mono — JetBrains s.r.o.
+
+Полный текст лицензии: https://openfontlicense.org/open-font-license-official-text/
