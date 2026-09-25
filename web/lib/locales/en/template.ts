@@ -220,6 +220,7 @@ export const template = {
   "template.field.dismissible": "Can be dismissed",
   "template.field.video": "Video link",
   "template.field.html": "HTML",
+  "template.field.scripts": "Run scripts (owner only)",
   "template.field.line": "Divider line",
   "template.field.empty": "Click to add text",
   "template.field.empty_text": "Add text in the block settings on the right",

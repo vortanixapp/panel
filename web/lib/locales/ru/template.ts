@@ -220,6 +220,7 @@ export const template = {
   "template.field.dismissible": "Можно закрыть",
   "template.field.video": "Ссылка на видео",
   "template.field.html": "HTML",
+  "template.field.scripts": "Выполнять скрипты (только владелец)",
   "template.field.line": "Линия-разделитель",
   "template.field.empty": "Нажмите, чтобы добавить текст",
   "template.field.empty_text": "Добавьте текст в настройках блока справа",

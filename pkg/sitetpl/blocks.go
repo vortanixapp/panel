@@ -140,7 +140,8 @@ var blockSchemas = map[string]map[string]field{
 		"caption": fText,
 	},
 	"html": {
-		"html": fHTML,
+		"html":    fHTML,
+		"scripts": fBool,
 	},
 	"spacer": {
 		"size": fEnum("sm", "md", "lg", "xl"),

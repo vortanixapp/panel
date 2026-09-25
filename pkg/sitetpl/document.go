@@ -89,6 +89,29 @@ func (d Document) Public() Document {
 	return d
 }
 
+func (d *Document) EachBlock(fn func(b *Block)) {
+	for key, page := range d.Pages {
+		if page.Blocks != nil {
+			blocks := *page.Blocks
+			for i := range blocks {
+				fn(&blocks[i])
+			}
+		}
+		for i := range page.Top {
+			fn(&page.Top[i])
+		}
+		for i := range page.Bottom {
+			fn(&page.Bottom[i])
+		}
+		d.Pages[key] = page
+	}
+	for i := range d.CustomPages {
+		for j := range d.CustomPages[i].Blocks {
+			fn(&d.CustomPages[i].Blocks[j])
+		}
+	}
+}
+
 func (d Document) TextCount() int {
 	n := 0
 	for _, keys := range d.Texts {

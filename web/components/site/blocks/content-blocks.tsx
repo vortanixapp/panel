@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ImageIcon, PlayCircle } from "lucide-react";
 import { useSite } from "@/context/site-provider";
 import { useT } from "@/hooks/use-translations";
@@ -101,16 +101,40 @@ export function TextBlock({ block, variant }: BlockViewProps) {
   );
 }
 
+function LiveHtml({ raw }: { raw: string }) {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = host.current;
+    if (!node) return;
+    node.innerHTML = raw;
+    node.querySelectorAll("script").forEach((old) => {
+      const script = document.createElement("script");
+      for (const attr of Array.from(old.attributes)) {
+        script.setAttribute(attr.name, attr.value);
+      }
+      script.textContent = old.textContent;
+      old.replaceWith(script);
+    });
+    return () => {
+      node.innerHTML = "";
+    };
+  }, [raw]);
+  return <div ref={host} className="vx-custom-html" />;
+}
+
 export function HtmlBlock({ block, variant }: BlockViewProps) {
   const text = useBlockText();
   const t = useT();
   const { editing } = useSite();
   const raw = text(block.props?.html);
+  const live = boolProp(block, "scripts") && !editing;
   const html = useMemo(() => (raw ? sanitizeCustomHtml(raw) : ""), [raw]);
   if (!html && !editing) return null;
   return (
     <BlockShell variant={variant} inner={variant === "site" ? "py-12 lg:py-16" : undefined}>
-      {html ? (
+      {live && raw ? (
+        <LiveHtml raw={raw} />
+      ) : html ? (
         <div className="vx-custom-html" dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
         <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">

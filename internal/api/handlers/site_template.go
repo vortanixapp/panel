@@ -137,6 +137,27 @@ func (h *Handler) siteLocales(ctx context.Context) map[string]bool {
 	return out
 }
 
+func (h *Handler) allowSiteScripts(w http.ResponseWriter, r *http.Request, doc *sitetpl.Document) bool {
+	wanted := false
+	doc.EachBlock(func(b *sitetpl.Block) {
+		if b.Type == "html" && b.Props != nil {
+			if on, _ := b.Props["scripts"].(bool); on {
+				wanted = true
+			}
+		}
+	})
+	if !wanted {
+		return true
+	}
+	claims, ok := tenantClaims(r.Context())
+	if _, isKey := apiKeyFromContext(r.Context()); ok && !isKey && claims.Role == "owner" {
+		return true
+	}
+	writeCodedError(w, http.StatusForbidden, "owner_only",
+		"Скрипты в блоке HTML может включить только владелец панели")
+	return false
+}
+
 func (h *Handler) normalizeSite(ctx context.Context, w http.ResponseWriter, doc *sitetpl.Document) bool {
 	err := sitetpl.Normalize(doc, sitetpl.Options{Locales: h.siteLocales(ctx)})
 	if err == nil {
@@ -231,6 +252,9 @@ func (h *Handler) AdminTemplateSaveDraft(w http.ResponseWriter, r *http.Request)
 	doc, err := sitetpl.Parse(body.Document)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "Шаблон повреждён")
+		return
+	}
+	if !h.allowSiteScripts(w, r, &doc) {
 		return
 	}
 	if !h.normalizeSite(ctx, w, &doc) {
@@ -546,6 +570,9 @@ func (h *Handler) AdminTemplateRestore(w http.ResponseWriter, r *http.Request) {
 	doc.Texts, err = pendingReverts(ctx, tx, sitetpl.Reverts(newer))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "Не удалось вернуть версию")
+		return
+	}
+	if !h.allowSiteScripts(w, r, &doc) {
 		return
 	}
 	if !h.normalizeSite(ctx, w, &doc) {

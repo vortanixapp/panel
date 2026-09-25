@@ -365,7 +365,10 @@ const CONTENT: BlockMeta[] = [
     icon: "code",
     site: true,
     panel: true,
-    fields: [{ name: "html", kind: "html", label: "template.field.html" }],
+    fields: [
+      { name: "html", kind: "html", label: "template.field.html" },
+      { name: "scripts", kind: "bool", label: "template.field.scripts" },
+    ],
   },
   {
     type: "spacer",
