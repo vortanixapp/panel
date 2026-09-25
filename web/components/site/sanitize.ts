@@ -32,8 +32,28 @@ export function sanitizeRichHtml(html: string): string {
   );
 }
 
+const ROOT_OPEN = '<div data-vtx-root="1">';
+const ROOT_CLOSE = "</div>";
+
+function unwrapRoot(value: string): string {
+  const start = value.indexOf(">");
+  if (!value.startsWith('<div data-vtx-root="1"') || start < 0) return value;
+  const end = value.lastIndexOf(ROOT_CLOSE);
+  return end > start ? value.slice(start + 1, end) : value.slice(start + 1);
+}
+
+const CSS_IMPORT = /@(import|charset)[^;]*;?/gi;
+const CSS_EXPRESSION = /expression\s*\(/gi;
+
 export function sanitizeCustomHtml(html: string): string {
   DOMPurify.addHook("uponSanitizeElement", (node, data) => {
+    if (data.tagName === "style") {
+      const element = node as Element;
+      element.textContent = (element.textContent ?? "")
+        .replace(CSS_IMPORT, "")
+        .replace(CSS_EXPRESSION, "(");
+      return;
+    }
     if (data.tagName !== "iframe") return;
     const element = node as Element;
     if (!VIDEO_EMBED.test(element.getAttribute("src") ?? "")) {
@@ -41,13 +61,15 @@ export function sanitizeCustomHtml(html: string): string {
     }
   });
   try {
-    return withLinkHook(() =>
-      DOMPurify.sanitize(html, {
-        ADD_TAGS: ["iframe"],
-        ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "referrerpolicy", "loading", "target"],
-        FORBID_TAGS: ["script", "style", "object", "embed", "form", "input", "button", "textarea", "select", "link", "meta", "base"],
-        FORBID_ATTR: ["srcset", "formaction", "action"],
-      })
+    return unwrapRoot(
+      withLinkHook(() =>
+        DOMPurify.sanitize(ROOT_OPEN + html + ROOT_CLOSE, {
+          ADD_TAGS: ["iframe", "style"],
+          ADD_ATTR: ["allow", "allowfullscreen", "frameborder", "referrerpolicy", "loading", "target", "media"],
+          FORBID_TAGS: ["script", "object", "embed", "form", "input", "button", "textarea", "select", "link", "meta", "base"],
+          FORBID_ATTR: ["srcset", "formaction", "action"],
+        })
+      )
     );
   } finally {
     DOMPurify.removeHook("uponSanitizeElement");

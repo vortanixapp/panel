@@ -182,7 +182,7 @@ export const template = {
   "template.block.video": "Video",
   "template.block.video_hint": "A video from YouTube, VK or Rutube",
   "template.block.html": "Custom HTML",
-  "template.block.html_hint": "Any markup, scripts are removed",
+  "template.block.html_hint": "Any markup and your own CSS in a style tag, scripts are removed",
   "template.block.spacer": "Spacer",
   "template.block.spacer_hint": "Empty space or a divider line",
 

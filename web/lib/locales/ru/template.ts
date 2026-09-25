@@ -182,7 +182,7 @@ export const template = {
   "template.block.video": "Видео",
   "template.block.video_hint": "Ролик с YouTube, VK или Rutube",
   "template.block.html": "Свой HTML",
-  "template.block.html_hint": "Произвольная разметка, скрипты вырезаются",
+  "template.block.html_hint": "Произвольная разметка и свой CSS в теге style, скрипты вырезаются",
   "template.block.spacer": "Отступ",
   "template.block.spacer_hint": "Пустое место или линия-разделитель",
 
