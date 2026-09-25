@@ -17,6 +17,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -142,12 +143,33 @@ func New() *Agent {
 	return a
 }
 
+func (a *Agent) runLoop() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("сбой в обработке сообщений: %v\n%s", r, debug.Stack())
+			a.closeConnection()
+		}
+	}()
+	a.loop()
+}
+
+func safeGo(name string, fn func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("сбой в фоновой задаче %s: %v\n%s", name, r, debug.Stack())
+			}
+		}()
+		fn()
+	}()
+}
+
 func (a *Agent) Run() {
 	if a.relayURL == "" || a.token == "" || a.nodeID == "" {
 		log.Fatal("RELAY_URL, AGENT_TOKEN and NODE_ID are required")
 	}
-	go a.cron.run()
-	go a.firewall.watch()
+	safeGo("cron", a.cron.run)
+	safeGo("firewall", a.firewall.watch)
 	backoff := reconnectMin
 	for {
 		if err := a.connect(); err != nil {
@@ -159,8 +181,8 @@ func (a *Agent) Run() {
 			continue
 		}
 		backoff = reconnectMin
-		a.reportOnce.Do(func() { go a.reportUpgradeResult() })
-		a.loop()
+		a.reportOnce.Do(func() { safeGo("upgrade-report", a.reportUpgradeResult) })
+		a.runLoop()
 		time.Sleep(reconnectMin)
 	}
 }
@@ -275,8 +297,8 @@ func (a *Agent) loop() {
 
 	done := make(chan struct{})
 	defer close(done)
-	go a.heartbeat(done)
-	go a.metricsLoop(done)
+	safeGo("heartbeat", func() { a.heartbeat(done) })
+	safeGo("metrics", func() { a.metricsLoop(done) })
 	for {
 		mt, data, err := conn.ReadMessage()
 		if err != nil {
@@ -456,13 +478,13 @@ func (a *Agent) handleCommand(data []byte) {
 		sessionID, _ := cmd.Payload["session_id"].(string)
 		input, _ := cmd.Payload["data"].(string)
 		gameID, _ := cmd.Payload["game_id"].(string)
-		go a.consoleInput(cmd.ID, cmd.ServerID, sessionID, gameID, input)
+		safeGo("console-input", func() { a.consoleInput(cmd.ID, cmd.ServerID, sessionID, gameID, input) })
 		return
 	case protocol.ActionAgentUpdate:
 		a.startSelfUpdate(cmd)
 		return
 	case protocol.ActionAgentRestart:
-		go a.restartSelf(cmd)
+		safeGo("restart", func() { a.restartSelf(cmd) })
 		return
 	case protocol.ActionNodeInfo:
 		a.disp.nodeReadJob(job{id: cmd.ID, action: cmd.Action, timeout: time.Minute,
@@ -539,7 +561,9 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 			}
 			if install.HasSource() && docker.NeedsInstall(cmd.ServerID) {
 				a.sendStatus(cmd.ServerID, "installing", "")
-				go a.installAndStart(cmd.ServerID, name, gameID, limits, dockerImage, primaryPort, bindIP, install)
+				safeGo("install", func() {
+					a.installAndStart(cmd.ServerID, name, gameID, limits, dockerImage, primaryPort, bindIP, install)
+				})
 				a.sendAck(cmd.ID, true, nil, map[string]any{"status": "installing"})
 				return
 			}
@@ -588,7 +612,9 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 		primaryPort := docker.IntFromPayload(cmd.Payload["primary_port"])
 		bindIP, _ := cmd.Payload["bind_ip"].(string)
 		a.sendStatus(cmd.ServerID, "updating", "")
-		go a.updateAndStart(cmd.ServerID, name, gameID, limits, dockerImage, primaryPort, bindIP, spec)
+		safeGo("update", func() {
+			a.updateAndStart(cmd.ServerID, name, gameID, limits, dockerImage, primaryPort, bindIP, spec)
+		})
 		a.sendAck(cmd.ID, true, nil, map[string]any{"status": "updating"})
 		return
 	case "destroy":

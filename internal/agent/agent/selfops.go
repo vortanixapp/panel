@@ -168,7 +168,7 @@ func (a *Agent) onWelcome(data []byte) {
 		a.clockSkewMs.Store(time.Since(t).Milliseconds())
 	}
 	if caps[protocol.CapStateSnapshot] {
-		go a.sendStateSnapshot()
+		safeGo("state-snapshot", a.sendStateSnapshot)
 	}
 }
 
