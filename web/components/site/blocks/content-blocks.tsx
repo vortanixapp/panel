@@ -127,7 +127,7 @@ export function HtmlBlock({ block, variant }: BlockViewProps) {
   const t = useT();
   const { editing } = useSite();
   const raw = text(block.props?.html);
-  const live = boolProp(block, "scripts") && !editing;
+  const live = boolProp(block, "scripts");
   const html = useMemo(() => (raw ? sanitizeCustomHtml(raw) : ""), [raw]);
   if (!html && !editing) return null;
   return (
