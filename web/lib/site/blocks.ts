@@ -34,6 +34,31 @@ const ALIGN: FieldSpec = {
   ],
 };
 
+export const APPEARANCE_FIELDS: FieldSpec[] = [
+  {
+    name: "pad",
+    kind: "enum",
+    label: "template.field.pad",
+    options: [
+      { value: "", label: "template.option.pad_default" },
+      { value: "none", label: "template.option.pad_none" },
+      { value: "sm", label: "template.option.pad_sm" },
+      { value: "md", label: "template.option.pad_md" },
+      { value: "lg", label: "template.option.pad_lg" },
+    ],
+  },
+  {
+    name: "bg",
+    kind: "enum",
+    label: "template.field.bg",
+    options: [
+      { value: "", label: "template.option.bg_none" },
+      { value: "card", label: "template.option.bg_card" },
+      { value: "accent", label: "template.option.bg_accent" },
+    ],
+  },
+];
+
 function lt(locale: string, text: string): LText {
   return { [locale]: text };
 }

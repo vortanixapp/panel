@@ -40,7 +40,7 @@ export function HeadingBlock({ block, variant }: BlockViewProps) {
   const size: HeadingSize = rawSize === "md" || rawSize === "xl" ? rawSize : "lg";
   const site = variant === "site";
   return (
-    <BlockShell variant={variant} inner={site ? "py-14 lg:py-20" : undefined}>
+    <BlockShell block={block} variant={variant} inner={site ? "py-14 lg:py-20" : undefined}>
       <div className={cn(site ? "max-w-[860px]" : "max-w-3xl", center && "mx-auto text-center")}>
         <Field
           block={block}
@@ -89,7 +89,7 @@ export function TextBlock({ block, variant }: BlockViewProps) {
   const site = variant === "site";
   if (!html && !editing) return null;
   return (
-    <BlockShell variant={variant} inner={site ? "py-12 lg:py-16" : undefined}>
+    <BlockShell block={block} variant={variant} inner={site ? "py-12 lg:py-16" : undefined}>
       <div className={cn(!wide && (site ? "max-w-[760px]" : "max-w-3xl"), center && "mx-auto text-center", !site && "rounded-xl border bg-card p-5 sm:p-6")}>
         {html ? (
           <div className={cn("vx-article", site && "text-[16px]")} dangerouslySetInnerHTML={{ __html: html }} />
@@ -131,7 +131,7 @@ export function HtmlBlock({ block, variant }: BlockViewProps) {
   const html = useMemo(() => (raw ? sanitizeCustomHtml(raw) : ""), [raw]);
   if (!html && !editing) return null;
   return (
-    <BlockShell variant={variant} inner={variant === "site" ? "py-12 lg:py-16" : undefined}>
+    <BlockShell block={block} variant={variant} inner={variant === "site" ? "py-12 lg:py-16" : undefined}>
       {live && raw ? (
         <LiveHtml raw={raw} />
       ) : html ? (
@@ -187,6 +187,7 @@ export function ImageBlock({ block, variant }: BlockViewProps) {
   );
   return (
     <BlockShell
+      block={block}
       variant={variant}
       inner={cn(site && "py-12 lg:py-16", width === "full" && site && "max-w-none px-0 sm:px-0")}
     >
@@ -216,7 +217,7 @@ export function MediaBlock({ block, variant }: BlockViewProps) {
   const right = stringProp(block, "side") === "right";
   const site = variant === "site";
   return (
-    <BlockShell variant={variant}>
+    <BlockShell block={block} variant={variant}>
       <div
         className={cn(
           "grid items-center gap-8",
@@ -282,7 +283,7 @@ export function VideoBlock({ block, variant }: BlockViewProps) {
   const site = variant === "site";
   if (!embed && !editing) return null;
   return (
-    <BlockShell variant={variant} inner={site ? "py-12 lg:py-16" : undefined}>
+    <BlockShell block={block} variant={variant} inner={site ? "py-12 lg:py-16" : undefined}>
       <figure className={cn(site && "mx-auto max-w-[1080px]")}>
         <Field
           block={block}

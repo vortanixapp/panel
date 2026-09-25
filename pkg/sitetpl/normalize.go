@@ -312,7 +312,7 @@ func normalizeBlocks(blocks []Block, z zone, seen map[string]bool) ([]Block, err
 			out = append(out, Block{ID: b.ID, Type: b.Type, Hidden: b.Hidden})
 			continue
 		}
-		schema, ok := blockSchemas[b.Type]
+		schema, ok := schemaOf(b.Type)
 		if !ok {
 			continue
 		}

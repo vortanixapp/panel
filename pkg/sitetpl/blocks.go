@@ -59,6 +59,26 @@ var builtinSections = map[string]bool{
 	"landing.cta":       true,
 }
 
+var commonFields = map[string]field{
+	"pad": fEnum("none", "sm", "md", "lg"),
+	"bg":  fEnum("none", "card", "accent"),
+}
+
+func schemaOf(blockType string) (map[string]field, bool) {
+	schema, ok := blockSchemas[blockType]
+	if !ok {
+		return nil, false
+	}
+	out := make(map[string]field, len(schema)+len(commonFields))
+	for name, f := range schema {
+		out[name] = f
+	}
+	for name, f := range commonFields {
+		out[name] = f
+	}
+	return out, true
+}
+
 var blockSchemas = map[string]map[string]field{
 	"heading": {
 		"eyebrow": fText,

@@ -84,21 +84,39 @@ export function Field({
   );
 }
 
+const BLOCK_PAD: Record<string, string> = {
+  none: "py-0",
+  sm: "py-6 lg:py-8",
+  md: "py-12 lg:py-16",
+  lg: "py-20 lg:py-28",
+};
+
+const BLOCK_BG: Record<string, string> = {
+  card: "bg-card",
+  accent: "bg-primary/5",
+};
+
 export function BlockShell({
   variant,
   className,
   inner,
+  block,
   children,
 }: {
   variant: BlockVariant;
   className?: string;
   inner?: string;
+  block?: SiteBlock;
   children: ReactNode;
 }) {
-  if (variant === "panel") return <div className={className}>{children}</div>;
+  const pad = block ? BLOCK_PAD[stringProp(block, "pad")] : undefined;
+  const bg = block ? BLOCK_BG[stringProp(block, "bg")] : undefined;
+  if (variant === "panel") return <div className={cn(className, bg)}>{children}</div>;
   return (
-    <section className={cn("border-b border-border", className)}>
-      <div className={cn("mx-auto max-w-[1240px] px-5 py-16 sm:px-8 lg:py-24", inner)}>{children}</div>
+    <section className={cn("border-b border-border", className, bg)}>
+      <div className={cn("mx-auto max-w-[1240px] px-5 py-16 sm:px-8 lg:py-24", inner, pad)}>
+        {children}
+      </div>
     </section>
   );
 }

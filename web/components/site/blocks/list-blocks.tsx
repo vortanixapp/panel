@@ -61,7 +61,7 @@ export function FeaturesBlock({ block, variant }: BlockViewProps) {
   const columns: keyof typeof COLUMNS = raw === 2 || raw === 4 ? raw : 3;
   const site = variant === "site";
   return (
-    <BlockShell variant={variant}>
+    <BlockShell block={block} variant={variant}>
       <BlockIntro block={block} variant={variant} />
       <div className={cn("grid gap-4", COLUMNS[columns])}>
         {items.map((item, i) => {
@@ -115,7 +115,7 @@ export function CtaBlock({ block, variant }: BlockViewProps) {
   const muted = stringProp(block, "tone") === "muted";
   const site = variant === "site";
   return (
-    <BlockShell variant={variant} className={site ? "border-b-0" : undefined} inner={site ? "py-10 lg:py-14" : undefined}>
+    <BlockShell block={block} variant={variant} className={site ? "border-b-0" : undefined} inner={site ? "py-10 lg:py-14" : undefined}>
       <div
         className={cn(
           "relative overflow-hidden",
@@ -169,7 +169,7 @@ export function FaqBlock({ block, variant }: BlockViewProps) {
   const [open, setOpen] = useState<number | null>(editing ? null : 0);
   const site = variant === "site";
   return (
-    <BlockShell variant={variant}>
+    <BlockShell block={block} variant={variant}>
       <div className={cn(site && "grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16")}>
         <BlockIntro block={block} variant={variant} />
         <div className={cn("border-t border-border", !site && "rounded-xl border bg-card px-5")}>
@@ -215,7 +215,7 @@ export function StatsBlock({ block, variant }: BlockViewProps) {
   const items = listProp(block, "items");
   const site = variant === "site";
   return (
-    <BlockShell variant={variant} inner={site ? "py-14 lg:py-20" : undefined}>
+    <BlockShell block={block} variant={variant} inner={site ? "py-14 lg:py-20" : undefined}>
       <Field
         block={block}
         path="title"

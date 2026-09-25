@@ -28,7 +28,7 @@ import {
   UrlField,
 } from "@/components/site/editor/fields";
 import { RichTextField } from "@/components/site/editor/rich-text";
-import { blockMeta, cloneBlock, isBuiltinBlock, type FieldSpec } from "@/lib/site/blocks";
+import { APPEARANCE_FIELDS, blockMeta, cloneBlock, isBuiltinBlock, type FieldSpec } from "@/lib/site/blocks";
 import {
   blockProp,
   blockText,
@@ -320,6 +320,14 @@ function BlockInspector({ selection }: { selection: Extract<Selection, { kind: "
           {meta?.fields.map((spec) => (
             <SpecField key={spec.name} spec={spec} block={block} path={spec.name} update={update} />
           ))}
+          <div className="space-y-4 border-t pt-4">
+            <div className="text-xs font-semibold text-muted-foreground">
+              {t("template.inspector.appearance")}
+            </div>
+            {APPEARANCE_FIELDS.map((spec) => (
+              <SpecField key={spec.name} spec={spec} block={block} path={spec.name} update={update} />
+            ))}
+          </div>
         </div>
       )}
     </div>
