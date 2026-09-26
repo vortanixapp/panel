@@ -99,4 +99,5 @@ export const queryKeys = {
   adminImageLog: (nodeId: string) => ["admin-image-log", nodeId] as const,
   adminUpdates: ["admin-updates"] as const,
   adminPanelUpdateStatus: ["admin-panel-update-status"] as const,
+  panelTransfer: ["admin-panel-transfer"] as const,
 };

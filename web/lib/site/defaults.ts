@@ -145,6 +145,7 @@ const ADMIN_SIDEBAR: BuiltinItem[] = [
       { ref: "admin.abuse", labelKey: "nav.admin.abuse", url: "/admin/abuse", icon: "siren" },
       { ref: "admin.integrations", labelKey: "nav.admin.integrations", url: "/admin/integrations", icon: "webhook" },
       { ref: "admin.updates", labelKey: "nav.admin.updates", url: "/admin/updates", icon: "cloud-download" },
+      { ref: "admin.panel_transfer", labelKey: "nav.admin.panel_transfer", url: "/admin/panel-transfer", icon: "server" },
       { ref: "admin.bug_report", labelKey: "nav.admin.bug_report", url: "/admin/bug-report", icon: "bug" },
     ],
   },

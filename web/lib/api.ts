@@ -645,6 +645,7 @@ export async function fetchMe() {
     tenant_slug: string;
     display_name?: string | null;
     avatar_url?: string | null;
+    panel_frozen?: boolean;
   }>("/v1/me");
 }
 
@@ -7283,4 +7284,178 @@ export async function adminSearch(query: string) {
   return apiFetch<{ results: SearchHit[] }>(
     `/v1/admin/search?q=${encodeURIComponent(query)}`
   );
+}
+
+export type PanelTransferProbe = {
+  project: string;
+  mode: string;
+  version: string;
+  source_address?: string;
+  db_bytes: number;
+  uploads_bytes: number;
+  free_bytes: number;
+  env_keys: string[];
+};
+
+export type PanelTransferItem = {
+  id: string;
+  mode: string;
+  status: string;
+  stage: string;
+  target_host: string;
+  target_user: string;
+  new_address: string;
+  same_address: boolean;
+  freeze_writes: boolean;
+  bytes_total: number;
+  bytes_done: number;
+  agents_total: number;
+  agents_done: number;
+  agents_failed: number;
+  log: string;
+  error?: string;
+  created_at: string;
+  started_at?: string;
+  finished_at?: string;
+};
+
+export type PanelTransferNode = {
+  id: string;
+  name: string;
+  host: string;
+  status: string;
+};
+
+export type PanelTransferState = {
+  version: string;
+  frozen: boolean;
+  active: PanelTransferItem | null;
+  last: PanelTransferItem | null;
+  nodes: PanelTransferNode[];
+  probe?: PanelTransferProbe;
+  probe_error?: string;
+};
+
+export type PanelTransferTarget = {
+  host: string;
+  port?: number;
+  user: string;
+  password?: string;
+  private_key?: string;
+  host_key?: string;
+};
+
+export type PanelTransferArchiveInfo = {
+  version: string;
+  incompatible?: string;
+  head: { panel_version: string; created_at: string; encrypted: boolean };
+  manifest: {
+    schema: number;
+    panel_version: string;
+    db_schema_version?: string;
+    created_at: string;
+    source_address?: string;
+    mode?: string;
+    contents: string[];
+    db_bytes: number;
+    uploads_bytes: number;
+  };
+};
+
+export async function fetchPanelTransfer() {
+  return apiFetch<PanelTransferState>("/v1/admin/panel-transfer");
+}
+
+export async function startPanelTransferSSH(
+  data: PanelTransferTarget & { new_address: string; same_address: boolean; freeze_writes: boolean }
+) {
+  return apiFetch<{ id: string }>("/v1/admin/panel-transfer/ssh", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function cancelPanelTransfer() {
+  return apiFetch<{ ok: boolean }>("/v1/admin/panel-transfer/ssh/cancel", { method: "POST" });
+}
+
+export async function retryPanelTransferAgents(data: PanelTransferTarget & { new_address: string }) {
+  return apiFetch<{ id: string }>("/v1/admin/panel-transfer/agents", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function setPanelFreeze(on: boolean) {
+  return apiFetch<{ frozen: boolean }>("/v1/admin/panel-transfer/freeze", {
+    method: "POST",
+    body: JSON.stringify({ on }),
+  });
+}
+
+async function panelTransferResponse(path: string, body: BodyInit, headers: Record<string, string> = {}) {
+  await ensureValidSession();
+  const res = await fetch(API_URL + path, {
+    method: "POST",
+    headers: authHeaders(headers),
+    credentials: "include",
+    body,
+  });
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      message = ((await res.json()) as { error?: string }).error ?? message;
+    } catch {}
+    throw new Error(message);
+  }
+  return res;
+}
+
+export async function downloadPanelTransferArchive(password: string) {
+  const res = await panelTransferResponse(
+    "/v1/admin/panel-transfer/export",
+    JSON.stringify({ password }),
+    { "Content-Type": "application/json" }
+  );
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `vortanix-panel-${new Date().toISOString().slice(0, 10)}.vxt`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function archiveForm(file: File, password: string) {
+  const form = new FormData();
+  form.append("password", password);
+  form.append("file", file);
+  return form;
+}
+
+export async function inspectPanelTransferArchive(file: File, password: string) {
+  const res = await panelTransferResponse("/v1/admin/panel-transfer/import/inspect", archiveForm(file, password));
+  return (await res.json()) as PanelTransferArchiveInfo;
+}
+
+export async function importPanelTransferArchive(
+  file: File,
+  password: string,
+  onLine: (line: string) => void
+) {
+  const res = await panelTransferResponse("/v1/admin/panel-transfer/import", archiveForm(file, password));
+  const reader = res.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let rest = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    rest += decoder.decode(value, { stream: true });
+    const lines = rest.split("\n");
+    rest = lines.pop() ?? "";
+    for (const line of lines) onLine(line);
+  }
+  if (rest.trim()) onLine(rest);
 }

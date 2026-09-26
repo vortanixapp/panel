@@ -16,6 +16,8 @@ export const layout = {
 
   "layout.section.admin": "Admin",
 
+  "layout.frozen.banner": "The panel is read-only: a transfer to another server is in progress or finished",
+  "layout.frozen.link": "Panel transfer",
   "layout.role.owner": "Owner",
   "layout.role.admin": "Administrator",
   "layout.role.support": "Support",

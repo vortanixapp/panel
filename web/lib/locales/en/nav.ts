@@ -50,6 +50,7 @@ export const nav = {
   "nav.admin.security": "Security",
   "nav.admin.integrations": "Integrations",
   "nav.admin.updates": "Updates",
+  "nav.admin.panel_transfer": "Panel transfer",
   "nav.admin.bug_report": "Report a bug",
 
   "nav.settings": "Settings",

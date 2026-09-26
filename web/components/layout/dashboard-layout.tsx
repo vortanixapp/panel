@@ -9,6 +9,7 @@ import { useAdminSiteMenu } from "@/hooks/use-site-menu";
 import { queryKeys } from "@/lib/query-keys";
 import { AuthenticatedLayout } from "@/components/layout/authenticated-layout";
 import { LegalAcceptanceGate } from "@/components/legal/legal-acceptance-gate";
+import { FrozenBanner } from "@/components/layout/frozen-banner";
 import { useLiveSync } from "@/hooks/use-live-sync";
 import { isStaffRole } from "@/lib/rbac";
 import type { PanelVariant } from "@/lib/panel-paths";
@@ -68,6 +69,7 @@ export function DashboardLayout({
         {children}
       </AuthenticatedLayout>
       <LegalAcceptanceGate />
+      <FrozenBanner />
     </>
   );
 }
