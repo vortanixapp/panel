@@ -8,8 +8,10 @@ STARTUP_FILE_OLD="$DATA_DIR/.vtx_startup_params"
 CORE_MARKER="$DATA_DIR/.vtx/pocketmine_version"
 PHP_MARKER="$DATA_DIR/.vtx/pocketmine_php"
 PHP_OVERRIDE_FILE="$DATA_DIR/.vtx/php"
+PHP_URL_FILE="$DATA_DIR/.vtx/php_url"
 CORE_FILE="$DATA_DIR/PocketMine-MP.phar"
 MANAGED_PHP="$DATA_DIR/bin/php7/bin/php"
+DEFAULT_MANAGED_PHP="$MANAGED_PHP"
 PROPERTIES_FILE="$DATA_DIR/server.properties"
 BUILD_INFO_URL="${POCKETMINE_BUILD_INFO_URL:-https://github.com/pmmp/PocketMine-MP/releases/latest/download/build_info.json}"
 PHP_DOWNLOAD_URL="${PHP_DOWNLOAD_URL:-}"
@@ -83,12 +85,34 @@ find_core() {
   done
 }
 
-php_url() {
+php_custom_url() {
   if [ "$PHP_DOWNLOAD_URL" != "" ]; then
     printf '%s' "$PHP_DOWNLOAD_URL"
     return 0
   fi
+  if [ -f "$PHP_URL_FILE" ]; then
+    head -n 1 "$PHP_URL_FILE" | tr -d '\r ' | tr -d '\n'
+  fi
+}
+
+php_url() {
+  custom="$(php_custom_url)"
+  if [ "$custom" != "" ]; then
+    printf '%s' "$custom"
+    return 0
+  fi
   printf 'https://github.com/pmmp/PHP-Binaries/releases/download/pm5-php-%s-latest/PHP-%s-Linux-x86_64-PM5.tar.gz' "$1" "$1"
+}
+
+write_php_marker() {
+  printf '%s\n%s\n%s\n%s\n' "$1" "$(file_sum "$2")" "$2" "$3" > "$PHP_MARKER"
+}
+
+php_source_changed() {
+  if [ "$INSTALLED_PHP_URL" = "" ]; then
+    return 1
+  fi
+  [ "$INSTALLED_PHP_URL" != "$(php_url "$1")" ]
 }
 
 install_php() {
@@ -96,7 +120,7 @@ install_php() {
   tmp_archive="$DATA_DIR/.vtx/php.tar.gz"
   extract_dir="$DATA_DIR/.vtx/php-extract"
 
-  if [ "$PHP_DOWNLOAD_URL" = "" ] && [ "$(uname -m)" != "x86_64" ]; then
+  if [ "$(php_custom_url)" = "" ] && [ "$(uname -m)" != "x86_64" ]; then
     log "pmmp publishes PHP builds only for x86_64, put your PHP build into bin/ of the server folder" >&2
     return 1
   fi
@@ -108,13 +132,39 @@ install_php() {
     return 1
   fi
   mkdir -p "$extract_dir"
-  if ! tar -xzf "$tmp_archive" -C "$extract_dir" || [ ! -f "$extract_dir/bin/php7/bin/php" ]; then
+  if ! tar -xzf "$tmp_archive" -C "$extract_dir"; then
     rm -rf "$tmp_archive" "$extract_dir"
-    log "Archive has no bin/php7/bin/php: $url" >&2
+    log "Archive did not unpack: $url" >&2
+    return 1
+  fi
+  extracted=""
+  for candidate in "$extract_dir"/bin/*/bin/php "$extract_dir/bin/php" \
+    "$extract_dir"/*/bin/*/bin/php "$extract_dir"/*/bin/php; do
+    if [ -f "$candidate" ]; then
+      extracted="$candidate"
+      break
+    fi
+  done
+  if [ "$extracted" = "" ]; then
+    rm -rf "$tmp_archive" "$extract_dir"
+    log "Archive has no bin/php: $url" >&2
+    return 1
+  fi
+  bin_root=""
+  dir="$(dirname "$extracted")"
+  while [ "$dir" != "$extract_dir" ] && [ "$dir" != "/" ]; do
+    if [ "$(basename "$dir")" = "bin" ]; then
+      bin_root="$dir"
+    fi
+    dir="$(dirname "$dir")"
+  done
+  if [ "$bin_root" = "" ]; then
+    rm -rf "$tmp_archive" "$extract_dir"
+    log "Archive has no bin folder: $url" >&2
     return 1
   fi
   rm -rf "$tmp_archive" "$DATA_DIR/bin"
-  mv "$extract_dir/bin" "$DATA_DIR/bin"
+  mv "$bin_root" "$DATA_DIR/bin"
   rm -rf "$extract_dir"
   return 0
 }
@@ -161,6 +211,11 @@ PHP_BIN="$(find_php)"
 CORE="$(find_core)"
 INSTALLED_CORE="$(marker_line "$CORE_MARKER" 1)"
 INSTALLED_PHP="$(marker_line "$PHP_MARKER" 1)"
+INSTALLED_PHP_PATH="$(marker_line "$PHP_MARKER" 3)"
+INSTALLED_PHP_URL="$(marker_line "$PHP_MARKER" 4)"
+if [ "$INSTALLED_PHP_PATH" = "" ]; then
+  INSTALLED_PHP_PATH="$DEFAULT_MANAGED_PHP"
+fi
 
 CORE_MANAGED=0
 if [ "$CORE" = "" ]; then
@@ -179,8 +234,9 @@ PHP_MANAGED=0
 if [ "$PHP_BIN" = "" ]; then
   PHP_MANAGED=1
 elif [ "$INSTALLED_PHP" != "" ]; then
-  if [ "$PHP_BIN" = "$MANAGED_PHP" ] && [ "$(file_sum "$MANAGED_PHP")" = "$(marker_line "$PHP_MARKER" 2)" ]; then
+  if [ "$PHP_BIN" = "$INSTALLED_PHP_PATH" ] && [ "$(file_sum "$INSTALLED_PHP_PATH")" = "$(marker_line "$PHP_MARKER" 2)" ]; then
     PHP_MANAGED=1
+    MANAGED_PHP="$INSTALLED_PHP_PATH"
   else
     log "PHP was replaced manually, automatic updates are off"
     rm -f "$PHP_MARKER"
@@ -233,12 +289,15 @@ if [ "$PHP_MANAGED" = "1" ]; then
       log "Could not find out which PHP to download: put PHP into bin/ or write the version to /data/.vtx/php" >&2
       exit 1
     fi
-  elif [ "$WANT_PHP" != "$INSTALLED_PHP" ] || [ "$PHP_BIN" = "" ]; then
-    if [ "$INSTALLED_PHP" != "" ]; then
+  elif [ "$WANT_PHP" != "$INSTALLED_PHP" ] || [ "$PHP_BIN" = "" ] || php_source_changed "$WANT_PHP"; then
+    if [ "$INSTALLED_PHP" != "" ] && [ "$WANT_PHP" != "$INSTALLED_PHP" ]; then
       log "Updating PHP $INSTALLED_PHP -> $WANT_PHP"
+    elif [ "$INSTALLED_PHP" != "" ]; then
+      log "PHP source changed, downloading $WANT_PHP again"
     fi
     if install_php "$WANT_PHP"; then
-      write_marker "$PHP_MARKER" "$WANT_PHP" "$MANAGED_PHP"
+      MANAGED_PHP="$(find_php)"
+      write_php_marker "$WANT_PHP" "$MANAGED_PHP" "$(php_url "$WANT_PHP")"
       INSTALLED_PHP="$WANT_PHP"
       PHP_BIN="$MANAGED_PHP"
     elif [ "$PHP_BIN" = "" ]; then
