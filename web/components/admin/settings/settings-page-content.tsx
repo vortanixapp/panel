@@ -623,6 +623,9 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
                 {t("admin.settings.telegram.test_hint")}
               </span>
             </div>
+            <p className="mt-3 text-[12.5px] text-muted-foreground">
+              {t("admin.settings.telegram.bot_hint")}
+            </p>
           </SettingsCard>
         )}
 

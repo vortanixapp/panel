@@ -124,7 +124,13 @@ func DispatchStaff(ctx context.Context, db DB, roles []string, exclude string, e
 	if err != nil {
 		return 0, err
 	}
-	return DispatchMany(ctx, db, rs, e)
+	sent, sendErr := DispatchMany(ctx, db, rs, e)
+	if len(rs) == 0 || sent > 0 {
+		if err := DispatchAdminChat(ctx, db, e); err != nil && sendErr == nil {
+			sendErr = err
+		}
+	}
+	return sent, sendErr
 }
 
 func PublishSync(ctx context.Context, db DB, userID string) {

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"html"
 	"strings"
 
 	"github.com/vortanixapp/panel/pkg/i18n"
@@ -54,21 +53,4 @@ func (h *Handler) auditAlert(ctx context.Context, actorID, actorEmail, action, r
 		Body:  body,
 		Meta:  map[string]any{"action": action, "resource": resource},
 	})
-
-	l := i18n.For(ctx, h.dbOf(ctx), "")
-	h.telegramAdminAlert(ctx, "<b>"+html.EscapeString(l.Text(title))+"</b>\n"+html.EscapeString(l.Text(body)))
-}
-
-func (h *Handler) telegramAdminAlert(ctx context.Context, message string) {
-	if !truthySetting(h.tenantSettingString(ctx, "telegram.notifications.enabled")) {
-		return
-	}
-	token := strings.TrimSpace(h.tenantSettingString(ctx, "telegram.notifications.bot_token"))
-	chatID := strings.TrimSpace(h.tenantSettingString(ctx, "telegram.notifications.admin_chat_id"))
-	if token == "" || chatID == "" {
-		return
-	}
-	go func() {
-		_ = h.telegramSendMessage(token, chatID, message)
-	}()
 }

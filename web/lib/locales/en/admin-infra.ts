@@ -162,11 +162,13 @@ export const adminInfra = {
 
   "admin.settings.telegram.title": "Telegram notifications",
   "admin.settings.telegram.description":
-    "Panel service events go to the administrators' chat",
+    "Every administrative event goes to the administrators' chat: tickets, nodes, disks, updates and audit",
   "admin.settings.telegram.send_test": "Send a test message",
   "admin.settings.telegram.test_sent": "Test message sent",
   "admin.settings.telegram.test_hint":
     "The message goes to the chat set in Admin Chat ID",
+  "admin.settings.telegram.bot_hint":
+    "Users connect their personal notifications to the same bot from their profile. The switch above and Admin Chat ID only affect the administrators' chat",
 
   "admin.settings.paths.title": "Paths on the file server",
   "admin.settings.paths.description":

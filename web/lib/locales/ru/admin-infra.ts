@@ -162,11 +162,13 @@ export const adminInfra = {
 
   "admin.settings.telegram.title": "Telegram-уведомления",
   "admin.settings.telegram.description":
-    "Служебные события панели уходят в чат администраторов",
+    "В чат администраторов уходят все административные события: обращения, узлы, диски, обновления и аудит",
   "admin.settings.telegram.send_test": "Отправить тестовое сообщение",
   "admin.settings.telegram.test_sent": "Тестовое сообщение отправлено",
   "admin.settings.telegram.test_hint":
     "Сообщение уходит в чат, указанный в Admin Chat ID",
+  "admin.settings.telegram.bot_hint":
+    "Этим же ботом пользователи подключают личные уведомления в своём профиле. Переключатель выше и Admin Chat ID касаются только чата администраторов",
 
   "admin.settings.paths.title": "Пути на файловом сервере",
   "admin.settings.paths.description":
