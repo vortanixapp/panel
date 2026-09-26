@@ -2,27 +2,47 @@ export const panelTransfer = {
   "admin.panel_transfer.title": "Panel transfer",
   "admin.panel_transfer.subtitle":
     "Move the whole panel to another server: database, secrets and uploaded files",
+  "admin.panel_transfer.read_only": "read-only",
 
   "admin.panel_transfer.tab.ssh": "Over SSH",
   "admin.panel_transfer.tab.archive": "By archive",
+  "admin.panel_transfer.mode.ssh_desc":
+    "The panel installs itself on the new server and streams the data over",
+  "admin.panel_transfer.mode.archive_desc":
+    "Download an encrypted archive and load it into the new panel by hand",
 
-  "admin.panel_transfer.overview.title": "What moves",
+  "admin.panel_transfer.tile.db_sub": "PostgreSQL dump",
+  "admin.panel_transfer.tile.uploads_sub": "uploads volume",
+  "admin.panel_transfer.tile.secrets_sub": "entries from deploy/.env",
+  "admin.panel_transfer.tile.nodes_sub": "locations with agents",
+
+  "admin.panel_transfer.overview.title": "What the transfer covers",
   "admin.panel_transfer.overview.version": "Panel version",
   "admin.panel_transfer.overview.db": "Database",
   "admin.panel_transfer.overview.uploads": "Files",
-  "admin.panel_transfer.overview.secrets": "Secrets in .env",
+  "admin.panel_transfer.overview.secrets": "Secrets",
   "admin.panel_transfer.overview.address": "Current address",
   "admin.panel_transfer.overview.mode": "Install mode",
   "admin.panel_transfer.overview.nodes": "Locations",
+  "admin.panel_transfer.overview.total": "Total data",
 
-  "admin.panel_transfer.skipped.title": "What stays behind",
+  "admin.panel_transfer.moves.db": "Database: users, servers, payments, settings",
+  "admin.panel_transfer.moves.uploads": "Files: avatars, logo, ticket attachments",
+  "admin.panel_transfer.moves.secrets": "Secrets: encryption key, mail, OAuth, registry",
   "admin.panel_transfer.skipped.redis": "Redis cache — rebuilt on the new server",
   "admin.panel_transfer.skipped.certs": "Let's Encrypt certificate — issued again",
   "admin.panel_transfer.skipped.servers": "Game server files — stay on the locations",
 
+  "admin.panel_transfer.requirements.title": "New server requirements",
+  "admin.panel_transfer.requirements.os": "Debian or Ubuntu, x86_64 or aarch64",
+  "admin.panel_transfer.requirements.root": "SSH access as root or passwordless sudo",
+  "admin.panel_transfer.requirements.ports": "Free ports 80 and 443",
+  "admin.panel_transfer.requirements.space": "At least {size} free plus a 5 GB margin",
+
   "admin.panel_transfer.ssh.title": "New server",
   "admin.panel_transfer.ssh.hint":
-    "A clean Debian or Ubuntu with root access and free ports 80 and 443. The panel installs itself, then the database, secrets and files move in",
+    "Docker installs itself, the panel of the same version comes up, then the database, secrets and files move in. This panel keeps running",
+  "admin.panel_transfer.ssh.access": "Server access",
 
   "admin.panel_transfer.target.host": "Server address",
   "admin.panel_transfer.target.port": "SSH port",
@@ -32,10 +52,14 @@ export const panelTransfer = {
   "admin.panel_transfer.target.password": "SSH password",
   "admin.panel_transfer.target.private_key": "SSH private key",
 
+  "admin.panel_transfer.address.section": "Address of the new panel",
   "admin.panel_transfer.address.same": "Same domain",
+  "admin.panel_transfer.address.same_desc": "Only DNS changes, the nodes need no rework",
+  "admin.panel_transfer.address.new": "New address",
+  "admin.panel_transfer.address.new_desc": "The panel switches the nodes over itself",
+  "admin.panel_transfer.address.new_label": "Domain or IP of the new panel",
   "admin.panel_transfer.address.same_hint":
-    "The panel on the new server will answer on {address}. Switch DNS after the transfer — the nodes reconnect on their own",
-  "admin.panel_transfer.address.new": "New panel address",
+    "The new panel will answer on {address}. Switch DNS after the transfer — the nodes reconnect on their own",
 
   "admin.panel_transfer.freeze.label": "Stop writes during the transfer",
   "admin.panel_transfer.freeze.hint":
@@ -46,8 +70,10 @@ export const panelTransfer = {
   "admin.panel_transfer.started": "Transfer started",
   "admin.panel_transfer.cancel": "Cancel transfer",
   "admin.panel_transfer.cancelled": "Transfer cancelled",
+  "admin.panel_transfer.busy_hint": "A second transfer cannot start while one is running",
   "admin.panel_transfer.unfreeze": "Turn off read-only",
-  "admin.panel_transfer.frozen_banner": "The panel is in read-only mode",
+  "admin.panel_transfer.frozen_banner":
+    "The panel is read-only: changes are refused and the worker takes no new jobs",
 
   "admin.panel_transfer.confirm.start":
     "Start moving the panel to another server? It will install the same panel version there and move the database, secrets and files in. This panel keeps running",
@@ -57,8 +83,9 @@ export const panelTransfer = {
   "admin.panel_transfer.confirm.unfreeze_ok": "Turn off",
 
   "admin.panel_transfer.progress.title": "Transfer progress",
-  "admin.panel_transfer.progress.bytes": "Sent {done} of {total}",
-  "admin.panel_transfer.progress.agents": "Nodes switched",
+  "admin.panel_transfer.progress.log": "Log",
+  "admin.panel_transfer.progress.log_show": "Show",
+  "admin.panel_transfer.progress.log_hide": "Hide",
   "admin.panel_transfer.progress.running_hint":
     "You can close this page — the transfer runs on the server and continues without it",
 
@@ -71,20 +98,21 @@ export const panelTransfer = {
   "admin.panel_transfer.stage.prepare": "Preparing",
   "admin.panel_transfer.stage.freeze": "Read-only",
   "admin.panel_transfer.stage.probe_target": "Checking server",
-  "admin.panel_transfer.stage.install_docker": "Docker",
+  "admin.panel_transfer.stage.install_docker": "Installing Docker",
   "admin.panel_transfer.stage.clone": "Panel files",
-  "admin.panel_transfer.stage.init_env": "Settings",
-  "admin.panel_transfer.stage.compose_up": "Start",
+  "admin.panel_transfer.stage.init_env": "Settings and address",
+  "admin.panel_transfer.stage.compose_up": "Starting panel",
   "admin.panel_transfer.stage.transfer": "Sending data",
   "admin.panel_transfer.stage.health": "Checking panel",
   "admin.panel_transfer.stage.relay_cert": "Relay certificate",
-  "admin.panel_transfer.stage.agents": "Nodes",
+  "admin.panel_transfer.stage.agents": "Switching nodes",
   "admin.panel_transfer.stage.done": "Done",
 
   "admin.panel_transfer.export.title": "Download archive",
   "admin.panel_transfer.export.hint":
     "The archive holds the database, secrets and uploaded files. It can be loaded into a clean panel of the same or a newer version",
-  "admin.panel_transfer.export.password": "Archive password (12 characters or more)",
+  "admin.panel_transfer.export.password": "Archive password",
+  "admin.panel_transfer.export.too_short": "Twelve characters or more",
   "admin.panel_transfer.export.warning":
     "The archive contains SECRETS_KEY, which encrypts payment gateway keys and location passwords. Keep the file like a password",
   "admin.panel_transfer.export.action": "Download archive",
@@ -95,7 +123,8 @@ export const panelTransfer = {
   "admin.panel_transfer.import.title": "Upload archive",
   "admin.panel_transfer.import.hint":
     "The data of this panel will be replaced by the archive. Do this only on the new panel",
-  "admin.panel_transfer.import.file": "Archive file",
+  "admin.panel_transfer.import.pick": "Choose the archive file",
+  "admin.panel_transfer.import.pick_hint": "A file with the .vxt extension",
   "admin.panel_transfer.import.password": "Archive password",
   "admin.panel_transfer.import.inspect": "Check archive",
   "admin.panel_transfer.import.inspect_failed": "Archive could not be read",
@@ -113,7 +142,7 @@ export const panelTransfer = {
 
   "admin.panel_transfer.agents.title": "Nodes did not switch",
   "admin.panel_transfer.agents.hint":
-    "Nodes left behind: {count}. Enter the access to the new server and retry — the panel will recreate the agents with the new address",
+    "Nodes left behind: {count}. Enter the access to the new server above and retry — the panel will recreate the agents with the new address",
   "admin.panel_transfer.agents.retry": "Retry switching",
   "admin.panel_transfer.agents.started": "Node switching started",
 
