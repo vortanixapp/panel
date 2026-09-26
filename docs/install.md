@@ -263,6 +263,10 @@ To deploy nodes from a configuration management system, the
 and script. The values `RELAY_URL`, `AGENT_TOKEN` and `NODE_ID` are taken from
 the panel.
 
+Once the node is connected, run the component setup steps, "Quotas" included:
+without them the disk of a game server is not capped at all. How to match the
+node's resources with tariffs — [tariffs.md](tariffs.md).
+
 ## Backups
 
 A backup consists of three independent parts. Any one of them alone is not

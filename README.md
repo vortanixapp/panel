@@ -24,7 +24,8 @@ licence keys and activation are not part of it.
   block it, move it to another node and assign IPs; the server list has
   filters and bulk actions.
 - **Billing.** Tariffs, account balance, promotions, payment gateways,
-  documents.
+  documents. How to set resources and prices in a tariff —
+  [docs/tariffs.md](docs/tariffs.md).
 - **Accounting.** Company details and taxes, 54-FZ fiscal receipts through
   payment providers, monthly service acts and reconciliation statements for
   clients, an income ledger, registers of payments, refunds, services and
