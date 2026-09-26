@@ -674,6 +674,8 @@ func rbacResolveAdminPermission(path, method string) (permission string, bypass 
 		return readWrite("admin.jobs.read", "admin.jobs.write")
 	case "updates":
 		return readWrite("admin.updates.read", "admin.updates.write")
+	case "panel-transfer":
+		return "", true
 	case "groups":
 		return "admin.groups.write", false
 	case "locations", "images":
