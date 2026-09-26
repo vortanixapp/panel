@@ -67,7 +67,7 @@ func (r *Runner) claimPanelTransfer(ctx context.Context) (string, []byte, bool) 
 	err = tx.QueryRow(ctx, `
 		SELECT id::text, payload
 		FROM core.jobs
-		WHERE type = 'panel_transfer' AND status = 'pending' AND attempts < 2
+		WHERE type = 'panel_transfer' AND status = 'pending' AND attempts < 1
 		ORDER BY created_at ASC LIMIT 1
 		FOR UPDATE SKIP LOCKED
 	`).Scan(&jobID, &payload)

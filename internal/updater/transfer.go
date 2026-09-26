@@ -370,7 +370,7 @@ func (s *Server) ImportStream(ctx context.Context, src io.Reader, log func(strin
 	}
 
 	log("Поднимаю службы панели")
-	if out, err := t.applier.compose(ctx, false, "up", "-d"); err != nil {
+	if out, err := t.applier.compose(ctx, false, "up", "-d", "--no-deps", "api", "worker", "relay", "console"); err != nil {
 		return fmt.Errorf("службы не поднялись: %s", tail(out, err))
 	}
 	log("Ожидание готовности API")

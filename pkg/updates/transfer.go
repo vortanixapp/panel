@@ -42,9 +42,14 @@ func (u *Updater) stream(ctx context.Context, method, path string, body io.Reade
 }
 
 func (u *Updater) TransferProbe(ctx context.Context) (*paneltransfer.Probe, error) {
-	var out paneltransfer.Probe
-	if err := u.do(ctx, http.MethodGet, "/internal/v1/transfer/probe", nil, &out); err != nil {
+	body, err := u.stream(ctx, http.MethodGet, "/internal/v1/transfer/probe", nil)
+	if err != nil {
 		return nil, err
+	}
+	defer body.Close()
+	var out paneltransfer.Probe
+	if err := json.NewDecoder(io.LimitReader(body, 1<<20)).Decode(&out); err != nil {
+		return nil, errors.New("служба обновления ответила непонятно")
 	}
 	return &out, nil
 }
