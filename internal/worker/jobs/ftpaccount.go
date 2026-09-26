@@ -34,6 +34,9 @@ func (r *Runner) FTPAccountLoop(ctx context.Context, wake <-chan struct{}) {
 }
 
 func (r *Runner) drainFTPAccounts(ctx context.Context) {
+	if r.panelFrozen(ctx) {
+		return
+	}
 	for r.processFTPAccount(ctx) {
 	}
 }

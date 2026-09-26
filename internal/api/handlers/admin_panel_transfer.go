@@ -109,7 +109,7 @@ func (h *Handler) GetAdminPanelTransfer(w http.ResponseWriter, r *http.Request) 
 
 	out := map[string]any{
 		"version": buildinfo.Current(),
-		"frozen":  h.panelFrozen(r),
+		"frozen":  h.freezeActive(ctx),
 		"active":  active,
 		"last":    last,
 		"nodes":   h.panelTransferNodes(r),
@@ -147,17 +147,6 @@ func (h *Handler) panelTransferNodes(r *http.Request) []panelTransferNode {
 		}
 	}
 	return out
-}
-
-func (h *Handler) panelFrozen(r *http.Request) bool {
-	var raw []byte
-	if h.dbOf(r.Context()).QueryRow(r.Context(),
-		`SELECT value FROM core.tenant_settings WHERE key = $1`, settingPanelFreeze).Scan(&raw) != nil {
-		return false
-	}
-	var on bool
-	_ = json.Unmarshal(raw, &on)
-	return on
 }
 
 func (h *Handler) PostAdminPanelTransferSSH(w http.ResponseWriter, r *http.Request) {
@@ -303,6 +292,7 @@ func (h *Handler) setPanelFreeze(r *http.Request, on bool) {
 			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()
 		`, key, raw)
 	}
+	resetFreezeCache()
 }
 
 func (h *Handler) dbSchemaVersion(r *http.Request) string {

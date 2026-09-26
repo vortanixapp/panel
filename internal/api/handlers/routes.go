@@ -9,6 +9,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 		r.Use(h.authWithAPIKey)
 
 		r.Use(h.tenantWriteRateLimit)
+		r.Use(h.freezeGuard)
 		r.Get("/v1/me", h.Me)
 		r.Patch("/v1/me/password", h.ChangePassword)
 		r.Post("/v1/auth/logout", h.Logout)

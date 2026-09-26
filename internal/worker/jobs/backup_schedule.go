@@ -23,6 +23,9 @@ func (r *Runner) BackupScheduleLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			r.heartbeat.Beat(LoopBackupSchedule)
+			if r.panelFrozen(ctx) {
+				continue
+			}
 			r.runDueBackupSchedules(ctx)
 		}
 	}

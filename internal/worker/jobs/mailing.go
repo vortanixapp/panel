@@ -36,6 +36,9 @@ func (r *Runner) MailingLoop(ctx context.Context, wake <-chan struct{}) {
 }
 
 func (r *Runner) drainMailing(ctx context.Context) {
+	if r.panelFrozen(ctx) {
+		return
+	}
 	for r.processMailingOne(ctx) {
 	}
 }

@@ -42,6 +42,9 @@ func (r *Runner) BackupOffsiteLoop(ctx context.Context, wake <-chan struct{}) {
 }
 
 func (r *Runner) drainOffsite(ctx context.Context) {
+	if r.panelFrozen(ctx) {
+		return
+	}
 	for r.processOffsiteOne(ctx) {
 	}
 }

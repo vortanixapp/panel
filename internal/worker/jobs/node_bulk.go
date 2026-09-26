@@ -38,6 +38,9 @@ func (r *Runner) NodeBulkLoop(ctx context.Context, wake <-chan struct{}) {
 }
 
 func (r *Runner) drainNodeBulk(ctx context.Context) {
+	if r.panelFrozen(ctx) {
+		return
+	}
 	for r.processNodeBulkOne(ctx) {
 	}
 }

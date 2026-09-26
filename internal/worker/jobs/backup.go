@@ -33,6 +33,9 @@ func (r *Runner) BackupLoop(ctx context.Context, wake <-chan struct{}) {
 }
 
 func (r *Runner) drainBackup(ctx context.Context) {
+	if r.panelFrozen(ctx) {
+		return
+	}
 	for r.processBackupOne(ctx) {
 	}
 }

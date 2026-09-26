@@ -58,6 +58,9 @@ func (r *Runner) Loop(ctx context.Context, wake <-chan struct{}) {
 }
 
 func (r *Runner) drainProvision(ctx context.Context) {
+	if r.panelFrozen(ctx) {
+		return
+	}
 	for r.processOne(ctx) {
 	}
 }

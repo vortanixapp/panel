@@ -42,6 +42,9 @@ func (r *Runner) MigrateLoop(ctx context.Context, wake <-chan struct{}) {
 }
 
 func (r *Runner) drainMigrate(ctx context.Context) {
+	if r.panelFrozen(ctx) {
+		return
+	}
 	for r.processMigrateOne(ctx) {
 	}
 }

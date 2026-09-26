@@ -23,6 +23,9 @@ func (r *Runner) ExpiryLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			r.heartbeat.Beat(LoopExpiry)
+			if r.panelFrozen(ctx) {
+				continue
+			}
 			r.suspendExpiredServers(ctx)
 			r.cleanupTrialServers(ctx)
 		}

@@ -426,6 +426,7 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 		"role":         claims.Role,
 		"display_name": displayName,
 		"avatar_url":   versionedAvatarURL(h.avatarPublicURL(r, avatarURL), avatarVersion),
+		"panel_frozen": h.freezeActive(ctx),
 	})
 }
 
