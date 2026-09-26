@@ -194,6 +194,10 @@ func StreamFrom(cfg Config, cmd string, w io.Writer) (int64, error) {
 }
 
 func StreamTo(cfg Config, cmd string, r io.Reader) (int64, error) {
+	return StreamToLog(cfg, cmd, r, nil)
+}
+
+func StreamToLog(cfg Config, cmd string, r io.Reader, log io.Writer) (int64, error) {
 	if cfg.Host == "" || cfg.User == "" || !cfg.hasAuth() {
 		return 0, fmt.Errorf("ssh: не заданы адрес, пользователь или пароль")
 	}
@@ -214,7 +218,12 @@ func StreamTo(cfg Config, cmd string, r io.Reader) (int64, error) {
 		return 0, fmt.Errorf("ssh stdin: %w", err)
 	}
 	var stderr limitedBuffer
-	session.Stderr = &stderr
+	if log != nil {
+		session.Stderr = io.MultiWriter(log, &stderr)
+		session.Stdout = log
+	} else {
+		session.Stderr = &stderr
+	}
 
 	if err := session.Start("/bin/bash -lc " + shellQuote(cmd)); err != nil {
 		return 0, fmt.Errorf("ssh start: %w", err)

@@ -22,6 +22,7 @@ const (
 	LoopWebhook        LoopName = "webhook"
 	LoopNotifyDelivery LoopName = "notify_delivery"
 	LoopUpdates        LoopName = "updates"
+	LoopPanelTransfer  LoopName = "panel_transfer"
 )
 
 var loopPeriods = map[LoopName]time.Duration{
@@ -39,6 +40,7 @@ var loopPeriods = map[LoopName]time.Duration{
 	LoopWebhook:        time.Minute,
 	LoopNotifyDelivery: time.Minute,
 	LoopUpdates:        updatesInterval,
+	LoopPanelTransfer:  2 * time.Minute,
 }
 
 const staleFactor = 3
