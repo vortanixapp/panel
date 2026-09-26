@@ -38,16 +38,11 @@ func (r *Runner) targetRelayPin(cfg sshclient.Config, mode string) (string, erro
 }
 
 func panelTransferRelayTarget(address, pin string) (string, string) {
-	raw := address
-	switch {
-	case strings.HasPrefix(address, "https://"):
-		raw = "wss://" + strings.TrimPrefix(address, "https://")
-	case strings.HasPrefix(address, "http://"):
-		raw = "ws://" + strings.TrimPrefix(address, "http://")
-	case !strings.Contains(address, "://"):
-		raw = "wss://" + address
+	host := panelAddressHost(address)
+	if panelAddressIsIP(address) {
+		return secureRelayURL("ws://"+host, pin)
 	}
-	return secureRelayURL(raw, pin)
+	return secureRelayURL("wss://"+host, pin)
 }
 
 func (r *Runner) switchAgents(ctx context.Context, rec *panelTransferRecord, cfg sshclient.Config,
@@ -62,7 +57,7 @@ func (r *Runner) switchAgents(ctx context.Context, rec *panelTransferRecord, cfg
 	}
 
 	pin := ""
-	if strings.HasPrefix(address, "http://") {
+	if panelAddressIsIP(address) {
 		r.setPanelTransferStage(ctx, rec.ID, "relay_cert")
 		lg.say("Жду сертификат relay на новом сервере")
 		pin, err = r.targetRelayPin(cfg, mode)

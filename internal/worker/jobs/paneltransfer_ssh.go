@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -97,7 +98,7 @@ func (r *Runner) runPanelTransfer(ctx context.Context, rec *panelTransferRecord)
 	if err := sshclient.Run(cfg, panelComposeUpCommands(probe.Mode), lg); err != nil {
 		return fmt.Errorf("панель на новом сервере не поднялась: %w", err)
 	}
-	if err := r.waitPanelTargetHealth(cfg, lg); err != nil {
+	if err := r.waitPanelTargetHealth(cfg, lg, probe.Mode); err != nil {
 		return err
 	}
 
@@ -112,7 +113,7 @@ func (r *Runner) runPanelTransfer(ctx context.Context, rec *panelTransferRecord)
 	}
 
 	r.setPanelTransferStage(ctx, rec.ID, "health")
-	if err := r.waitPanelTargetHealth(cfg, lg); err != nil {
+	if err := r.waitPanelTargetHealth(cfg, lg, probe.Mode); err != nil {
 		return err
 	}
 	lg.say("Новая панель отвечает по адресу %s", address)
@@ -199,9 +200,27 @@ func panelCloneCommands(version string) []string {
 	}
 }
 
+func panelAddressHost(address string) string {
+	host := address
+	for _, scheme := range []string{"https://", "http://", "wss://", "ws://"} {
+		host = strings.TrimPrefix(host, scheme)
+	}
+	if idx := strings.IndexAny(host, "/"); idx >= 0 {
+		host = host[:idx]
+	}
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	return strings.Trim(host, "[]")
+}
+
+func panelAddressIsIP(address string) bool {
+	return net.ParseIP(panelAddressHost(address)) != nil
+}
+
 func panelInitEnvCommands(address string) []string {
-	arg := address
-	if strings.HasPrefix(address, "http://") || strings.HasPrefix(address, "https://") {
+	arg := panelAddressHost(address)
+	if arg == "" || panelAddressIsIP(address) {
 		arg = "--ip"
 	}
 	return []string{
@@ -226,10 +245,12 @@ func shellArg(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-func (r *Runner) waitPanelTargetHealth(cfg sshclient.Config, lg *panelTransferLog) error {
+func (r *Runner) waitPanelTargetHealth(cfg sshclient.Config, lg *panelTransferLog, mode string) error {
+	check := fmt.Sprintf("cd %s && %s exec -T api wget -qO- http://127.0.0.1:8080/health 2>/dev/null || curl -fsS -m 5 http://127.0.0.1/health 2>/dev/null",
+		panelTransferDir, panelComposeCommand(mode))
 	deadline := time.Now().Add(panelTransferHealthFor)
 	for {
-		out, err := sshclient.RunCapture(cfg, "curl -fsS -m 5 http://127.0.0.1:8080/health 2>/dev/null || sudo docker compose -f "+panelTransferDir+"/deploy/docker-compose.yml exec -T api wget -qO- http://127.0.0.1:8080/health 2>/dev/null")
+		out, err := sshclient.RunCapture(cfg, check)
 		if err == nil && strings.Contains(out, "ok") {
 			return nil
 		}
