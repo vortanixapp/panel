@@ -237,6 +237,84 @@ func (h *Handler) PostAdminPanelTransferSSH(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusAccepted, map[string]any{"id": transferID})
 }
 
+func (h *Handler) PostAdminPanelTransferAgents(w http.ResponseWriter, r *http.Request) {
+	claims, ok := h.panelTransferOwner(w, r)
+	if !ok {
+		return
+	}
+	ctx := r.Context()
+	var body struct {
+		Host       string `json:"host"`
+		Port       int    `json:"port"`
+		User       string `json:"user"`
+		Password   string `json:"password"`
+		PrivateKey string `json:"private_key"`
+		HostKey    string `json:"host_key"`
+		NewAddress string `json:"new_address"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	body.Host = strings.TrimSpace(body.Host)
+	body.User = strings.TrimSpace(body.User)
+	body.NewAddress = strings.TrimSpace(body.NewAddress)
+	if body.Port == 0 {
+		body.Port = 22
+	}
+	if body.Host == "" || body.User == "" || body.NewAddress == "" {
+		writeError(w, http.StatusUnprocessableEntity, "Укажите доступ к новому серверу и его адрес")
+		return
+	}
+	if body.Password == "" && body.PrivateKey == "" {
+		writeError(w, http.StatusUnprocessableEntity, "Укажите пароль или приватный ключ SSH")
+		return
+	}
+	active, _, err := h.loadPanelTransfers(r)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "не удалось прочитать переносы")
+		return
+	}
+	if active != nil {
+		writeError(w, http.StatusConflict, "Перенос уже идёт")
+		return
+	}
+
+	kind, secret := "password", body.Password
+	if body.PrivateKey != "" {
+		kind, secret = "key", body.PrivateKey
+	}
+	sealed, err := h.secrets.Encrypt(secret)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "доступ к серверу не сохранён")
+		return
+	}
+	var transferID string
+	err = h.dbOf(ctx).QueryRow(ctx, `
+		INSERT INTO core.panel_transfers
+			(mode, status, target_host, target_port, target_user, target_host_key,
+			 target_secret_kind, target_secret_enc, new_address, freeze_writes, created_by)
+		VALUES ('agents', 'pending', $1, $2, $3, $4, $5, $6, $7, false, $8)
+		RETURNING id::text
+	`, body.Host, body.Port, body.User, strings.TrimSpace(body.HostKey), kind, sealed,
+		body.NewAddress, claims.UserID).Scan(&transferID)
+	if err != nil {
+		writeError(w, http.StatusConflict, "Перенос уже идёт")
+		return
+	}
+	payload, _ := json.Marshal(map[string]string{"transfer_id": transferID})
+	if _, err := h.dbOf(ctx).Exec(ctx, `
+		INSERT INTO core.jobs (type, status, payload) VALUES ('panel_transfer', 'pending', $1::jsonb)
+	`, payload); err != nil {
+		writeError(w, http.StatusInternalServerError, "задача переключения узлов не создана")
+		return
+	}
+	jobwake.Notify("panel_transfer")
+	audit(ctx, h.dbOf(ctx), claims.UserID, "panel_transfer.agents", transferID,
+		map[string]any{"host": body.Host, "new_address": body.NewAddress})
+	writeJSON(w, http.StatusAccepted, map[string]any{"id": transferID})
+}
+
 func (h *Handler) PostAdminPanelTransferCancel(w http.ResponseWriter, r *http.Request) {
 	claims, ok := h.panelTransferOwner(w, r)
 	if !ok {

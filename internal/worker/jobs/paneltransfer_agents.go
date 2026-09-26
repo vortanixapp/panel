@@ -15,14 +15,20 @@ const panelTransferPinWait = 2 * time.Minute
 
 func (r *Runner) targetRelayPin(cfg sshclient.Config, mode string) (string, error) {
 	query := "select value->>'pin' from core.tenant_settings where key = 'relay.tls'"
-	cmd := fmt.Sprintf("cd %s && %s exec -T postgres psql -U vortanix -d vortanix -tAc %s",
-		panelTransferDir, panelComposeCommand(mode), shellArg(query))
+	modes := []string{mode}
+	if mode != "source" {
+		modes = append(modes, "source")
+	}
 	deadline := time.Now().Add(panelTransferPinWait)
 	for {
-		out, err := sshclient.RunCapture(cfg, cmd)
-		pin := strings.TrimSpace(out)
-		if err == nil && strings.HasPrefix(pin, "sha256:") {
-			return pin, nil
+		for _, m := range modes {
+			cmd := fmt.Sprintf("cd %s && %s exec -T postgres psql -U vortanix -d vortanix -tAc %s",
+				panelTransferDir, panelComposeCommand(m), shellArg(query))
+			out, err := sshclient.RunCapture(cfg, cmd)
+			pin := strings.TrimSpace(out)
+			if err == nil && strings.HasPrefix(pin, "sha256:") {
+				return pin, nil
+			}
 		}
 		if time.Now().After(deadline) {
 			return "", errors.New("новая панель не выпустила сертификат relay")

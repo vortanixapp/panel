@@ -317,6 +317,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/panel-transfer/export", h.PostAdminPanelTransferExport)
 			r.Post("/panel-transfer/import/inspect", h.PostAdminPanelTransferInspect)
 			r.Post("/panel-transfer/import", h.PostAdminPanelTransferImport)
+			r.Post("/panel-transfer/agents", h.PostAdminPanelTransferAgents)
 			r.Post("/panel-transfer/freeze", h.PostAdminPanelTransferFreeze)
 			r.Get("/updates", h.AdminUpdates)
 			r.Patch("/updates/settings", h.AdminUpdateSettings)

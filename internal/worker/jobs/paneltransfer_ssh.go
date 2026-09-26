@@ -21,11 +21,19 @@ const (
 )
 
 func (r *Runner) runPanelTransfer(ctx context.Context, rec *panelTransferRecord) error {
-	if rec.Mode != "ssh" {
+	if rec.Mode != "ssh" && rec.Mode != "agents" {
 		return errors.New("этот режим переноса выполняется панелью, а не воркером")
 	}
 	lg := r.newPanelTransferLog(ctx, rec.ID)
 	defer lg.flush()
+
+	if rec.Mode == "agents" {
+		if err := r.switchAgents(ctx, rec, rec.sshConfig(), lg, strings.TrimSpace(rec.NewAddress), "images"); err != nil {
+			return err
+		}
+		r.finishPanelTransfer(ctx, rec.ID, "done")
+		return nil
+	}
 
 	upd := updates.NewUpdater()
 	if !upd.Configured() {

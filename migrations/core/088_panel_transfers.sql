@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS core.panel_transfers (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     mode          TEXT NOT NULL DEFAULT 'ssh'
-        CHECK (mode IN ('ssh', 'export', 'import')),
+        CHECK (mode IN ('ssh', 'export', 'import', 'agents')),
     status        TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
     stage         TEXT NOT NULL DEFAULT '',
