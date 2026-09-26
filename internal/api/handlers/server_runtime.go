@@ -10,23 +10,24 @@ import (
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
-func (h *Handler) serverRuntimeSelector(ctx context.Context, serverID string) (gamecatalog.RuntimeSelector, bool) {
+func (h *Handler) serverRuntimeSelector(ctx context.Context, serverID string) (gamecatalog.RuntimeSelector, []runtimeVersionEntry, bool) {
 	var gameID string
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT COALESCE(game_id, '') FROM core.servers WHERE id = $1
 	`, serverID).Scan(&gameID); err != nil {
-		return gamecatalog.RuntimeSelector{}, false
+		return gamecatalog.RuntimeSelector{}, nil, false
 	}
-	return gamecatalog.RuntimeSelectorOf(gameID)
-}
-
-func runtimeVersionAllowed(sel gamecatalog.RuntimeSelector, version string) bool {
-	for _, v := range sel.Versions {
-		if v == version {
-			return true
-		}
+	sel, ok := gamecatalog.RuntimeSelectorOf(gameID)
+	if !ok {
+		return gamecatalog.RuntimeSelector{}, nil, false
 	}
-	return false
+	var raw []byte
+	if err := h.dbOf(ctx).QueryRow(ctx, `
+		SELECT COALESCE(meta, '{}'::jsonb) FROM core.games WHERE slug = $1
+	`, gameID).Scan(&raw); err != nil {
+		return sel, defaultRuntimeVersions(sel), true
+	}
+	return sel, runtimeVersionsOf(parseMetaMap(raw), sel), true
 }
 
 func (h *Handler) GetServerRuntime(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +36,7 @@ func (h *Handler) GetServerRuntime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	sel, ok := h.serverRuntimeSelector(ctx, serverID)
+	sel, list, ok := h.serverRuntimeSelector(ctx, serverID)
 	if !ok {
 		writeJSON(w, http.StatusOK, map[string]any{"supported": false})
 		return
@@ -49,13 +50,13 @@ func (h *Handler) GetServerRuntime(w http.ResponseWriter, r *http.Request) {
 			current = strings.TrimSpace(content)
 		}
 	}
-	if !runtimeVersionAllowed(sel, current) {
+	if _, ok := findRuntimeVersion(list, current); !ok {
 		current = ""
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"supported": true,
 		"kind":      sel.Kind,
-		"versions":  sel.Versions,
+		"versions":  enabledRuntimeVersions(list),
 		"current":   current,
 	})
 }
@@ -67,7 +68,7 @@ func (h *Handler) SetServerRuntime(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	sel, ok := h.serverRuntimeSelector(ctx, serverID)
+	sel, list, ok := h.serverRuntimeSelector(ctx, serverID)
 	if !ok {
 		writeError(w, http.StatusBadRequest, "Для этой игры версия среды не меняется")
 		return
@@ -77,9 +78,14 @@ func (h *Handler) SetServerRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	version := strings.TrimSpace(body.Version)
-	if version != "" && !runtimeVersionAllowed(sel, version) {
-		writeError(w, http.StatusBadRequest, "Эта версия среды недоступна")
-		return
+	entry := runtimeVersionEntry{}
+	if version != "" {
+		found, ok := findRuntimeVersion(list, version)
+		if !ok {
+			writeError(w, http.StatusBadRequest, "Эта версия среды недоступна")
+			return
+		}
+		entry = found
 	}
 
 	if version == "" {
@@ -90,6 +96,17 @@ func (h *Handler) SetServerRuntime(w http.ResponseWriter, r *http.Request) {
 	} else {
 		if _, ok := h.agentCommandForServer(w, r, serverID, "files_write",
 			map[string]any{"path": "/" + sel.File, "content": version + "\n"}); !ok {
+			return
+		}
+	}
+	if sel.URLFile != "" {
+		if entry.URL == "" {
+			if _, ok := h.agentCommandForServer(w, r, serverID, "files_delete",
+				map[string]any{"path": "/" + sel.URLFile}); !ok {
+				return
+			}
+		} else if _, ok := h.agentCommandForServer(w, r, serverID, "files_write",
+			map[string]any{"path": "/" + sel.URLFile, "content": entry.URL + "\n"}); !ok {
 			return
 		}
 	}

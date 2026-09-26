@@ -3,12 +3,13 @@ package gamecatalog
 type RuntimeSelector struct {
 	Kind     string   `json:"kind"`
 	File     string   `json:"file"`
+	URLFile  string   `json:"url_file,omitempty"`
 	Versions []string `json:"versions"`
 }
 
 var runtimeSelectors = map[string]RuntimeSelector{
 	"java": {Kind: "java", File: ".vtx/java", Versions: []string{"8", "17", "21", "25"}},
-	"php":  {Kind: "php", File: ".vtx/php", Versions: []string{"8.1", "8.2", "8.3"}},
+	"php":  {Kind: "php", File: ".vtx/php", URLFile: ".vtx/php_url", Versions: []string{"8.1", "8.2", "8.3"}},
 }
 
 var gameRuntimeSelector = map[string]string{

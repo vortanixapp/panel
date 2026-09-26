@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+	"github.com/vortanixapp/panel/pkg/gamecatalog"
 )
 
 type gameRow struct {
@@ -91,6 +92,16 @@ func (g *gameRow) toJSON(includeCounts bool, serverCount, tariffCount int, image
 		"created_at":             g.CreatedAt.Format(time.RFC3339),
 		"updated_at":             g.UpdatedAt.Format(time.RFC3339),
 	}
+	if sel, ok := gamecatalog.RuntimeSelectorOf(g.Slug); ok {
+		out["runtime"] = map[string]any{
+			"kind":          sel.Kind,
+			"custom_source": sel.URLFile != "",
+			"defaults":      sel.Versions,
+			"versions":      runtimeVersionsJSON(runtimeVersionsOf(meta, sel)),
+			"version_limit": runtimeVersionsLimit,
+			"customized":    meta[runtimeVersionsMetaKey] != nil,
+		}
+	}
 	if includeCounts {
 		out["server_count"] = serverCount
 		out["tariff_count"] = tariffCount
@@ -154,8 +165,23 @@ func bodyString(body map[string]any, keys ...string) string {
 	return ""
 }
 
-func mergeGameMeta(existing []byte, body map[string]any, active bool) ([]byte, error) {
+func mergeGameMeta(existing []byte, body map[string]any, active bool, slug string) ([]byte, error) {
 	meta := parseMetaMap(existing)
+	if raw, ok := body[runtimeVersionsMetaKey]; ok {
+		sel, supported := gamecatalog.RuntimeSelectorOf(slug)
+		if !supported {
+			return nil, errRuntimeVersionSource
+		}
+		list, err := parseRuntimeVersionsBody(raw, sel)
+		if err != nil {
+			return nil, err
+		}
+		if len(list) == 0 {
+			delete(meta, runtimeVersionsMetaKey)
+		} else {
+			meta[runtimeVersionsMetaKey] = runtimeVersionsJSON(list)
+		}
+	}
 	if v := bodyString(body, "default_startup_params"); v != "" || body["default_startup_params"] != nil {
 		if v == "" {
 			delete(meta, "default_startup_params")
@@ -310,8 +336,12 @@ func (h *Handler) CreateAdminGame(w http.ResponseWriter, r *http.Request) {
 	if b, ok := bodyBool(body, "is_active", "active"); ok {
 		active = b
 	}
-	meta, err := mergeGameMeta(nil, body, active)
+	meta, err := mergeGameMeta(nil, body, active, slug)
 	if err != nil {
+		if isRuntimeVersionError(err) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid meta")
 		return
 	}
@@ -385,8 +415,12 @@ func (h *Handler) UpdateAdminGame(w http.ResponseWriter, r *http.Request) {
 	if b, ok := bodyBool(body, "is_active", "active"); ok {
 		active = b
 	}
-	meta, err := mergeGameMeta(existing.Meta, body, active)
+	meta, err := mergeGameMeta(existing.Meta, body, active, existing.Slug)
 	if err != nil {
+		if isRuntimeVersionError(err) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid meta")
 		return
 	}
