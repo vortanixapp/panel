@@ -499,6 +499,28 @@ export const adminContent = {
   "admin.games.last_update": "Последнее обновление",
   "admin.games.stats": "Статистика",
   "admin.games.versions": "Версии",
+  "admin.games.runtime.list_title": "Версии {kind}",
+  "admin.games.runtime.add": "Добавить версию",
+  "admin.games.runtime.empty": "Версий нет — добавьте хотя бы одну",
+  "admin.games.runtime.version": "Версия",
+  "admin.games.runtime.url": "Ссылка на сборку",
+  "admin.games.runtime.url_placeholder": "Пусто — сборка с релизов PocketMine",
+  "admin.games.runtime.enabled": "Доступна",
+  "admin.games.runtime.need_version": "Заполните хотя бы одну версию",
+  "admin.games.runtime.reset": "Вернуть встроенные",
+  "admin.games.runtime.reset_title": "Вернуть встроенные версии",
+  "admin.games.runtime.reset_text":
+    "Свой список будет удалён, останутся встроенные версии: {list}. Серверы, где выбрана другая версия, вернутся к автоматическому выбору",
+  "admin.games.runtime.reset_ok": "Вернуть",
+  "admin.games.runtime.help_title": "Как это работает",
+  "admin.games.runtime.help_list":
+    "Список задаёт, что клиент увидит на вкладке сервера. Выключенная версия исчезает из выбора, но уже запущенные серверы продолжают работать",
+  "admin.games.runtime.help_default":
+    "Без ссылки версия качается с релизов pmmp и доступны только {list} под Linux x86_64",
+  "admin.games.runtime.help_url":
+    "Со ссылкой берётся ваш архив tar.gz, внутри которого лежит bin/php или bin/php7/bin/php. Так подключаются PHP 7.x и собственные сборки — для 7.x серверу понадобится и своё ядро PocketMine",
+  "admin.games.runtime.help_restart":
+    "Новая ссылка применяется при следующем запуске сервера: PHP скачается заново",
   "admin.games.edit_title": "Редактировать игру: {name}",
   "admin.games.edit_subtitle": "Редактирование параметров игры",
   "admin.games.add_version": "Добавить версию",

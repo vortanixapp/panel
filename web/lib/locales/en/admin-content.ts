@@ -505,6 +505,28 @@ export const adminContent = {
   "admin.games.last_update": "Last update",
   "admin.games.stats": "Statistics",
   "admin.games.versions": "Versions",
+  "admin.games.runtime.list_title": "{kind} versions",
+  "admin.games.runtime.add": "Add a version",
+  "admin.games.runtime.empty": "No versions yet — add at least one",
+  "admin.games.runtime.version": "Version",
+  "admin.games.runtime.url": "Build URL",
+  "admin.games.runtime.url_placeholder": "Empty — build from PocketMine releases",
+  "admin.games.runtime.enabled": "Available",
+  "admin.games.runtime.need_version": "Fill in at least one version",
+  "admin.games.runtime.reset": "Restore built-in",
+  "admin.games.runtime.reset_title": "Restore built-in versions",
+  "admin.games.runtime.reset_text":
+    "Your list is removed and the built-in versions stay: {list}. Servers set to another version fall back to the automatic choice",
+  "admin.games.runtime.reset_ok": "Restore",
+  "admin.games.runtime.help_title": "How this works",
+  "admin.games.runtime.help_list":
+    "The list is what the customer sees on the server tab. A disabled version leaves the choice, while servers already running keep going",
+  "admin.games.runtime.help_default":
+    "Without a URL the version comes from pmmp releases, where only {list} for Linux x86_64 exist",
+  "admin.games.runtime.help_url":
+    "With a URL your own tar.gz is used, holding bin/php or bin/php7/bin/php inside. That is how PHP 7.x and custom builds are added — 7.x also needs its own PocketMine core on the server",
+  "admin.games.runtime.help_restart":
+    "A new URL applies on the next server start: PHP is downloaded again",
   "admin.games.edit_title": "Edit game: {name}",
   "admin.games.edit_subtitle": "Editing the game parameters",
   "admin.games.add_version": "Add a version",

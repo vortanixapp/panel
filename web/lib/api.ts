@@ -3944,6 +3944,21 @@ export type AdminGameListItem = {
   created_at?: string;
 };
 
+export type AdminGameRuntimeVersion = {
+  version: string;
+  url: string;
+  enabled: boolean;
+};
+
+export type AdminGameRuntime = {
+  kind: "java" | "php";
+  custom_source: boolean;
+  defaults: string[];
+  versions: AdminGameRuntimeVersion[];
+  version_limit: number;
+  customized: boolean;
+};
+
 export type AdminGameDetail = AdminGameListItem & {
   description?: string | null;
   code?: string;
@@ -3954,6 +3969,7 @@ export type AdminGameDetail = AdminGameListItem & {
   status?: boolean;
   updated_at?: string;
   versions?: AdminGameVersion[];
+  runtime?: AdminGameRuntime;
 };
 
 export type AdminGameVersion = {

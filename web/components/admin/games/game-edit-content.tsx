@@ -35,6 +35,7 @@ import type { TranslateFn } from "@/lib/i18n";
 import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
+import { GameRuntimeTab, runtimeTabLabel } from "./game-runtime-tab";
 
 const BUILDTOOLS_GAMES = ["mcspigot"];
 
@@ -235,6 +236,7 @@ export function GameEditContent() {
   }
 
   const gameName = data.game.name;
+  const runtime = data.game.runtime;
 
   return (
     <PageShell variant="admin">
@@ -261,7 +263,16 @@ export function GameEditContent() {
         <TabsList>
           <TabsTrigger value="settings">{t("common.settings")}</TabsTrigger>
           <TabsTrigger value="versions">{t("admin.games.versions")}</TabsTrigger>
+          {runtime && (
+            <TabsTrigger value="runtime">{runtimeTabLabel(runtime)}</TabsTrigger>
+          )}
         </TabsList>
+
+        {runtime && (
+          <TabsContent value="runtime">
+            <GameRuntimeTab gameId={id} runtime={runtime} />
+          </TabsContent>
+        )}
 
         <TabsContent value="settings">
           <Card>
