@@ -108,6 +108,13 @@ func (r *Runner) runPanelTransfer(ctx context.Context, rec *panelTransferRecord)
 		return err
 	}
 	lg.say("Новая панель отвечает по адресу %s", address)
+
+	if rec.SameAddress {
+		lg.say("Адрес панели не менялся: узлы подключатся к новой панели сами после переключения DNS")
+	} else if err := r.switchAgents(ctx, rec, cfg, lg, address, probe.Mode); err != nil {
+		return err
+	}
+
 	lg.say("Переключите DNS на новый сервер. Старая панель осталась в режиме только чтение — выключите её вручную, когда убедитесь, что всё на месте")
 
 	r.finishPanelTransfer(ctx, rec.ID, "done")
