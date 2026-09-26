@@ -94,10 +94,7 @@ type Def struct {
 	Required bool
 }
 
-var (
-	channelsAll   = []Channel{ChannelEmail, ChannelTelegram, ChannelDiscord}
-	channelsEmail = []Channel{ChannelEmail}
-)
+var channelsAll = []Channel{ChannelEmail, ChannelTelegram, ChannelDiscord}
 
 var defs = map[Kind]Def{
 	KindServerReady:     {Group: GroupServers, Icon: "ri-check-line", Severity: SeveritySuccess, Channels: channelsAll},
@@ -107,29 +104,29 @@ var defs = map[Kind]Def{
 	KindServerSuspended: {Group: GroupServers, Icon: "ri-pause-circle-line", Severity: SeverityCritical, Channels: channelsAll},
 	KindServerBlocked:   {Group: GroupServers, Icon: "ri-lock-line", Severity: SeverityCritical, Channels: channelsAll},
 	KindServerUnblocked: {Group: GroupServers, Icon: "ri-lock-unlock-line", Severity: SeveritySuccess, Channels: channelsAll},
-	KindServerRenewed:   {Group: GroupServers, Icon: "ri-refresh-line", Severity: SeveritySuccess, Channels: channelsEmail, Quiet: true},
+	KindServerRenewed:   {Group: GroupServers, Icon: "ri-refresh-line", Severity: SeveritySuccess, Channels: channelsAll, Quiet: true},
 	KindServerDeleted:   {Group: GroupServers, Icon: "ri-delete-bin-line", Severity: SeverityWarning, Channels: channelsAll},
-	KindServerMigrated:  {Group: GroupServers, Icon: "ri-server-line", Severity: SeverityInfo, Channels: channelsEmail, Quiet: true},
-	KindServerOwner:     {Group: GroupServers, Icon: "ri-user-shared-line", Severity: SeverityInfo, Channels: channelsEmail},
-	KindServerExtended:  {Group: GroupServers, Icon: "ri-calendar-check-line", Severity: SeveritySuccess, Channels: channelsEmail, Quiet: true},
-	KindBackupReady:     {Group: GroupServers, Icon: "ri-archive-line", Severity: SeveritySuccess, Quiet: true},
+	KindServerMigrated:  {Group: GroupServers, Icon: "ri-server-line", Severity: SeverityInfo, Channels: channelsAll, Quiet: true},
+	KindServerOwner:     {Group: GroupServers, Icon: "ri-user-shared-line", Severity: SeverityInfo, Channels: channelsAll},
+	KindServerExtended:  {Group: GroupServers, Icon: "ri-calendar-check-line", Severity: SeveritySuccess, Channels: channelsAll, Quiet: true},
+	KindBackupReady:     {Group: GroupServers, Icon: "ri-archive-line", Severity: SeveritySuccess, Channels: channelsAll, Quiet: true},
 	KindBackupFailed:    {Group: GroupServers, Icon: "ri-archive-line", Severity: SeverityWarning, Channels: channelsAll},
 	KindNodeMaintenance: {Group: GroupServers, Icon: "ri-tools-line", Severity: SeverityWarning, Channels: channelsAll},
 	KindNodeOffline:     {Group: GroupServers, Icon: "ri-cloud-off-line", Severity: SeverityCritical, Channels: channelsAll},
 	KindNodeOnline:      {Group: GroupServers, Icon: "ri-cloud-line", Severity: SeveritySuccess, Channels: channelsAll},
 	KindAbuseNotice:     {Group: GroupServers, Icon: "ri-alarm-warning-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 
-	KindPaymentReceived: {Group: GroupBilling, Icon: "ri-bank-card-line", Severity: SeveritySuccess, Channels: channelsEmail},
+	KindPaymentReceived: {Group: GroupBilling, Icon: "ri-bank-card-line", Severity: SeveritySuccess, Channels: channelsAll},
 	KindPaymentFailed:   {Group: GroupBilling, Icon: "ri-bank-card-line", Severity: SeverityWarning, Channels: channelsAll},
-	KindPaymentRefunded: {Group: GroupBilling, Icon: "ri-refund-2-line", Severity: SeverityInfo, Channels: channelsEmail},
-	KindRefundRejected:  {Group: GroupBilling, Icon: "ri-refund-2-line", Severity: SeverityWarning, Channels: channelsEmail},
+	KindPaymentRefunded: {Group: GroupBilling, Icon: "ri-refund-2-line", Severity: SeverityInfo, Channels: channelsAll},
+	KindRefundRejected:  {Group: GroupBilling, Icon: "ri-refund-2-line", Severity: SeverityWarning, Channels: channelsAll},
 	KindBalanceLow:      {Group: GroupBilling, Icon: "ri-wallet-line", Severity: SeverityWarning, Channels: channelsAll},
-	KindBonusGranted:    {Group: GroupBilling, Icon: "ri-gift-line", Severity: SeveritySuccess, Quiet: true},
-	KindReferralReward:  {Group: GroupBilling, Icon: "ri-user-shared-line", Severity: SeveritySuccess, Channels: channelsEmail},
-	KindReferralJoined:  {Group: GroupBilling, Icon: "ri-user-add-line", Severity: SeverityInfo, Quiet: true},
+	KindBonusGranted:    {Group: GroupBilling, Icon: "ri-gift-line", Severity: SeveritySuccess, Channels: channelsAll, Quiet: true},
+	KindReferralReward:  {Group: GroupBilling, Icon: "ri-user-shared-line", Severity: SeveritySuccess, Channels: channelsAll},
+	KindReferralJoined:  {Group: GroupBilling, Icon: "ri-user-add-line", Severity: SeverityInfo, Channels: channelsAll, Quiet: true},
 
 	KindSupportReply:  {Group: GroupSupport, Icon: "ri-customer-service-line", Severity: SeverityInfo, Channels: channelsAll},
-	KindSupportStatus: {Group: GroupSupport, Icon: "ri-customer-service-line", Severity: SeverityInfo, Quiet: true},
+	KindSupportStatus: {Group: GroupSupport, Icon: "ri-customer-service-line", Severity: SeverityInfo, Channels: channelsAll, Quiet: true},
 
 	KindNewLogin:       {Group: GroupSecurity, Icon: "ri-login-circle-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 	KindPasswordChange: {Group: GroupSecurity, Icon: "ri-lock-password-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
@@ -139,17 +136,17 @@ var defs = map[Kind]Def{
 	KindRecoveryCode:   {Group: GroupSecurity, Icon: "ri-key-2-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 	KindAPIToken:       {Group: GroupSecurity, Icon: "ri-code-s-slash-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 
-	KindAnnounce: {Group: GroupSystem, Icon: "ri-megaphone-line", Severity: SeverityInfo},
+	KindAnnounce: {Group: GroupSystem, Icon: "ri-megaphone-line", Severity: SeverityInfo, Channels: channelsAll},
 
 	KindStaffTicketNew:    {Group: GroupStaff, Icon: "ri-inbox-unarchive-line", Severity: SeverityInfo, Channels: channelsAll},
 	KindStaffTicketReply:  {Group: GroupStaff, Icon: "ri-chat-3-line", Severity: SeverityInfo, Channels: channelsAll},
-	KindStaffAudit:        {Group: GroupStaff, Icon: "ri-shield-user-line", Severity: SeverityWarning},
+	KindStaffAudit:        {Group: GroupStaff, Icon: "ri-shield-user-line", Severity: SeverityWarning, Channels: channelsAll},
 	KindStaffNodeOffline:  {Group: GroupStaff, Icon: "ri-cloud-off-line", Severity: SeverityCritical, Channels: channelsAll},
 	KindStaffNodeOnline:   {Group: GroupStaff, Icon: "ri-cloud-line", Severity: SeveritySuccess, Channels: channelsAll},
 	KindDiskLow:           {Group: GroupStaff, Icon: "ri-hard-drive-2-line", Severity: SeverityWarning, Channels: channelsAll},
-	KindAgentOutdated:     {Group: GroupStaff, Icon: "ri-refresh-line", Severity: SeverityWarning, Channels: channelsEmail},
+	KindAgentOutdated:     {Group: GroupStaff, Icon: "ri-refresh-line", Severity: SeverityWarning, Channels: channelsAll},
 	KindAgentUpdateFailed: {Group: GroupStaff, Icon: "ri-error-warning-line", Severity: SeverityCritical, Channels: channelsAll},
-	KindPanelUpdate:       {Group: GroupStaff, Icon: "ri-download-2-line", Severity: SeverityInfo, Channels: channelsEmail},
+	KindPanelUpdate:       {Group: GroupStaff, Icon: "ri-download-2-line", Severity: SeverityInfo, Channels: channelsAll},
 	KindPanelUpdateFailed: {Group: GroupStaff, Icon: "ri-error-warning-line", Severity: SeverityCritical, Channels: channelsAll},
 }
 
