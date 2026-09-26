@@ -43,6 +43,9 @@ func (s *Server) Handler() http.Handler {
 	})
 	mux.HandleFunc("GET /internal/v1/status", s.guard(s.status))
 	mux.HandleFunc("POST /internal/v1/update", s.guard(s.update))
+	mux.HandleFunc("GET /internal/v1/transfer/probe", s.guard(s.transferProbeHandler))
+	mux.HandleFunc("GET /internal/v1/transfer/export", s.guard(s.transferExportHandler))
+	mux.HandleFunc("POST /internal/v1/transfer/import", s.guard(s.transferImportHandler))
 	return mux
 }
 
