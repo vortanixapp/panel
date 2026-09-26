@@ -298,6 +298,10 @@ docker run --rm -v vortanix_uploads:/from -v "$PWD":/to alpine tar czf /to/uploa
 docker compose -f deploy/docker-compose.yml exec -T postgres psql -U vortanix -d vortanix < vortanix-2026-01-01.sql
 ```
 
+Перенос панели на другую машину целиком — база, секреты и загруженные файлы —
+выполняется из раздела **Администрирование → Перенос панели**:
+[panel-transfer.ru.md](panel-transfer.ru.md).
+
 ## Версии и каналы обновлений
 
 Переменная `VORTANIX_VERSION` в `deploy/.env` определяет, какие образы

@@ -102,6 +102,11 @@ building game images, adding nodes, backups, upgrades, rollback, operation
 behind an existing reverse proxy, and diagnostics:
 [docs/install.md](docs/install.md).
 
+Moving the panel to another server is done from **Administration → Panel
+transfer**: the panel installs itself on the new machine and streams the
+database, the secrets and the files over —
+[docs/panel-transfer.md](docs/panel-transfer.md).
+
 ## Building from source
 
 To build the panel images instead of pulling them, omit the overlay file. This

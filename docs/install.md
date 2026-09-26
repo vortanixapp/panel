@@ -295,6 +295,10 @@ Restoring the database:
 docker compose -f deploy/docker-compose.yml exec -T postgres psql -U vortanix -d vortanix < vortanix-2026-01-01.sql
 ```
 
+Moving the whole panel to another machine — database, secrets and uploaded
+files — is done from **Administration → Panel transfer**:
+[panel-transfer.md](panel-transfer.md).
+
 ## Versions and update channels
 
 The `VORTANIX_VERSION` variable in `deploy/.env` determines which images the
