@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -34,10 +35,42 @@ type Handler struct {
 	upgr  websocket.Upgrader
 }
 
-func New(rdb *redis.Client, relay *relayclient.Client, jwt *paneljwt.Verifier) *Handler {
+func New(rdb *redis.Client, relay *relayclient.Client, jwt *paneljwt.Verifier, allowedOrigins ...string) *Handler {
+	allowed := normalizeOrigins(allowedOrigins)
 	return &Handler{
 		redis: rdb, relay: relay, jwt: jwt,
-		upgr: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
+		upgr: websocket.Upgrader{CheckOrigin: originChecker(allowed)},
+	}
+}
+
+func normalizeOrigins(origins []string) map[string]bool {
+	set := map[string]bool{}
+	for _, o := range origins {
+		o = strings.TrimRight(strings.TrimSpace(strings.ToLower(o)), "/")
+		if o != "" {
+			set[o] = true
+		}
+	}
+	return set
+}
+
+func originChecker(allowed map[string]bool) func(*http.Request) bool {
+	return func(r *http.Request) bool {
+		origin := strings.TrimSpace(r.Header.Get("Origin"))
+		if origin == "" {
+			return true
+		}
+		if allowed["*"] {
+			return true
+		}
+		norm := strings.TrimRight(strings.ToLower(origin), "/")
+		if allowed[norm] {
+			return true
+		}
+		if u, err := url.Parse(origin); err == nil && strings.EqualFold(u.Host, r.Host) {
+			return true
+		}
+		return false
 	}
 }
 

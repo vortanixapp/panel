@@ -30,7 +30,10 @@ func main() {
 	port := env("PORT", "8083")
 	redisURL := env("REDIS_URL", "redis://localhost:6379/0")
 	relayURL := env("RELAY_URL", "http://localhost:8082")
-	secret := env("INTERNAL_SECRET", "dev-internal-secret")
+	secret, secretErr := panelsecret.Internal(os.Getenv("INTERNAL_SECRET"))
+	if secretErr != nil {
+		log.Fatalf("%v", secretErr)
+	}
 	jwtSecret := env("JWT_SECRET", panelsecret.DevJWTSecret)
 
 	ctx := context.Background()
@@ -54,7 +57,13 @@ func main() {
 	rdb := redis.NewClient(opts)
 	defer rdb.Close()
 
-	h := handlers.New(rdb, relayclient.New(relayURL, secret), paneljwt.NewVerifier(jwtSecret))
+	wsOrigins := parseCORSOrigins()
+	for _, extra := range []string{env("FRONTEND_URL", ""), env("SITE_ADDRESS", "")} {
+		if extra = strings.TrimSpace(extra); extra != "" {
+			wsOrigins = append(wsOrigins, extra)
+		}
+	}
+	h := handlers.New(rdb, relayclient.New(relayURL, secret), paneljwt.NewVerifier(jwtSecret), wsOrigins...)
 
 	r := chi.NewRouter()
 	r.Use(httplog.Logger)
