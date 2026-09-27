@@ -55,7 +55,7 @@ function servedBeforeSetup(pathname: string) {
   );
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const legacy = LEGACY_REDIRECTS[pathname] ?? (pathname.startsWith("/games/") ? "/rent-server" : undefined);
