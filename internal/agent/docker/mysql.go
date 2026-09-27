@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -35,9 +36,6 @@ func resolveMySQLInstance(payload map[string]any) (mysqlInstance, error) {
 				continue
 			}
 			rootPW := StringFromPayload(inst["root_password"])
-			if rootPW == "" {
-				rootPW = defaultMySQLRootPassword(container, port)
-			}
 			return mysqlInstance{Key: ik, Container: container, Port: port, RootPassword: rootPW}, nil
 		}
 		if key != "" {
@@ -47,9 +45,9 @@ func resolveMySQLInstance(payload map[string]any) (mysqlInstance, error) {
 
 	switch engine {
 	case "", "default", "mysql80":
-		return mysqlInstance{Container: envOr("VORTANIX_MYSQL80_CONTAINER", "vortanix-mysql80-3306"), Port: 3306, RootPassword: envOr("VORTANIX_MYSQL80_ROOT_PASSWORD", defaultMySQLRootPassword("vortanix-mysql80-3306", 3306))}, nil
+		return mysqlInstance{Container: envOr("VORTANIX_MYSQL80_CONTAINER", "vortanix-mysql80-3306"), Port: 3306, RootPassword: os.Getenv("VORTANIX_MYSQL80_ROOT_PASSWORD")}, nil
 	case "mysql57":
-		return mysqlInstance{Container: envOr("VORTANIX_MYSQL57_CONTAINER", "vortanix-mysql57-3307"), Port: 3307, RootPassword: envOr("VORTANIX_MYSQL57_ROOT_PASSWORD", defaultMySQLRootPassword("vortanix-mysql57-3307", 3307))}, nil
+		return mysqlInstance{Container: envOr("VORTANIX_MYSQL57_CONTAINER", "vortanix-mysql57-3307"), Port: 3307, RootPassword: os.Getenv("VORTANIX_MYSQL57_ROOT_PASSWORD")}, nil
 	case "mariadb":
 		return mysqlInstance{Container: envOr("VORTANIX_MARIADB_CONTAINER", "vortanix-mariadb"), Port: 3308, RootPassword: envOr("VORTANIX_MARIADB_ROOT_PASSWORD", envOr("MARIADB_ROOT_PASSWORD", ""))}, nil
 	}
@@ -167,7 +165,20 @@ func mysqlDropUserSQL(username string, hosts []string) string {
 }
 
 func mysqlEscapeString(s string) string {
-	return strings.ReplaceAll(s, "'", "''")
+	var b strings.Builder
+	b.Grow(len(s) + 8)
+	for i := 0; i < len(s); i++ {
+		switch c := s[i]; c {
+		case '\'':
+			b.WriteString("''")
+		case '\\':
+			b.WriteString(`\\`)
+		case 0:
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
 }
 
 func MySQLCreateDB(ctx context.Context, payload map[string]any) error {
@@ -427,7 +438,10 @@ func MySQLMigrateDB(ctx context.Context, serverID string, payload map[string]any
 }
 
 func (m mysqlInstance) passwords() []string {
-	out := []string{m.RootPassword}
+	out := []string{}
+	if m.RootPassword != "" {
+		out = append(out, m.RootPassword)
+	}
 	if legacy := defaultMySQLRootPassword(m.Container, m.Port); legacy != m.RootPassword {
 		out = append(out, legacy)
 	}
@@ -435,12 +449,23 @@ func (m mysqlInstance) passwords() []string {
 }
 
 func mysqlRun(ctx context.Context, inst mysqlInstance, args ...string) ([]byte, error) {
+	candidates := inst.passwords()
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf(
+			"для инстанса MySQL %s не задан пароль root: запустите установку "+
+				"компонента «MySQL» в настройках ноды", inst.Container)
+	}
 	var out []byte
 	var err error
-	for _, pw := range inst.passwords() {
+	for _, pw := range candidates {
 		full := append([]string{"exec", "-e", "MYSQL_PWD=" + pw, inst.Container}, args...)
 		out, err = exec.CommandContext(ctx, "docker", full...).CombinedOutput()
 		if err == nil {
+			if pw != inst.RootPassword {
+				log.Printf("MySQL %s принял устаревший выводимый пароль root — "+
+					"он угадывается извне, пересоберите инстанс установкой компонента «MySQL»",
+					inst.Container)
+			}
 			return out, nil
 		}
 		if !strings.Contains(strings.ToLower(string(out)), "access denied") {
