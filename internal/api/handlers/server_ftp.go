@@ -97,18 +97,19 @@ func (h *Handler) ServerFtpCreate(w http.ResponseWriter, r *http.Request) {
 		INSERT INTO core.server_ftp_accounts ( server_id, username, password, status)
 		VALUES ( $1, $2, $3, 'pending')
 		RETURNING id::text
-	`, serverID, username, password).Scan(&accountID)
+	`, serverID, username, h.secrets.MustEncrypt(password)).Scan(&accountID)
 	if err != nil {
 		writeError(w, http.StatusConflict, "Такой FTP-аккаунт уже существует")
 		return
 	}
 
+	// Пароль в задание не кладём: core.jobs хранит payload открытым текстом,
+	// worker возьмёт его из server_ftp_accounts и расшифрует.
 	h.enqueueFtpJob(r, map[string]any{
 		"account_id": accountID,
 		"server_id":  serverID,
 		"action":     "create",
 		"username":   username,
-		"password":   password,
 	})
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.ftp_create", "server:"+serverID,
 		map[string]any{"username": username})
@@ -146,14 +147,13 @@ func (h *Handler) ServerFtpResetPassword(w http.ResponseWriter, r *http.Request)
 		UPDATE core.server_ftp_accounts
 		SET password = $2, status = 'pending', error_message = NULL, updated_at = now()
 		WHERE id = $1
-	`, accountID, password)
+	`, accountID, h.secrets.MustEncrypt(password))
 
 	h.enqueueFtpJob(r, map[string]any{
 		"account_id": accountID,
 		"server_id":  serverID,
 		"action":     "password",
 		"username":   username,
-		"password":   password,
 	})
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "server.ftp_password", "server:"+serverID,
 		map[string]any{"username": username})
@@ -215,6 +215,7 @@ func (h *Handler) loadFtpAccounts(r *http.Request, serverID string) []ftpAccount
 	for rows.Next() {
 		var a ftpAccountRow
 		if rows.Scan(&a.ID, &a.Username, &a.Password, &a.Status, &a.Error) == nil {
+			a.Password = h.secrets.MustDecrypt(a.Password)
 			out = append(out, a)
 		}
 	}

@@ -85,12 +85,23 @@ func (r *Runner) processFTPAccount(ctx context.Context) bool {
 
 	cfg := r.sshConfig(node, 0)
 
+	// Пароль хранится в server_ftp_accounts в зашифрованном виде и в задание не
+	// попадает: core.jobs держит payload открытым текстом.
+	password := pl.Password
+	if password == "" && pl.AccountID != "" {
+		password = r.ftpAccountPassword(ctx, pl.AccountID)
+	}
+	if password == "" && pl.Action != "delete" {
+		r.failFTPAccount(ctx, jobID, pl, "пароль доступа не найден")
+		return true
+	}
+
 	script := ""
 	switch pl.Action {
 	case "create":
-		script = ftpCreateScript(pl.Username, pl.Password, pl.ServerID)
+		script = ftpCreateScript(pl.Username, password, pl.ServerID)
 	case "password":
-		script = ftpPasswordScript(pl.Username, pl.Password, pl.ServerID)
+		script = ftpPasswordScript(pl.Username, password, pl.ServerID)
 	case "delete":
 		script = ftpDeleteScript(pl.Username, pl.ServerID)
 	default:
@@ -178,6 +189,16 @@ func ftpGroup(serverID string) string {
 		short = short[:12]
 	}
 	return ftpGroupPrefix + short
+}
+
+func (r *Runner) ftpAccountPassword(ctx context.Context, accountID string) string {
+	var stored string
+	if err := r.db.QueryRow(ctx, `
+		SELECT COALESCE(password, '') FROM core.server_ftp_accounts WHERE id = $1
+	`, accountID).Scan(&stored); err != nil {
+		return ""
+	}
+	return r.secrets.MustDecrypt(stored)
 }
 
 func ftpCreateScript(username, password, serverID string) string {

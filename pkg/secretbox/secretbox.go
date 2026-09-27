@@ -148,3 +148,14 @@ func envelopeOf(raw []byte) (string, bool) {
 	}
 	return sealed, IsEncrypted(sealed)
 }
+
+// MustEncrypt шифрует значение, а при отсутствии ключа возвращает его как есть.
+// Нужен там, где панель должна продолжать работать без SECRETS_KEY: об этом уже
+// предупреждает запуск, а поведение остаётся прежним.
+func (b *Box) MustEncrypt(plaintext string) string {
+	sealed, err := b.Encrypt(plaintext)
+	if err != nil {
+		return plaintext
+	}
+	return sealed
+}
