@@ -138,3 +138,31 @@ func (h *Handler) ServeBranding(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	http.ServeFile(w, r, path)
 }
+
+// attachmentDisposition собирает заголовок Content-Disposition для отдачи файла.
+// Имя приходит от пользователя (путь в файловом менеджере, имя вложения),
+// поэтому в filename= уходит только безопасный набор символов, а полное имя —
+// в filename* по RFC 5987. Без этого кавычка в имени закрывала параметр и
+// позволяла дописать в заголовок свои значения.
+func attachmentDisposition(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." {
+		name = "download.bin"
+	}
+	var ascii strings.Builder
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			ascii.WriteRune(r)
+		case r == '.', r == '-', r == '_', r == ' ', r == '(', r == ')', r == '[', r == ']':
+			ascii.WriteRune(r)
+		default:
+			ascii.WriteByte('_')
+		}
+	}
+	fallback := strings.TrimSpace(ascii.String())
+	if fallback == "" || fallback == "." || fallback == ".." {
+		fallback = "download.bin"
+	}
+	return `attachment; filename="` + fallback + `"; filename*=UTF-8''` + url.PathEscape(name)
+}

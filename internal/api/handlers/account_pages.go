@@ -289,7 +289,7 @@ func (h *Handler) ExportActivityCSV(w http.ResponseWriter, r *http.Request) {
 
 	filename := fmt.Sprintf("vortanix-activity-%s.csv", time.Now().UTC().Format("2006-01-02"))
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
+	w.Header().Set("Content-Disposition", attachmentDisposition(filename))
 	_, _ = w.Write([]byte{0xEF, 0xBB, 0xBF})
 
 	cw := csv.NewWriter(w)

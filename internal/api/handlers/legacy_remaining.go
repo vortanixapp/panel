@@ -478,7 +478,7 @@ func (h *Handler) ServerFilesDownload(w http.ResponseWriter, r *http.Request) {
 		baseName = "download.bin"
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+baseName+`"`)
+	w.Header().Set("Content-Disposition", attachmentDisposition(baseName))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(content)
 }

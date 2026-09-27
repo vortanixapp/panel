@@ -413,7 +413,7 @@ func (h *Handler) PostAdminPanelTransferExport(w http.ResponseWriter, r *http.Re
 	created := time.Now().UTC().Format(time.RFC3339)
 	name := fmt.Sprintf("vortanix-panel-%s.vxt", time.Now().UTC().Format("20060102-150405"))
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
+	w.Header().Set("Content-Disposition", attachmentDisposition(name))
 	w.WriteHeader(http.StatusOK)
 
 	sealed, err := paneltransfer.Seal(w, body.Password, paneltransfer.Head{

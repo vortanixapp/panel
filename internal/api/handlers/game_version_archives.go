@@ -186,7 +186,7 @@ func (h *Handler) ServeGameArchive(w http.ResponseWriter, r *http.Request) {
 	r, cancelTransfer := extendTransfer(w, r)
 	defer cancelTransfer()
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", `attachment; filename="`+name+`"`)
+	w.Header().Set("Content-Disposition", attachmentDisposition(name))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeFile(w, r, abs)
 }
