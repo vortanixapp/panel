@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/vortanixapp/panel/internal/worker/relay"
+	"github.com/vortanixapp/panel/pkg/backupname"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
@@ -176,6 +177,9 @@ func backupObjectKey(serverID, filename string) string {
 }
 
 func (r *Runner) uploadBackup(ctx context.Context, pl offsitePayload) error {
+	if err := backupname.Check(pl.Filename); err != nil {
+		return fmt.Errorf("имя копии %q отклонено: %w", pl.Filename, err)
+	}
 	cfg, err := r.s3SettingsFor(ctx)
 	if err != nil {
 		return err
@@ -284,6 +288,9 @@ func (r *Runner) pruneRemoteBackups(ctx context.Context, serverID string, keep i
 }
 
 func (r *Runner) fetchBackup(ctx context.Context, pl offsitePayload) error {
+	if err := backupname.Check(pl.Filename); err != nil {
+		return fmt.Errorf("имя копии %q отклонено: %w", pl.Filename, err)
+	}
 	cfg, err := r.s3SettingsFor(ctx)
 	if err != nil {
 		return err

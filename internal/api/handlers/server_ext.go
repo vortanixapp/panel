@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/vortanixapp/panel/pkg/backupname"
 	"github.com/vortanixapp/panel/pkg/cronexpr"
 )
 
@@ -736,6 +737,12 @@ func (h *Handler) ServerBackupCreate(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"name"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
+	if name := strings.TrimSpace(body.Name); name != "" {
+		if err := backupname.Check(name); err != nil {
+			writeError(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+	}
 
 	var bid string
 	_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
@@ -798,6 +805,10 @@ func (h *Handler) ServerBackupDelete(w http.ResponseWriter, r *http.Request) {
 		Name string `json:"name"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
+	if err := backupname.Check(strings.TrimSpace(body.Name)); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
 	path := backupsDir + "/" + body.Name
 	_, ok := h.agentCommandForServer(w, r, id, "files_delete", map[string]any{"path": path})
 	if !ok {
@@ -816,6 +827,10 @@ func (h *Handler) ServerBackupRestore(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
 		writeError(w, http.StatusBadRequest, "name required")
+		return
+	}
+	if err := backupname.Check(strings.TrimSpace(body.Name)); err != nil {
+		writeError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 	_, ok := h.agentCommandForServer(w, r, id, "backup_restore", map[string]any{"name": body.Name})

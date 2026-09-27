@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/backupname"
 )
 
 func Mkdir(ctx context.Context, serverID, dir string) error {
@@ -32,7 +34,7 @@ func DeletePath(ctx context.Context, serverID, p string) error {
 
 func CreateBackup(ctx context.Context, serverID, name string) (string, int64, error) {
 	cname := ContainerName(serverID)
-	filename := strings.TrimSpace(name)
+	filename := backupname.Sanitize(name)
 	if filename == "" {
 		filename = fmt.Sprintf("backup-%d.tar.gz", time.Now().Unix())
 	}
@@ -59,8 +61,8 @@ func CreateBackup(ctx context.Context, serverID, name string) (string, int64, er
 
 func RestoreBackup(ctx context.Context, serverID, name string) error {
 	name = strings.TrimSpace(name)
-	if name == "" || strings.Contains(name, "/") || strings.Contains(name, "..") {
-		return fmt.Errorf("invalid backup name")
+	if err := backupname.Check(name); err != nil {
+		return err
 	}
 	cname := ContainerName(serverID)
 	wasRunning, _ := isRunning(ctx, cname)
