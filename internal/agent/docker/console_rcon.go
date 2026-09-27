@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -77,25 +76,30 @@ func forgetRcon(cname string) {
 }
 
 func discoverRcon(ctx context.Context, serverID, gameID, cname string, info *containerInfo) (rconTarget, bool) {
-	dir := serverDataDir(serverID)
+	files, filesOK := openServerFiles(serverID)
+	defer files.Close()
 	game := normalizeGame(gameID)
 	env := containerEnv(info)
 	fallback := catalogRconPort(game, env, info)
 
-	if t, ok := rconFromProperties(dir); ok {
-		return t, true
+	if filesOK {
+		if t, ok := rconFromProperties(files); ok {
+			return t, true
+		}
 	}
 	if t, ok := rconFromArgs(containerArgs(ctx, cname), fallback); ok {
 		return t, true
 	}
-	if t, ok := rconFromGameIni(dir); ok {
-		return t, true
-	}
-	if t, ok := telnetFromServerConfig(dir); ok {
-		return t, true
-	}
-	if t, ok := rconFromSourceCfg(dir, fallback); ok {
-		return t, true
+	if filesOK {
+		if t, ok := rconFromGameIni(files); ok {
+			return t, true
+		}
+		if t, ok := telnetFromServerConfig(files); ok {
+			return t, true
+		}
+		if t, ok := rconFromSourceCfg(files, fallback); ok {
+			return t, true
+		}
 	}
 	if pass := env["RCON_PASSWORD"]; pass != "" {
 		port := positiveInt(env["RCON_PORT"])
@@ -306,8 +310,8 @@ func rconFromArgs(args []string, fallback int) (rconTarget, bool) {
 	return t, t.port > 0
 }
 
-func rconFromProperties(dir string) (rconTarget, bool) {
-	content := readSmallFile(filepath.Join(dir, "server.properties"))
+func rconFromProperties(files *serverFiles) (rconTarget, bool) {
+	content := files.readSmall("server.properties")
 	if content == "" {
 		return rconTarget{}, false
 	}
@@ -338,9 +342,9 @@ var gameIniFiles = []string{
 	"Pal/Saved/Config/WindowsServer/PalWorldSettings.ini",
 }
 
-func rconFromGameIni(dir string) (rconTarget, bool) {
+func rconFromGameIni(files *serverFiles) (rconTarget, bool) {
 	for _, rel := range gameIniFiles {
-		content := readSmallFile(filepath.Join(dir, filepath.FromSlash(rel)))
+		content := files.readSmall(rel)
 		if content == "" || !strings.EqualFold(settingValue(content, "RCONEnabled"), "true") {
 			continue
 		}
@@ -353,9 +357,8 @@ func rconFromGameIni(dir string) (rconTarget, bool) {
 			return rconTarget{port: port, password: pass}, true
 		}
 	}
-	matches, _ := filepath.Glob(filepath.Join(dir, "Zomboid", "Server", "*.ini"))
-	for _, path := range matches {
-		content := readSmallFile(path)
+	for _, rel := range files.glob("Zomboid/Server/*.ini") {
+		content := files.readSmall(rel)
 		port := positiveInt(settingValue(content, "RCONPort"))
 		pass := settingValue(content, "RCONPassword")
 		if port > 0 && pass != "" {
@@ -365,14 +368,13 @@ func rconFromGameIni(dir string) (rconTarget, bool) {
 	return rconTarget{}, false
 }
 
-func rconFromSourceCfg(dir string, port int) (rconTarget, bool) {
+func rconFromSourceCfg(files *serverFiles, port int) (rconTarget, bool) {
 	if port <= 0 {
 		return rconTarget{}, false
 	}
 	for _, pattern := range []string{"*/cfg/server.cfg", "game/*/cfg/server.cfg"} {
-		matches, _ := filepath.Glob(filepath.Join(dir, filepath.FromSlash(pattern)))
-		for _, path := range matches {
-			if pass := cfgValue(readSmallFile(path), "rcon_password"); pass != "" {
+		for _, rel := range files.glob(pattern) {
+			if pass := cfgValue(files.readSmall(rel), "rcon_password"); pass != "" {
 				return rconTarget{port: port, password: pass}, true
 			}
 		}
@@ -380,8 +382,8 @@ func rconFromSourceCfg(dir string, port int) (rconTarget, bool) {
 	return rconTarget{}, false
 }
 
-func telnetFromServerConfig(dir string) (rconTarget, bool) {
-	content := readSmallFile(filepath.Join(dir, "serverconfig.xml"))
+func telnetFromServerConfig(files *serverFiles) (rconTarget, bool) {
+	content := files.readSmall("serverconfig.xml")
 	if content == "" || strings.EqualFold(xmlProperty(content, "TelnetEnabled"), "false") {
 		return rconTarget{}, false
 	}
@@ -427,18 +429,6 @@ func cfgValue(content, key string) string {
 		value = strings.Trim(rest, `"`)
 	}
 	return value
-}
-
-func readSmallFile(path string) string {
-	st, err := os.Stat(path)
-	if err != nil || st.IsDir() || st.Size() > rconFileLimit {
-		return ""
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return ""
-	}
-	return string(data)
 }
 
 func positiveInt(s string) int {
