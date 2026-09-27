@@ -21,6 +21,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/httplog"
 	"github.com/vortanixapp/panel/pkg/httpprom"
 	"github.com/vortanixapp/panel/pkg/netaddr"
+	"github.com/vortanixapp/panel/pkg/panelsecret"
 )
 
 func main() {
@@ -28,7 +29,10 @@ func main() {
 	port := env("PORT", "8084")
 	dbURL := env("DATABASE_URL", "postgres://vortanix:vortanix@localhost:5432/vortanix?sslmode=disable")
 	redisURL := env("REDIS_URL", "redis://localhost:6379/0")
-	secret := env("INTERNAL_SECRET", "dev-internal-secret")
+	secret, secretErr := panelsecret.Internal(os.Getenv("INTERNAL_SECRET"))
+	if secretErr != nil {
+		log.Fatalf("%v", secretErr)
+	}
 	retentionDays := envInt("METRICS_RETENTION_DAYS", 7)
 
 	ctx := context.Background()

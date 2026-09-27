@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"os"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -12,13 +13,37 @@ import (
 )
 
 const (
-	DevJWTSecret  = "dev-secret-change-in-production"
-	jwtSettingKey = "security.jwt_secret"
+	DevJWTSecret      = "dev-secret-change-in-production"
+	DevInternalSecret = "dev-internal-secret"
+	jwtSettingKey     = "security.jwt_secret"
 )
 
 func configured(value string) bool {
 	value = strings.TrimSpace(value)
 	return value != "" && value != DevJWTSecret
+}
+
+func Internal(envValue string) (string, error) {
+	value := strings.TrimSpace(envValue)
+	if value != "" && value != DevInternalSecret {
+		return value, nil
+	}
+	if DevSecretsAllowed() {
+		return DevInternalSecret, nil
+	}
+	return "", errors.New(
+		"INTERNAL_SECRET не задан или оставлен dev-значением: сгенерируйте его " +
+			"(openssl rand -base64 32) и пропишите в deploy/.env — иначе внутренние " +
+			"API relay и updater открыты всем, кто до них дотянется. " +
+			"Для локальной разработки: VORTANIX_DEV=1")
+}
+
+func DevSecretsAllowed() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("VORTANIX_DEV"))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 func JWT(ctx context.Context, db *pgxpool.Pool, envValue string) (string, error) {

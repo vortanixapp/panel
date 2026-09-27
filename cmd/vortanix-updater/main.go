@@ -11,6 +11,7 @@ import (
 
 	"github.com/vortanixapp/panel/internal/updater"
 	"github.com/vortanixapp/panel/pkg/netaddr"
+	"github.com/vortanixapp/panel/pkg/panelsecret"
 )
 
 func main() {
@@ -23,9 +24,9 @@ func main() {
 		}
 	}
 
-	secret := os.Getenv("INTERNAL_SECRET")
-	if secret == "" {
-		log.Fatal("INTERNAL_SECRET is required")
+	secret, secretErr := panelsecret.Internal(os.Getenv("INTERNAL_SECRET"))
+	if secretErr != nil {
+		log.Fatalf("%v", secretErr)
 	}
 	port := os.Getenv("PORT")
 	if port == "" {

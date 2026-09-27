@@ -18,6 +18,7 @@ import (
 	"github.com/vortanixapp/panel/internal/worker/relay"
 	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/netaddr"
+	"github.com/vortanixapp/panel/pkg/panelsecret"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 	"strings"
 )
@@ -26,7 +27,10 @@ func main() {
 	_ = godotenv.Load()
 	dbURL := env("DATABASE_URL", "postgres://vortanix:vortanix@localhost:5432/vortanix?sslmode=disable")
 	relayURL := env("RELAY_URL", "http://localhost:8082")
-	secret := env("INTERNAL_SECRET", "dev-internal-secret")
+	secret, secretErr := panelsecret.Internal(os.Getenv("INTERNAL_SECRET"))
+	if secretErr != nil {
+		log.Fatalf("%v", secretErr)
+	}
 	natsURL := env("NATS_URL", "")
 	mailCfg := mailer.Config{
 		Host:        env("SMTP_HOST", ""),

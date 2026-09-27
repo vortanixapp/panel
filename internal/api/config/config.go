@@ -57,7 +57,7 @@ func Load() Config {
 		AccessTokenTTLMin:   accessMin,
 		RefreshTokenTTLDays: refreshDays,
 		RelayURL:            getEnv("RELAY_URL", "http://localhost:8082"),
-		InternalSecret:      getEnv("INTERNAL_SECRET", "dev-internal-secret"),
+		InternalSecret:      os.Getenv("INTERNAL_SECRET"),
 		MigrationsDir:       getEnv("CORE_MIGRATIONS_DIR", "migrations/core"),
 		StripeWebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
 		EggCDNPrefix:        getEnv("EGG_CDN_PREFIX", ""),

@@ -65,6 +65,12 @@ func main() {
 	}
 	defer redisCache.Close()
 
+	internalSecret, err := panelsecret.Internal(cfg.InternalSecret)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	cfg.InternalSecret = internalSecret
+
 	jwtSecret, err := panelsecret.JWT(ctx, pools.Write, cfg.JWTSecret)
 	if err != nil {
 		log.Fatalf("ключ подписи токенов: %v", err)
@@ -123,7 +129,6 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(prom.Handler)
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
 	r.Use(httplog.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(30 * time.Second))
