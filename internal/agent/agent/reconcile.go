@@ -17,10 +17,15 @@ const (
 	firewallApplyTimeout = 2 * time.Minute
 	firewallFailInterval = time.Hour
 	dockerEventsRetry    = 10 * time.Second
+
+	// Ключ таймера пересборки изоляции: идентификатором сервера быть не может,
+	// он не проходит проверку safeServerID.
+	isolationTimerKey = "!iso"
 )
 
 type firewallKeeper struct {
 	mu     sync.Mutex
+	isoMu  sync.Mutex
 	timers map[string]*time.Timer
 	failAt map[string]time.Time
 	apply  func(ctx context.Context, serverID string) error
@@ -89,6 +94,34 @@ func (k *firewallKeeper) reconcileAll() {
 			k.applyNow(id)
 		}
 	}
+	k.applyIsolation()
+}
+
+func (k *firewallKeeper) scheduleIsolation() {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	if t, ok := k.timers[isolationTimerKey]; ok {
+		t.Reset(firewallDebounce)
+		return
+	}
+	k.timers[isolationTimerKey] = time.AfterFunc(firewallDebounce, func() {
+		k.mu.Lock()
+		delete(k.timers, isolationTimerKey)
+		k.mu.Unlock()
+		k.applyIsolation()
+	})
+}
+
+// applyIsolation держит свежим запрет обмена между игровыми контейнерами:
+// адреса контейнеров Docker выдаёт заново при каждом запуске.
+func (k *firewallKeeper) applyIsolation() {
+	k.isoMu.Lock()
+	defer k.isoMu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), firewallApplyTimeout)
+	defer cancel()
+	if err := docker.ApplyGameIsolation(ctx); err != nil {
+		log.Printf("запрет обмена между игровыми контейнерами не применён: %v", err)
+	}
 }
 
 func (k *firewallKeeper) watch() {
@@ -123,6 +156,7 @@ func (k *firewallKeeper) follow() error {
 		}
 		if id := docker.ServerIDFromContainer(name); id != "" {
 			k.schedule(id)
+			k.scheduleIsolation()
 		}
 	}
 	return cmd.Wait()
