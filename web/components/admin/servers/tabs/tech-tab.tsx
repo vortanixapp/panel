@@ -7,6 +7,7 @@ import { Btn, EmptyState, InfoRow, Panel, VX_CODE } from "@/components/vx/panel-
 import { Skeleton } from "@/components/ui/skeleton";
 import { AssignIPDialog } from "@/components/admin/servers/assign-ip-dialog";
 import { MigrateServerDialog } from "@/components/admin/servers/migrate-server-dialog";
+import { AdminServerPorts } from "@/components/admin/servers/admin-server-ports";
 import { fetchAdminServerCard, fetchServerMigrations } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { localeTag } from "@/lib/i18n";
@@ -72,20 +73,13 @@ export function AdminServerTechTab() {
           k={t("servers.admin.tech.primary_port")}
           v={server?.port ? String(server.port) : dash}
         />
-        {ports.length === 0 ? (
-          <InfoRow k={t("servers.admin.tech.extra_ports")} v={dash} />
-        ) : (
-          ports.map((port, index) => (
-            <InfoRow
-              key={`${port.port}-${index}`}
-              k={`${t("servers.admin.tech.extra_ports")} ${index + 1}`}
-              v={`${port.port ?? dash}${port.protocol ? ` / ${port.protocol}` : ""}${
-                port.purpose ? ` · ${port.purpose}` : ""
-              }`}
-            />
-          ))
-        )}
+        <InfoRow
+          k={t("servers.admin.tech.extra_ports")}
+          v={ports.length === 0 ? dash : String(ports.length)}
+        />
       </Panel>
+
+      <AdminServerPorts serverId={id} />
 
       <Panel title={t("servers.admin.tech.section_container")}>
         <InfoRow

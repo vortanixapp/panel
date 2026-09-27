@@ -305,6 +305,11 @@ export const servers = {
   "servers.ports.empty": "No extra ports yet",
   "servers.ports.delete_confirm": "Remove the port {port}/{protocol}?",
   "servers.ports.is_primary": "primary",
+  "servers.ports.staff_only": "Extra ports are issued by support. Open a ticket and tell us which port and protocol you need, and what for.",
+  "servers.ports.staff_only_cta": "Open a ticket",
+  "servers.admin.ports.title": "Extra ports",
+  "servers.admin.ports.hint": "Clients can only view ports. Issue them on request: check why the port is needed and keep node service ports free.",
+  "servers.admin.ports.reserved": "The port belongs to node services or is out of the allowed range.",
 
   "servers.firewall.rule_added": "Rule added",
   "servers.firewall.create_error": "Could not create the rule",

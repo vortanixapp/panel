@@ -396,12 +396,7 @@ func (h *Handler) ServerFirewallToggle(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
-func (h *Handler) ServerPortsList(w http.ResponseWriter, r *http.Request) {
-	serverID := chi.URLParam(r, "id")
-	_, ok := h.authorizeServerTab(w, r, serverID, "ports_list")
-	if !ok {
-		return
-	}
+func (h *Handler) loadServerPortRows(r *http.Request, serverID string) ([]map[string]any, int, error) {
 	var primaryPort int
 	_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
 		SELECT COALESCE(primary_port, 0) FROM core.servers
@@ -414,8 +409,7 @@ func (h *Handler) ServerPortsList(w http.ResponseWriter, r *http.Request) {
 		ORDER BY port ASC, created_at ASC
 	`, serverID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "ports load failed")
-		return
+		return nil, primaryPort, err
 	}
 	defer rows.Close()
 	ports := make([]map[string]any, 0)
@@ -433,140 +427,26 @@ func (h *Handler) ServerPortsList(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
+	return ports, primaryPort, rows.Err()
+}
+
+func (h *Handler) ServerPortsList(w http.ResponseWriter, r *http.Request) {
+	serverID := chi.URLParam(r, "id")
+	_, ok := h.authorizeServerTab(w, r, serverID, "ports_list")
+	if !ok {
+		return
+	}
+	ports, primaryPort, err := h.loadServerPortRows(r, serverID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "ports load failed")
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ports":        ports,
 		"primary_port": primaryPort,
+		// Порт выдаёт персонал по обращению — клиент порты только видит.
+		"can_edit_ports": false,
 	})
-}
-
-func (h *Handler) ServerPortsCreate(w http.ResponseWriter, r *http.Request) {
-	serverID := chi.URLParam(r, "id")
-	_, ok := h.authorizeServerTab(w, r, serverID, "ports_create")
-	if !ok {
-		return
-	}
-	var body struct {
-		Port     int    `json:"port"`
-		Protocol string `json:"protocol"`
-		Purpose  string `json:"purpose"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid body")
-		return
-	}
-	if body.Port < 1 || body.Port > 65535 {
-		writeError(w, http.StatusBadRequest, "port must be in range 1..65535")
-		return
-	}
-	body.Protocol = strings.ToLower(strings.TrimSpace(body.Protocol))
-	if body.Protocol == "" {
-		body.Protocol = "udp"
-	}
-	if body.Protocol != "tcp" && body.Protocol != "udp" && body.Protocol != "both" {
-		writeError(w, http.StatusBadRequest, "protocol must be tcp, udp or both")
-		return
-	}
-	body.Purpose = strings.TrimSpace(body.Purpose)
-	if body.Purpose == "" {
-		body.Purpose = "game"
-	}
-	var primaryPort int
-	var nodeID string
-	if err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		SELECT COALESCE(primary_port, 0), COALESCE(node_id::text, '')
-		FROM core.servers WHERE id = $1
-	`, serverID).Scan(&primaryPort, &nodeID); err != nil {
-		writeError(w, http.StatusNotFound, "server not found")
-		return
-	}
-	if primaryPort > 0 && body.Port == primaryPort {
-		writeError(w, http.StatusConflict, "port conflicts with primary port")
-		return
-	}
-	if nodeID != "" {
-		var occupied bool
-		_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
-			SELECT EXISTS(
-				SELECT 1 FROM core.servers
-				WHERE node_id::text = $1 AND id <> $2
-				  AND COALESCE(primary_port, 0) = $3
-			)
-		`, nodeID, serverID, body.Port).Scan(&occupied)
-		if occupied {
-			writeError(w, http.StatusConflict, "port already occupied on node")
-			return
-		}
-	}
-	var duplicate bool
-	_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
-		SELECT EXISTS(
-			SELECT 1 FROM core.server_ports
-			WHERE server_id = $1 AND port = $2
-			  AND (protocol = 'both' OR $3 = 'both' OR protocol = $3)
-		)
-	`, serverID, body.Port, body.Protocol).Scan(&duplicate)
-	if duplicate {
-		writeError(w, http.StatusConflict, "port already exists")
-		return
-	}
-	var portID string
-	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		INSERT INTO core.server_ports ( server_id, port, protocol, purpose, meta)
-		VALUES ( $1, $2, $3, $4, '{}'::jsonb)
-		RETURNING id::text
-	`, serverID, body.Port, body.Protocol, body.Purpose).Scan(&portID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "create port failed")
-		return
-	}
-	if !h.syncPortsForServerHTTP(w, r, serverID) {
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-			DELETE FROM core.server_ports WHERE id = $1 AND server_id = $2
-		`, portID, serverID)
-		return
-	}
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"id":       portID,
-		"port":     body.Port,
-		"protocol": body.Protocol,
-		"purpose":  body.Purpose,
-	})
-}
-
-func (h *Handler) ServerPortsDelete(w http.ResponseWriter, r *http.Request) {
-	serverID := chi.URLParam(r, "id")
-	_, ok := h.authorizeServerTab(w, r, serverID, "ports_delete")
-	if !ok {
-		return
-	}
-	var body struct {
-		ID string `json:"id"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	body.ID = strings.TrimSpace(body.ID)
-	if body.ID == "" {
-		writeError(w, http.StatusBadRequest, "id required")
-		return
-	}
-	var port int
-	var proto, purpose string
-	if err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		DELETE FROM core.server_ports
-		WHERE id = $1 AND server_id = $2
-		RETURNING port, protocol, COALESCE(purpose, '')
-	`, body.ID, serverID).Scan(&port, &proto, &purpose); err != nil {
-		writeError(w, http.StatusNotFound, "port not found")
-		return
-	}
-	if !h.syncPortsForServerHTTP(w, r, serverID) {
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-			INSERT INTO core.server_ports (id, server_id, port, protocol, purpose, meta)
-			SELECT $1::uuid, $2::uuid, $3, $4, $5, '{}'::jsonb
-			WHERE NOT EXISTS (SELECT 1 FROM core.server_ports WHERE id = $1::uuid)
-		`, body.ID, serverID, port, proto, purpose)
-		return
-	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 func (h *Handler) ServerFriendsList(w http.ResponseWriter, r *http.Request) {
@@ -686,7 +566,7 @@ func (h *Handler) ServerFriendsUpdate(w http.ResponseWriter, r *http.Request) {
 		"can_view_mysql", "can_view_cron", "can_view_firewall", "can_view_ports",
 		"can_view_settings", "can_view_friends",
 		"can_start", "can_stop", "can_restart", "can_reinstall", "can_console_command",
-		"can_files", "can_cron_manage", "can_firewall_manage", "can_ports_manage",
+		"can_files", "can_cron_manage", "can_firewall_manage",
 		"can_settings_edit",
 	}
 	perms := map[string]bool{}

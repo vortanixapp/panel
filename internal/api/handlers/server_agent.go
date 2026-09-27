@@ -164,8 +164,6 @@ func agentActionPermission(action string) string {
 		return "can_firewall_manage"
 	case "ports_list":
 		return "can_view_ports"
-	case "ports_create", "ports_delete":
-		return "can_ports_manage"
 	case "friends_list":
 		return "can_view_friends"
 	case "backup_schedule_read":

@@ -1196,7 +1196,6 @@ export type ServerViewerPermissions = {
   can_files?: boolean;
   can_cron_manage?: boolean;
   can_firewall_manage?: boolean;
-  can_ports_manage?: boolean;
   can_settings_edit?: boolean;
 };
 
@@ -3338,26 +3337,33 @@ export type ServerPortEntry = {
 };
 
 export async function fetchServerPorts(serverId: string) {
-  return apiFetch<{ ports: ServerPortEntry[]; primary_port?: number }>(`/v1/servers/${serverId}/ports/list`, {
-    method: "POST",
-    body: JSON.stringify({}),
-  });
+  return apiFetch<{ ports: ServerPortEntry[]; primary_port?: number; can_edit_ports?: boolean }>(
+    `/v1/servers/${serverId}/ports/list`,
+    { method: "POST", body: JSON.stringify({}) }
+  );
 }
 
-export async function createServerPort(
+// Дополнительные порты выдаёт только персонал: клиентских методов создания
+// и удаления больше нет, работа идёт через раздел сервера в админке.
+export async function adminFetchServerPorts(serverId: string) {
+  return apiFetch<{ ports: ServerPortEntry[]; primary_port?: number; min_port?: number }>(
+    `/v1/admin/servers/${serverId}/ports`
+  );
+}
+
+export async function adminCreateServerPort(
   serverId: string,
   payload: { port: number; protocol: "tcp" | "udp" | "both"; purpose?: string }
 ) {
-  return apiFetch<{ id: string }>(`/v1/servers/${serverId}/ports/create`, {
+  return apiFetch<{ id: string }>(`/v1/admin/servers/${serverId}/ports`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export async function deleteServerPort(serverId: string, id: string) {
-  return apiFetch<{ status: string }>(`/v1/servers/${serverId}/ports/delete`, {
-    method: "POST",
-    body: JSON.stringify({ id }),
+export async function adminDeleteServerPort(serverId: string, id: string) {
+  return apiFetch<{ status: string }>(`/v1/admin/servers/${serverId}/ports/${id}`, {
+    method: "DELETE",
   });
 }
 

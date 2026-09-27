@@ -59,7 +59,6 @@ const ACTION_PERMS: { key: keyof ServerViewerPermissions; labelKey: string }[] =
   { key: "can_files", labelKey: "servers.friends.action.files" },
   { key: "can_cron_manage", labelKey: "server.tab.cron" },
   { key: "can_firewall_manage", labelKey: "server.tab.firewall" },
-  { key: "can_ports_manage", labelKey: "server.tab.ports" },
   { key: "can_settings_edit", labelKey: "server.tab.settings" },
 ];
 

@@ -303,6 +303,11 @@ export const servers = {
   "servers.ports.empty": "Дополнительных портов пока нет",
   "servers.ports.delete_confirm": "Удалить порт {port}/{protocol}?",
   "servers.ports.is_primary": "основной",
+  "servers.ports.staff_only": "Дополнительные порты выдаёт поддержка. Напишите в обращение, какой порт и протокол нужны и для чего.",
+  "servers.ports.staff_only_cta": "Открыть обращение",
+  "servers.admin.ports.title": "Дополнительные порты",
+  "servers.admin.ports.hint": "Клиент порты только видит. Выдавайте по обращению: проверьте, зачем нужен порт, и не занимайте порты служб ноды.",
+  "servers.admin.ports.reserved": "Порт занят службами ноды или вне допустимого диапазона.",
 
   "servers.firewall.rule_added": "Правило добавлено",
   "servers.firewall.create_error": "Ошибка создания",

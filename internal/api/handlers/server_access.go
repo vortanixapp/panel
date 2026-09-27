@@ -31,7 +31,6 @@ var viewerPermissionKeys = []string{
 	"can_files",
 	"can_cron_manage",
 	"can_firewall_manage",
-	"can_ports_manage",
 	"can_settings_edit",
 }
 

@@ -82,7 +82,7 @@ func portsFor(base int, layout []gamecatalog.PortSpec) []Port {
 
 func blockFree(base, span int, busy map[int]bool) bool {
 	for p := base; p < base+span; p++ {
-		if busy[p] {
+		if busy[p] || Reserved(p) {
 			return false
 		}
 	}

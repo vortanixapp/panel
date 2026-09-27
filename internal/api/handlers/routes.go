@@ -238,8 +238,6 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/{id}/ftp/reset-password", h.ServerFtpResetPassword)
 			r.Post("/{id}/ftp/delete", h.ServerFtpDelete)
 			r.Post("/{id}/ports/list", h.ServerPortsList)
-			r.Post("/{id}/ports/create", h.ServerPortsCreate)
-			r.Post("/{id}/ports/delete", h.ServerPortsDelete)
 		})
 
 		r.Route("/v1/admin", func(r chi.Router) {
@@ -483,6 +481,9 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/servers/{id}/migrate", h.AdminServerMigrate)
 			r.Post("/servers/{id}/ip", h.AdminServerAssignIP)
 			r.Post("/servers/{id}/ip/release", h.AdminServerReleaseIP)
+			r.Get("/servers/{id}/ports", h.AdminServerPortsList)
+			r.Post("/servers/{id}/ports", h.AdminServerPortCreate)
+			r.Delete("/servers/{id}/ports/{portId}", h.AdminServerPortDelete)
 			r.Get("/mysql", h.AdminMysqlIndex)
 			r.Post("/mysql/instance/create", h.AdminMysqlInstanceCreate)
 			r.Patch("/mysql/instance/update", h.AdminMysqlInstanceUpdate)
