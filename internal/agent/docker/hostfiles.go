@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -63,7 +62,7 @@ func readFileFromHost(serverID, containerTarget string) ([]byte, error) {
 	return root.ReadFile(rel)
 }
 
-func writeFileToHost(ctx context.Context, serverID, containerTarget string, content []byte) error {
+func writeFileToHost(_ context.Context, serverID, containerTarget string, content []byte) error {
 	root, rel, err := openServerPath(serverID, containerTarget)
 	if err != nil {
 		return err
@@ -116,7 +115,7 @@ func writeFileToHost(ctx context.Context, serverID, containerTarget string, cont
 	if err := root.Chmod(tmp, mode); err != nil {
 		return err
 	}
-	copyOwnership(ctx, root, reference, tmp)
+	applyOwnership(root, reference, tmp)
 	if err := root.Rename(tmp, rel); err != nil {
 		return err
 	}
@@ -124,7 +123,7 @@ func writeFileToHost(ctx context.Context, serverID, containerTarget string, cont
 	return nil
 }
 
-func mkdirOnHost(ctx context.Context, serverID, containerTarget string) error {
+func mkdirOnHost(_ context.Context, serverID, containerTarget string) error {
 	root, rel, err := openServerPath(serverID, containerTarget)
 	if err != nil {
 		return err
@@ -136,7 +135,7 @@ func mkdirOnHost(ctx context.Context, serverID, containerTarget string) error {
 	if err := root.MkdirAll(rel, 0o755); err != nil {
 		return err
 	}
-	copyOwnership(ctx, root, filepath.Dir(rel), rel)
+	applyOwnership(root, filepath.Dir(rel), rel)
 	return nil
 }
 
@@ -156,17 +155,6 @@ func deleteOnHost(serverID, containerTarget string) error {
 		return err
 	}
 	return root.RemoveAll(rel)
-}
-
-func copyOwnership(ctx context.Context, root *os.Root, reference, target string) {
-	base := root.Name()
-	if reference == "." {
-		reference = ""
-	}
-	const script = `o=$(stat -c '%u:%g' "$1") || exit 0
-chown -h "$o" "$2" || true`
-	_ = exec.CommandContext(ctx, "sh", "-c", script, "sh",
-		filepath.Join(base, reference), filepath.Join(base, target)).Run()
 }
 
 func listFilesOnHost(serverID, containerTarget string) ([]FileEntry, error) {

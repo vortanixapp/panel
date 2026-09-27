@@ -188,12 +188,13 @@ func memoryEnvFor(key string, limits map[string]any) []string {
 	return env
 }
 
-func ReapplyOwnership(ctx context.Context, serverID string) {
-	dir := serverDataDir(serverID)
-	const script = `o=$(stat -c '%u:%g' "$1") || exit 0
-chown -h -R "$o" "$1" || true
-chmod -R g+rwX "$1" || true`
-	_ = exec.CommandContext(ctx, "sh", "-c", script, "sh", dir).Run()
+func ReapplyOwnership(_ context.Context, serverID string) {
+	root, err := serverRootFor(serverID)
+	if err != nil {
+		return
+	}
+	defer root.Close()
+	_ = reapplyOwnershipTree(root)
 }
 
 func serverDataDir(serverID string) string {
