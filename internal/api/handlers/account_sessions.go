@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,18 +34,33 @@ func refreshTTLFromRemaining(remaining time.Duration, defaultTTL time.Duration) 
 	return sessionRefreshTTL
 }
 
+func trustedProxyHops() int {
+	if raw := strings.TrimSpace(os.Getenv("TRUSTED_PROXY_HOPS")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n >= 0 {
+			return n
+		}
+	}
+	return 1
+}
+
 func clientIP(r *http.Request) string {
-	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
-		return strings.TrimSpace(strings.Split(ip, ",")[0])
+	hops := trustedProxyHops()
+	if hops > 0 {
+		if list := r.Header.Get("X-Forwarded-For"); list != "" {
+			parts := strings.Split(list, ",")
+			idx := len(parts) - hops
+			if idx < 0 {
+				idx = 0
+			}
+			if ip := strings.TrimSpace(parts[idx]); ip != "" {
+				return ip
+			}
+		}
+		if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+			return ip
+		}
 	}
-	if ip := r.Header.Get("X-Real-IP"); ip != "" {
-		return ip
-	}
-	host := r.RemoteAddr
-	if i := strings.LastIndex(host, ":"); i > 0 {
-		return host[:i]
-	}
-	return host
+	return hostOnly(r.RemoteAddr)
 }
 
 func (h *Handler) createUserSession(ctx context.Context, userID, ip, ua string) (string, error) {

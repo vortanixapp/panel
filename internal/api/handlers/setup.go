@@ -32,13 +32,7 @@ func hostOnly(host string) string {
 }
 
 func clientIPOf(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		if idx := strings.IndexByte(fwd, ','); idx > 0 {
-			return strings.TrimSpace(fwd[:idx])
-		}
-		return strings.TrimSpace(fwd)
-	}
-	return hostOnly(r.RemoteAddr)
+	return clientIP(r)
 }
 
 var setupRateLimiter = &attemptLimiter{attempt: make(map[string]*attemptWindow)}
