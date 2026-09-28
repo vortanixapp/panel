@@ -61,7 +61,11 @@ transmitted in clear text.
 **Network access.** The panel machine requires inbound ports 80 and 443. A game
 node requires no inbound ports for the panel — the agent establishes an
 outbound connection. Only the ports used by the game servers themselves need to
-be opened.
+be opened, plus 19999/TCP: the agent answers latency probes from the buyer's
+browser there, so the rent page can show the ping next to each location. The
+port accepts a connection and closes it immediately, carrying no data; closing
+it in the firewall only hides the ping. The number is changed with the
+`PING_PORT` variable of the agent container, and `off` disables the probe.
 
 ## Preparing the machine
 

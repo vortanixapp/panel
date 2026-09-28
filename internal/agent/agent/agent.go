@@ -58,6 +58,7 @@ type Agent struct {
 	firewall            *firewallKeeper
 	metricsBusy         atomic.Bool
 	serversRunning      atomic.Int64
+	pingPort            atomic.Int64
 	serversTotal        atomic.Int64
 }
 
@@ -170,6 +171,7 @@ func (a *Agent) Run() {
 	}
 	safeGo("cron", a.cron.run)
 	safeGo("firewall", a.firewall.watch)
+	a.startPingProbe()
 	backoff := reconnectMin
 	for {
 		if err := a.connect(); err != nil {

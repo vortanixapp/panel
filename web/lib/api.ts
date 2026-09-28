@@ -2315,6 +2315,8 @@ export type RentNode = {
   code?: string;
   is_online?: boolean;
   servers_count?: number;
+  ping_host?: string;
+  ping_port?: number;
 };
 
 export type RentTariff = {

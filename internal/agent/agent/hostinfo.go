@@ -53,6 +53,7 @@ type hostFacts struct {
 	UptimeSec   int64        `json:"uptime_sec,omitempty"`
 	DataDir     string       `json:"data_dir,omitempty"`
 	Quota       bool         `json:"quota"`
+	PingPort    int          `json:"ping_port,omitempty"`
 	Docker      *dockerFacts `json:"docker,omitempty"`
 	DockerError string       `json:"docker_error,omitempty"`
 }
@@ -80,6 +81,7 @@ func (a *Agent) collectFacts(parent context.Context) (hostFacts, selfFacts) {
 		UptimeSec: docker.HostUptimeSeconds(),
 		DataDir:   docker.HostDataDir(),
 		Quota:     docker.QuotaSupported(),
+		PingPort:  int(a.pingPort.Load()),
 	}
 	if name, err := os.Hostname(); err == nil {
 		host.Hostname = name

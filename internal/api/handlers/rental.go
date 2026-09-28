@@ -255,7 +255,8 @@ func (h *Handler) queryRentNodes(ctx context.Context) []map[string]any {
 			COALESCE(n.meta->>'code', n.fqdn, ''),
 			COALESCE(d.status, 'unknown'), d.last_seen_at,
 			(SELECT COUNT(*)::int FROM core.servers s WHERE s.node_id = n.id),
-			COALESCE(n.maintenance_mode, false), COALESCE(n.maintenance_reason, '')
+			COALESCE(n.maintenance_mode, false), COALESCE(n.maintenance_reason, ''),
+			COALESCE(n.fqdn, ''), COALESCE((d.host->>'ping_port')::int, 0)
 		FROM core.nodes n
 		LEFT JOIN core.node_daemons d ON d.node_id = n.id
 		WHERE COALESCE(n.is_active, n.active, true) = true
@@ -272,17 +273,25 @@ func (h *Handler) queryRentNodes(ctx context.Context) []map[string]any {
 		var serversCount int
 		var maintenance bool
 		var maintenanceReason string
+		var fqdn string
+		var pingPort int
 		if rows.Scan(&id, &name, &country, &code, &daemonStatus, &daemonLastSeen, &serversCount,
-			&maintenance, &maintenanceReason) != nil {
+			&maintenance, &maintenanceReason, &fqdn, &pingPort) != nil {
 			continue
 		}
-		list = append(list, map[string]any{
+		online := agentDaemonOnline(daemonStatus, daemonLastSeen)
+		item := map[string]any{
 			"id": id, "name": name, "country": country, "code": code,
-			"is_online":          agentDaemonOnline(daemonStatus, daemonLastSeen),
+			"is_online":          online,
 			"servers_count":      serversCount,
 			"maintenance_mode":   maintenance,
 			"maintenance_reason": maintenanceReason,
-		})
+		}
+		if online && h.nodePingReachable(ctx, fqdn, pingPort) {
+			item["ping_host"] = fqdn
+			item["ping_port"] = pingPort
+		}
+		list = append(list, item)
 	}
 	return list
 }

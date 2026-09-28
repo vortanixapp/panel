@@ -83,6 +83,8 @@ docker run -d \
   -e "AGENT_TOKEN=$AGENT_TOKEN" \
   -e "NODE_ID=$NODE_ID" \
   -e "VORTANIX_DATA_DIR=/var/lib/vortanix/servers" \
+  -e "PING_PORT=${PING_PORT:-19999}" \
+  -p "${PING_PORT:-19999}:${PING_PORT:-19999}" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /dev:/dev \
   -v /var/lib/vortanix/servers:/var/lib/vortanix/servers \

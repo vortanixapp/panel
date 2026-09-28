@@ -42,6 +42,7 @@ import {
   tariffRange,
 } from "@/lib/tariff-pricing";
 import { useT } from "@/hooks/use-translations";
+import { useLocationPing } from "@/hooks/use-location-ping";
 import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
 const STEPS = [
@@ -112,6 +113,34 @@ function locationNote(node: RentNode): string {
   const load =
     count > 0 ? t("billing.rent.servers_count", { count }) : t("billing.rent.free");
   return base ? `${base} · ${load}` : load;
+}
+
+function pingColor(ms: number): string {
+  if (ms <= 60) return "text-[var(--vx-ok)]";
+  if (ms <= 130) return "text-[var(--vx-warn)]";
+  return "text-[var(--vx-danger)]";
+}
+
+function PingValue({ value }: { value: number | null | undefined }) {
+  if (value === undefined) {
+    return (
+      <span className={cn("font-mono text-[11px]", DIM)}>
+        {t("billing.rent.ping_measuring")}
+      </span>
+    );
+  }
+  if (value === null) {
+    return (
+      <span className={cn("font-mono text-[11px]", DIM)}>
+        {t("billing.rent.ping_unknown")}
+      </span>
+    );
+  }
+  return (
+    <span className={cn("font-mono text-[11px]", pingColor(value))}>
+      {t("billing.rent.ping_value", { ms: value })}
+    </span>
+  );
 }
 
 export function RentServerPageContent() {
@@ -196,6 +225,15 @@ export function RentServerPageContent() {
 
   const selectedGame = useMemo(() => games.find((g) => g.id === gameId), [games, gameId]);
   const selectedNode = useMemo(() => nodes.find((n) => n.id === nodeId), [nodes, nodeId]);
+
+  const pingTargets = useMemo(
+    () =>
+      nodes
+        .filter((n) => n.is_online !== false && n.ping_host && n.ping_port)
+        .map((n) => ({ id: n.id, host: String(n.ping_host), port: Number(n.ping_port) })),
+    [nodes]
+  );
+  const pings = useLocationPing(pingTargets);
 
   const tariffs = useMemo(
     () =>
@@ -696,7 +734,14 @@ export function RentServerPageContent() {
                     </div>
 
                     <div className={cn(CARD, "flex flex-col gap-4 p-5")}>
-                      <span className="text-[15px] font-semibold">{t("common.location")}</span>
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <span className="text-[15px] font-semibold">{t("common.location")}</span>
+                        {pingTargets.length > 0 && (
+                          <span className={cn("text-[11px]", DIM)}>
+                            {t("billing.rent.ping_hint")}
+                          </span>
+                        )}
+                      </div>
                       {nodes.length === 0 ? (
                         <EmptyState>{t("billing.rent.no_locations")}</EmptyState>
                       ) : (
@@ -724,15 +769,20 @@ export function RentServerPageContent() {
                                     {locationNote(node)}
                                   </span>
                                 </span>
-                                <span
-                                  className={cn(
-                                    "shrink-0 font-mono text-[12px]",
-                                    online ? "text-[var(--vx-ok)]" : "text-[var(--vx-warn)]"
+                                <span className="flex shrink-0 flex-col items-end gap-0.5">
+                                  <span
+                                    className={cn(
+                                      "font-mono text-[12px]",
+                                      online ? "text-[var(--vx-ok)]" : "text-[var(--vx-warn)]"
+                                    )}
+                                  >
+                                    {online
+                                      ? t("billing.rent.node_available")
+                                      : t("billing.rent.node_offline")}
+                                  </span>
+                                  {online && node.ping_host && (
+                                    <PingValue value={pings[node.id]} />
                                   )}
-                                >
-                                  {online
-                                    ? t("billing.rent.node_available")
-                                    : t("billing.rent.node_offline")}
                                 </span>
                               </button>
                             );

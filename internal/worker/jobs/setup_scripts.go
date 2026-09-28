@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/vortanixapp/panel/pkg/nodeping"
 )
 
 const defaultAgentImage = "ghcr.io/vortanixapp/vortanix-agent:latest"
@@ -224,13 +226,14 @@ func daemonAgentCommands(nodeID, relayURL, relayPin, version string) []string {
 	return append([]string{
 		"sudo systemctl start docker || true",
 		"sudo mkdir -p /var/lib/vortanix/servers /opt/vortanix/plugin-cache",
+		fmt.Sprintf("sudo ufw allow %d/tcp >/dev/null 2>&1 || true", nodeping.Port),
 		fmt.Sprintf("sudo docker pull %s", image),
 		"sudo docker rm -f vortanix-agent 2>/dev/null || true",
 		"VTX_ENV_FILE=$(mktemp)",
 		"trap 'rm -f \"$VTX_ENV_FILE\"' EXIT",
 		"printf 'AGENT_TOKEN=%s\\n' \"$" + secretAgentToken + "\" > \"$VTX_ENV_FILE\"",
-		fmt.Sprintf("sudo docker run -d --name vortanix-agent --restart unless-stopped --user 0:0 --cap-add SYS_ADMIN --env-file \"$VTX_ENV_FILE\" -e RELAY_URL=%q -e RELAY_PIN=%q -e NODE_ID=%q -e VORTANIX_VERSION=%q -e VORTANIX_DATA_DIR=/var/lib/vortanix/servers -v /var/run/docker.sock:/var/run/docker.sock -v /dev:/dev -v /var/lib/vortanix/servers:/var/lib/vortanix/servers -v /opt/vortanix:/opt/vortanix %s",
-			relayURL, relayPin, nodeID, versionLabelOf(image, version), image),
+		fmt.Sprintf("sudo docker run -d --name vortanix-agent --restart unless-stopped --user 0:0 --cap-add SYS_ADMIN --env-file \"$VTX_ENV_FILE\" -e RELAY_URL=%q -e RELAY_PIN=%q -e NODE_ID=%q -e VORTANIX_VERSION=%q -e VORTANIX_DATA_DIR=/var/lib/vortanix/servers -e PING_PORT=%d -p %d:%d -v /var/run/docker.sock:/var/run/docker.sock -v /dev:/dev -v /var/lib/vortanix/servers:/var/lib/vortanix/servers -v /opt/vortanix:/opt/vortanix %s",
+			relayURL, relayPin, nodeID, versionLabelOf(image, version), nodeping.Port, nodeping.Port, nodeping.Port, image),
 		"rm -f \"$VTX_ENV_FILE\"",
 	}, agentImageCleanupCommands(image)...)
 }
