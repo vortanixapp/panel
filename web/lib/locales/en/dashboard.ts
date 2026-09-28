@@ -46,6 +46,12 @@ export const dashboard = {
   "dashboard.activity.records_many": "records",
   "dashboard.activity.shown": "Showing {shown} of {total} · {range}",
   "dashboard.activity.show_more": "Show {count} more",
+  "dashboard.activity.detail_action": "Action",
+  "dashboard.activity.detail_category": "Section",
+  "dashboard.activity.detail_time": "Time",
+  "dashboard.activity.detail_resource": "Resource",
+  "dashboard.activity.detail_user": "User",
+  "dashboard.activity.detail_ip": "IP address",
 
   "monitoring.title": "Monitoring",
   "monitoring.subtitle": "Game server status · refreshed every 15 s",

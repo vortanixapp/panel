@@ -46,6 +46,12 @@ export const dashboard = {
   "dashboard.activity.records_many": "записей",
   "dashboard.activity.shown": "Показано {shown} из {total} · {range}",
   "dashboard.activity.show_more": "Показать ещё {count}",
+  "dashboard.activity.detail_action": "Действие",
+  "dashboard.activity.detail_category": "Раздел",
+  "dashboard.activity.detail_time": "Время",
+  "dashboard.activity.detail_resource": "Ресурс",
+  "dashboard.activity.detail_user": "Пользователь",
+  "dashboard.activity.detail_ip": "IP-адрес",
 
   "monitoring.title": "Мониторинг",
   "monitoring.subtitle": "Статус игровых серверов · обновление каждые 15 с",

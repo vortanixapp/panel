@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  CategoryBadge,
   Chip,
   EventIcon,
   ListEmpty,
@@ -14,12 +13,13 @@ import {
   MON_BTN,
   MON_BTN_PRIMARY,
   MON_CARD,
-  StatCard,
   dayGroupTitle,
   dayKey,
+  formatDateTime,
   formatTime,
   plural,
   timeAgo,
+  type Tone,
 } from "@/components/user/account/shared";
 import {
   downloadActivityCsv,
@@ -47,7 +47,7 @@ const RANGES = [
   { value: 30, labelKey: "dashboard.activity.range_30d" },
 ];
 
-function actionIcon(entry: ActivityEntry): { icon: string; tone: string } {
+function actionIcon(entry: ActivityEntry): { icon: string; tone: Tone } {
   const a = entry.action;
   if (a.startsWith("server.power")) return { icon: "ri-play-circle-line", tone: "info" };
   if (a.startsWith("server.reinstall")) return { icon: "ri-refresh-line", tone: "warn" };
@@ -71,6 +71,30 @@ function actionIcon(entry: ActivityEntry): { icon: string; tone: string } {
   return { icon: "ri-file-list-3-line", tone: "info" };
 }
 
+function shortResource(resource: string): string {
+  if (!resource) return "";
+  const idx = resource.indexOf(":");
+  if (idx < 0) return resource.length > 28 ? `${resource.slice(0, 28)}…` : resource;
+  const kind = resource.slice(0, idx);
+  const id = resource.slice(idx + 1);
+  return id.length > 12 ? `${kind}:${id.slice(0, 8)}…` : resource;
+}
+
+function metaPairs(meta: Record<string, unknown> | undefined): [string, string][] {
+  if (!meta) return [];
+  return Object.entries(meta)
+    .map(([key, value]): [string, string] => [
+      key,
+      value === null || value === undefined
+        ? "—"
+        : typeof value === "object"
+          ? JSON.stringify(value)
+          : String(value),
+    ])
+    .filter(([, value]) => value !== "" && value !== "—")
+    .slice(0, 12);
+}
+
 export function ActivityPageContent() {
   useT();
   const [category, setCategory] = useState("all");
@@ -78,6 +102,7 @@ export function ActivityPageContent() {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [exporting, setExporting] = useState(false);
+  const [opened, setOpened] = useState<number | null>(null);
 
   const debouncedQuery = useDebounced(query, 350);
 
@@ -126,9 +151,9 @@ export function ActivityPageContent() {
 
   return (
     <PageShell variant="user">
-      <div className="flex w-full flex-col gap-[18px]">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="min-w-[260px] flex-1">
+      <div className="flex w-full flex-col gap-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[240px] flex-1">
             <h1 className="text-[26px] font-bold tracking-[-0.02em]">
               {t("dashboard.activity.title")}
             </h1>
@@ -162,37 +187,46 @@ export function ActivityPageContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
-          <StatCard
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-px overflow-clip bg-[var(--vx-border)] sm:grid-cols-4",
+            MON_CARD
+          )}
+        >
+          <SummaryCell
             label={t("dashboard.activity.stat_events")}
-            icon="ri-file-list-3-line"
+            icon="ri-pulse-line"
+            tone="info"
             value={String(stats?.events_24h ?? 0)}
-            sub={t("dashboard.activity.stat_sub_total")}
+            sub={t("dashboard.activity.for_24h")}
           />
-          <StatCard
+          <SummaryCell
             label={t("dashboard.activity.stat_server_actions")}
             icon="ri-server-line"
+            tone="info"
             value={String(stats?.server_actions ?? 0)}
             sub={t("dashboard.activity.for_24h")}
           />
-          <StatCard
+          <SummaryCell
             label={t("dashboard.activity.stat_logins")}
             icon="ri-login-circle-line"
+            tone="ok"
             value={String(stats?.logins ?? 0)}
             sub={t("dashboard.activity.for_24h")}
           />
-          <StatCard
+          <SummaryCell
             label={t("dashboard.activity.stat_errors")}
             icon="ri-error-warning-line"
+            tone={stats?.errors_7d ? "bad" : "ok"}
             value={String(stats?.errors_7d ?? 0)}
             sub={t("monitoring.kpi.for_7d")}
-            color={stats?.errors_7d ? MON.warn : MON.ok}
+            color={stats?.errors_7d ? MON.bad : MON.fg}
           />
         </div>
 
-        <div className={cn("overflow-hidden", MON_CARD)}>
-          <div className="flex flex-wrap items-center gap-2.5 border-b border-[var(--vx-border)] px-4 py-3.5">
-            <div className="flex h-[34px] w-[250px] items-center gap-2 rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-bg)] px-2.5">
+        <div className={cn("overflow-clip", MON_CARD)}>
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--vx-border)] px-3 py-2.5">
+            <div className="flex h-9 min-w-[200px] flex-1 items-center gap-2 rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-bg)] px-2.5 sm:max-w-[300px]">
               <i className="ri-search-line text-[14px] text-[var(--vx-muted)]" />
               <input
                 value={query}
@@ -206,19 +240,21 @@ export function ActivityPageContent() {
                   onClick={() => setQuery("")}
                   aria-label={t("dashboard.activity.clear")}
                 >
-                  <i className="ri-close-line text-[14px] text-[var(--vx-muted)] hover:text-white" />
+                  <i className="ri-close-line text-[14px] text-[var(--vx-muted)] hover:text-[var(--vx-fg)]" />
                 </button>
               )}
             </div>
 
-            <div className="flex gap-1 rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-bg)] p-[3px]">
+            <div className="flex max-w-full gap-1 overflow-x-auto rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-bg)] p-[3px]">
               {CATEGORIES.map((c) => (
                 <Chip
                   key={c.key}
                   active={category === c.key}
+                  className="shrink-0"
                   onClick={() => {
                     setCategory(c.key);
                     setLimit(PAGE_SIZE);
+                    setOpened(null);
                   }}
                 >
                   {t(c.labelKey)}
@@ -226,14 +262,16 @@ export function ActivityPageContent() {
               ))}
             </div>
 
-            <div className="ml-auto flex gap-1 rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-bg)] p-[3px]">
+            <div className="flex gap-1 rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-bg)] p-[3px] sm:ml-auto">
               {RANGES.map((r) => (
                 <Chip
                   key={r.value}
                   active={range === r.value}
+                  className="shrink-0"
                   onClick={() => {
                     setRange(r.value);
                     setLimit(PAGE_SIZE);
+                    setOpened(null);
                   }}
                 >
                   {t(r.labelKey)}
@@ -243,8 +281,8 @@ export function ActivityPageContent() {
           </div>
 
           {activity.isLoading ? (
-            <div className="p-4">
-              <Skeleton className="h-80 w-full rounded-[12px]" />
+            <div className="p-3">
+              <Skeleton className="h-80 w-full rounded-[10px]" />
             </div>
           ) : activity.isError ? (
             <ListEmpty
@@ -261,8 +299,8 @@ export function ActivityPageContent() {
           ) : (
             <>
               {groups.map((group) => (
-                <div key={group.key}>
-                  <div className="flex items-center gap-2.5 border-b border-[var(--vx-border)] bg-[var(--vx-card-2)] px-4 py-2.5">
+                <section key={group.key}>
+                  <header className="sticky top-0 z-[1] flex items-center justify-between gap-2 border-y border-[var(--vx-border)] bg-[var(--vx-card-2)] px-3 py-2">
                     <span className="text-[12px] font-semibold">{group.title}</span>
                     <span className="font-mono text-[11px] text-[var(--vx-muted)]">
                       {group.items.length}{" "}
@@ -273,49 +311,19 @@ export function ActivityPageContent() {
                         t("dashboard.activity.records_many")
                       )}
                     </span>
-                  </div>
-                  {group.items.map((row) => {
-                    const { icon, tone } = actionIcon(row);
-                    return (
-                      <div
-                        key={row.id}
-                        className="flex items-start gap-3 border-b border-[var(--vx-divider)] px-4 py-3 transition-colors hover:bg-[var(--vx-card-2)]"
-                      >
-                        <EventIcon icon={icon} tone={tone} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-mono text-[13px] font-medium">{row.action}</span>
-                            <CategoryBadge>{row.category}</CategoryBadge>
-                          </div>
-                          <div className="mt-[3px] text-[12px] text-[var(--vx-dim)]">
-                            {row.description}
-                          </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[11px] text-[var(--vx-faint)]">
-                            {[row.resource, row.user_email, row.ip]
-                              .filter(Boolean)
-                              .map((part, i, arr) => (
-                                <span key={`${part}-${i}`} className="flex items-center gap-2">
-                                  <span className="max-w-[280px] truncate">{part}</span>
-                                  {i < arr.length - 1 && <span>·</span>}
-                                </span>
-                              ))}
-                          </div>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <div className="font-mono text-[12px] text-[var(--vx-dim)]">
-                            {formatTime(row.created_at)}
-                          </div>
-                          <div className="mt-[3px] text-[11px] text-[var(--vx-faint)]">
-                            {timeAgo(row.created_at)}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                  </header>
+                  {group.items.map((row) => (
+                    <ActivityRow
+                      key={row.id}
+                      row={row}
+                      open={opened === row.id}
+                      onToggle={() => setOpened((id) => (id === row.id ? null : row.id))}
+                    />
+                  ))}
+                </section>
               ))}
 
-              <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 px-3 py-3">
                 <span className="text-[12px] text-[var(--vx-muted)]">
                   {t("dashboard.activity.shown", {
                     shown: rows.length,
@@ -331,7 +339,7 @@ export function ActivityPageContent() {
                     type="button"
                     onClick={() => setLimit((n) => n + PAGE_SIZE)}
                     disabled={activity.isFetching}
-                    className="rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-bg)] px-3.5 py-2 text-[12px] transition-colors hover:bg-[var(--vx-tint)] disabled:opacity-55"
+                    className={cn(MON_BTN, "h-8")}
                   >
                     {activity.isFetching
                       ? t("common.loading")
@@ -344,6 +352,143 @@ export function ActivityPageContent() {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+function SummaryCell({
+  label,
+  icon,
+  tone,
+  value,
+  sub,
+  color = MON.fg,
+}: {
+  label: string;
+  icon: string;
+  tone: Tone;
+  value: string;
+  sub: string;
+  color?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 bg-[var(--vx-card)] px-3.5 py-3">
+      <EventIcon icon={icon} tone={tone} size={32} />
+      <div className="min-w-0">
+        <div className="truncate text-[11px] tracking-[0.02em] text-[var(--vx-muted)]">{label}</div>
+        <div className="mt-[1px] flex items-baseline gap-1.5">
+          <span className="text-[20px] font-bold tracking-[-0.02em]" style={{ color }}>
+            {value}
+          </span>
+          <span className="text-[11px] text-[var(--vx-faint)]">{sub}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActivityRow({
+  row,
+  open,
+  onToggle,
+}: {
+  row: ActivityEntry;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const { icon, tone } = actionIcon(row);
+  const title = row.description || row.action;
+  const resource = shortResource(row.resource);
+  const meta = metaPairs(row.meta);
+
+  return (
+    <div className="border-b border-[var(--vx-divider)] last:border-b-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className={cn(
+          "flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[var(--vx-card-2)]",
+          open && "bg-[var(--vx-card-2)]"
+        )}
+      >
+        <EventIcon icon={icon} tone={tone} size={30} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13px] text-[var(--vx-fg)]">{title}</span>
+          <span className="mt-[2px] flex items-center gap-1.5 font-mono text-[11px] text-[var(--vx-faint)]">
+            <span className="truncate">{row.action}</span>
+            {resource && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="truncate">{resource}</span>
+              </>
+            )}
+          </span>
+        </span>
+        <span className="shrink-0 text-right">
+          <span className="block font-mono text-[12px] text-[var(--vx-dim)]">
+            {formatTime(row.created_at)}
+          </span>
+          <span className="block text-[11px] text-[var(--vx-faint)]">
+            {timeAgo(row.created_at)}
+          </span>
+        </span>
+        <i
+          className={cn(
+            "ri-arrow-down-s-line shrink-0 text-[16px] text-[var(--vx-faint)] transition-transform",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+
+      {open && (
+        <dl className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-x-5 gap-y-2.5 border-t border-[var(--vx-divider)] bg-[var(--vx-bg)] px-3 py-3">
+          <DetailItem label={t("dashboard.activity.detail_action")} value={row.action} mono />
+          <DetailItem label={t("dashboard.activity.detail_category")} value={row.category} />
+          <DetailItem
+            label={t("dashboard.activity.detail_time")}
+            value={formatDateTime(row.created_at)}
+          />
+          {row.resource && (
+            <DetailItem
+              label={t("dashboard.activity.detail_resource")}
+              value={row.resource}
+              mono
+            />
+          )}
+          {row.user_email && (
+            <DetailItem label={t("dashboard.activity.detail_user")} value={row.user_email} mono />
+          )}
+          {row.ip && <DetailItem label={t("dashboard.activity.detail_ip")} value={row.ip} mono />}
+          {meta.map(([key, value]) => (
+            <DetailItem key={key} label={key} value={value} mono />
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+function DetailItem({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] text-[var(--vx-faint)]">{label}</dt>
+      <dd
+        className={cn(
+          "mt-[2px] break-all text-[12px] text-[var(--vx-dim)]",
+          mono && "font-mono"
+        )}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }
 
