@@ -385,7 +385,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	h.startSession(w, r, userID, email, "user", access, refresh, 0)
 
-	h.maybeSendVerificationEmail(userID, email)
+	h.maybeSendVerificationEmail(r, userID, email)
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"access_token":  access,

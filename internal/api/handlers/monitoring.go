@@ -393,7 +393,7 @@ func (h *Handler) MonitoringShow(w http.ResponseWriter, r *http.Request) {
 		"settings":    h.loadMonitoringSettings(ctx, serverID),
 		"visits":      h.visitSeries(ctx, serverID, 7),
 		"public_url":  h.monitoringPublicURL(serverID),
-		"banner_url":  h.monitoringBannerBase(serverID),
+		"banner_url":  h.monitoringBannerBase(r, serverID),
 	})
 }
 
@@ -586,7 +586,7 @@ func (h *Handler) MonitoringSettingsShow(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"settings":   h.loadMonitoringSettings(ctx, serverID),
 		"public_url": h.monitoringPublicURL(serverID),
-		"banner_url": h.monitoringBannerBase(serverID),
+		"banner_url": h.monitoringBannerBase(r, serverID),
 	})
 }
 
@@ -842,7 +842,7 @@ func (h *Handler) MonitoringPublic(w http.ResponseWriter, r *http.Request) {
 		"incidents":   incidents,
 		"uptime_days": days,
 		"show_chart":  settings.ShowChart,
-		"banner_url":  h.monitoringBannerBase(serverID),
+		"banner_url":  h.monitoringBannerBase(r, serverID),
 		"public_url":  h.monitoringPublicURL(serverID),
 	})
 }
@@ -926,8 +926,8 @@ func (h *Handler) monitoringPublicURL(serverID string) string {
 	return strings.TrimRight(h.frontendURL, "/") + "/monitoring/public/" + serverID
 }
 
-func (h *Handler) monitoringBannerBase(serverID string) string {
-	return strings.TrimRight(h.apiPublicURL, "/") + "/v1/monitoring/public/" + serverID + "/banner"
+func (h *Handler) monitoringBannerBase(r *http.Request, serverID string) string {
+	return strings.TrimRight(h.publicBaseURL(r), "/") + "/v1/monitoring/public/" + serverID + "/banner"
 }
 
 func monitoringRegion(city, country, nodeName string) string {

@@ -517,7 +517,7 @@ func emailVerificationHash(email string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func (h *Handler) buildSignedVerifyURL(userID, email string) string {
+func (h *Handler) buildSignedVerifyURL(r *http.Request, userID, email string) string {
 	hash := emailVerificationHash(email)
 	expires := time.Now().Add(60 * time.Minute).Unix()
 	payload := fmt.Sprintf("%s:%s:%d", userID, hash, expires)
@@ -525,7 +525,7 @@ func (h *Handler) buildSignedVerifyURL(userID, email string) string {
 	mac.Write([]byte("verify:" + payload))
 	sig := hex.EncodeToString(mac.Sum(nil))
 	apiPath := fmt.Sprintf("/v1/email/verify/%s/%s?expires=%d&signature=%s", userID, hash, expires, sig)
-	apiURL := strings.TrimRight(h.apiPublicURL, "/") + apiPath
+	apiURL := strings.TrimRight(h.publicBaseURL(r), "/") + apiPath
 	frontend := strings.TrimRight(h.frontendURL, "/")
 	return frontend + "/verify-email?verify_url=" + url.QueryEscape(apiURL)
 }
@@ -550,7 +550,7 @@ func (h *Handler) SendEmailVerification(w http.ResponseWriter, r *http.Request) 
 	if h.tooManyAttempts(w, r, "verify-mail", 1, time.Minute, claims.UserID) {
 		return
 	}
-	verifyURL := h.buildSignedVerifyURL(claims.UserID, email)
+	verifyURL := h.buildSignedVerifyURL(r, claims.UserID, email)
 	resp := map[string]any{"ok": true, "status": "verification-link-sent", "message": "Письмо для подтверждения отправлено."}
 	if h.mailConfigured(ctx) {
 		msg := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), claims.UserID), h.mailBrand(ctx, r), verifyURL)
@@ -597,13 +597,13 @@ func (h *Handler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Email подтвержден"})
 }
 
-func (h *Handler) maybeSendVerificationEmail(userID, email string) {
+func (h *Handler) maybeSendVerificationEmail(r *http.Request, userID, email string) {
 	ctx := context.Background()
 	if !h.mailConfigured(ctx) {
 		return
 	}
-	verifyURL := h.buildSignedVerifyURL(userID, email)
-	msg := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, nil), verifyURL)
+	verifyURL := h.buildSignedVerifyURL(r, userID, email)
+	msg := mail.VerificationEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, r), verifyURL)
 	msg.To = email
 	h.sendMailAsync("mail.verify", userID, email, msg)
 }
