@@ -186,7 +186,6 @@ export const dashboard = {
   "monitoring.tab.players": "Игроки",
   "monitoring.tab.stats": "Статистика",
   "monitoring.tab.banners": "Баннеры",
-  "monitoring.tab.console": "Консоль",
   "monitoring.tab.public": "Публичная страница",
   "monitoring.tab.incidents": "Аптайм и инциденты",
   "monitoring.detail.not_found_title": "Сервер не найден",
@@ -194,11 +193,6 @@ export const dashboard = {
     "Мониторинг недоступен. Проверьте ID сервера или права доступа.",
   "monitoring.detail.back_to_list": "К списку мониторинга",
   "monitoring.detail.back_link": "← К списку мониторинга",
-
-  "monitoring.console.stream_down": "поток недоступен",
-  "monitoring.console.stream_live": "поток активен",
-  "monitoring.console.logs_failed": "Не удалось получить логи — агент недоступен.",
-  "monitoring.console.no_records": "Записей нет.",
 
   "monitoring.public_tab.enabled": "включена",
   "monitoring.public_tab.disabled": "выключена",

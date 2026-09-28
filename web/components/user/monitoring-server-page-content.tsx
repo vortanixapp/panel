@@ -9,7 +9,6 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GameIcon, MonitoringEmptyState } from "@/components/user/monitoring-page-content";
 import {
-  Chip,
   CopyAddress,
   LoadBar,
   MON,
@@ -40,7 +39,6 @@ import {
 } from "@/components/user/monitoring/shared";
 import {
   fetchMonitoringServer,
-  fetchServerLogs,
   fetchServerMonitoringStats,
   updateMonitoringSettings,
   type MonitoringIncident,
@@ -53,13 +51,12 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
-type MonTab = "players" | "stats" | "banners" | "console" | "public" | "incidents";
+type MonTab = "players" | "stats" | "banners" | "public" | "incidents";
 
 const TABS: { key: MonTab; labelKey: string; icon: string }[] = [
   { key: "players", labelKey: "monitoring.tab.players", icon: "ri-team-line" },
   { key: "stats", labelKey: "monitoring.tab.stats", icon: "ri-line-chart-line" },
   { key: "banners", labelKey: "monitoring.tab.banners", icon: "ri-image-line" },
-  { key: "console", labelKey: "monitoring.tab.console", icon: "ri-terminal-box-line" },
   { key: "public", labelKey: "monitoring.tab.public", icon: "ri-global-line" },
   { key: "incidents", labelKey: "monitoring.tab.incidents", icon: "ri-history-line" },
 ];
@@ -238,7 +235,6 @@ export function MonitoringServerPageContent() {
             {tab === "players" && <PlayersTab data={data} />}
             {tab === "stats" && <StatsTab serverId={s.id} slots={s.slots} />}
             {tab === "banners" && <BannersTab data={data} />}
-            {tab === "console" && <ConsoleTab serverId={s.id} />}
             {tab === "public" && <PublicTab data={data} />}
             {tab === "incidents" && (
               <IncidentsTab
@@ -595,95 +591,6 @@ function CodeBox({ label, value }: { label: string; value: string }) {
         value={value}
         className="mt-1.5 h-16 w-full resize-none rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-inset)] px-2.5 py-2 font-mono text-[11px] text-[var(--vx-dim)] outline-none"
       />
-    </div>
-  );
-}
-
-type LogLevel = "all" | "INFO" | "WARN" | "ERROR";
-
-type ParsedLine = { time: string; level: Exclude<LogLevel, "all">; text: string };
-
-function parseLogLine(raw: string): ParsedLine {
-  const time = raw.match(/\b(\d{2}:\d{2}:\d{2})\b/)?.[1] ?? "";
-  const upper = raw.toUpperCase();
-  const level: ParsedLine["level"] = upper.includes("ERROR") || upper.includes("SEVERE")
-    ? "ERROR"
-    : upper.includes("WARN")
-      ? "WARN"
-      : "INFO";
-  const text = raw
-    .replace(/^\[?\d{4}-\d{2}-\d{2}[T ]?/, "")
-    .replace(/^\[?\d{2}:\d{2}:\d{2}\]?\s*/, "")
-    .replace(/^\[?(INFO|WARN|WARNING|ERROR|SEVERE)\]?:?\s*/i, "")
-    .trim();
-  return { time, level, text: text || raw };
-}
-
-const LEVEL_COLOR: Record<ParsedLine["level"], string> = {
-  INFO: MON.info,
-  WARN: MON.warn,
-  ERROR: MON.bad,
-};
-
-function ConsoleTab({ serverId }: { serverId: string }) {
-  const [level, setLevel] = useState<LogLevel>("all");
-
-  const logs = useQuery({
-    queryKey: queryKeys.monitoringLogs(serverId),
-    queryFn: () => fetchServerLogs(serverId),
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: false,
-  });
-
-  const lines = useMemo(
-    () => (logs.data?.lines ?? []).map(parseLogLine),
-    [logs.data]
-  );
-  const visible = lines.filter((l) => level === "all" || l.level === level);
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {(["all", "INFO", "WARN", "ERROR"] as LogLevel[]).map((l) => (
-          <Chip key={l} active={level === l} onClick={() => setLevel(l)}>
-            {l === "all" ? t("common.all") : l}
-          </Chip>
-        ))}
-        <span className="ml-auto flex items-center gap-1.5 text-[11px] text-[var(--vx-muted)]">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: logs.isError ? MON.bad : MON.ok }}
-          />
-          {logs.isError
-            ? t("monitoring.console.stream_down")
-            : t("monitoring.console.stream_live")}
-        </span>
-      </div>
-
-      <div className="max-h-[380px] overflow-y-auto rounded-[10px] border border-[var(--vx-border)] bg-[var(--vx-code)] px-3.5 py-3 font-mono text-[12px] leading-[1.7]">
-        {logs.isLoading ? (
-          <Skeleton className="h-40 w-full" />
-        ) : visible.length === 0 ? (
-          <p className="py-8 text-center text-[var(--vx-faint)]">
-            {logs.isError
-              ? t("monitoring.console.logs_failed")
-              : t("monitoring.console.no_records")}
-          </p>
-        ) : (
-          visible.map((l, i) => (
-            <div key={i} className="flex gap-3">
-              <span className="shrink-0 text-[var(--vx-faint)]">{l.time || "--:--:--"}</span>
-              <span
-                className="w-12 shrink-0 font-medium"
-                style={{ color: LEVEL_COLOR[l.level] }}
-              >
-                {l.level}
-              </span>
-              <span className="break-words text-[var(--vx-dim)]">{l.text}</span>
-            </div>
-          ))
-        )}
-      </div>
     </div>
   );
 }

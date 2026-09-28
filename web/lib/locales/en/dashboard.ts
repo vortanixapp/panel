@@ -186,7 +186,6 @@ export const dashboard = {
   "monitoring.tab.players": "Players",
   "monitoring.tab.stats": "Statistics",
   "monitoring.tab.banners": "Banners",
-  "monitoring.tab.console": "Console",
   "monitoring.tab.public": "Public page",
   "monitoring.tab.incidents": "Uptime and incidents",
   "monitoring.detail.not_found_title": "Server not found",
@@ -194,11 +193,6 @@ export const dashboard = {
     "Monitoring is unavailable. Check the server ID or your access rights.",
   "monitoring.detail.back_to_list": "Back to monitoring",
   "monitoring.detail.back_link": "← Back to monitoring",
-
-  "monitoring.console.stream_down": "stream unavailable",
-  "monitoring.console.stream_live": "stream live",
-  "monitoring.console.logs_failed": "Could not fetch logs — the agent is unavailable.",
-  "monitoring.console.no_records": "No records.",
 
   "monitoring.public_tab.enabled": "is on",
   "monitoring.public_tab.disabled": "is off",

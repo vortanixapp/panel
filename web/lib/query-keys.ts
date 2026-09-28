@@ -48,7 +48,6 @@ export const queryKeys = {
   monitoringTop: (game?: string) => ["monitoring-top", game ?? ""] as const,
   monitoringSettings: (id: string) => ["monitoring-settings", id] as const,
   monitoringIncidents: (id: string) => ["monitoring-incidents", id] as const,
-  monitoringLogs: (id: string) => ["monitoring-logs", id] as const,
   adminDashboard: ["admin-dashboard"] as const,
   adminDashboardNodes: ["admin-dashboard", "nodes"] as const,
   adminSupport: ["admin-support"] as const,
