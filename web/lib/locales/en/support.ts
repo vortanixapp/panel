@@ -43,8 +43,6 @@ export const support = {
   "support.field.email": "Email",
   "support.field.agent": "Agent",
 
-  "support.aria.back_to_tickets": "Back to tickets",
-  "support.aria.back_to_kb": "Back to the knowledge base",
 
   "support.attachment.size_b": "{n} B",
   "support.attachment.size_kb": "{n} KB",

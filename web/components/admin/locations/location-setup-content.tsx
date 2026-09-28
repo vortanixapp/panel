@@ -177,11 +177,6 @@ export function LocationSetupContent() {
               {t("admin.setup.subtitle")}
             </p>
           </div>
-          <Button variant="outline" asChild className="h-[38px] text-[13px]">
-            <Link href={`/admin/locations/${id}`}>
-              ← {t("admin.location.to_location")}
-            </Link>
-          </Button>
         </div>
 
         {!sshReady && (

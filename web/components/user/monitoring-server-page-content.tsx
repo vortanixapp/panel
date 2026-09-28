@@ -125,10 +125,6 @@ export function MonitoringServerPageContent() {
   return (
     <PageShell variant="user">
       <div className="flex w-full flex-col gap-4">
-        <Link href="/monitoring" className="text-[12px] text-[var(--vx-muted)] hover:text-white">
-          {t("monitoring.detail.back_link")}
-        </Link>
-
         <div className={cn("overflow-hidden", MON_CARD)}>
           <div className="flex flex-wrap items-center gap-3.5 border-b border-[var(--vx-border)] p-[18px]">
             <GameIcon gameId={s.game_id} className="h-11 w-11 rounded-[10px] p-[7px]" />

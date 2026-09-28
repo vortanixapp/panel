@@ -192,7 +192,6 @@ export const dashboard = {
   "monitoring.detail.not_found_text":
     "Мониторинг недоступен. Проверьте ID сервера или права доступа.",
   "monitoring.detail.back_to_list": "К списку мониторинга",
-  "monitoring.detail.back_link": "← К списку мониторинга",
 
   "monitoring.public_tab.enabled": "включена",
   "monitoring.public_tab.disabled": "выключена",

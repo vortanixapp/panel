@@ -248,14 +248,6 @@ export function UserEditContent() {
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            asChild
-            className="h-[38px] text-[13px]"
-          >
-            <Link href={`/admin/users/${id}`}>← {t("common.back")}</Link>
-          </Button>
         </div>
 
         {error && (

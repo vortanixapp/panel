@@ -253,9 +253,6 @@ export function GameEditContent() {
           <Button variant="outline" asChild>
             <Link href={`/admin/games/${id}`}>{t("admin.locations.view")}</Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link href="/admin/games">← {t("admin.tariffs.to_list")}</Link>
-          </Button>
         </div>
       </div>
 

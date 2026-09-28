@@ -59,9 +59,6 @@ export function GameCreateContent() {
             {t("admin.games.new_subtitle")}
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/admin/games">← {t("common.back")}</Link>
-        </Button>
       </div>
 
       <Card>

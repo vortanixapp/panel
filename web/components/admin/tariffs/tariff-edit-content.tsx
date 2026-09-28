@@ -97,9 +97,6 @@ export function TariffEditContent({ id }: { id: string }) {
                 {t("admin.locations.view")}
               </Link>
             </Button>
-            <Button variant="outline" asChild className="h-[38px] text-[13px]">
-              <Link href="/admin/tariffs">← {t("admin.tariffs.to_list")}</Link>
-            </Button>
           </div>
         </div>
 

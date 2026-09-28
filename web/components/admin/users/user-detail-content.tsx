@@ -236,9 +236,6 @@ export function UserDetailContent() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <Button variant="outline" asChild className="h-[38px] text-[13px]">
-              <Link href="/admin/users">← {t("common.back")}</Link>
-            </Button>
             <Button
               variant="outline"
               className="h-[38px] text-[13px]"

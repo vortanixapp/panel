@@ -169,9 +169,6 @@ export function LocationCreateContent() {
         <div>
           <h1 className="text-2xl font-bold">{t("admin.location.new_title")}</h1>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/admin/locations">← {t("common.back")}</Link>
-        </Button>
       </div>
 
       {step === 1 ? (

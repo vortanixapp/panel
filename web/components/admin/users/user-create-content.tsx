@@ -65,12 +65,6 @@ export function UserCreateContent() {
                 </p>
               </div>
             </div>
-            <Link
-              href="/admin/users"
-              className="inline-flex items-center gap-2 rounded-xl bg-muted px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/80"
-            >
-              <i className="ri-arrow-left-line" /> {t("common.back")}
-            </Link>
           </div>
         </div>
 

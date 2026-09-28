@@ -78,9 +78,6 @@ export function TariffCreateContent() {
               {t("admin.tariffs.create_subtitle")}
             </p>
           </div>
-          <Button variant="outline" asChild className="h-[38px] text-[13px]">
-            <Link href="/admin/tariffs">← {t("admin.tariffs.to_list")}</Link>
-          </Button>
         </div>
 
         <TariffForm

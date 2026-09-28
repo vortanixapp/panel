@@ -69,9 +69,6 @@ export function GameDetailContent() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/admin/games">← {t("admin.tariffs.to_list")}</Link>
-          </Button>
           <Button asChild>
             <Link href={`/admin/games/${id}/edit`}>{t("common.edit")}</Link>
           </Button>

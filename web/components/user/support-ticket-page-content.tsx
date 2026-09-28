@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Bell,
   BellOff,
   BookOpen,
@@ -268,13 +267,6 @@ export function SupportTicketPageContent() {
     <PageShell variant="user">
       <div className="flex w-full flex-col gap-[22px]">
         <div className="flex flex-wrap items-center gap-[14px]">
-          <Link
-            href="/support"
-            className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[9px] border border-input text-foreground transition-colors hover:bg-accent"
-            aria-label={t("support.aria.back_to_tickets")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-[26px] leading-tight font-bold tracking-[-0.02em]">

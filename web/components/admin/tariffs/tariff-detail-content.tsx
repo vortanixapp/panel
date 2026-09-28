@@ -133,9 +133,6 @@ export function TariffDetailContent({ id }: { id: string }) {
             <Trash2 className="mr-2 h-4 w-4" />
             {t("common.delete")}
           </Button>
-          <Button variant="ghost" asChild>
-            <Link href="/admin/tariffs">← {t("admin.tariffs.to_list")}</Link>
-          </Button>
         </div>
       </div>
 

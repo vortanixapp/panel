@@ -841,7 +841,6 @@ export const adminContent = {
   "admin.tariffs.create_subtitle": "Заполните информацию о новом тарифе",
   "admin.tariffs.edit_title": "Редактирование тарифа: {name}",
   "admin.tariffs.edit_subtitle": "Измените параметры тарифа",
-  "admin.tariffs.to_list": "К списку",
   "admin.tariffs.not_found": "Тариф не найден",
   "admin.tariffs.detail_subtitle": "Информация о тарифном плане",
   "admin.tariffs.copy_created": "Копия создана",

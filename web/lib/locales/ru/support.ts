@@ -43,8 +43,6 @@ export const support = {
   "support.field.email": "Почта",
   "support.field.agent": "Оператор",
 
-  "support.aria.back_to_tickets": "Назад к обращениям",
-  "support.aria.back_to_kb": "Назад к базе знаний",
 
   "support.attachment.size_b": "{n} Б",
   "support.attachment.size_kb": "{n} КБ",

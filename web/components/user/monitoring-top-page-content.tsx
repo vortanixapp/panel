@@ -50,10 +50,7 @@ export function MonitoringTopPageContent() {
     <PageShell variant="user">
       <div className="flex w-full flex-col gap-5">
         <div>
-          <Link href="/monitoring" className="text-[12px] text-[var(--vx-muted)] hover:text-white">
-            {t("monitoring.back")}
-          </Link>
-          <h1 className="mt-2 text-[26px] font-bold tracking-[-0.02em]">
+          <h1 className="text-[26px] font-bold tracking-[-0.02em]">
             {t("monitoring.top.title")}
           </h1>
           <p className="mt-1 text-[13px] text-[var(--vx-muted)]">

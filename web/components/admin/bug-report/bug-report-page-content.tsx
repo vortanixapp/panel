@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Bug, CircleCheck, ExternalLink, FileText, ImagePlus, Loader2, Send, X } from "lucide-react";
+import { Bug, CircleCheck, ExternalLink, FileText, ImagePlus, Loader2, Send, X } from "lucide-react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { btnGhost, btnPrimary, fieldClass } from "@/components/user/panel-parts";
@@ -218,10 +218,6 @@ export function BugReportPageContent() {
                 <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
               </a>
             )}
-            <Link href="/admin" className={cn(btnGhost, "h-[38px]")}>
-              <ArrowLeft className="h-4 w-4" />
-              {t("common.back")}
-            </Link>
           </div>
         </div>
 

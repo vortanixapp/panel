@@ -192,7 +192,6 @@ export const dashboard = {
   "monitoring.detail.not_found_text":
     "Monitoring is unavailable. Check the server ID or your access rights.",
   "monitoring.detail.back_to_list": "Back to monitoring",
-  "monitoring.detail.back_link": "← Back to monitoring",
 
   "monitoring.public_tab.enabled": "is on",
   "monitoring.public_tab.disabled": "is off",

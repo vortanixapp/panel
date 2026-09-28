@@ -189,9 +189,6 @@ export function LocationEditContent() {
               {t("admin.locations.view")}
             </Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link href="/admin/locations">{t("admin.tariffs.to_list")}</Link>
-          </Button>
         </div>
       </div>
 

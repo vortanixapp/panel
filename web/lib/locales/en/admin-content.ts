@@ -846,7 +846,6 @@ export const adminContent = {
   "admin.tariffs.create_subtitle": "Fill in the details of the new plan",
   "admin.tariffs.edit_title": "Editing plan: {name}",
   "admin.tariffs.edit_subtitle": "Change the plan parameters",
-  "admin.tariffs.to_list": "Back to the list",
   "admin.tariffs.not_found": "Plan not found",
   "admin.tariffs.detail_subtitle": "Plan details",
   "admin.tariffs.copy_created": "Copy created",

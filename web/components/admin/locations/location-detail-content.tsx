@@ -192,9 +192,6 @@ export function LocationDetailContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" asChild className="h-9 text-[13px]">
-              <Link href="/admin/locations">← {t("common.back")}</Link>
-            </Button>
             <Button
               variant="outline"
               className={cn(

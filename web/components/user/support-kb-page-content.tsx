@@ -142,13 +142,6 @@ export function SupportKBPageContent() {
     <PageShell variant="user">
       <div className="flex w-full flex-col gap-[22px]">
         <div className="flex flex-wrap items-center gap-[14px]">
-          <Link
-            href="/support"
-            className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[9px] border border-input text-foreground transition-colors hover:bg-accent"
-            aria-label={t("support.aria.back_to_tickets")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
           <div className="flex flex-col gap-1.5">
             <h1 className="text-[26px] leading-none font-bold tracking-[-0.02em]">
               {t("support.kb.title")}
