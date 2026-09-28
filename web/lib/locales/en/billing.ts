@@ -103,7 +103,6 @@ export const billing = {
   "billing.balance.current": "Current balance",
   "billing.balance.days_left": "Roughly {days} days left at the current burn rate",
   "billing.balance.topup_hint": "Top up your account to start a server",
-  "billing.balance.unit_total": "{symbol} total",
   "billing.balance.credits_note": "Across all wallet operations",
   "billing.balance.no_operations": "No operations yet",
   "billing.balance.daily_burn": "{amount} {symbol} per day on average",
@@ -127,6 +126,7 @@ export const billing = {
 
   "billing.wallet.title": "Wallet",
   "billing.wallet.hint": "The currency your operations and balance are shown in",
+  "billing.wallet.add": "Add a currency",
 
   "billing.history.title": "Operation history",
   "billing.history.shown": "showing {shown} of {total}",

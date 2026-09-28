@@ -43,8 +43,6 @@ const EMPTY_BILLING: BillingData = {
 const CARD = "rounded-[20px] border border-[var(--vx-panel-line)] bg-[var(--vx-panel-card)]";
 const CARD_RAISED =
   "rounded-[20px] border border-[var(--vx-panel-line-strong)] bg-[var(--vx-elevated)]";
-const CARD_WARN =
-  "rounded-[20px] border border-[var(--vx-panel-line-strong)] bg-[var(--vx-elevated)]";
 
 const PRESETS = [500, 1000, 2000, 5000, 10000];
 
@@ -336,52 +334,39 @@ export function BillingPageContent() {
   }, [dash?.recent_servers]);
   const daysLeft = dailyBurn > 0 ? Math.floor(balance / dailyBurn) : null;
 
-  const cards = [
-    {
-      label: t("billing.balance.current"),
-      value: fmtMoney(balance),
-      unit: symbol,
-      note:
-        daysLeft !== null
-          ? t("billing.balance.days_left", { days: daysLeft })
-          : t("billing.balance.topup_hint"),
-      icon: "ri-wallet-3-line",
-      raised: true as const,
-      tone: "" as const,
-    },
+  const balanceNote =
+    daysLeft !== null
+      ? t("billing.balance.days_left", { days: daysLeft })
+      : t("billing.balance.topup_hint");
+
+  const metrics = [
     {
       label: t("billing.tx.credits"),
-      value: `+${fmtMoney(d.credits_total)}`,
-      unit: t("billing.balance.unit_total", { symbol }),
+      value: `+${fmtMoney(d.credits_total)} ${symbol}`,
       note:
         d.credits_total > 0
           ? t("billing.balance.credits_note")
           : t("billing.balance.no_operations"),
       icon: "ri-arrow-down-line",
-      raised: false as const,
       tone: "" as const,
     },
     {
       label: t("billing.tx.debits"),
-      value: `−${fmtMoney(d.debits_total)}`,
-      unit: t("billing.balance.unit_total", { symbol }),
+      value: `${d.debits_total > 0 ? "−" : ""}${fmtMoney(d.debits_total)} ${symbol}`,
       note:
         dailyBurn > 0
           ? t("billing.balance.daily_burn", { amount: fmtMoney(dailyBurn), symbol })
           : t("billing.balance.no_subscriptions"),
       icon: "ri-arrow-up-line",
-      raised: false as const,
       tone: "" as const,
     },
     {
       label: t("billing.balance.next_charge"),
       value: nextCharge ?? "—",
-      unit: "",
       note: nextCharge
         ? t("billing.balance.next_charge_note")
         : t("billing.balance.next_charge_empty"),
       icon: "ri-time-line",
-      raised: false as const,
       tone: nextCharge ? ("warn" as const) : ("" as const),
     },
   ];
@@ -408,42 +393,52 @@ export function BillingPageContent() {
 
         <IdentificationNotice className="mb-3.5" />
 
-        <div className="vx-stagger grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-          {cards.map((c) => (
+        <div
+          className={cn(
+            CARD_RAISED,
+            "vx-stagger grid grid-cols-1 gap-px overflow-hidden bg-[var(--vx-panel-line)] sm:grid-cols-2 lg:grid-cols-[minmax(0,1.25fr)_repeat(3,minmax(0,1fr))]"
+          )}
+        >
+          <div className="flex flex-col justify-center bg-[var(--vx-elevated)] px-6 py-[22px]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[13px] font-semibold text-muted-foreground">
+                {t("billing.balance.current")}
+              </span>
+              <i className="ri-wallet-3-line text-[17px] text-muted-foreground" />
+            </div>
+            <div className="mt-3 flex items-baseline gap-[7px]">
+              <span className="font-mono text-[32px] font-medium tracking-[-0.035em] text-foreground">
+                {fmtMoney(balance)}
+              </span>
+              <span className="text-[15px] text-[var(--vx-ink-faint)]">{symbol}</span>
+            </div>
+            <div className="mt-1.5 text-[13px] text-muted-foreground">{balanceNote}</div>
+          </div>
+
+          {metrics.map((m) => (
             <div
-              key={c.label}
-              data-spotlight
-              className={cn(
-                c.tone === "warn" ? CARD_WARN : c.raised ? CARD_RAISED : CARD,
-                "relative isolate px-6 py-[22px]"
-              )}
+              key={m.label}
+              className="flex flex-col justify-center bg-[var(--vx-panel-card)] px-5 py-[18px]"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-semibold text-muted-foreground">
-                  {c.label}
-                </span>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[12.5px] text-muted-foreground">{m.label}</span>
                 <i
                   className={cn(
-                    c.icon,
-                    "text-[17px]",
-                    c.tone === "warn" ? "text-[var(--vx-warn)]" : "text-muted-foreground"
+                    m.icon,
+                    "text-[15px]",
+                    m.tone === "warn" ? "text-[var(--vx-warn)]" : "text-[var(--vx-ink-faint)]"
                   )}
                 />
               </div>
-              <div className="mt-[18px] flex items-baseline gap-[7px]">
-                <span
-                  className={cn(
-                    "font-mono text-[29px] font-medium tracking-[-0.035em]",
-                    c.tone === "warn" ? "text-[var(--vx-warn)]" : "text-foreground"
-                  )}
-                >
-                  {c.value}
-                </span>
-                {c.unit && (
-                  <span className="text-[13px] text-[var(--vx-ink-faint)]">{c.unit}</span>
+              <div
+                className={cn(
+                  "mt-2 font-mono text-[19px] font-medium tracking-[-0.025em]",
+                  m.tone === "warn" ? "text-[var(--vx-warn)]" : "text-foreground"
                 )}
+              >
+                {m.value}
               </div>
-              <div className="mt-2.5 text-[13px] text-muted-foreground">{c.note}</div>
+              <div className="mt-1 text-[12.5px] text-[var(--vx-ink-faint)]">{m.note}</div>
             </div>
           ))}
         </div>
@@ -616,13 +611,13 @@ export function BillingPageContent() {
               <p className="mt-3 text-[13px] text-destructive">{topupError}</p>
             )}
 
-            <div className="mt-[18px] flex flex-col items-stretch gap-2.5 sm:flex-row sm:items-center sm:gap-3">
+            <div className="mt-[18px] flex flex-col items-stretch gap-2">
               <button
                 type="submit"
                 disabled={
                   topupMutation.isPending || !activeMethod || amount <= 0 || needsFreekassaMethod
                 }
-                className="vx-btn flex-1 rounded-full px-4 py-[13px] text-center text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                className="vx-btn rounded-full px-4 py-[13px] text-center text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {topupMutation.isPending
                   ? t("billing.topup.creating")
@@ -633,7 +628,8 @@ export function BillingPageContent() {
                         symbol,
                       })}
               </button>
-              <div className="text-center text-[12.5px] leading-[1.4] text-[var(--vx-ink-faint)] sm:max-w-[150px] sm:text-left">
+              <div className="flex items-center justify-center gap-1.5 text-[12.5px] leading-[1.4] text-[var(--vx-ink-faint)]">
+                <i className="ri-mail-check-line text-[14px]" />
                 {t("billing.topup.receipt_hint")}
               </div>
             </div>
@@ -650,8 +646,9 @@ export function BillingPageContent() {
                 </span>
               </div>
               {breakdown.length === 0 ? (
-                <div className="mt-[18px] py-6 text-[13.5px] text-muted-foreground">
-                  {t("billing.spend.empty")}
+                <div className="mt-3.5 flex items-center gap-2.5 rounded-[14px] border border-dashed border-[var(--vx-border-2)] px-4 py-3 text-[13px] text-muted-foreground">
+                  <i className="ri-pie-chart-line text-[16px] text-[var(--vx-ink-faint)]" />
+                  <span className="min-w-0">{t("billing.spend.empty")}</span>
                 </div>
               ) : (
                 <div className="mt-[18px] flex flex-col gap-3.5">
@@ -675,108 +672,118 @@ export function BillingPageContent() {
               )}
             </div>
 
-            <div className={cn(CARD, "flex flex-wrap items-center gap-4 px-[26px] py-[22px]")}>
-              <div className="flex size-[38px] flex-shrink-0 items-center justify-center rounded-xl bg-[var(--vx-tint)] text-muted-foreground">
-                <i className="ri-exchange-funds-line text-lg" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[14.5px] font-semibold">{t("billing.wallet.title")}</div>
-                <div className="mt-1 text-[12.5px] leading-[1.45] text-muted-foreground">
-                  {t("billing.wallet.hint")}
+            <div className={cn(CARD, "px-[26px] py-6")}>
+              <div className="flex items-center gap-3">
+                <span className="flex size-[34px] flex-shrink-0 items-center justify-center rounded-xl bg-[var(--vx-tint)] text-muted-foreground">
+                  <i className="ri-exchange-funds-line text-[17px]" />
+                </span>
+                <div className="min-w-0">
+                  <div className="text-base font-semibold">{t("billing.wallet.title")}</div>
+                  <div className="mt-0.5 text-[12.5px] leading-[1.45] text-muted-foreground">
+                    {t("billing.wallet.hint")}
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={activeWalletId}
-                  onChange={(e) => setSelectedWalletId(e.target.value || null)}
-                  className="h-10 rounded-full border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 text-[13px] text-foreground outline-none focus:border-[var(--vx-border-hover)]"
-                >
-                  {d.wallets.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.currency.toUpperCase()} — {formatAmount(w.balance)}
-                    </option>
-                  ))}
-                </select>
-                {d.available_currencies.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    disabled={createWalletMutation.isPending}
-                    onClick={() => createWalletMutation.mutate(c)}
-                    className="h-10 rounded-full border border-[var(--vx-border-2)] px-3.5 text-[12.5px] text-muted-foreground transition-colors hover:border-[var(--vx-border-hover)] hover:text-foreground disabled:opacity-50"
-                  >
-                    + {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {payments.length > 0 && (
-          <div className={cn(CARD, "mt-3.5 overflow-hidden")}>
-            <div className="flex flex-wrap items-center gap-3.5 border-b border-[var(--vx-panel-line)] px-5 py-5 sm:px-[26px]">
-              <span className="text-base font-semibold">{t("billing.topup.my_topups")}</span>
-              <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
-                {t("billing.topup.last_20")}
-              </span>
+              <select
+                value={activeWalletId}
+                onChange={(e) => setSelectedWalletId(e.target.value || null)}
+                className="mt-[18px] h-11 w-full rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 text-[13px] text-foreground outline-none focus:border-[var(--vx-border-hover)]"
+              >
+                {d.wallets.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.currency.toUpperCase()} — {formatAmount(w.balance)}
+                  </option>
+                ))}
+              </select>
+
+              {d.available_currencies.length > 0 && (
+                <>
+                  <div className="mt-[18px] text-[12.5px] font-semibold tracking-[0.06em] text-[var(--vx-ink-faint)] uppercase">
+                    {t("billing.wallet.add")}
+                  </div>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {d.available_currencies.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        disabled={createWalletMutation.isPending}
+                        onClick={() => createWalletMutation.mutate(c)}
+                        className="h-10 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 text-[12.5px] text-muted-foreground transition-colors hover:border-[var(--vx-border-hover)] hover:text-foreground disabled:opacity-50"
+                      >
+                        + {c}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-            {payments.slice(0, paymentsVisible).map((p) => {
-              const tone = paymentTone(p.status);
-              const bonus =
-                p.credited_amount != null && Number(p.credited_amount) > Number(p.amount)
-                  ? Number(p.credited_amount) - Number(p.amount)
-                  : 0;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => openPayment(p.id)}
-                  className="flex w-full items-center gap-3 border-b border-[var(--vx-inset)] px-5 py-3.5 text-left transition-colors last:border-b-0 hover:bg-[var(--vx-elevated)] sm:px-[26px]"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13.5px] font-medium">
-                      {p.provider_name || (p.provider ? providerMeta(p.provider).name : "—")}
-                    </div>
-                    <div className="mt-1 truncate font-mono text-[11px] text-[var(--vx-ink-faint)]">
-                      {fmtRowDate(p.created_at)} · #{String(p.id).slice(0, 8)}
-                    </div>
-                  </div>
-                  <div className="flex flex-shrink-0 flex-col items-end gap-1">
-                    <span className="font-mono text-sm">
-                      {formatAmount(p.amount)} {(p.currency || "RUB").toUpperCase()}
-                    </span>
-                    {bonus > 0 && (
-                      <span className="font-mono text-[11px] text-emerald-500">
-                        +{formatAmount(bonus)} {t("billing.topup.bonus_suffix")}
-                      </span>
-                    )}
-                    <span
-                      className={cn(
-                        "rounded-full border px-2 py-0.5 text-[10.5px] font-semibold",
-                        STATUS_BADGE[tone]
-                      )}
+            {payments.length > 0 && (
+              <div className={cn(CARD, "overflow-hidden")}>
+                <div className="flex flex-wrap items-center gap-3.5 border-b border-[var(--vx-panel-line)] px-5 py-5 sm:px-[26px]">
+                  <span className="text-base font-semibold">{t("billing.topup.my_topups")}</span>
+                  <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
+                    {t("billing.topup.last_20")}
+                  </span>
+                </div>
+                {payments.slice(0, paymentsVisible).map((p) => {
+                  const tone = paymentTone(p.status);
+                  const bonus =
+                    p.credited_amount != null && Number(p.credited_amount) > Number(p.amount)
+                      ? Number(p.credited_amount) - Number(p.amount)
+                      : 0;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => openPayment(p.id)}
+                      className="flex w-full items-center gap-3 border-b border-[var(--vx-inset)] px-5 py-3.5 text-left transition-colors last:border-b-0 hover:bg-[var(--vx-elevated)] sm:px-[26px]"
                     >
-                      {paymentStatusLabel(p.status)}
-                    </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13.5px] font-medium">
+                          {p.provider_name || (p.provider ? providerMeta(p.provider).name : "—")}
+                        </div>
+                        <div className="mt-1 truncate font-mono text-[11px] text-[var(--vx-ink-faint)]">
+                          {fmtRowDate(p.created_at)} · #{String(p.id).slice(0, 8)}
+                        </div>
+                      </div>
+                      <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                        <span className="font-mono text-sm">
+                          {formatAmount(p.amount)} {(p.currency || "RUB").toUpperCase()}
+                        </span>
+                        {bonus > 0 && (
+                          <span className="font-mono text-[11px] text-emerald-500">
+                            +{formatAmount(bonus)} {t("billing.topup.bonus_suffix")}
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            "rounded-full border px-2 py-0.5 text-[10.5px] font-semibold",
+                            STATUS_BADGE[tone]
+                          )}
+                        >
+                          {paymentStatusLabel(p.status)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+                {payments.length > paymentsVisible && (
+                  <div className="flex justify-end px-5 py-3 sm:px-[26px]">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentsVisible(payments.length)}
+                      className="flex items-center gap-2 rounded-full border border-[var(--vx-border-2)] px-4 py-2 text-[12.5px] text-muted-foreground transition-colors hover:border-[var(--vx-border-hover)] hover:text-foreground"
+                    >
+                      {t("billing.history.show_more")}
+                      <ArrowIcon className="size-3.5" />
+                    </button>
                   </div>
-                </button>
-              );
-            })}
-            {payments.length > paymentsVisible && (
-              <div className="flex justify-end px-5 py-3 sm:px-[26px]">
-                <button
-                  type="button"
-                  onClick={() => setPaymentsVisible(payments.length)}
-                  className="flex items-center gap-2 rounded-full border border-[var(--vx-border-2)] px-4 py-2 text-[12.5px] text-muted-foreground transition-colors hover:border-[var(--vx-border-hover)] hover:text-foreground"
-                >
-                  {t("billing.history.show_more")}
-                  <ArrowIcon className="size-3.5" />
-                </button>
+                )}
               </div>
             )}
           </div>
-        )}
+        </div>
 
         <div className={cn(CARD, "mt-3.5 overflow-hidden")}>
           <div className="flex flex-wrap items-center gap-3.5 border-b border-[var(--vx-panel-line)] px-[26px] py-5">

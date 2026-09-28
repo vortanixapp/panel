@@ -103,7 +103,6 @@ export const billing = {
   "billing.balance.current": "Текущий баланс",
   "billing.balance.days_left": "Хватит примерно на {days} дн. при текущем расходе",
   "billing.balance.topup_hint": "Пополните счёт, чтобы запустить сервер",
-  "billing.balance.unit_total": "{symbol} всего",
   "billing.balance.credits_note": "По всем операциям кошелька",
   "billing.balance.no_operations": "Операций не было",
   "billing.balance.daily_burn": "{amount} {symbol} в сутки в среднем",
@@ -127,6 +126,7 @@ export const billing = {
 
   "billing.wallet.title": "Кошелёк",
   "billing.wallet.hint": "Валюта, в которой показаны операции и баланс",
+  "billing.wallet.add": "Добавить валюту",
 
   "billing.history.title": "История операций",
   "billing.history.shown": "показано {shown} из {total}",
