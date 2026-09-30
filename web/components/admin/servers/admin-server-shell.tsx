@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ResponsiveTabs } from "@/components/vx/responsive-tabs";
 import { Notice, VX_FAINT, VX_MUTED } from "@/components/vx/panel-ui";
 import {
   adminToggleServerBlock,
@@ -53,7 +54,6 @@ import { isServerExpired, serverProvisioning } from "@/lib/server-lifecycle";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { useServerDetail } from "@/hooks/use-queries";
-import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
 const CHIP: Record<string, string> = {
   running: "border-[var(--vx-border-strong)] bg-[var(--vx-veil-strong)] text-[var(--vx-fg-strong)]",
@@ -334,43 +334,17 @@ export function AdminServerShell({
           </div>
 
           <div className="border-t border-[var(--vx-border)] px-3.5 py-[9px]">
-            <div ref={wheelScrollX} className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {tabs.map((tab) => {
-                const active = tab.key === currentKey;
-                const disabled = isAdminServerTabDisabled(server, tab.key);
-                const base =
-                  "h-[30px] shrink-0 rounded-[8px] border px-3.5 text-[12.5px] font-medium transition-colors";
-                if (disabled) {
-                  return (
-                    <span
-                      key={tab.key}
-                      title={t("servers.shell.tab_disabled")}
-                      className={cn(
-                        base,
-                        "cursor-not-allowed border-transparent leading-[30px] text-[var(--vx-border-hover)]"
-                      )}
-                    >
-                      {tab.label}
-                    </span>
-                  );
-                }
-                return (
-                  <Link
-                    key={tab.key}
-                    href={serverPath("/admin", id, tab.suffix)}
-                    className={cn(
-                      base,
-                      "inline-flex items-center",
-                      active
-                        ? "border-[var(--vx-border-strong)] bg-[var(--vx-tint)] text-[var(--vx-fg-strong)]"
-                        : "border-transparent text-[var(--vx-muted)] hover:text-[var(--vx-fg)]"
-                    )}
-                  >
-                    {tab.label}
-                  </Link>
-                );
-              })}
-            </div>
+            <ResponsiveTabs
+              activeKey={currentKey}
+              tabs={tabs.map((tab) => ({
+                key: tab.key,
+                label: tab.label,
+                href: serverPath("/admin", id, tab.suffix),
+                disabled: isAdminServerTabDisabled(server, tab.key),
+                disabledHint: t("servers.shell.tab_disabled"),
+              }))}
+            />
+
           </div>
         </div>
 

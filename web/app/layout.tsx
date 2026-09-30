@@ -27,7 +27,11 @@ export async function generateMetadata(): Promise<Metadata> {
           ? { url: branding.icon_url }
           : { url: DEFAULT_BRAND_MARK_URL, type: "image/png" },
       ],
-      apple: [{ url: "/apple-icon.png", type: "image/png" }],
+      apple: [
+        branding?.icon_url && /\.png(\?|$)/i.test(branding.icon_url)
+          ? { url: branding.icon_url, type: "image/png" }
+          : { url: DEFAULT_BRAND_MARK_URL, type: "image/png" },
+      ],
     },
   };
 }

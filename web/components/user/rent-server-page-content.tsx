@@ -90,7 +90,7 @@ function tariffSpecs(tariff: RentTariff): { k: string; v: string }[] {
   if (tariff.cpu_cores) specs.push({ k: "CPU", v: `${tariff.cpu_cores}` });
   if (tariff.ram_gb) specs.push({ k: "RAM", v: `${tariff.ram_gb} GB` });
   if (tariff.disk_gb) specs.push({ k: t("billing.rent.disk"), v: `${tariff.disk_gb} GB` });
-  if (tariff.max_slots) {
+  if (tariff.max_slots && tariff.billing_type !== "resources") {
     specs.push({
       k: t("billing.rent.slots"),
       v:
@@ -298,11 +298,13 @@ export function RentServerPageContent() {
 
   const tariffs = useMemo(
     () =>
-      allTariffs.filter(
-        (item) =>
-          (!gameId || !item.game_id || item.game_id === gameId) &&
-          (!nodeId || !item.location_id || item.location_id === nodeId)
-      ),
+      gameId
+        ? allTariffs.filter(
+            (item) =>
+              (!item.game_id || item.game_id === gameId) &&
+              (!nodeId || !item.location_id || item.location_id === nodeId)
+          )
+        : [],
     [allTariffs, gameId, nodeId]
   );
 
@@ -690,7 +692,9 @@ export function RentServerPageContent() {
                   </div>
                 }
               >
-                {tariffs.length === 0 ? (
+                {!gameId ? (
+                  <EmptyState>{t("billing.rent.pick_game_first")}</EmptyState>
+                ) : tariffs.length === 0 ? (
                   <div className="flex flex-col items-start gap-2.5 p-5">
                     <i className="ri-inbox-line text-[22px] text-[var(--vx-ghost)]" />
                     <span className="text-[14px] font-semibold">
@@ -724,11 +728,6 @@ export function RentServerPageContent() {
                             <span className="min-w-0 text-[14px] leading-snug font-semibold [overflow-wrap:anywhere]">
                               {tariff.name}
                             </span>
-                            {tariff.billing_type === "resources" && (
-                              <span className="shrink-0 rounded-[4px] bg-[var(--vx-fg-strong)] px-1.5 py-0.5 text-[10px] leading-4 tracking-[0.06em] whitespace-nowrap text-[var(--vx-on-fill)] uppercase">
-                                {t("billing.rent.custom_config")}
-                              </span>
-                            )}
                           </span>
                           <span className={cn("flex flex-col gap-1.5 text-[12px]", VX_MUTED)}>
                             {specs.map((spec) => (

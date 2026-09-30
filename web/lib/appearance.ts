@@ -169,7 +169,11 @@ export function setFavicon(url: string) {
     document.head.appendChild(link);
     return;
   }
-  links.forEach((link) => link.setAttribute("href", url));
+  links.forEach((link) => {
+    link.removeAttribute("type");
+    link.removeAttribute("sizes");
+    link.setAttribute("href", url);
+  });
 }
 
 export function applyAppearance(branding: BrandingPayload | null) {

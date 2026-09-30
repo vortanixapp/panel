@@ -371,7 +371,6 @@ export const billing = {
   "billing.rent.no_tariffs_hint":
     "Pick another game or write to support — we will put a configuration together by hand.",
   "billing.rent.contact_support": "Contact support",
-  "billing.rent.custom_config": "custom config",
   "billing.rent.cores": "cores",
   "billing.rent.name_placeholder": "My server",
   "billing.rent.game_version": "Game version",
@@ -424,6 +423,7 @@ export const billing = {
   "billing.rent.comment_placeholder": "What this server is for",
   "billing.rent.name_suffix_hint": "Servers will be named {name}-1, {name}-2 and so on",
   "billing.rent.need_game": "Pick a game",
+  "billing.rent.pick_game_first": "Pick a game and its plans will appear here",
   "billing.rent.need_location": "Pick a location",
   "billing.rent.need_tariff": "Pick a plan",
   "billing.rent.need_name": "Enter the server name",

@@ -311,7 +311,8 @@ func (h *Handler) queryRentNodes(ctx context.Context) []map[string]any {
 			COALESCE(d.status, 'unknown'), d.last_seen_at,
 			(SELECT COUNT(*)::int FROM core.servers s WHERE s.node_id = n.id),
 			COALESCE(n.maintenance_mode, false), COALESCE(n.maintenance_reason, ''),
-			COALESCE(n.fqdn, ''), COALESCE((d.host->>'ping_port')::int, 0)
+			COALESCE(n.ip_address, ''), COALESCE(n.ssh_host, ''), COALESCE(n.fqdn, ''),
+			COALESCE((d.host->>'ping_port')::int, 0)
 		FROM core.nodes n
 		LEFT JOIN core.node_daemons d ON d.node_id = n.id
 		WHERE COALESCE(n.is_active, n.active, true) = true
@@ -322,31 +323,41 @@ func (h *Handler) queryRentNodes(ctx context.Context) []map[string]any {
 	}
 	defer rows.Close()
 	list := []map[string]any{}
+	var pingHosts []string
+	var pingPorts []int
 	for rows.Next() {
 		var id, name, country, code, daemonStatus string
 		var daemonLastSeen *time.Time
 		var serversCount int
 		var maintenance bool
 		var maintenanceReason string
-		var fqdn string
+		var ipAddress, sshHost, fqdn string
 		var pingPort int
 		if rows.Scan(&id, &name, &country, &code, &daemonStatus, &daemonLastSeen, &serversCount,
-			&maintenance, &maintenanceReason, &fqdn, &pingPort) != nil {
+			&maintenance, &maintenanceReason, &ipAddress, &sshHost, &fqdn, &pingPort) != nil {
 			continue
 		}
 		online := agentDaemonOnline(daemonStatus, daemonLastSeen)
-		item := map[string]any{
+		list = append(list, map[string]any{
 			"id": id, "name": name, "country": country, "code": code,
 			"is_online":          online,
 			"servers_count":      serversCount,
 			"maintenance_mode":   maintenance,
 			"maintenance_reason": maintenanceReason,
+		})
+		host := ""
+		if online {
+			host = nodePingHost(ipAddress, sshHost, fqdn)
 		}
-		if online && h.nodePingReachable(ctx, fqdn, pingPort) {
-			item["ping_host"] = fqdn
-			item["ping_port"] = pingPort
+		pingHosts = append(pingHosts, host)
+		pingPorts = append(pingPorts, pingPort)
+	}
+	reachable := h.nodePingReachableMany(ctx, pingHosts, pingPorts)
+	for i, item := range list {
+		if reachable[i] {
+			item["ping_host"] = pingHosts[i]
+			item["ping_port"] = pingPorts[i]
 		}
-		list = append(list, item)
 	}
 	return list
 }

@@ -368,7 +368,6 @@ export const billing = {
   "billing.rent.no_tariffs_hint":
     "Выберите другую игру или напишите в поддержку — подберём конфигурацию вручную.",
   "billing.rent.contact_support": "Написать в поддержку",
-  "billing.rent.custom_config": "свой конфиг",
   "billing.rent.cores": "ядер",
   "billing.rent.name_placeholder": "Мой сервер",
   "billing.rent.game_version": "Версия игры",
@@ -421,6 +420,7 @@ export const billing = {
   "billing.rent.comment_placeholder": "Для чего этот сервер",
   "billing.rent.name_suffix_hint": "Серверы получат имена {name}-1, {name}-2 и так далее",
   "billing.rent.need_game": "Выберите игру",
+  "billing.rent.pick_game_first": "Выберите игру — после этого здесь появятся её тарифы",
   "billing.rent.need_location": "Выберите локацию",
   "billing.rent.need_tariff": "Выберите тариф",
   "billing.rent.need_name": "Укажите имя сервера",

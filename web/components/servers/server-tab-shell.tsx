@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
-import { m } from "motion/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/servers/confirm-dialog";
 import { PageShell } from "@/components/layout/page-shell";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ResponsiveTabs } from "@/components/vx/responsive-tabs";
 import { Btn, Notice, VX_FAINT, VX_MUTED, btnClass } from "@/components/vx/panel-ui";
 import { reinstallServer } from "@/lib/api";
 import type { PanelVariant } from "@/lib/panel-paths";
@@ -35,7 +35,6 @@ import { cn } from "@/lib/utils";
 import { useT, useTranslations } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
 import { useMe, usePowerServer, useServerDetail } from "@/hooks/use-queries";
-import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
 const CHIP: Record<string, string> = {
   running: "border-[var(--vx-border-strong)] bg-[var(--vx-veil-strong)] text-[var(--vx-fg-strong)]",
@@ -278,47 +277,17 @@ export function ServerTabShell({
           </div>
 
           <div className="border-t border-[var(--vx-border)] px-3.5 py-[9px]">
-            <div ref={wheelScrollX} className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {tabs.map((tab) => {
-                const active = tab.key === currentKey;
-                const disabled = isServerTabDisabled(server, tab.key);
-                const base =
-                  "h-[30px] shrink-0 rounded-[8px] border px-3.5 text-[12.5px] font-medium transition-colors";
-                if (disabled) {
-                  return (
-                    <span
-                      key={tab.key}
-                      title={t("servers.shell.tab_disabled")}
-                      className={cn(base, "cursor-not-allowed border-transparent text-[var(--vx-border-hover)] leading-[30px]")}
-                    >
-                      {tab.label}
-                    </span>
-                  );
-                }
-                return (
-                  <Link
-                    key={tab.key}
-                    href={serverPath(basePath, id, tab.suffix)}
-                    className={cn(
-                      base,
-                      "relative inline-flex items-center border-transparent",
-                      active
-                        ? "text-[var(--vx-fg-strong)]"
-                        : "text-[var(--vx-muted)] hover:text-[var(--vx-fg)]"
-                    )}
-                  >
-                    {active && (
-                      <m.span
-                        layoutId={`server-tab-${id}`}
-                        className="absolute -inset-px rounded-[8px] border border-[var(--vx-border-strong)] bg-[var(--vx-tint)]"
-                        transition={{ type: "spring", stiffness: 480, damping: 38 }}
-                      />
-                    )}
-                    <span className="relative">{tab.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+            <ResponsiveTabs
+              pillId={`server-tab-${id}`}
+              activeKey={currentKey}
+              tabs={tabs.map((tab) => ({
+                key: tab.key,
+                label: tab.label,
+                href: serverPath(basePath, id, tab.suffix),
+                disabled: isServerTabDisabled(server, tab.key),
+                disabledHint: t("servers.shell.tab_disabled"),
+              }))}
+            />
 
           </div>
         </div>
