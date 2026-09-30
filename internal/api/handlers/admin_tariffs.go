@@ -34,6 +34,7 @@ type tariffRow struct {
 	RentalPeriods  []byte
 	RenewalPeriods []byte
 	Discounts      []byte
+	PaymentMode    string
 	Position       int
 	Active         bool
 	Meta           []byte
@@ -171,6 +172,13 @@ func intPtrValue(p *int) any {
 	return *p
 }
 
+func tariffPaymentMode(raw string) string {
+	if raw == "hourly" {
+		return "hourly"
+	}
+	return "prepaid"
+}
+
 func tariffToLegacyJSON(row *tariffRow) map[string]any {
 	meta := parseTariffMeta(row.Meta)
 	if !tariffMetaPriced(row.Meta) {
@@ -263,6 +271,7 @@ func tariffToLegacyJSON(row *tariffRow) map[string]any {
 		"disk_gb":            diskGB,
 		"rental_periods":     jsonIntSlice(row.RentalPeriods),
 		"renewal_periods":    jsonIntSlice(row.RenewalPeriods),
+		"payment_mode":       tariffPaymentMode(row.PaymentMode),
 		"discounts":          discounts,
 		"position":           row.Position,
 		"is_available":       row.Active,
@@ -283,6 +292,7 @@ const tariffSelectSQL = `
 		t.name, t.slug, t.billing_type, t.price_monthly::float8, t.currency,
 		t.slots_min, t.slots_max, t.cpu_cores::float8, t.cpu_shares,
 		t.ram_mb, t.disk_mb, t.rental_periods, t.renewal_periods, t.discounts,
+		COALESCE(t.payment_mode, 'prepaid'),
 		t.position, t.active, t.meta, t.created_at,
 		n.name AS node_name, g.name AS game_name
 	FROM core.tariffs t
@@ -298,6 +308,7 @@ func scanTariffRow(rows pgx.Row) (*tariffRow, error) {
 		&row.Name, &row.Slug, &row.BillingType, &row.PriceMonthly, &row.Currency,
 		&row.SlotsMin, &row.SlotsMax, &row.CPUCores, &row.CPUShares,
 		&row.RAMMb, &row.DiskMb, &row.RentalPeriods, &row.RenewalPeriods, &row.Discounts,
+		&row.PaymentMode,
 		&row.Position, &row.Active, &row.Meta, &row.CreatedAt,
 		&nodeName, &gameName,
 	)
@@ -511,6 +522,7 @@ type tariffPayload struct {
 	RentalPeriods    []int
 	RenewalPeriods   []int
 	Discounts        any
+	PaymentMode      string
 	Position         int
 	IsAvailable      bool
 }
@@ -721,6 +733,7 @@ func parseTariffPayload(body map[string]any) (tariffPayload, string) {
 		RentalPeriods:    rental,
 		RenewalPeriods:   renewal,
 		Discounts:        discounts,
+		PaymentMode:      tariffPaymentMode(strings.TrimSpace(anyString(body["payment_mode"]))),
 		Position:         tariffBodyInt(body, "position", 0),
 		IsAvailable:      tariffBodyBool(body, "is_available"),
 	}
@@ -888,14 +901,15 @@ func (h *Handler) CreateTariff(w http.ResponseWriter, r *http.Request) {
 	_, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		INSERT INTO core.tariffs ( node_id, game_id, name, slug, billing_type, price_monthly,
 			slots_min, slots_max, cpu_cores, cpu_shares, ram_mb, disk_mb,
-			rental_periods, renewal_periods, discounts, position, active, meta
+			rental_periods, renewal_periods, discounts, position, active, meta, payment_mode
 		) VALUES ( $1, $2, $3, $4, $5, $6,
 			$7, $8, $9, $10, $11, $12,
-			$13::jsonb, $14::jsonb, $15::jsonb, $16, $17, $18::jsonb
+			$13::jsonb, $14::jsonb, $15::jsonb, $16, $17, $18::jsonb, $19
 		)
 	`, nilIfEmpty(payload.LocationID), payload.GameID, payload.Name, slug, payload.BillingType, priceMonthly,
 		slotsMin, slotsMax, cpuCores, payload.CPUShares, ramMb, diskMb,
-		rentalJSON, renewalJSON, discountsJSON, payload.Position, payload.IsAvailable, metaJSON)
+		rentalJSON, renewalJSON, discountsJSON, payload.Position, payload.IsAvailable, metaJSON,
+		payload.PaymentMode)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "create failed")
 		return
@@ -940,11 +954,13 @@ func (h *Handler) updateTariffFromBody(w http.ResponseWriter, r *http.Request) {
 			node_id = $2, game_id = $3, name = $4, billing_type = $5, price_monthly = $6,
 			slots_min = $7, slots_max = $8, cpu_cores = $9, cpu_shares = $10,
 			ram_mb = $11, disk_mb = $12, rental_periods = $13::jsonb, renewal_periods = $14::jsonb,
-			discounts = $15::jsonb, position = $16, active = $17, meta = $18::jsonb
+			discounts = $15::jsonb, position = $16, active = $17, meta = $18::jsonb,
+			payment_mode = $19
 		WHERE id = $1
 	`, id, nilIfEmpty(payload.LocationID), payload.GameID, payload.Name, payload.BillingType, priceMonthly,
 		slotsMin, slotsMax, cpuCores, payload.CPUShares, ramMb, diskMb,
-		rentalJSON, renewalJSON, discountsJSON, payload.Position, payload.IsAvailable, metaJSON)
+		rentalJSON, renewalJSON, discountsJSON, payload.Position, payload.IsAvailable, metaJSON,
+		payload.PaymentMode)
 	if err != nil || tag.RowsAffected() == 0 {
 		writeError(w, http.StatusBadRequest, "update failed")
 		return

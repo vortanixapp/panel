@@ -23,6 +23,7 @@ const (
 	LoopNotifyDelivery LoopName = "notify_delivery"
 	LoopUpdates        LoopName = "updates"
 	LoopPanelTransfer  LoopName = "panel_transfer"
+	LoopHourlyBilling  LoopName = "hourly_billing"
 )
 
 var loopPeriods = map[LoopName]time.Duration{
@@ -41,6 +42,7 @@ var loopPeriods = map[LoopName]time.Duration{
 	LoopNotifyDelivery: time.Minute,
 	LoopUpdates:        updatesInterval,
 	LoopPanelTransfer:  2 * time.Minute,
+	LoopHourlyBilling:  hourlyBillingTick,
 }
 
 const staleFactor = 3

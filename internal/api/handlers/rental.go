@@ -56,6 +56,25 @@ func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
 				resp["tariff_warning"] = msg
 			}
 
+			count := rentBatchCount(q.Get("count"))
+			if pricing.Hourly(tariffJSON) {
+				rate := pricing.HourlyRate(tariffJSON, order)
+				resp["payment_mode"] = "hourly"
+				resp["hourly_rate"] = rate
+				resp["daily_cost"] = pricing.DailyCost(tariffJSON, order)
+				resp["monthly_cost"] = pricing.MonthlyCost(tariffJSON, order)
+				resp["breakdown"] = pricing.HourlyBreakdown(tariffJSON, order)
+				resp["order"] = rentOrderToMap(order)
+				resp["count"] = count
+				resp["calculated_cost"] = rate
+				resp["base_cost"] = rate
+				resp["total_cost"] = math.Round(rate*float64(count)*10000) / 10000
+				resp["prepaid_hours"] = hourlyPrepaidHours
+				resp["currency"] = tariffCurrency(tariffJSON)
+				writeJSON(w, http.StatusOK, resp)
+				return
+			}
+
 			baseCost := pricing.CalculateRentCost(tariffJSON, order, periodDays)
 			promoCode := q.Get("promo_code")
 			promo, promoErr := payments.PickPromotion(
@@ -68,7 +87,7 @@ func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
 				preview.Error = &promoErr
 				preview.FinalCost = baseCost
 			}
-			count := rentBatchCount(q.Get("count"))
+			resp["payment_mode"] = "prepaid"
 			resp["calculated_cost"] = preview.FinalCost
 			resp["base_cost"] = baseCost
 			resp["order"] = rentOrderToMap(order)
@@ -84,6 +103,26 @@ func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
 }
 
 const maxRentBatch = 5
+
+const hourlyPrepaidHours = 24.0
+
+func (h *Handler) walletCovers(ctx context.Context, userID, walletID, currency string, amount float64) bool {
+	if amount <= 0 {
+		return true
+	}
+	var balance float64
+	var err error
+	if walletID != "" {
+		err = h.dbOf(ctx).QueryRow(ctx, `
+			SELECT balance FROM core.wallets WHERE id = $1::uuid AND user_id = $2::uuid
+		`, walletID, userID).Scan(&balance)
+	} else {
+		err = h.dbOf(ctx).QueryRow(ctx, `
+			SELECT balance FROM core.wallets WHERE user_id = $1::uuid AND currency = $2 LIMIT 1
+		`, userID, currency).Scan(&balance)
+	}
+	return err == nil && balance >= amount
+}
 
 func rentBatchCount(raw string) int {
 	count, err := strconv.Atoi(strings.TrimSpace(raw))
@@ -442,23 +481,50 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	baseCost := pricing.CalculateRentCost(tariffJSON, order, periodDays)
-	promo, promoErr := payments.PickPromotion(
-		r.Context(), h.dbOf(r.Context()), payments.ApplyRent, claims.UserID,
-		body.PromoCode, body.TariffID, body.GameID, nodeID, baseCost,
-	)
-	if promoErr != "" {
-		writeError(w, http.StatusBadRequest, promoErr)
-		return
-	}
-	preview := payments.ApplyRentDiscount(promo, baseCost)
-	rentPrice := preview.FinalCost
-	promoID := preview.PromoID
+	hourly := pricing.Hourly(tariffJSON)
+	hourlyRate := 0.0
+	rentPrice := 0.0
+	promoID := ""
 	currency := tariffCurrency(tariffJSON)
+
+	if hourly {
+		hourlyRate = pricing.HourlyRate(tariffJSON, order)
+		rentPrice = hourlyRate
+		count := rentBatchCount(strconv.Itoa(body.Count))
+		required := hourlyRate * hourlyPrepaidHours * float64(count)
+		if !h.walletCovers(r.Context(), claims.UserID, body.WalletID, currency, required) {
+			writeCodedError(w, http.StatusPaymentRequired, "hourly_min_balance",
+				fmt.Sprintf("Для почасовой аренды нужен баланс минимум на %d ч: %.2f %s",
+					int(hourlyPrepaidHours), required, currency))
+			return
+		}
+	} else {
+		baseCost := pricing.CalculateRentCost(tariffJSON, order, periodDays)
+		promo, promoErr := payments.PickPromotion(
+			r.Context(), h.dbOf(r.Context()), payments.ApplyRent, claims.UserID,
+			body.PromoCode, body.TariffID, body.GameID, nodeID, baseCost,
+		)
+		if promoErr != "" {
+			writeError(w, http.StatusBadRequest, promoErr)
+			return
+		}
+		preview := payments.ApplyRentDiscount(promo, baseCost)
+		rentPrice = preview.FinalCost
+		promoID = preview.PromoID
+	}
+
 	limits := tariffLimits(tariffJSON, order, gamecatalog.DefaultLimits(gameID))
 
 	limitsJSON, _ := json.Marshal(limits)
 	expires := time.Now().Add(time.Duration(periodDays) * 24 * time.Hour)
+	var expiresValue any = expires
+	var billedUntil any
+	paymentMode := "prepaid"
+	if hourly {
+		paymentMode = "hourly"
+		expiresValue = nil
+		billedUntil = time.Now().Add(time.Hour)
+	}
 
 	projectID := ""
 	if body.ProjectID != "" && h.projectOwned(r.Context(), body.ProjectID, claims.UserID) {
@@ -479,14 +545,17 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		var id string
 		err := h.dbOf(r.Context()).QueryRow(r.Context(), `
 			INSERT INTO core.servers ( node_id, game_id, game_version_id, name, limits, user_id, tariff_id, provisioning_status, expires_at, rental_period_days, config,
-			        project_id, comment, delete_protection, auto_renew)
+			        project_id, comment, delete_protection, auto_renew,
+			        payment_mode, hourly_rate, billed_until)
 			VALUES ( $1::uuid, $2, NULLIF($3, '')::uuid, $4, $5::jsonb, $6::uuid, NULLIF($7, '')::uuid, 'provisioning', $8, $9,
 			        jsonb_build_object('startup_params', $10::text),
-			        NULLIF($11, '')::uuid, $12, $13, $14)
+			        NULLIF($11, '')::uuid, $12, $13, $14,
+			        $15, $16, $17)
 			RETURNING id::text
-		`, nodeID, gameID, body.GameVersionID, name, limitsJSON, claims.UserID, body.TariffID, expires, periodDays,
+		`, nodeID, gameID, body.GameVersionID, name, limitsJSON, claims.UserID, body.TariffID, expiresValue, periodDays,
 			h.defaultStartupParams(r.Context(), gameID),
-			projectID, projectComment(body.Comment), body.DeleteProtection, body.AutoRenew).Scan(&id)
+			projectID, projectComment(body.Comment), body.DeleteProtection, body.AutoRenew,
+			paymentMode, hourlyRate, billedUntil).Scan(&id)
 		if err != nil {
 			failStatus, failCode, failMessage = http.StatusInternalServerError, "server_create", "failed to create server"
 			break
@@ -521,6 +590,13 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 			_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
 				UPDATE core.transactions SET source_id = $2::uuid WHERE id = $1
 			`, rentTxID, id)
+		}
+		if hourly {
+			_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
+				INSERT INTO core.server_hourly_charges (server_id, period_start, amount, currency, tx_id)
+				VALUES ($1::uuid, date_trunc('hour', now()), $2, $3, NULLIF($4, '')::uuid)
+				ON CONFLICT DO NOTHING
+			`, id, hourlyRate, currency, rentTxID)
 		}
 		if projectID != "" {
 			h.grantProjectAccess(r.Context(), projectID, id)
