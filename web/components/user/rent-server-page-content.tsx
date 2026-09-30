@@ -48,6 +48,9 @@ import { useLocationPing } from "@/hooks/use-location-ping";
 
 const PERIODS = [15, 30, 60, 180] as const;
 const MAX_SERVERS = 5;
+const HOURS_PER_MONTH = 720;
+
+type PriceUnit = "hour" | "day" | "month";
 
 const CARD = "rounded-[14px] border border-[var(--vx-border)] bg-[var(--vx-card)]";
 const INNER = "rounded-[12px] border border-[var(--vx-border)] bg-[var(--vx-bg)]";
@@ -204,6 +207,7 @@ export function RentServerPageContent() {
   const [count, setCount] = useState(1);
   const [deleteProtection, setDeleteProtection] = useState(false);
   const [autoRenew, setAutoRenew] = useState(false);
+  const [unit, setUnit] = useState<PriceUnit>("day");
 
   const [slots, setSlots] = useState(10);
   const [cpuCores, setCpuCores] = useState(1);
@@ -334,11 +338,26 @@ export function RentServerPageContent() {
   const breakdown = quoteQuery.data?.breakdown ?? [];
   const isRecalculating = quoteQuery.isFetching;
 
+  const hourly =
+    quoteQuery.data?.payment_mode === "hourly" || selectedTariff?.payment_mode === "hourly";
+  const hourlyRate = quoteQuery.data?.hourly_rate ?? 0;
+  const unitFactor = unit === "hour" ? 1 : unit === "day" ? 24 : HOURS_PER_MONTH;
+  const rateInUnit = hourlyRate * unitFactor * count;
+  const prepaidHours = quoteQuery.data?.prepaid_hours ?? 24;
+
   const wallet =
     (billing?.wallets ?? []).find((w) => w.id === (walletId || billing?.selected_wallet?.id)) ??
     billing?.selected_wallet;
-  const balanceAfter = wallet && total != null ? Number(wallet.balance) - total : null;
-  const notEnough = balanceAfter != null && balanceAfter < 0;
+  const minBalance = hourly ? hourlyRate * prepaidHours * count : 0;
+  const hoursLeft =
+    hourly && hourlyRate > 0 && wallet
+      ? Math.floor(Number(wallet.balance) / (hourlyRate * count))
+      : null;
+  const balanceAfter =
+    wallet && total != null ? Number(wallet.balance) - (hourly ? hourlyRate * count : total) : null;
+  const notEnough = hourly
+    ? !!wallet && Number(wallet.balance) < minBalance
+    : balanceAfter != null && balanceAfter < 0;
   const projects = projectsQuery.data?.projects ?? [];
 
   useEffect(() => {
@@ -776,8 +795,57 @@ export function RentServerPageContent() {
                 )}
               </Section>
 
-              <Section num={4} title={t("common.period")}>
+              <Section
+                num={4}
+                title={hourly ? t("billing.rent.hourly_title") : t("common.period")}
+                hint={hourly ? t("billing.rent.hourly_note") : undefined}
+              >
                 <div className="flex flex-col gap-4 p-5">
+                  {hourly ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex w-fit gap-1 rounded-[8px] border border-[var(--vx-border)] bg-[var(--vx-bg)] p-[3px]">
+                        {(
+                          [
+                            { id: "hour" as const, label: t("billing.rent.unit_hour") },
+                            { id: "day" as const, label: t("billing.rent.unit_day") },
+                            { id: "month" as const, label: t("billing.rent.unit_month") },
+                          ] satisfies { id: PriceUnit; label: string }[]
+                        ).map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setUnit(item.id)}
+                            className={cn(
+                              "h-7 rounded-[6px] px-3 text-[12px] font-medium transition-colors",
+                              unit === item.id
+                                ? "bg-[var(--vx-tint)] text-[var(--vx-fg)]"
+                                : cn(VX_MUTED, "hover:text-[var(--vx-fg)]")
+                            )}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className={cn(INNER, "flex flex-wrap items-baseline gap-x-3 gap-y-1 p-3.5")}>
+                        <span className="font-mono text-[20px] font-semibold">
+                          {money(rateInUnit, currency)}
+                        </span>
+                        <span className={cn("text-[12px]", VX_MUTED)}>
+                          {unit === "hour"
+                            ? t("billing.rent.per_hour")
+                            : unit === "day"
+                              ? t("billing.rent.per_day")
+                              : t("billing.rent.per_month")}
+                        </span>
+                        <span className={cn("ml-auto text-[12px]", DIM)}>
+                          {t("billing.rent.min_balance", {
+                            hours: prepaidHours,
+                            amount: money(minBalance, currency),
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {periods.map((days) => {
                       const selected = period === String(days);
@@ -804,15 +872,20 @@ export function RentServerPageContent() {
                       );
                     })}
                   </div>
+                  )}
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <i className={cn("ri-price-tag-3-line", VX_MUTED)} />
-                    <input
-                      className={cn(VX_INPUT, "h-9 min-w-[160px] flex-1")}
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                      placeholder={t("billing.topup.promo")}
-                    />
+                    {!hourly && (
+                      <>
+                        <i className={cn("ri-price-tag-3-line", VX_MUTED)} />
+                        <input
+                          className={cn(VX_INPUT, "h-9 min-w-[160px] flex-1")}
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                          placeholder={t("billing.topup.promo")}
+                        />
+                      </>
+                    )}
                     {(billing?.wallets?.length ?? 0) > 1 && (
                       <select
                         className={cn(VX_SELECT, "h-9")}
@@ -829,13 +902,13 @@ export function RentServerPageContent() {
                         ))}
                       </select>
                     )}
-                    {promoPreview?.error && (
+                    {!hourly && promoPreview?.error && (
                       <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--vx-danger)]">
                         <i className="ri-error-warning-line" />
                         {promoPreview.error}
                       </span>
                     )}
-                    {promoPreview?.valid && discount > 0 && (
+                    {!hourly && promoPreview?.valid && discount > 0 && (
                       <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--vx-ok)]">
                         <i className="ri-check-line" />
                         {t("billing.rent.discount", { amount: money(discount, currency) })}
@@ -938,10 +1011,17 @@ export function RentServerPageContent() {
 
               <div className="flex flex-col gap-2 text-[13px]">
                 <SummaryRow label={t("common.location")} value={selectedNode?.name ?? "—"} />
-                <SummaryRow
-                  label={t("common.period")}
-                  value={t("billing.hosting.days", { days: period })}
-                />
+                {hourly ? (
+                  <SummaryRow
+                    label={t("billing.rent.payment_mode")}
+                    value={t("billing.rent.mode_hourly")}
+                  />
+                ) : (
+                  <SummaryRow
+                    label={t("common.period")}
+                    value={t("billing.hosting.days", { days: period })}
+                  />
+                )}
                 {breakdown.map((line) => (
                   <SummaryRow
                     key={line.key}
@@ -950,11 +1030,11 @@ export function RentServerPageContent() {
                       line.qty && line.unit
                         ? t("billing.rent.line_qty", {
                             qty: line.qty,
-                            unit: money(line.unit, currency),
+                            unit: money(line.unit * unitFactor, currency),
                           })
                         : undefined
                     }
-                    value={money(line.amount, currency)}
+                    value={money(line.amount * (hourly ? unitFactor : 1), currency)}
                     tone={line.amount < 0 ? "discount" : undefined}
                   />
                 ))}
@@ -974,11 +1054,34 @@ export function RentServerPageContent() {
               </div>
 
               <div className="flex items-baseline justify-between border-t border-[var(--vx-border)] pt-3">
-                <span className={cn("text-[13px]", VX_MUTED)}>{t("billing.rent.to_pay")}</span>
+                <span className={cn("text-[13px]", VX_MUTED)}>
+                  {hourly
+                    ? unit === "hour"
+                      ? t("billing.rent.per_hour")
+                      : unit === "day"
+                        ? t("billing.rent.per_day")
+                        : t("billing.rent.per_month")
+                    : t("billing.rent.to_pay")}
+                </span>
                 <span className="font-mono text-[24px] font-semibold">
-                  {money(total, currency)}
+                  {money(hourly ? rateInUnit : total, currency)}
                 </span>
               </div>
+
+              {hourly && (
+                <>
+                  <SummaryRow
+                    label={t("billing.rent.charge_now")}
+                    value={money(hourlyRate * count, currency)}
+                  />
+                  {hoursLeft != null && (
+                    <SummaryRow
+                      label={t("billing.rent.balance_lasts")}
+                      value={t("billing.rent.hours_short", { hours: hoursLeft })}
+                    />
+                  )}
+                </>
+              )}
 
               {wallet && (
                 <div className={cn("flex items-center justify-between text-[12px]", VX_MUTED)}>
@@ -1027,9 +1130,11 @@ export function RentServerPageContent() {
         <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3.5 border-t border-[var(--vx-border)] bg-[rgba(10,11,13,0.94)] px-4 py-3.5 backdrop-blur-md lg:hidden">
           <span className="flex flex-col">
             <span className={cn("text-[11px]", VX_MUTED)}>
-              {t("billing.rent.to_pay_for", { days: period })}
+              {hourly ? t("billing.rent.per_day") : t("billing.rent.to_pay_for", { days: period })}
             </span>
-            <span className="font-mono text-[20px] font-semibold">{money(total, currency)}</span>
+            <span className="font-mono text-[20px] font-semibold">
+              {money(hourly ? hourlyRate * 24 * count : total, currency)}
+            </span>
           </span>
           <Btn
             tone="primary"

@@ -871,6 +871,13 @@ export const adminContent = {
   "admin.tariff_form.billing_type": "Plan type",
   "admin.tariff_form.pay_resources": "Pay for resources",
   "admin.tariff_form.pay_slots": "Pay for slots",
+  "admin.tariff_form.payment_mode": "Payment mode",
+  "admin.tariff_form.pay_prepaid": "Prepaid period",
+  "admin.tariff_form.pay_hourly": "Hourly",
+  "admin.tariff_form.pay_prepaid_hint":
+    "The client pays upfront for 15/30/60/180 days; term discounts and auto-renewal apply.",
+  "admin.tariff_form.pay_hourly_hint":
+    "The balance is charged every hour, the hourly price is the monthly price ÷ 720. Terms and period discounts do not apply; at zero balance the server stops.",
   "admin.tariff_form.database": "Database",
   "admin.tariff_form.mysql_version": "MySQL version",
   "admin.tariff_form.mysql_default": "Default (mysql80)",

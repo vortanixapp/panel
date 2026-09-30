@@ -2319,6 +2319,11 @@ export type RentQuoteResponse = RentCatalog & {
   total_cost?: number;
   count?: number;
   currency?: string;
+  payment_mode?: "prepaid" | "hourly";
+  hourly_rate?: number;
+  daily_cost?: number;
+  monthly_cost?: number;
+  prepaid_hours?: number;
   breakdown?: RentPriceLine[];
   order?: Record<string, unknown>;
   promo_preview?: RentPromoPreview;
@@ -2349,6 +2354,7 @@ export type RentTariff = {
   ram_mb?: number | null;
   disk_mb?: number | null;
   billing_type?: string;
+  payment_mode?: "prepaid" | "hourly";
   cpu_cores?: number | null;
   ram_gb?: number | null;
   disk_gb?: number | null;

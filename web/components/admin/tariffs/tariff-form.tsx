@@ -21,6 +21,7 @@ export type TariffFormState = {
   location_id: string;
   game_id: string;
   billing_type: string;
+  payment_mode: string;
   mysql_engine: string;
   mysql_instance_key: string;
   rental_periods: number[];
@@ -57,6 +58,7 @@ export const defaultTariffFormState: TariffFormState = {
   location_id: "",
   game_id: "",
   billing_type: "resources",
+  payment_mode: "prepaid",
   mysql_engine: "",
   mysql_instance_key: "",
   rental_periods: [],
@@ -219,6 +221,34 @@ export function TariffForm({
               </button>
             ))}
           </div>
+        </Field>
+
+        <Field label={t("admin.tariff_form.payment_mode")}>
+          <div className="flex gap-1 rounded-xl border bg-muted/40 p-1">
+            {[
+              { id: "prepaid", label: t("admin.tariff_form.pay_prepaid") },
+              { id: "hourly", label: t("admin.tariff_form.pay_hourly") },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => set("payment_mode", opt.id)}
+                className={cn(
+                  "h-8 flex-1 rounded-lg px-3.5 text-[13px] whitespace-nowrap transition-colors",
+                  form.payment_mode === opt.id
+                    ? "bg-primary font-medium text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[12px] text-muted-foreground">
+            {form.payment_mode === "hourly"
+              ? t("admin.tariff_form.pay_hourly_hint")
+              : t("admin.tariff_form.pay_prepaid_hint")}
+          </p>
         </Field>
 
         <Section title={t("admin.tariff_form.database")}>
@@ -720,6 +750,7 @@ export function adminTariffToFormState(t: {
   location_id?: string;
   game_id?: string;
   billing_type?: string;
+  payment_mode?: string;
   mysql_engine?: string | null;
   mysql_instance_key?: string | null;
   rental_periods?: number[];
@@ -755,6 +786,7 @@ export function adminTariffToFormState(t: {
     location_id: t.location_id || "",
     game_id: t.game_id || "",
     billing_type: t.billing_type || "resources",
+    payment_mode: t.payment_mode === "hourly" ? "hourly" : "prepaid",
     mysql_engine: t.mysql_engine || "",
     mysql_instance_key: t.mysql_instance_key || "",
     rental_periods: t.rental_periods?.length ? t.rental_periods : [...PERIODS],

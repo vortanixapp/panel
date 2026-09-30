@@ -866,6 +866,13 @@ export const adminContent = {
   "admin.tariff_form.billing_type": "Тип тарифа",
   "admin.tariff_form.pay_resources": "Оплата за ресурсы",
   "admin.tariff_form.pay_slots": "Оплата за слоты",
+  "admin.tariff_form.payment_mode": "Режим оплаты",
+  "admin.tariff_form.pay_prepaid": "Предоплата за период",
+  "admin.tariff_form.pay_hourly": "Почасовая",
+  "admin.tariff_form.pay_prepaid_hint":
+    "Клиент платит вперёд за 15/30/60/180 дней, работают скидки за срок и автопродление.",
+  "admin.tariff_form.pay_hourly_hint":
+    "Списание идёт каждый час с баланса, цена часа — месячная цена ÷ 720. Сроки и скидки за период не применяются, при нуле баланса сервер останавливается.",
   "admin.tariff_form.database": "База данных",
   "admin.tariff_form.mysql_version": "MySQL версия",
   "admin.tariff_form.mysql_default": "По умолчанию (mysql80)",
