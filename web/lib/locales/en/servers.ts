@@ -513,6 +513,8 @@ export const servers = {
     "Settings for this game have not been described yet.",
   "servers.settings.restarting": "The server is restarting",
   "servers.settings.title": "Server settings",
+  "servers.meta.title": "Project and protection",
+  "servers.meta.saved": "Saved",
   "servers.settings.dirty_count": "fields changed: {count}",
   "servers.settings.no_fields": "This game has no form fields yet.",
   "servers.settings.delete_title": "Delete the server?",

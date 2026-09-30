@@ -11,11 +11,17 @@ import { SettingsRawTab } from "@/components/servers/settings/settings-raw-tab";
 import { SettingsRestartPrompt } from "@/components/servers/settings/settings-restart-prompt";
 import { SettingsSectionForm } from "@/components/servers/settings/settings-section-form";
 import { SettingsStartupTab } from "@/components/servers/settings/settings-startup-tab";
-import { Btn, EmptyState, Notice, Panel, SubTabs } from "@/components/vx/panel-ui";
+import { Btn, EmptyState, Field, Notice, Panel, SubTabs, VX_INPUT, VX_SELECT } from "@/components/vx/panel-ui";
 import { VxInlineLoader } from "@/components/vx/loader";
 import { useDeleteServer, usePowerServer, useServerDetail } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
-import { fetchServerSettings, saveServerSettings } from "@/lib/api";
+import {
+  fetchProjects,
+  fetchServerSettings,
+  saveServerSettings,
+  updateServerMeta,
+} from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import {
   SECTION_RAW,
   SECTION_STARTUP,
@@ -223,6 +229,8 @@ export function ServerSettingsBody({
         </>
       )}
 
+      <ServerMetaPanel serverId={id} canEdit={canEdit} />
+
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
@@ -270,5 +278,108 @@ export function ServerSettingsContent({ variant = "user" }: { variant?: PanelVar
     <ServerTabShell variant={variant} activeTab="settings">
       <ServerSettingsBody variant={variant} />
     </ServerTabShell>
+  );
+}
+
+function ServerMetaPanel({ serverId, canEdit }: { serverId: string; canEdit: boolean }) {
+  const t = useT();
+  const queryClient = useQueryClient();
+  const { data: server } = useServerDetail(serverId);
+  const projectsQuery = useQuery({ queryKey: queryKeys.projects, queryFn: fetchProjects });
+
+  const [comment, setComment] = useState<string | null>(null);
+  const currentComment = comment ?? server?.comment ?? "";
+  const projectId = server?.project_id ?? "";
+  const protection = server?.delete_protection ?? false;
+
+  const mutation = useMutation({
+    mutationFn: (payload: {
+      comment?: string;
+      project_id?: string;
+      delete_protection?: boolean;
+    }) => updateServerMeta(serverId, payload),
+    onSuccess: () => {
+      toast.success(t("servers.meta.saved"));
+      setComment(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.serverDetail(serverId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.projects });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : t("common.save_failed")),
+  });
+
+  if (!server) return null;
+
+  return (
+    <Panel title={t("servers.meta.title")}>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label={t("billing.rent.comment")}>
+          <div className="flex items-center gap-2">
+            <input
+              className={cn(VX_INPUT, "h-9")}
+              value={currentComment}
+              disabled={!canEdit}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={t("billing.rent.comment_placeholder")}
+            />
+            <Btn
+              size="sm"
+              disabled={!canEdit || comment === null || mutation.isPending}
+              onClick={() => mutation.mutate({ comment: currentComment })}
+            >
+              {t("common.save")}
+            </Btn>
+          </div>
+        </Field>
+
+        <Field label={t("billing.rent.project")}>
+          <select
+            className={cn(VX_SELECT, "h-9 w-full")}
+            value={projectId}
+            disabled={!canEdit || mutation.isPending}
+            onChange={(e) => mutation.mutate({ project_id: e.target.value })}
+          >
+            <option value="">{t("billing.rent.no_project")}</option>
+            {(projectsQuery.data?.projects ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <div className="sm:col-span-2">
+          <button
+            type="button"
+            disabled={!canEdit || mutation.isPending}
+            onClick={() => mutation.mutate({ delete_protection: !protection })}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-[12px] border bg-[var(--vx-bg)] p-3.5 text-left transition-colors disabled:opacity-60",
+              protection
+                ? "border-[var(--vx-fg-strong)]"
+                : "border-[var(--vx-border)] hover:border-[var(--vx-border-strong)]"
+            )}
+          >
+            <span
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px]",
+                protection
+                  ? "bg-[var(--vx-fg-strong)] text-[var(--vx-on-fill)]"
+                  : "bg-[var(--vx-tint)]"
+              )}
+            >
+              <i className="ri-shield-keyhole-line text-[16px]" />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[13px] font-medium">
+                {t("billing.rent.delete_protection")}
+              </span>
+              <span className="text-[11.5px] leading-[1.45] text-[var(--vx-muted)]">
+                {t("billing.rent.delete_protection_note")}
+              </span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </Panel>
   );
 }

@@ -511,6 +511,8 @@ export const servers = {
   "servers.settings.unsupported": "Для этой игры настройки пока не описаны.",
   "servers.settings.restarting": "Сервер перезапускается",
   "servers.settings.title": "Настройки сервера",
+  "servers.meta.title": "Проект и защита",
+  "servers.meta.saved": "Сохранено",
   "servers.settings.dirty_count": "изменено полей: {count}",
   "servers.settings.no_fields": "Для этой игры полей формы пока нет.",
   "servers.settings.delete_title": "Удалить сервер?",

@@ -1215,6 +1215,10 @@ export type DashboardServer = {
   game: { name: string; slug: string; image: string | null } | null;
   auto_renew?: boolean;
   rental_period_days?: number;
+  comment?: string;
+  delete_protection?: boolean;
+  project_id?: string | null;
+  project_name?: string | null;
   billing_source?: "panel" | "whmcs";
   whmcs?: {
     service_id: number;
@@ -2518,6 +2522,21 @@ export type ProjectMember = {
 
 export async function fetchProjects() {
   return apiFetch<{ projects: UserProject[]; unassigned_servers: number }>("/v1/projects");
+}
+
+export async function updateServerMeta(
+  id: string,
+  data: {
+    name?: string;
+    comment?: string;
+    project_id?: string;
+    delete_protection?: boolean;
+  }
+) {
+  return apiFetch<{ status: string }>(`/v1/servers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function fetchProjectAvailableServers() {
