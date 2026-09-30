@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -67,14 +68,29 @@ func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
 				preview.Error = &promoErr
 				preview.FinalCost = baseCost
 			}
+			count := rentBatchCount(q.Get("count"))
 			resp["calculated_cost"] = preview.FinalCost
 			resp["base_cost"] = baseCost
 			resp["order"] = rentOrderToMap(order)
 			resp["promo_preview"] = preview
+			resp["breakdown"] = pricing.Breakdown(tariffJSON, order, periodDays)
+			resp["count"] = count
+			resp["total_cost"] = math.Round(preview.FinalCost*float64(count)*100) / 100
+			resp["currency"] = tariffCurrency(tariffJSON)
 		}
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+const maxRentBatch = 5
+
+func rentBatchCount(raw string) int {
+	count, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || count < 1 {
+		return 1
+	}
+	return min(count, maxRentBatch)
 }
 
 func (h *Handler) loadRentTariffs(ctx context.Context, gameID, locationID string) []map[string]any {
@@ -366,6 +382,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		Comment          string `json:"comment"`
 		DeleteProtection bool   `json:"delete_protection"`
 		AutoRenew        bool   `json:"auto_renew"`
+		Count            int    `json:"count"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
@@ -448,69 +465,98 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		projectID = body.ProjectID
 	}
 
-	var id string
-	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		INSERT INTO core.servers ( node_id, game_id, game_version_id, name, limits, user_id, tariff_id, provisioning_status, expires_at, rental_period_days, config,
-		        project_id, comment, delete_protection, auto_renew)
-		VALUES ( $1::uuid, $2, NULLIF($3, '')::uuid, $4, $5::jsonb, $6::uuid, NULLIF($7, '')::uuid, 'provisioning', $8, $9,
-		        jsonb_build_object('startup_params', $10::text),
-		        NULLIF($11, '')::uuid, $12, $13, $14)
-		RETURNING id::text
-	`, nodeID, gameID, body.GameVersionID, body.Name, limitsJSON, claims.UserID, body.TariffID, expires, periodDays,
-		h.defaultStartupParams(r.Context(), gameID),
-		projectID, projectComment(body.Comment), body.DeleteProtection, body.AutoRenew).Scan(&id)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to create server")
+	count := rentBatchCount(strconv.Itoa(body.Count))
+	created := []map[string]any{}
+	var failStatus int
+	var failCode, failMessage string
+
+	for i := 0; i < count; i++ {
+		name := body.Name
+		if count > 1 {
+			name = fmt.Sprintf("%s-%d", body.Name, i+1)
+		}
+
+		var id string
+		err := h.dbOf(r.Context()).QueryRow(r.Context(), `
+			INSERT INTO core.servers ( node_id, game_id, game_version_id, name, limits, user_id, tariff_id, provisioning_status, expires_at, rental_period_days, config,
+			        project_id, comment, delete_protection, auto_renew)
+			VALUES ( $1::uuid, $2, NULLIF($3, '')::uuid, $4, $5::jsonb, $6::uuid, NULLIF($7, '')::uuid, 'provisioning', $8, $9,
+			        jsonb_build_object('startup_params', $10::text),
+			        NULLIF($11, '')::uuid, $12, $13, $14)
+			RETURNING id::text
+		`, nodeID, gameID, body.GameVersionID, name, limitsJSON, claims.UserID, body.TariffID, expires, periodDays,
+			h.defaultStartupParams(r.Context(), gameID),
+			projectID, projectComment(body.Comment), body.DeleteProtection, body.AutoRenew).Scan(&id)
+		if err != nil {
+			failStatus, failCode, failMessage = http.StatusInternalServerError, "server_create", "failed to create server"
+			break
+		}
+		dropServer := func() {
+			_, _ = h.dbOf(r.Context()).Exec(r.Context(), `DELETE FROM core.servers WHERE id = $1`, id)
+		}
+		if gameID != "test" {
+			if _, portErr := portalloc.Assign(r.Context(), h.dbOf(r.Context()), nodeID, id, gameID); portErr != nil {
+				dropServer()
+				failStatus, failCode = http.StatusConflict, "node_ports"
+				failMessage = "На локации закончились свободные порты для этой игры, выберите другую"
+				break
+			}
+		}
+
+		rentTxID := ""
+		if rentPrice > 0 {
+			var debitErr error
+			rentTxID, debitErr = h.debitWalletForRentSource(r, claims, body.WalletID, currency,
+				rentPrice, "Server rent: "+name, "server_rent", "")
+			if debitErr != nil {
+				dropServer()
+				failStatus, failCode, failMessage = http.StatusPaymentRequired, "insufficient_funds", debitErr.Error()
+				break
+			}
+			if promoID != "" {
+				_ = payments.IncrementPromoUsage(r.Context(), h.dbOf(r.Context()), promoID)
+			}
+		}
+		if rentTxID != "" {
+			_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
+				UPDATE core.transactions SET source_id = $2::uuid WHERE id = $1
+			`, rentTxID, id)
+		}
+		if projectID != "" {
+			h.grantProjectAccess(r.Context(), projectID, id)
+		}
+		h.emitWebhook(r.Context(), "server.created", map[string]any{
+			"server_id": id, "server_name": name, "game_id": gameID,
+			"node_id": nodeID, "user_id": claims.UserID,
+		})
+		h.launchNewServer(r.Context(), id, nodeID, gameID, name, limitsJSON)
+		created = append(created, map[string]any{"id": id, "name": name, "cost": rentPrice})
+	}
+
+	if len(created) == 0 {
+		if failCode == "" {
+			failStatus, failCode, failMessage = http.StatusInternalServerError, "server_create", "failed to create server"
+		}
+		writeCodedError(w, failStatus, failCode, failMessage)
 		return
 	}
-	dropServer := func() {
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `DELETE FROM core.servers WHERE id = $1`, id)
-	}
-	if gameID != "test" {
-		if _, portErr := portalloc.Assign(r.Context(), h.dbOf(r.Context()), nodeID, id, gameID); portErr != nil {
-			dropServer()
-			writeCodedError(w, http.StatusConflict, "node_ports",
-				"На локации закончились свободные порты для этой игры, выберите другую")
-			return
-		}
-	}
 
-	rentTxID := ""
-	if rentPrice > 0 {
-		var debitErr error
-		rentTxID, debitErr = h.debitWalletForRentSource(r, claims, body.WalletID, currency,
-			rentPrice, "Server rent: "+body.Name, "server_rent", "")
-		if debitErr != nil {
-			dropServer()
-			writeError(w, http.StatusPaymentRequired, debitErr.Error())
-			return
-		}
-		if promoID != "" {
-			_ = payments.IncrementPromoUsage(r.Context(), h.dbOf(r.Context()), promoID)
-		}
-	}
-	if rentTxID != "" {
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-			UPDATE core.transactions SET source_id = $2::uuid WHERE id = $1
-		`, rentTxID, id)
-	}
-	if projectID != "" {
-		h.grantProjectAccess(r.Context(), projectID, id)
-	}
-	h.emitWebhook(r.Context(), "server.created", map[string]any{
-		"server_id": id, "server_name": body.Name, "game_id": gameID,
-		"node_id": nodeID, "user_id": claims.UserID,
-	})
-	h.launchNewServer(r.Context(), id, nodeID, gameID, body.Name, limitsJSON)
-
-	writeJSON(w, http.StatusCreated, map[string]any{
-		"id":          id,
-		"server_id":   id,
+	first, _ := created[0]["id"].(string)
+	resp := map[string]any{
+		"id":          first,
+		"server_id":   first,
+		"servers":     created,
+		"count":       len(created),
 		"status":      "provisioning",
 		"period_days": periodDays,
 		"expires_at":  expires.Format(time.RFC3339),
-		"cost":        rentPrice,
-	})
+		"cost":        math.Round(rentPrice*float64(len(created))*100) / 100,
+	}
+	if failCode != "" {
+		resp["partial_error"] = failMessage
+		resp["partial_code"] = failCode
+	}
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 func (h *Handler) launchNewServer(ctx context.Context, id, nodeID, gameID, name string, limitsJSON []byte) {
