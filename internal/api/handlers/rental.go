@@ -361,6 +361,11 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		Antiddos      bool   `json:"antiddos_enabled"`
 		PromoCode     string `json:"promo_code"`
 		WalletID      string `json:"wallet_id"`
+
+		ProjectID        string `json:"project_id"`
+		Comment          string `json:"comment"`
+		DeleteProtection bool   `json:"delete_protection"`
+		AutoRenew        bool   `json:"auto_renew"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
@@ -438,14 +443,22 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 	limitsJSON, _ := json.Marshal(limits)
 	expires := time.Now().Add(time.Duration(periodDays) * 24 * time.Hour)
 
+	projectID := ""
+	if body.ProjectID != "" && h.projectOwned(r.Context(), body.ProjectID, claims.UserID) {
+		projectID = body.ProjectID
+	}
+
 	var id string
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		INSERT INTO core.servers ( node_id, game_id, game_version_id, name, limits, user_id, tariff_id, provisioning_status, expires_at, rental_period_days, config)
+		INSERT INTO core.servers ( node_id, game_id, game_version_id, name, limits, user_id, tariff_id, provisioning_status, expires_at, rental_period_days, config,
+		        project_id, comment, delete_protection, auto_renew)
 		VALUES ( $1::uuid, $2, NULLIF($3, '')::uuid, $4, $5::jsonb, $6::uuid, NULLIF($7, '')::uuid, 'provisioning', $8, $9,
-		        jsonb_build_object('startup_params', $10::text))
+		        jsonb_build_object('startup_params', $10::text),
+		        NULLIF($11, '')::uuid, $12, $13, $14)
 		RETURNING id::text
 	`, nodeID, gameID, body.GameVersionID, body.Name, limitsJSON, claims.UserID, body.TariffID, expires, periodDays,
-		h.defaultStartupParams(r.Context(), gameID)).Scan(&id)
+		h.defaultStartupParams(r.Context(), gameID),
+		projectID, projectComment(body.Comment), body.DeleteProtection, body.AutoRenew).Scan(&id)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to create server")
 		return
@@ -480,6 +493,9 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
 			UPDATE core.transactions SET source_id = $2::uuid WHERE id = $1
 		`, rentTxID, id)
+	}
+	if projectID != "" {
+		h.grantProjectAccess(r.Context(), projectID, id)
 	}
 	h.emitWebhook(r.Context(), "server.created", map[string]any{
 		"server_id": id, "server_name": body.Name, "game_id": gameID,

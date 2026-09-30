@@ -191,8 +191,11 @@ func (h *Handler) getEnrichedServer(ctx context.Context, userID, role, serverID 
 		       t.name, COALESCE(u.email, ''), COALESCE(s.is_blocked, false), COALESCE(s.blocked_reason, ''),
 		       COALESCE(n.maintenance_mode, false), COALESCE(n.maintenance_reason, ''), n.maintenance_until,
 		       COALESCE(s.node_id::text, ''),
-		       COALESCE(s.auto_renew, false), COALESCE(s.rental_period_days, 30)
+		       COALESCE(s.auto_renew, false), COALESCE(s.rental_period_days, 30),
+		       COALESCE(s.comment, ''), COALESCE(s.delete_protection, false),
+		       COALESCE(s.project_id::text, ''), COALESCE(p.name, '')
 		FROM core.servers s
+		LEFT JOIN core.projects p ON p.id = s.project_id
 		LEFT JOIN core.games g ON g.slug = s.game_id
 		LEFT JOIN core.nodes n ON n.id = s.node_id
 		LEFT JOIN core.tariffs t ON t.id = s.tariff_id
@@ -211,11 +214,15 @@ func (h *Handler) getEnrichedServer(ctx context.Context, userID, role, serverID 
 	var autoRenew bool
 	var periodDays int
 	var detailNodeID string
+	var comment string
+	var deleteProtection bool
+	var projectID, projectName string
 	if err := row.Scan(
 		&id, &name, &ip, &port, &status, &runtime, &prov, &provError, &expiresAt, &gameID,
 		&gameName, &gameSlug, &gameImage,
 		&locName, &country, &city, &tariffName, &ownerEmail, &isBlocked, &blockedReason,
 		&maintenance, &maintenanceReason, &maintenanceUntil, &detailNodeID, &autoRenew, &periodDays,
+		&comment, &deleteProtection, &projectID, &projectName,
 	); err != nil {
 		return nil, nil, false
 	}
@@ -232,6 +239,8 @@ func (h *Handler) getEnrichedServer(ctx context.Context, userID, role, serverID 
 		"owner_email": ownerEmail, "is_blocked": isBlocked, "blocked_reason": nilIfEmpty(blockedReason),
 		"auto_renew": autoRenew, "rental_period_days": periodDays,
 		"node_id": detailNodeID,
+		"comment": comment, "delete_protection": deleteProtection,
+		"project_id": nilIfEmpty(projectID), "project_name": nilIfEmpty(projectName),
 	}
 	if expiresAt != nil {
 		item["expires_at"] = expiresAt.Format(time.RFC3339)

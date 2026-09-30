@@ -206,11 +206,17 @@ func (h *Handler) DeleteServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var nodeID string
+	var deleteProtection bool
 	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT node_id::text FROM core.servers WHERE id = $1
-	`, id).Scan(&nodeID)
+		SELECT node_id::text, COALESCE(delete_protection, false) FROM core.servers WHERE id = $1
+	`, id).Scan(&nodeID, &deleteProtection)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "server not found")
+		return
+	}
+	if deleteProtection && !isStaffRole(claims.Role) {
+		writeCodedError(w, http.StatusConflict, "delete_protected",
+			"Сервер защищён от удаления: снимите защиту в настройках сервера")
 		return
 	}
 

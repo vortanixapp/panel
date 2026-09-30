@@ -49,6 +49,21 @@ func (h *Handler) PatchServer(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
+	if v, has := body["comment"]; has {
+		comment, _ := v.(string)
+		_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.servers SET comment = $2 WHERE id = $1`,
+			serverID, projectComment(comment))
+		fields = append(fields, "comment")
+	}
+	if v, has := body["delete_protection"]; has {
+		_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.servers SET delete_protection = $2 WHERE id = $1`,
+			serverID, truthy(v))
+		fields = append(fields, "delete_protection")
+	}
+	if v, has := body["project_id"]; has {
+		h.moveServerToProject(ctx, serverID, claims.UserID, strings.TrimSpace(anyString(v)))
+		fields = append(fields, "project_id")
+	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "server.patch", "server:"+serverID,
 		map[string]any{"fields": fields})
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
