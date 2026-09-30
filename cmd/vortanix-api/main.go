@@ -131,6 +131,7 @@ func main() {
 	r.Use(middleware.RequestID)
 	r.Use(httplog.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(handlers.JSONBodyLimit)
 	r.Use(middleware.Timeout(30 * time.Second))
 	namedOrigins := !slices.Contains(cfg.CORSOrigins, "*")
 	r.Use(cors.Handler(cors.Options{

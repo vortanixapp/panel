@@ -73,6 +73,8 @@ const (
 	reconnectMax = 30 * time.Second
 
 	binaryWriteTTL = 2 * time.Minute
+
+	agentReadLimit = 320 << 20
 )
 
 var errNotConnected = errors.New("нет связи с relay")
@@ -207,6 +209,7 @@ func (a *Agent) connect() error {
 		return err
 	}
 
+	conn.SetReadLimit(agentReadLimit)
 	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPingHandler(func(appData string) error {
 		_ = conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -457,6 +460,10 @@ func (a *Agent) handleCommand(data []byte) {
 	if err := json.Unmarshal(data, &cmd); err != nil || cmd.Type != protocol.MsgCommand {
 		return
 	}
+	if cmd.ServerID != "" && !docker.ValidServerID(cmd.ServerID) {
+		a.sendAck(cmd.ID, false, errors.New("неверный идентификатор сервера"), nil)
+		return
+	}
 	switch cmd.Action {
 	case protocol.ActionFilesWriteBinary:
 		path, _ := cmd.Payload["path"].(string)
@@ -556,6 +563,13 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 		install := docker.InstallSpecFromPayload(cmd.Payload["install"])
 		switch action {
 		case "start", "restart":
+			if rawPorts, hasPorts := cmd.Payload["extra_ports"]; hasPorts {
+				if _, portsErr := docker.SyncExtraPorts(cmd.ServerID, docker.DecodeExtraPorts(rawPorts)); portsErr != nil {
+					a.sendStatus(cmd.ServerID, "error", portsErr.Error())
+					a.sendAck(cmd.ID, false, portsErr, nil)
+					return
+				}
+			}
 			if execErr = docker.WriteStartupParams(cmd.ServerID, startupParams); execErr != nil {
 				a.sendStatus(cmd.ServerID, "error", execErr.Error())
 				a.sendAck(cmd.ID, false, execErr, nil)

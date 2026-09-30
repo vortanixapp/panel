@@ -377,8 +377,12 @@ func (h *Handler) ServerFilesUpload(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
+	if !h.authorizeServerAction(w, r, claims, serverID, "files_upload") {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxServerUploadBytes)
 	if err := r.ParseMultipartForm(64 << 20); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid multipart")
+		writeError(w, http.StatusRequestEntityTooLarge, "Файл больше 256 МБ: загрузите его по SFTP")
 		return
 	}
 	dirPath := strings.TrimSpace(r.FormValue("path"))
@@ -402,9 +406,6 @@ func (h *Handler) ServerFilesUpload(w http.ResponseWriter, r *http.Request) {
 		filename = "uploaded.bin"
 	}
 	fullPath := path.Join(path.Clean("/"+dirPath), filename)
-	if !h.authorizeServerAction(w, r, claims, serverID, "files_upload") {
-		return
-	}
 	nodeID, err := h.serverNodeID(r.Context(), serverID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "server not found")
@@ -440,6 +441,8 @@ func (h *Handler) ServerFilesUpload(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 }
+
+const maxServerUploadBytes = 256 << 20
 
 func (h *Handler) ServerFilesDownload(w http.ResponseWriter, r *http.Request) {
 	r, cancelTransfer := extendTransfer(w, r)

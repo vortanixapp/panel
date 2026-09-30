@@ -39,7 +39,7 @@ func (s *serverFiles) readSmall(rel string) string {
 		return ""
 	}
 	info, err := s.root.Lstat(name)
-	if err != nil || info.IsDir() || info.Mode()&os.ModeSymlink != 0 || info.Size() > rconFileLimit {
+	if err != nil || !info.Mode().IsRegular() || info.Size() > rconFileLimit {
 		return ""
 	}
 	data, err := s.root.ReadFile(name)

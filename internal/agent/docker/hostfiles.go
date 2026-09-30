@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -53,13 +54,37 @@ func openServerPath(serverID, containerTarget string) (*os.Root, string, error) 
 	return root, rel, nil
 }
 
+const maxHostFileRead = 64 << 20
+
 func readFileFromHost(serverID, containerTarget string) ([]byte, error) {
 	root, rel, err := openServerPath(serverID, containerTarget)
 	if err != nil {
 		return nil, err
 	}
 	defer root.Close()
-	return root.ReadFile(rel)
+	f, err := root.OpenFile(rel, os.O_RDONLY|openNonBlock, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("это не обычный файл")
+	}
+	if info.Size() > maxHostFileRead {
+		return nil, fmt.Errorf("файл больше %d МБ: скачайте его по SFTP", maxHostFileRead>>20)
+	}
+	data, err := io.ReadAll(io.LimitReader(f, maxHostFileRead+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxHostFileRead {
+		return nil, fmt.Errorf("файл больше %d МБ: скачайте его по SFTP", maxHostFileRead>>20)
+	}
+	return data, nil
 }
 
 func writeFileToHost(_ context.Context, serverID, containerTarget string, content []byte) error {

@@ -11,15 +11,21 @@ import (
 )
 
 func (h *Handler) ServerMysqlInfo(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
+	claims, ok := tenantClaims(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	serverID := chi.URLParam(r, "id")
+	if !h.authorizeServerAction(w, r, claims, serverID, "mysql_list_catalog") {
+		return
+	}
 	info := h.loadServerMysql(r, serverID)
-	if result, ok := h.agentCommandForServer(w, r, serverID, "mysql_list_catalog", h.mysqlAgentPayload(r, serverID, info)); ok {
-		info["catalog"] = filterMysqlCatalog(serverID, result)
+	if nodeID, err := h.serverNodeID(r.Context(), serverID); err == nil {
+		payload := h.mysqlAgentPayload(r, serverID, info)
+		if result, err := h.agentCommand(r.Context(), nodeID, serverID, "mysql_list_catalog", payload); err == nil {
+			info["catalog"] = filterMysqlCatalog(serverID, result)
+		}
 	}
 	writeJSON(w, http.StatusOK, info)
 }

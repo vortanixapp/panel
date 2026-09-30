@@ -95,12 +95,10 @@ func extractBackup(ctx context.Context, serverID, cname, name string) error {
 			"find /data -type f -perm /6000 -exec chmod a-s {} + 2>/dev/null || true",
 		shellQuote(archive),
 	)
-	return runCommand(exec.CommandContext(ctx, "docker", "run", "--rm",
-		"--network", "none",
-		"--entrypoint", "sh",
-		"-v", dataDir+":/data",
-		img, "-c", script,
-	))
+	args := []string{"run", "--rm", "--network", "none"}
+	args = append(args, hardeningArgs()...)
+	args = append(args, "--entrypoint", "sh", "-v", dataDir+":/data", img, "-c", script)
+	return runCommand(exec.CommandContext(ctx, "docker", args...))
 }
 
 func containerImage(ctx context.Context, cname string) string {

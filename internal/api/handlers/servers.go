@@ -337,6 +337,7 @@ func (h *Handler) sendServerPower(ctx context.Context, actorID, id, action strin
 	}
 	if action == "start" || action == "restart" {
 		payload["startup_params"] = startupParams
+		payload["extra_ports"] = portalloc.ExtraPorts(ctx, h.dbOf(ctx), id)
 	}
 	if bindIP := h.serverBindIP(ctx, id); bindIP != "" {
 		payload["bind_ip"] = bindIP

@@ -17,7 +17,10 @@ const (
 var legacyStateFiles = map[string]string{
 	stateCronFile:     ".vortanix_cron.json",
 	stateFirewallFile: ".vortanix_firewall.json",
-	statePortsFile:    ".vortanix_ports.json",
+}
+
+func ValidServerID(serverID string) bool {
+	return safeServerID(serverID)
 }
 
 func safeServerID(serverID string) bool {
@@ -66,6 +69,8 @@ func writeStateFile(serverID, name string, v any) error {
 	return nil
 }
 
+const legacyStateLimit = 1 << 20
+
 func readStateFile(serverID, name string, dest any) bool {
 	dir, err := stateDir(serverID)
 	if err != nil {
@@ -83,6 +88,10 @@ func readStateFile(serverID, name string, dest any) bool {
 		return false
 	}
 	defer root.Close()
+	info, err := root.Lstat(legacy)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > legacyStateLimit {
+		return false
+	}
 	raw, err := root.ReadFile(legacy)
 	if err != nil {
 		return false

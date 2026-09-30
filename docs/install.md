@@ -67,6 +67,16 @@ port accepts a connection and closes it immediately, carrying no data; closing
 it in the firewall only hides the ping. The number is changed with the
 `PING_PORT` variable of the agent container, and `off` disables the probe.
 
+**Game container hardening.** Every container starts without extra kernel
+capabilities (`--cap-drop ALL` with a short allow list), without swap and with a
+process limit of `--pids-limit 2048`; change it with the agent's
+`VORTANIX_PIDS_LIMIT` variable, `0` removes the limit. The RCON port is not
+published by default — the panel reaches it over the internal address; set
+`VORTANIX_PUBLISH_RCON=1` on the agent to publish it again. Traffic from game
+containers to cloud metadata addresses (`169.254.0.0/16`) is blocked together
+with the ban on traffic between game servers (`VORTANIX_GAME_ISOLATION=0` turns
+both off).
+
 ## Preparing the machine
 
 ```bash

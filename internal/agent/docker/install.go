@@ -219,15 +219,16 @@ func installSteam(ctx context.Context, dataDir string, spec InstallSpec, report 
 
 func steamcmdArgs(dataDir string, spec InstallSpec) []string {
 	app := fmt.Sprint(spec.SteamAppID)
-	args := []string{
-		"run", "--rm",
-		"-v", dataDir + ":/data",
+	args := []string{"run", "--rm"}
+	args = append(args, hardeningArgs()...)
+	args = append(args,
+		"-v", dataDir+":/data",
 		steamcmdImage,
 		"+login", "anonymous",
 		"+force_install_dir", "/data",
 		"+app_info_update", "1",
 		"+app_info_print", app,
-	}
+	)
 	if spec.SteamModConfig != "" {
 		args = append(args, "+app_set_config", app, "mod", spec.SteamModConfig)
 	}
@@ -463,8 +464,19 @@ func extractTarGz(archivePath, dest string) error {
 		return fmt.Errorf("чтение gzip: %w", err)
 	}
 	defer gz.Close()
+	return extractTarReader(tar.NewReader(gz), dest)
+}
 
-	tr := tar.NewReader(gz)
+func extractTar(archivePath, dest string) error {
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return fmt.Errorf("чтение архива: %w", err)
+	}
+	defer f.Close()
+	return extractTarReader(tar.NewReader(f), dest)
+}
+
+func extractTarReader(tr *tar.Reader, dest string) error {
 	var written int64
 	for {
 		hdr, err := tr.Next()

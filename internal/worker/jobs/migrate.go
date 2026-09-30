@@ -311,6 +311,7 @@ func (r *Runner) startServerOnNode(ctx context.Context, serverID, nodeID string,
 		"game_id":        srv.GameID,
 		"limits":         srv.Limits,
 		"startup_params": startupParams,
+		"extra_ports":    portalloc.ExtraPorts(ctx, r.db, serverID),
 	}
 	if primaryPort > 0 {
 		cmdPayload["primary_port"] = primaryPort

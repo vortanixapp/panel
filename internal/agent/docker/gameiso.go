@@ -19,7 +19,8 @@ import (
 // собственному адресу) остаётся доступным.
 
 const (
-	gameIsoChain = "VTX-GAMEISO"
+	gameIsoChain     = "VTX-GAMEISO"
+	cloudMetadataNet = "169.254.0.0/16"
 	// Метка нужна, чтобы обойтись 2n правилами вместо n². Пакет из игрового
 	// контейнера помечается, а дальше проверяется только адрес получателя.
 	gameIsoMark = "0x4a000000/0x4a000000"
@@ -93,10 +94,12 @@ func gameIsolationScript(endpoints []gameEndpoint) string {
 		fmt.Fprintf(&b, "iptables -w -A %s -m mark --mark %s -d %s/32 -j DROP\n",
 			gameIsoChain, gameIsoMark, e.ip)
 	}
+	fmt.Fprintf(&b, "iptables -w -A %s -m mark --mark %s -d %s -j DROP\n",
+		gameIsoChain, gameIsoMark, cloudMetadataNet)
 	fmt.Fprintf(&b, "iptables -w -A %s -j MARK --set-xmark 0x0/0x4a000000\n", gameIsoChain)
 
 	b.WriteString(gameIsoDropJumps())
-	if len(endpoints) > 1 {
+	if len(endpoints) > 0 {
 		fmt.Fprintf(&b, "iptables -w -A DOCKER-USER -j %s\n", gameIsoChain)
 	}
 	return b.String()

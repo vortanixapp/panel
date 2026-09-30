@@ -114,6 +114,8 @@ func (h *Handler) lookupNode(ctx context.Context, token string) (nodeID string, 
 	return nodeID, nil
 }
 
+const agentMessageLimit = 128 << 20
+
 func (h *Handler) Routes() chi.Router {
 	r := chi.NewRouter()
 	r.Get("/health", h.Health)
@@ -167,6 +169,7 @@ func (h *Handler) AgentConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	conn.SetReadLimit(agentMessageLimit)
 	remote := clientAddr(r)
 	log.Printf("agent connected node=%s remote=%s", nodeID, remote)
 

@@ -118,13 +118,10 @@ func buildRunArgs(serverID, gameID string, limits map[string]any, image string, 
 		"--label", "vortanix.server_id=" + serverID,
 		"--label", "vortanix.managed=true",
 		"-m", mem,
+		"--memory-swap", mem,
 		"--restart", "unless-stopped",
-		"--security-opt", "no-new-privileges",
-		"--cap-drop", "MKNOD",
-		"--cap-drop", "SYS_CHROOT",
-		"--cap-drop", "AUDIT_WRITE",
-		"--cap-drop", "SYS_RESOURCE",
 	}
+	args = append(args, hardeningArgs()...)
 	if cpu := cpuLimit(limits); cpu != "" {
 		args = append(args, "--cpus", cpu)
 	} else if shares := IntFromPayload(limits["cpu_shares"]); shares >= 2 {
@@ -133,6 +130,47 @@ func buildRunArgs(serverID, gameID string, limits map[string]any, image string, 
 	args = append(args, gameRunOptions(serverID, gameID, limits, primaryPort, bindIP)...)
 	args = append(args, image)
 	return args
+}
+
+func hardeningArgs() []string {
+	args := []string{"--security-opt", "no-new-privileges", "--cap-drop", "ALL"}
+	for _, capability := range containerCapabilities {
+		args = append(args, "--cap-add", capability)
+	}
+	if pids := pidsLimit(); pids != "" {
+		args = append(args, "--pids-limit", pids)
+	}
+	return args
+}
+
+var containerCapabilities = []string{
+	"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "SETGID", "SETUID", "NET_BIND_SERVICE",
+}
+
+const defaultPidsLimit = 2048
+
+func isRconSpec(spec gamecatalog.PortSpec) bool {
+	return strings.Contains(strings.ToUpper(spec.Purpose), "RCON")
+}
+
+func publishRconPorts() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("VORTANIX_PUBLISH_RCON"))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
+}
+
+func pidsLimit() string {
+	raw := strings.TrimSpace(os.Getenv("VORTANIX_PIDS_LIMIT"))
+	if raw == "" {
+		return strconv.Itoa(defaultPidsLimit)
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n <= 0 {
+		return ""
+	}
+	return strconv.Itoa(n)
 }
 
 func gameRunOptions(serverID, gameID string, limits map[string]any, primaryPort int, bindIP string) []string {
@@ -166,6 +204,9 @@ func gameRunOptions(serverID, gameID string, limits map[string]any, primaryPort 
 			continue
 		}
 		taken[port] = true
+		if isRconSpec(spec) && !publishRconPorts() {
+			continue
+		}
 		opts = append(opts, "-p", fmt.Sprintf("%s%d:%d/%s", bindPrefix, port, port, spec.Protocol))
 	}
 	opts = append(opts, extraPortArgs(serverID, bindIP, taken)...)

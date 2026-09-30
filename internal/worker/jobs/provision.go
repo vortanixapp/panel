@@ -137,6 +137,7 @@ func (r *Runner) processOne(ctx context.Context) bool {
 		"limits":         lim,
 		"startup_params": startupParams,
 	}
+	cmdPayload["extra_ports"] = portalloc.ExtraPorts(ctx, r.db, pl.ServerID)
 	if primaryPort > 0 {
 		cmdPayload["primary_port"] = primaryPort
 	}

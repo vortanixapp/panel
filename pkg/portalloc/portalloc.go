@@ -201,3 +201,26 @@ func AssignOn(ctx context.Context, db Execer, nodeID, serverID, gameSlug, addres
 	}
 	return primary, nil
 }
+
+func ExtraPorts(ctx context.Context, q Querier, serverID string) []map[string]any {
+	rows, err := q.Query(ctx, `
+		SELECT port, protocol, COALESCE(purpose, '')
+		FROM core.server_ports
+		WHERE server_id = $1
+		ORDER BY port
+	`, serverID)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	list := []map[string]any{}
+	for rows.Next() {
+		var port int
+		var proto, purpose string
+		if rows.Scan(&port, &proto, &purpose) != nil {
+			continue
+		}
+		list = append(list, map[string]any{"port": port, "protocol": proto, "purpose": purpose})
+	}
+	return list
+}

@@ -272,9 +272,15 @@ func resolveArchive(ctx context.Context, url, cachePath string) (string, error) 
 		}
 	}
 	if url != "" && (strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://")) {
-		tmp := filepath.Join(os.TempDir(), "vtx-plugin-"+filepath.Base(url))
+		tmpFile, err := os.CreateTemp("", "vtx-plugin-*")
+		if err != nil {
+			return "", err
+		}
+		tmp := tmpFile.Name()
+		_ = tmpFile.Close()
 		out, err := exec.CommandContext(ctx, "curl", "-fsSL", "-o", tmp, url).CombinedOutput()
 		if err != nil {
+			_ = os.Remove(tmp)
 			return "", fmt.Errorf("download failed: %w: %s", err, strings.TrimSpace(string(out)))
 		}
 		return tmp, nil
@@ -286,32 +292,34 @@ func resolveArchive(ctx context.Context, url, cachePath string) (string, error) 
 }
 
 func extractArchiveToContainer(ctx context.Context, cname, localArchive, archiveType, targetDir string) error {
-	hostTmp := filepath.Join(os.TempDir(), "vtx-extract-"+filepath.Base(localArchive))
-	_ = os.RemoveAll(hostTmp)
-	if err := os.MkdirAll(hostTmp, 0o755); err != nil {
+	hostTmp, err := os.MkdirTemp("", "vtx-extract-")
+	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(hostTmp)
 
-	var extractCmd string
 	switch archiveType {
 	case "targz", "tar.gz":
-		extractCmd = fmt.Sprintf("tar -xzf %s -C %s", shellQuote(localArchive), shellQuote(hostTmp))
+		err = extractTarGz(localArchive, hostTmp)
 	case "tar":
-		extractCmd = fmt.Sprintf("tar -xf %s -C %s", shellQuote(localArchive), shellQuote(hostTmp))
+		err = extractTar(localArchive, hostTmp)
 	default:
-		extractCmd = fmt.Sprintf("unzip -q %s -d %s", shellQuote(localArchive), shellQuote(hostTmp))
+		err = extractZip(localArchive, hostTmp)
 	}
-	if out, err := exec.CommandContext(ctx, "sh", "-c", extractCmd).CombinedOutput(); err != nil {
-		return fmt.Errorf("extract: %w: %s", err, strings.TrimSpace(string(out)))
+	if err != nil {
+		return fmt.Errorf("extract: %w", err)
 	}
 
-	tarPath := filepath.Join(os.TempDir(), "vtx-bundle.tar")
-	_ = os.Remove(tarPath)
+	bundleFile, err := os.CreateTemp("", "vtx-bundle-*.tar")
+	if err != nil {
+		return err
+	}
+	tarPath := bundleFile.Name()
+	_ = bundleFile.Close()
+	defer os.Remove(tarPath)
 	if out, err := exec.CommandContext(ctx, "tar", "-cf", tarPath, "-C", hostTmp, ".").CombinedOutput(); err != nil {
 		return fmt.Errorf("bundle: %w: %s", err, strings.TrimSpace(string(out)))
 	}
-	defer os.Remove(tarPath)
 
 	f, err := os.Open(tarPath)
 	if err != nil {

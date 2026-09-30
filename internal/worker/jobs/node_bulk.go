@@ -13,6 +13,7 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/portalloc"
 )
 
 const (
@@ -163,6 +164,7 @@ func (r *Runner) bulkPower(ctx context.Context, pl nodeBulkPayload) (int, int, e
 			cmdPayload["game_id"] = t.gameID
 			cmdPayload["limits"] = lim
 			cmdPayload["startup_params"] = t.startupParams
+			cmdPayload["extra_ports"] = portalloc.ExtraPorts(ctx, r.db, t.id)
 			if t.port > 0 {
 				cmdPayload["primary_port"] = t.port
 			}
