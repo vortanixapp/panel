@@ -32,6 +32,8 @@ export const queryKeys = {
   newsItem: (slug: string) => ["news", slug] as const,
   rentCatalog: ["rent-catalog"] as const,
   rentServer: (params: Record<string, string>) => ["rent-server", params] as const,
+  projects: ["projects"] as const,
+  project: (id: string) => ["project", id] as const,
   serverStatus: (id: string) => ["servers", id, "status"] as const,
   serverMapsFolder: (id: string) => ["servers", id, "maps-folder"] as const,
   serverPlugins: (id: string) => ["servers", id, "plugins"] as const,

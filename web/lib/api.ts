@@ -2301,9 +2301,21 @@ export type RentPromoPreview = {
   promo_code?: string;
 };
 
+export type RentPriceLine = {
+  key: string;
+  amount: number;
+  qty?: number;
+  unit?: number;
+  percent?: number;
+};
+
 export type RentQuoteResponse = RentCatalog & {
   calculated_cost?: number;
   base_cost?: number;
+  total_cost?: number;
+  count?: number;
+  currency?: string;
+  breakdown?: RentPriceLine[];
   order?: Record<string, unknown>;
   promo_preview?: RentPromoPreview;
 };
@@ -2451,10 +2463,117 @@ export async function submitRentServer(data: {
   disk_gb?: number;
   promo_code?: string;
   wallet_id?: string;
+  project_id?: string;
+  comment?: string;
+  delete_protection?: boolean;
+  auto_renew?: boolean;
+  count?: number;
 }) {
-  return apiFetch<{ id: string; server_id: string; status: string }>("/v1/rent-server", {
+  return apiFetch<{
+    id: string;
+    server_id: string;
+    status: string;
+    count?: number;
+    servers?: { id: string; name: string; cost: number }[];
+    partial_error?: string;
+  }>("/v1/rent-server", {
     method: "POST",
     body: JSON.stringify(data),
+  });
+}
+
+export type UserProject = {
+  id: string;
+  name: string;
+  comment: string;
+  servers: number;
+  members: number;
+  monthly_cost: number;
+  currency: string;
+  created_at: string;
+};
+
+export type ProjectServer = {
+  id: string;
+  name: string;
+  comment: string;
+  game_id: string;
+  game_name: string;
+  status: string;
+  ip: string;
+  port: number;
+  location: string;
+  country: string;
+  tariff: string;
+  monthly_cost: number;
+  expires_at?: string;
+};
+
+export type ProjectMember = {
+  user_id: string;
+  email: string;
+  permissions: Record<string, boolean>;
+  created_at: string;
+};
+
+export async function fetchProjects() {
+  return apiFetch<{ projects: UserProject[]; unassigned_servers: number }>("/v1/projects");
+}
+
+export async function createProject(data: { name: string; comment?: string }) {
+  return apiFetch<{ id: string; name: string }>("/v1/projects", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function fetchProject(id: string) {
+  return apiFetch<{
+    project: UserProject & { created_at: string };
+    servers: ProjectServer[];
+    members: ProjectMember[];
+  }>(`/v1/projects/${id}`);
+}
+
+export async function updateProject(id: string, data: { name?: string; comment?: string }) {
+  return apiFetch<{ status: string }>(`/v1/projects/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteProject(id: string) {
+  return apiFetch<{ status: string }>(`/v1/projects/${id}`, { method: "DELETE" });
+}
+
+export async function assignProjectServers(id: string, serverIds: string[]) {
+  return apiFetch<{ status: string; moved: number }>(`/v1/projects/${id}/servers`, {
+    method: "POST",
+    body: JSON.stringify({ server_ids: serverIds }),
+  });
+}
+
+export async function removeProjectServers(id: string, serverIds: string[]) {
+  return apiFetch<{ status: string }>(`/v1/projects/${id}/servers/remove`, {
+    method: "POST",
+    body: JSON.stringify({ server_ids: serverIds }),
+  });
+}
+
+export async function addProjectMember(
+  id: string,
+  data: { email: string; permissions: Record<string, boolean> }
+) {
+  return apiFetch<{ status: string }>(`/v1/projects/${id}/members`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeProjectMember(id: string, userId: string) {
+  return apiFetch<{ status: string }>(`/v1/projects/${id}/members/remove`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId }),
   });
 }
 
