@@ -97,6 +97,37 @@ func (h *Handler) ProjectsList(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) ProjectAvailableServers(w http.ResponseWriter, r *http.Request) {
+	claims, ok := tenantClaims(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	rows, err := h.readerOf(r.Context()).Query(r.Context(), `
+		SELECT s.id::text, s.name, s.game_id, COALESCE(g.name, s.game_id), COALESCE(s.status, 'stopped')
+		FROM core.servers s
+		LEFT JOIN core.games g ON g.slug = s.game_id
+		WHERE s.user_id = $1::uuid AND s.project_id IS NULL
+		ORDER BY s.created_at DESC
+	`, claims.UserID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	defer rows.Close()
+	list := []map[string]any{}
+	for rows.Next() {
+		var id, name, gameID, gameName, status string
+		if rows.Scan(&id, &name, &gameID, &gameName, &status) != nil {
+			continue
+		}
+		list = append(list, map[string]any{
+			"id": id, "name": name, "game_id": gameID, "game_name": gameName, "status": status,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"servers": list})
+}
+
 func (h *Handler) ProjectCreate(w http.ResponseWriter, r *http.Request) {
 	claims, ok := tenantClaims(r.Context())
 	if !ok {

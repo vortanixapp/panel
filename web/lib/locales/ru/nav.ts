@@ -1,6 +1,7 @@
 export const nav = {
   "nav.dashboard": "Главная",
   "nav.servers": "Серверы",
+  "nav.projects": "Проекты",
   "nav.monitoring": "Мониторинг",
   "nav.news": "Новости",
   "nav.rent_server": "Арендовать",

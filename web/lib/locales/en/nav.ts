@@ -1,6 +1,7 @@
 export const nav = {
   "nav.dashboard": "Home",
   "nav.servers": "Servers",
+  "nav.projects": "Projects",
   "nav.monitoring": "Monitoring",
   "nav.news": "News",
   "nav.rent_server": "Rent a server",

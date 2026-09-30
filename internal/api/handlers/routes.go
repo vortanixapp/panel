@@ -155,6 +155,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 		r.Route("/v1/projects", func(r chi.Router) {
 			r.Get("/", h.ProjectsList)
 			r.Post("/", h.ProjectCreate)
+			r.Get("/available-servers", h.ProjectAvailableServers)
 			r.Get("/{id}", h.ProjectDetail)
 			r.Patch("/{id}", h.ProjectUpdate)
 			r.Delete("/{id}", h.ProjectDelete)

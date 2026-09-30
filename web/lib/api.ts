@@ -2520,6 +2520,12 @@ export async function fetchProjects() {
   return apiFetch<{ projects: UserProject[]; unassigned_servers: number }>("/v1/projects");
 }
 
+export async function fetchProjectAvailableServers() {
+  return apiFetch<{
+    servers: { id: string; name: string; game_id: string; game_name: string; status: string }[];
+  }>("/v1/projects/available-servers");
+}
+
 export async function createProject(data: { name: string; comment?: string }) {
   return apiFetch<{ id: string; name: string }>("/v1/projects", {
     method: "POST",

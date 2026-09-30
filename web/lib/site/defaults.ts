@@ -21,6 +21,7 @@ const USER_SIDEBAR: BuiltinItem[] = [
       { ref: "user.activity", labelKey: "nav.activity", url: "/activity", icon: "clipboard-list" },
       { ref: "user.monitoring", labelKey: "nav.monitoring", url: "/monitoring", icon: "activity" },
       { ref: "user.servers", labelKey: "nav.servers", url: "/servers", icon: "server" },
+      { ref: "user.projects", labelKey: "nav.projects", url: "/projects", icon: "layout-grid" },
       { ref: "user.news", labelKey: "nav.news", url: "/news", icon: "newspaper" },
       { ref: "user.rent_server", labelKey: "nav.rent_server", url: "/rent-server", icon: "circle-plus", badge: "New" },
     ],

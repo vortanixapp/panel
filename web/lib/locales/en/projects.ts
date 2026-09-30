@@ -14,6 +14,8 @@ export const projects = {
   "projects.monthly": "{amount} per month",
   "projects.unassigned": "Outside projects: {count}",
   "projects.no_comment": "No comment",
+  "projects.remove": "Remove",
+  "projects.monthly_label": "Per month",
   "projects.tab_servers": "Servers",
   "projects.tab_members": "Users",
   "projects.rename": "Rename",
