@@ -18,6 +18,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/pricing"
 	"github.com/vortanixapp/panel/internal/api/relay"
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/hourlybill"
 	"github.com/vortanixapp/panel/pkg/portalloc"
 )
 
@@ -494,13 +495,14 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 
 	hourly := pricing.Hourly(tariffJSON)
 	hourlyRate := 0.0
+	hourlyCarry := 0.0
 	rentPrice := 0.0
 	promoID := ""
 	currency := tariffCurrency(tariffJSON)
 
 	if hourly {
 		hourlyRate = pricing.HourlyRate(tariffJSON, order)
-		rentPrice = hourlyRate
+		rentPrice, hourlyCarry = hourlybill.Split(hourlyRate, 0)
 		count := rentBatchCount(strconv.Itoa(body.Count))
 		required := hourlyRate * hourlyPrepaidHours * float64(count)
 		if !h.walletCovers(r.Context(), claims.UserID, body.WalletID, currency, required) {
@@ -557,16 +559,16 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		err := h.dbOf(r.Context()).QueryRow(r.Context(), `
 			INSERT INTO core.servers ( node_id, game_id, game_version_id, name, limits, user_id, tariff_id, provisioning_status, expires_at, rental_period_days, config,
 			        project_id, comment, delete_protection, auto_renew,
-			        payment_mode, hourly_rate, billed_until)
+			        payment_mode, hourly_rate, billed_until, hourly_carry)
 			VALUES ( $1::uuid, $2, NULLIF($3, '')::uuid, $4, $5::jsonb, $6::uuid, NULLIF($7, '')::uuid, 'provisioning', $8, $9,
 			        jsonb_build_object('startup_params', $10::text),
 			        NULLIF($11, '')::uuid, $12, $13, $14,
-			        $15, $16, $17)
+			        $15, $16, $17, $18)
 			RETURNING id::text
 		`, nodeID, gameID, body.GameVersionID, name, limitsJSON, claims.UserID, body.TariffID, expiresValue, periodDays,
 			h.defaultStartupParams(r.Context(), gameID),
 			projectID, projectComment(body.Comment), body.DeleteProtection, body.AutoRenew,
-			paymentMode, hourlyRate, billedUntil).Scan(&id)
+			paymentMode, hourlyRate, billedUntil, hourlyCarry).Scan(&id)
 		if err != nil {
 			failStatus, failCode, failMessage = http.StatusInternalServerError, "server_create", "failed to create server"
 			break
@@ -607,7 +609,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 				INSERT INTO core.server_hourly_charges (server_id, period_start, amount, currency, tx_id)
 				VALUES ($1::uuid, date_trunc('hour', now()), $2, $3, NULLIF($4, '')::uuid)
 				ON CONFLICT DO NOTHING
-			`, id, hourlyRate, currency, rentTxID)
+			`, id, rentPrice, currency, rentTxID)
 		}
 		if projectID != "" {
 			h.grantProjectAccess(r.Context(), projectID, id)

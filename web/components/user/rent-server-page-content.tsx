@@ -59,7 +59,10 @@ const DIM = "text-[var(--vx-faint)]";
 function money(value: number | null | undefined, currency = "RUB"): string {
   if (value == null || !Number.isFinite(value)) return "—";
   const symbol = currency === "RUB" ? "₽" : currency;
-  return `${formatAmount(value, 0)} ${symbol}`;
+  const digits = Math.abs(value) < 1000 ? 3 : 0;
+  const fixed = formatAmount(value, digits);
+  const text = fixed.includes(".") ? fixed.replace(/0+$/, "").replace(/\.$/, "") : fixed;
+  return `${text} ${symbol}`;
 }
 
 function priceLineLabel(line: RentPriceLine): string {
@@ -350,13 +353,14 @@ export function RentServerPageContent() {
   const wallet =
     (billing?.wallets ?? []).find((w) => w.id === (walletId || billing?.selected_wallet?.id)) ??
     billing?.selected_wallet;
+  const firstCharge = Math.floor(hourlyRate * 100 + 1e-6) / 100 * count;
   const minBalance = hourly ? hourlyRate * prepaidHours * count : 0;
   const hoursLeft =
     hourly && hourlyRate > 0 && wallet
       ? Math.floor(Number(wallet.balance) / (hourlyRate * count))
       : null;
   const balanceAfter =
-    wallet && total != null ? Number(wallet.balance) - (hourly ? hourlyRate * count : total) : null;
+    wallet && total != null ? Number(wallet.balance) - (hourly ? firstCharge : total) : null;
   const notEnough = hourly
     ? !!wallet && Number(wallet.balance) < minBalance
     : balanceAfter != null && balanceAfter < 0;
@@ -1071,7 +1075,7 @@ export function RentServerPageContent() {
                 <>
                   <SummaryRow
                     label={t("billing.rent.charge_now")}
-                    value={money(hourlyRate * count, currency)}
+                    value={money(firstCharge, currency)}
                   />
                   {hoursLeft != null && (
                     <SummaryRow

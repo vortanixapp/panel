@@ -118,7 +118,8 @@ export function ResponsiveTabs({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            className="max-h-[70vh] w-(--radix-dropdown-menu-trigger-width) border-[var(--vx-border-2)] bg-[var(--vx-elevated)]"
+            collisionPadding={8}
+            className="max-h-(--radix-dropdown-menu-content-available-height) w-(--radix-dropdown-menu-trigger-width) overflow-y-auto overscroll-contain border-[var(--vx-border-2)] bg-[var(--vx-elevated)]"
           >
             {tabs.map((tab) =>
               tab.disabled ? (

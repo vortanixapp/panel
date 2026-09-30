@@ -1,0 +1,2 @@
+ALTER TABLE core.servers
+    ADD COLUMN IF NOT EXISTS hourly_carry NUMERIC(12, 6) NOT NULL DEFAULT 0;
