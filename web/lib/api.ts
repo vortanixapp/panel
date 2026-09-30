@@ -2906,6 +2906,7 @@ export type HostingAccount = {
     has_ssh?: boolean;
     has_cron?: boolean;
     has_backup?: boolean;
+    renewal_periods?: number[];
   } | null;
   hosting_server?: { panel_type_label?: string } | null;
   domains?: { id: string | number; name: string; status?: string; created_at?: string | null; is_primary?: boolean }[];
@@ -2926,11 +2927,36 @@ export async function fetchHostingRentForm(): Promise<HostingRentFormData> {
   return apiFetch<HostingRentFormData>("/v1/hosting/rent");
 }
 
+export type HostingQuote = {
+  period_days: number;
+  currency: string;
+  base_cost: number;
+  period_discount_percent: number;
+  period_discount: number;
+  subtotal: number;
+  final_cost: number;
+  promo_preview: RentPromoPreview;
+};
+
+export async function fetchHostingQuote(planId: string, period: number, promoCode?: string) {
+  const params = new URLSearchParams({ plan_id: planId, period: String(period) });
+  if (promoCode) params.set("promo_code", promoCode);
+  return apiFetch<HostingQuote>(`/v1/hosting/rent/quote?${params.toString()}`);
+}
+
+export async function previewHostingRenew(id: string, period: number, promoCode?: string) {
+  return apiFetch<HostingQuote>(`/v1/hosting/${id}/renew/preview`, {
+    method: "POST",
+    body: JSON.stringify({ period, promo_code: promoCode ?? "" }),
+  });
+}
+
 export async function submitHostingRent(data: {
   plan_id: string;
   domain: string;
   period?: number;
   wallet_id?: string;
+  promo_code?: string;
 }) {
   return apiFetch<{ id: string }>("/v1/hosting/rent", {
     method: "POST",
@@ -2939,6 +2965,8 @@ export async function submitHostingRent(data: {
       username: data.domain,
       domain: data.domain,
       period: data.period,
+      wallet_id: data.wallet_id ?? "",
+      promo_code: data.promo_code ?? "",
     }),
   });
 }
@@ -2971,10 +2999,19 @@ export async function createHostingEmail(id: string, address: string, password: 
   });
 }
 
-export async function renewHostingAccount(id: string, period?: number) {
+export async function renewHostingAccount(
+  id: string,
+  period?: number,
+  walletId?: string,
+  promoCode?: string
+) {
   return apiFetch<{ status: string }>(`/v1/hosting/${id}/renew`, {
     method: "POST",
-    body: JSON.stringify({ period: period || 30 }),
+    body: JSON.stringify({
+      period: period || 30,
+      wallet_id: walletId ?? "",
+      promo_code: promoCode ?? "",
+    }),
   });
 }
 
@@ -5664,7 +5701,7 @@ export async function prepareBugReport(payload: {
 
 export type AdminPromotionDiscount = "percent" | "fixed" | "";
 
-export type AdminPromotionScope = "rent" | "renew" | "topup";
+export type AdminPromotionScope = "rent" | "renew" | "topup" | "hosting";
 
 export type AdminPromotion = {
   id: string;
@@ -5676,6 +5713,7 @@ export type AdminPromotion = {
   starts_at: string | null;
   ends_at: string | null;
   max_uses: number | null;
+  max_uses_per_user?: number | null;
   used_count: number;
   min_amount: number | null;
   only_new_users: boolean;
@@ -5698,6 +5736,7 @@ export type AdminPromotionInput = {
   starts_at?: string | null;
   ends_at?: string | null;
   max_uses?: number | null;
+  max_uses_per_user?: number | null;
   min_amount?: number | null;
   only_new_users?: boolean;
   description?: string;
@@ -7632,4 +7671,25 @@ export async function importPanelTransferArchive(
     for (const line of lines) onLine(line);
   }
   if (rest.trim()) onLine(rest);
+}
+
+export type UserPromoCode = {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  discount_type: "percent" | "fixed" | "";
+  discount_value: number;
+  bonus_percent: number;
+  bonus_fixed: number;
+  min_amount: number | null;
+  applies_to: string[];
+  starts_at: string | null;
+  ends_at: string | null;
+  status: "active" | "used" | "expired" | "disabled" | "upcoming";
+  created_at: string;
+};
+
+export async function fetchPromoCodes() {
+  return apiFetch<{ promo_codes: UserPromoCode[] }>("/v1/billing/promo-codes");
 }

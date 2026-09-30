@@ -224,7 +224,7 @@ func (h *Handler) ListPromotions(w http.ResponseWriter, r *http.Request) {
 		       starts_at, ends_at, max_uses, used_count, min_amount::float8,
 		       only_new_users, COALESCE(description, ''),
 		       COALESCE(applies_to, '[]'::jsonb), bonus_percent::float8, bonus_fixed::float8,
-		       COALESCE(filters, '{}'::jsonb)
+		       COALESCE(filters, '{}'::jsonb), max_uses_per_user
 		FROM core.promotions
 		ORDER BY created_at DESC
 	`)
@@ -243,9 +243,10 @@ func (h *Handler) ListPromotions(w http.ResponseWriter, r *http.Request) {
 		var minAmount *float64
 		var usedCount int
 		var appliesTo, filters []byte
+		var maxUsesPerUser *int
 		if rows.Scan(&id, &title, &code, &typ, &val, &active, &startsAt, &endsAt,
 			&maxUses, &usedCount, &minAmount, &onlyNew, &description,
-			&appliesTo, &bonusPercent, &bonusFixed, &filters) != nil {
+			&appliesTo, &bonusPercent, &bonusFixed, &filters, &maxUsesPerUser) != nil {
 			continue
 		}
 		item := map[string]any{
@@ -253,9 +254,10 @@ func (h *Handler) ListPromotions(w http.ResponseWriter, r *http.Request) {
 			"active": active, "starts_at": isoOrNil(startsAt), "ends_at": isoOrNil(endsAt),
 			"max_uses": maxUses, "used_count": usedCount, "min_amount": minAmount,
 			"only_new_users": onlyNew, "description": description,
-			"applies_to":    jsonOrEmptyArray(appliesTo),
-			"bonus_percent": bonusPercent,
-			"bonus_fixed":   bonusFixed,
+			"applies_to":        jsonOrEmptyArray(appliesTo),
+			"bonus_percent":     bonusPercent,
+			"bonus_fixed":       bonusFixed,
+			"max_uses_per_user": maxUsesPerUser,
 		}
 		var f map[string][]string
 		if json.Unmarshal(filters, &f) == nil {
@@ -297,24 +299,32 @@ func (h *Handler) CreatePromotion(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid ends_at")
 		return
 	}
+	if msg := validatePromotion(body, discountType, startsAt, endsAt); msg != "" {
+		writeError(w, http.StatusBadRequest, msg)
+		return
+	}
+	if onlyTopup(body.AppliesTo) && !hasTopupBonus(body) {
+		writeError(w, http.StatusBadRequest, topupBonusRequired)
+		return
+	}
 	appliesTo, _ := normalizeAppliesTo(body.AppliesTo)
 	code := normalizePromoCode(body.Code)
 	var id string
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
 		INSERT INTO core.promotions ( title, code, discount_type, discount_value, active,
 			starts_at, ends_at, max_uses, min_amount, only_new_users, description,
-			applies_to, bonus_percent, bonus_fixed, filters
+			applies_to, bonus_percent, bonus_fixed, filters, max_uses_per_user
 		)
 		VALUES ( COALESCE(NULLIF($1, ''), $2, 'Акция'), $2, $3, COALESCE($4, 0), COALESCE($5, true),
-		        $6, $7, $8, $9, COALESCE($10, false), $11,
+		        $6, $7, NULLIF($8::int, 0), $9, COALESCE($10, false), $11,
 		        COALESCE($12::jsonb, '[]'::jsonb), COALESCE($13, 0), COALESCE($14, 0),
-		        COALESCE($15::jsonb, '{}'::jsonb))
+		        COALESCE($15::jsonb, '{}'::jsonb), NULLIF($16::int, 0))
 		RETURNING id::text
 	`, body.Title, code, discountType, body.Value, body.Active,
 		startsAt, endsAt, body.MaxUses, body.MinAmount, body.OnlyNewUsers, body.Description,
-		appliesTo, body.BonusPercent, body.BonusFixed, promoFiltersPatch(body)).Scan(&id)
+		appliesTo, body.BonusPercent, body.BonusFixed, promoFiltersPatch(body), body.MaxUsesPerUser).Scan(&id)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, promotionWriteError(err))
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "promotion.create", "promotion:"+id, nil)

@@ -131,14 +131,23 @@ func (h *Handler) ServerRenew(w http.ResponseWriter, r *http.Request) {
 	}
 	preview := payments.ApplyRentDiscount(promo, baseCost)
 	price := preview.FinalCost
+	promoClaimed := false
+	if preview.PromoID != "" {
+		claimed, _ := payments.ClaimPromoUsage(r.Context(), h.dbOf(r.Context()), preview.PromoID, claims.UserID)
+		if !claimed {
+			writeError(w, http.StatusConflict, "Промокод уже использован")
+			return
+		}
+		promoClaimed = true
+	}
 	if price > 0 {
 		if _, err := h.debitWalletForRentSource(r, claims, body.WalletID, currency, price,
 			"Server renew", "server_renew", serverID); err != nil {
+			if promoClaimed {
+				_ = payments.ReleasePromoUsage(r.Context(), h.dbOf(r.Context()), preview.PromoID, claims.UserID)
+			}
 			writeError(w, http.StatusPaymentRequired, err.Error())
 			return
-		}
-		if preview.PromoID != "" {
-			_ = payments.IncrementPromoUsage(r.Context(), h.dbOf(r.Context()), preview.PromoID)
 		}
 	}
 	_, err = h.dbOf(r.Context()).Exec(r.Context(), `

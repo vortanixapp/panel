@@ -338,7 +338,8 @@ export function RentServerPageContent() {
     quoteQuery.data?.calculated_cost ??
     promoPreview?.final_cost ??
     periodCost(selectedTariff, Number(period) || 30);
-  const total = perServer != null ? perServer * count : null;
+  const total =
+    quoteQuery.data?.total_cost ?? (perServer != null ? perServer * count : null);
   const discount = promoPreview?.valid ? (promoPreview.discount ?? 0) : 0;
   const breakdown = quoteQuery.data?.breakdown ?? [];
   const isRecalculating = quoteQuery.isFetching;

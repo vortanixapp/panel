@@ -80,6 +80,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 		r.Get("/v1/billing/documents/act", h.BillingAct)
 		r.Get("/v1/billing/documents/reconciliation", h.BillingReconciliation)
 		r.Get("/v1/billing/payments/{id}/invoice", h.PaymentInvoice)
+		r.Get("/v1/billing/promo-codes", h.BillingPromoCodes)
 		r.Get("/v1/billing/refund-requests", h.BillingRefundRequests)
 		r.Post("/v1/billing/refund-requests", h.BillingRefundRequestCreate)
 		r.Post("/v1/billing/refund-requests/{id}/cancel", h.BillingRefundRequestCancel)
@@ -122,6 +123,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 
 		r.Get("/v1/hosting/my", h.MyHosting)
 		r.Get("/v1/hosting/rent", h.HostingRentForm)
+		r.Get("/v1/hosting/rent/quote", h.HostingRentQuote)
 		r.Post("/v1/hosting/rent", h.HostingRentSubmit)
 		r.Get("/v1/hosting/{id}", h.GetHostingAccount)
 		r.Get("/v1/hosting/{id}/domains", h.ListHostingDomains)
@@ -130,6 +132,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 		r.Post("/v1/hosting/{id}/databases", h.CreateHostingDatabase)
 		r.Get("/v1/hosting/{id}/emails", h.ListHostingEmails)
 		r.Post("/v1/hosting/{id}/emails", h.CreateHostingEmail)
+		r.Post("/v1/hosting/{id}/renew/preview", h.HostingRenewPreview)
 		r.Post("/v1/hosting/{id}/renew", h.RenewHostingAccount)
 		r.Post("/v1/hosting/{id}/change-password", h.ChangeHostingPassword)
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -34,21 +35,22 @@ type RentPromoPreview struct {
 }
 
 type promotionRow struct {
-	ID            string
-	Code          *string
-	Active        bool
-	StartsAt      *time.Time
-	EndsAt        *time.Time
-	AppliesTo     []byte
-	DiscountType  string
-	DiscountValue float64
-	MaxUses       *int
-	UsedCount     int
-	MinAmount     *float64
-	OnlyNewUsers  bool
-	Filters       []byte
-	BonusPercent  float64
-	BonusFixed    float64
+	ID             string
+	Code           *string
+	Active         bool
+	StartsAt       *time.Time
+	EndsAt         *time.Time
+	AppliesTo      []byte
+	DiscountType   string
+	DiscountValue  float64
+	MaxUses        *int
+	UsedCount      int
+	MinAmount      *float64
+	OnlyNewUsers   bool
+	Filters        []byte
+	BonusPercent   float64
+	BonusFixed     float64
+	MaxUsesPerUser *int
 }
 
 func ApplyPromo(ctx context.Context, db *pgxpool.Pool, userID, code string, amount float64) (PromoResult, error) {
@@ -99,6 +101,9 @@ func PickPromotion(
 		if err != nil {
 			return nil, "Промокод не найден"
 		}
+		if promoUsedUp(ctx, db, &row, userID) {
+			return nil, "Вы уже использовали этот промокод"
+		}
 		if !isPromotionEligible(ctx, db, &row, applyTo, userID, tariffID, gameID, locationID, amount) {
 			return nil, "Промокод недоступен"
 		}
@@ -108,7 +113,7 @@ func PickPromotion(
 		SELECT id::text, code, active, starts_at, ends_at, applies_to,
 		       COALESCE(discount_type, 'percent'), discount_value::float8,
 		       max_uses, used_count, min_amount::float8, only_new_users, filters,
-		       bonus_percent::float8, bonus_fixed::float8
+		       bonus_percent::float8, bonus_fixed::float8, max_uses_per_user
 		FROM core.promotions
 		WHERE active = true AND (code IS NULL OR code = '')
 		ORDER BY created_at DESC LIMIT 50
@@ -124,7 +129,8 @@ func PickPromotion(
 		if scanErr != nil {
 			continue
 		}
-		if !isPromotionEligible(ctx, db, &row, applyTo, userID, tariffID, gameID, locationID, amount) {
+		if promoUsedUp(ctx, db, &row, userID) ||
+			!isPromotionEligible(ctx, db, &row, applyTo, userID, tariffID, gameID, locationID, amount) {
 			continue
 		}
 		benefit := calculateDiscount(&row, amount)
@@ -155,7 +161,78 @@ func ApplyRentDiscount(promo *promotionRow, baseCost float64) RentPromoPreview {
 	return out
 }
 
-func IncrementPromoUsage(ctx context.Context, db *pgxpool.Pool, promoID string) error {
+func promoUsedUp(ctx context.Context, db *pgxpool.Pool, promo *promotionRow, userID string) bool {
+	if promo.MaxUsesPerUser == nil || userID == "" {
+		return false
+	}
+	var used int
+	err := db.QueryRow(ctx, `
+		SELECT COUNT(*)::int FROM core.promotion_uses WHERE promotion_id = $1::uuid AND user_id = $2::uuid
+	`, promo.ID, userID).Scan(&used)
+	return err == nil && used >= *promo.MaxUsesPerUser
+}
+
+func ClaimPromoUsage(ctx context.Context, db *pgxpool.Pool, promoID, userID string) (bool, error) {
+	if promoID == "" {
+		return true, nil
+	}
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+	claimed, err := ClaimPromoUsageTx(ctx, tx, promoID, userID, true)
+	if err != nil || !claimed {
+		return false, err
+	}
+	return true, tx.Commit(ctx)
+}
+
+func ClaimPromoUsageTx(ctx context.Context, tx pgx.Tx, promoID, userID string, strict bool) (bool, error) {
+	var active bool
+	var maxUses, perUser *int
+	var used int
+	var endsAt *time.Time
+	err := tx.QueryRow(ctx, `
+		SELECT active, max_uses, max_uses_per_user, used_count, ends_at
+		FROM core.promotions WHERE id = $1::uuid FOR UPDATE
+	`, promoID).Scan(&active, &maxUses, &perUser, &used, &endsAt)
+	if err != nil {
+		return false, err
+	}
+	if strict && (!active || (endsAt != nil && endsAt.Before(time.Now()))) {
+		return false, nil
+	}
+	if maxUses != nil && used >= *maxUses {
+		return false, nil
+	}
+	if userID != "" {
+		if perUser != nil {
+			var byUser int
+			if err := tx.QueryRow(ctx, `
+				SELECT COUNT(*)::int FROM core.promotion_uses WHERE promotion_id = $1::uuid AND user_id = $2::uuid
+			`, promoID, userID).Scan(&byUser); err != nil {
+				return false, err
+			}
+			if byUser >= *perUser {
+				return false, nil
+			}
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO core.promotion_uses (promotion_id, user_id) VALUES ($1::uuid, $2::uuid)
+		`, promoID, userID); err != nil {
+			return false, err
+		}
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE core.promotions SET used_count = used_count + 1, updated_at = now() WHERE id = $1::uuid
+	`, promoID); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func ReleasePromoUsage(ctx context.Context, db *pgxpool.Pool, promoID, userID string) error {
 	if promoID == "" {
 		return nil
 	}
@@ -164,26 +241,50 @@ func IncrementPromoUsage(ctx context.Context, db *pgxpool.Pool, promoID string) 
 		return err
 	}
 	defer tx.Rollback(ctx)
-	var maxUses *int
-	var used int
-	var active bool
-	err = tx.QueryRow(ctx, `
-		SELECT max_uses, used_count, active FROM core.promotions WHERE id = $1 FOR UPDATE
-	`, promoID).Scan(&maxUses, &used, &active)
-	if err != nil {
-		return err
+	if userID != "" {
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM core.promotion_uses
+			WHERE id = (
+				SELECT id FROM core.promotion_uses
+				WHERE promotion_id = $1::uuid AND user_id = $2::uuid
+				ORDER BY created_at DESC LIMIT 1
+			)
+		`, promoID, userID); err != nil {
+			return err
+		}
 	}
-	if !active {
-		return nil
-	}
-	if maxUses != nil && used >= *maxUses {
-		return nil
-	}
-	_, err = tx.Exec(ctx, `UPDATE core.promotions SET used_count = used_count + 1, updated_at = now() WHERE id = $1`, promoID)
-	if err != nil {
+	if _, err := tx.Exec(ctx, `
+		UPDATE core.promotions SET used_count = GREATEST(used_count - 1, 0), updated_at = now() WHERE id = $1::uuid
+	`, promoID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+func RemainingPromoUses(ctx context.Context, db *pgxpool.Pool, promoID, userID string) int {
+	var maxUses, perUser *int
+	var used int
+	err := db.QueryRow(ctx, `
+		SELECT max_uses, max_uses_per_user, used_count FROM core.promotions WHERE id = $1::uuid
+	`, promoID).Scan(&maxUses, &perUser, &used)
+	if err != nil {
+		return -1
+	}
+	remaining := -1
+	if maxUses != nil {
+		remaining = max(*maxUses-used, 0)
+	}
+	if perUser != nil && userID != "" {
+		var byUser int
+		_ = db.QueryRow(ctx, `
+			SELECT COUNT(*)::int FROM core.promotion_uses WHERE promotion_id = $1::uuid AND user_id = $2::uuid
+		`, promoID, userID).Scan(&byUser)
+		left := max(*perUser-byUser, 0)
+		if remaining < 0 || left < remaining {
+			remaining = left
+		}
+	}
+	return remaining
 }
 
 func loadPromotionByCode(ctx context.Context, db *pgxpool.Pool, code string) (promotionRow, error) {
@@ -192,7 +293,7 @@ func loadPromotionByCode(ctx context.Context, db *pgxpool.Pool, code string) (pr
 		SELECT id::text, code, active, starts_at, ends_at, applies_to,
 		       COALESCE(discount_type, 'percent'), discount_value::float8,
 		       max_uses, used_count, min_amount::float8, only_new_users, filters,
-		       bonus_percent::float8, bonus_fixed::float8
+		       bonus_percent::float8, bonus_fixed::float8, max_uses_per_user
 		FROM core.promotions
 		WHERE UPPER(code) = $1
 		LIMIT 1
@@ -200,7 +301,7 @@ func loadPromotionByCode(ctx context.Context, db *pgxpool.Pool, code string) (pr
 		&row.ID, &row.Code, &row.Active, &row.StartsAt, &row.EndsAt, &row.AppliesTo,
 		&row.DiscountType, &row.DiscountValue, &row.MaxUses, &row.UsedCount,
 		&row.MinAmount, &row.OnlyNewUsers, &row.Filters,
-		&row.BonusPercent, &row.BonusFixed,
+		&row.BonusPercent, &row.BonusFixed, &row.MaxUsesPerUser,
 	)
 	return row, err
 }
@@ -213,7 +314,7 @@ func scanPromotionRow(rows interface {
 		&row.ID, &row.Code, &row.Active, &row.StartsAt, &row.EndsAt, &row.AppliesTo,
 		&row.DiscountType, &row.DiscountValue, &row.MaxUses, &row.UsedCount,
 		&row.MinAmount, &row.OnlyNewUsers, &row.Filters,
-		&row.BonusPercent, &row.BonusFixed,
+		&row.BonusPercent, &row.BonusFixed, &row.MaxUsesPerUser,
 	)
 	return row, err
 }
@@ -291,7 +392,7 @@ func isPromotionEligible(
 				}
 			}
 			if ids, ok := filters["game_ids"].([]any); ok && len(ids) > 0 && gameID != "" {
-				if !idInList(gameID, ids) {
+				if !anyIDInList(gameAliases(ctx, db, gameID), ids) {
 					return false
 				}
 			}
@@ -308,6 +409,27 @@ func isPromotionEligible(
 		}
 	}
 	return true
+}
+
+func gameAliases(ctx context.Context, db *pgxpool.Pool, gameID string) []string {
+	aliases := []string{gameID}
+	var id, slug string
+	err := db.QueryRow(ctx, `
+		SELECT id::text, slug FROM core.games WHERE id::text = $1 OR slug = $1 LIMIT 1
+	`, gameID).Scan(&id, &slug)
+	if err == nil {
+		aliases = append(aliases, id, slug)
+	}
+	return aliases
+}
+
+func anyIDInList(ids []string, list []any) bool {
+	for _, id := range ids {
+		if idInList(id, list) {
+			return true
+		}
+	}
+	return false
 }
 
 func idInList(id string, list []any) bool {

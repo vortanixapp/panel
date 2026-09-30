@@ -10,17 +10,18 @@ import (
 )
 
 type promotionBody struct {
-	Title        *string  `json:"title"`
-	Code         *string  `json:"code"`
-	DiscountType *string  `json:"type"`
-	Value        *float64 `json:"value"`
-	Active       *bool    `json:"active"`
-	StartsAt     *string  `json:"starts_at"`
-	EndsAt       *string  `json:"ends_at"`
-	MaxUses      *int     `json:"max_uses"`
-	MinAmount    *float64 `json:"min_amount"`
-	OnlyNewUsers *bool    `json:"only_new_users"`
-	Description  *string  `json:"description"`
+	Title          *string  `json:"title"`
+	Code           *string  `json:"code"`
+	DiscountType   *string  `json:"type"`
+	Value          *float64 `json:"value"`
+	Active         *bool    `json:"active"`
+	StartsAt       *string  `json:"starts_at"`
+	EndsAt         *string  `json:"ends_at"`
+	MaxUses        *int     `json:"max_uses"`
+	MaxUsesPerUser *int     `json:"max_uses_per_user"`
+	MinAmount      *float64 `json:"min_amount"`
+	OnlyNewUsers   *bool    `json:"only_new_users"`
+	Description    *string  `json:"description"`
 
 	AppliesTo *[]string `json:"applies_to"`
 
@@ -47,6 +48,64 @@ func parseDate(v *string) (any, bool) {
 		}
 	}
 	return nil, false
+}
+
+func validatePromotion(body promotionBody, discountType, startsAt, endsAt any) string {
+	if body.Value != nil {
+		if *body.Value < 0 {
+			return "Размер скидки не может быть отрицательным"
+		}
+		if discountType == "percent" && *body.Value > 100 {
+			return "Процентная скидка не может быть больше 100"
+		}
+	}
+	if body.BonusPercent != nil && (*body.BonusPercent < 0 || *body.BonusPercent > 999) {
+		return "Бонус к пополнению в процентах: от 0 до 999"
+	}
+	if body.BonusFixed != nil && *body.BonusFixed < 0 {
+		return "Фиксированный бонус не может быть отрицательным"
+	}
+	if body.MinAmount != nil && *body.MinAmount < 0 {
+		return "Минимальная сумма не может быть отрицательной"
+	}
+	if body.MaxUses != nil && *body.MaxUses < 0 {
+		return "Лимит использований не может быть отрицательным"
+	}
+	if body.MaxUsesPerUser != nil && *body.MaxUsesPerUser < 0 {
+		return "Лимит использований на пользователя не может быть отрицательным"
+	}
+	from, hasFrom := startsAt.(time.Time)
+	to, hasTo := endsAt.(time.Time)
+	if hasFrom && hasTo && !to.After(from) {
+		return "Дата окончания должна быть позже даты начала"
+	}
+	return ""
+}
+
+const topupBonusRequired = "Для акции только на пополнение задайте бонус к сумме: скидка при пополнении не действует"
+
+func onlyTopup(applies *[]string) bool {
+	if applies == nil || len(*applies) == 0 {
+		return false
+	}
+	for _, item := range *applies {
+		if strings.ToLower(strings.TrimSpace(item)) != "topup" {
+			return false
+		}
+	}
+	return true
+}
+
+func hasTopupBonus(body promotionBody) bool {
+	return (body.BonusPercent != nil && *body.BonusPercent > 0) ||
+		(body.BonusFixed != nil && *body.BonusFixed > 0)
+}
+
+func promotionWriteError(err error) string {
+	if strings.Contains(err.Error(), "promotions_") && strings.Contains(err.Error(), "code") {
+		return "Промокод с таким кодом уже существует"
+	}
+	return "Не удалось сохранить акцию"
 }
 
 func isoOrNil(t *time.Time) any {
@@ -83,7 +142,7 @@ func normalizePromoCode(v *string) any {
 	return code
 }
 
-var promoApplyTargets = map[string]bool{"rent": true, "renew": true, "topup": true}
+var promoApplyTargets = map[string]bool{"rent": true, "renew": true, "topup": true, "hosting": true}
 
 func normalizeAppliesTo(v *[]string) (any, bool) {
 	if v == nil {
@@ -161,6 +220,26 @@ func (h *Handler) UpdatePromotion(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Некорректная дата окончания")
 		return
 	}
+	if msg := validatePromotion(body, discountType, startsAt, endsAt); msg != "" {
+		writeError(w, http.StatusBadRequest, msg)
+		return
+	}
+	if body.AppliesTo != nil && onlyTopup(body.AppliesTo) {
+		var bonusPercent, bonusFixed float64
+		_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
+			SELECT bonus_percent::float8, bonus_fixed::float8 FROM core.promotions WHERE id = $1
+		`, id).Scan(&bonusPercent, &bonusFixed)
+		if body.BonusPercent != nil {
+			bonusPercent = *body.BonusPercent
+		}
+		if body.BonusFixed != nil {
+			bonusFixed = *body.BonusFixed
+		}
+		if bonusPercent <= 0 && bonusFixed <= 0 {
+			writeError(w, http.StatusBadRequest, topupBonusRequired)
+			return
+		}
+	}
 	appliesTo, hasApplies := normalizeAppliesTo(body.AppliesTo)
 	filtersPatch := promoFiltersPatch(body)
 
@@ -173,14 +252,15 @@ func (h *Handler) UpdatePromotion(w http.ResponseWriter, r *http.Request) {
 			active         = COALESCE($8, active),
 			starts_at      = CASE WHEN $9::bool THEN $10::timestamptz ELSE starts_at END,
 			ends_at        = CASE WHEN $11::bool THEN $12::timestamptz ELSE ends_at END,
-			max_uses       = CASE WHEN $13::bool THEN $14::int ELSE max_uses END,
-			min_amount     = CASE WHEN $15::bool THEN $16::numeric ELSE min_amount END,
-			only_new_users = COALESCE($17, only_new_users),
-			description    = COALESCE($18, description),
-			applies_to     = CASE WHEN $19::bool THEN $20::jsonb ELSE applies_to END,
-			bonus_percent  = COALESCE($21, bonus_percent),
-			bonus_fixed    = COALESCE($22, bonus_fixed),
-			filters        = CASE WHEN $23::jsonb IS NULL THEN filters ELSE filters || $23::jsonb END,
+			max_uses       = CASE WHEN $13::bool THEN NULLIF($14::int, 0) ELSE max_uses END,
+			max_uses_per_user = CASE WHEN $15::bool THEN NULLIF($16::int, 0) ELSE max_uses_per_user END,
+			min_amount     = CASE WHEN $17::bool THEN $18::numeric ELSE min_amount END,
+			only_new_users = COALESCE($19, only_new_users),
+			description    = COALESCE($20, description),
+			applies_to     = CASE WHEN $21::bool THEN $22::jsonb ELSE applies_to END,
+			bonus_percent  = COALESCE($23, bonus_percent),
+			bonus_fixed    = COALESCE($24, bonus_fixed),
+			filters        = CASE WHEN $25::jsonb IS NULL THEN filters ELSE filters || $25::jsonb END,
 			updated_at     = now()
 		WHERE id = $1
 	`,
@@ -192,6 +272,7 @@ func (h *Handler) UpdatePromotion(w http.ResponseWriter, r *http.Request) {
 		body.StartsAt != nil, startsAt,
 		body.EndsAt != nil, endsAt,
 		body.MaxUses != nil, body.MaxUses,
+		body.MaxUsesPerUser != nil, body.MaxUsesPerUser,
 		body.MinAmount != nil, body.MinAmount,
 		body.OnlyNewUsers, body.Description,
 		hasApplies, appliesTo,
@@ -199,7 +280,7 @@ func (h *Handler) UpdatePromotion(w http.ResponseWriter, r *http.Request) {
 		filtersPatch,
 	)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeError(w, http.StatusBadRequest, promotionWriteError(err))
 		return
 	}
 	if tag.RowsAffected() == 0 {

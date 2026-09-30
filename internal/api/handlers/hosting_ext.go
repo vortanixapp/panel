@@ -157,50 +157,6 @@ func (h *Handler) CreateHostingEmail(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]string{"id": id})
 }
 
-func (h *Handler) RenewHostingAccount(w http.ResponseWriter, r *http.Request) {
-	claims, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-	accountID := chi.URLParam(r, "id")
-	panelID, panelCfg, err := h.hostingPanelRef(r, accountID, claims.UserID)
-	if err != nil {
-		writeError(w, http.StatusNotFound, "not found")
-		return
-	}
-	var body struct {
-		Period int `json:"period"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	if body.Period <= 0 {
-		body.Period = 30
-	}
-	adapter := hosting.NewAdapter(panelCfg)
-	if err := adapter.Renew(r.Context(), panelID, body.Period); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	var wasSuspended bool
-	_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
-		SELECT suspended_at IS NOT NULL FROM core.hosting_accounts WHERE id = $1
-	`, accountID).Scan(&wasSuspended)
-	if wasSuspended {
-		if err := adapter.Unsuspend(r.Context(), panelID); err != nil {
-			writeError(w, http.StatusBadGateway, "Не удалось снять приостановку на панели: "+err.Error())
-			return
-		}
-	}
-	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-		UPDATE core.hosting_accounts
-		SET expires_at = GREATEST(COALESCE(expires_at, now()), now()) + make_interval(days => $2),
-		    status = 'active',
-		    suspended_at = NULL
-		WHERE id = $1
-	`, accountID, body.Period)
-	writeJSON(w, http.StatusOK, map[string]string{"status": "renewed"})
-}
-
 func (h *Handler) ChangeHostingPassword(w http.ResponseWriter, r *http.Request) {
 	claims, ok := tenantClaims(r.Context())
 	if !ok {

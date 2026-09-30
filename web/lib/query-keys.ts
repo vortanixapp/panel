@@ -13,6 +13,7 @@ export const queryKeys = {
   billing: (walletId?: string | null) =>
     ["billing", walletId ?? "default"] as const,
   billingTopup: () => ["billing-topup"] as const,
+  billingPromoCodes: () => ["billing-promo-codes"] as const,
   billingPayment: (id: string) => ["billing-payment", id] as const,
   notificationsFeeds: ["notifications-feed"] as const,
   notificationsFeed: (group: string, unread: boolean, q: string, limit: number) =>

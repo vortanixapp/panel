@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
 import { BillingDocuments } from "@/components/user/billing-documents";
 import {
@@ -11,6 +12,7 @@ import {
   paymentStatusLabel,
   paymentTone,
 } from "@/components/user/billing-payment-dialog";
+import { BillingPromoCodes } from "@/components/user/billing-promo-codes";
 import { BillingRefunds } from "@/components/user/billing-refunds";
 import { IdentificationNotice } from "@/components/user/identification-notice";
 import {
@@ -444,196 +446,210 @@ export function BillingPageContent() {
         </div>
 
         <div className="mt-3.5 grid grid-cols-1 items-start gap-3.5 lg:grid-cols-2">
-          <form
-            id="topup"
-            className={cn(CARD, "scroll-mt-24 px-5 py-6 sm:px-[26px]")}
-            onSubmit={(e) => {
-              e.preventDefault();
-              setTopupError("");
-              topupMutation.mutate();
-            }}
-          >
-            <div className="flex items-center justify-between gap-3.5">
-              <span className="text-base font-semibold">{t("billing.topup.title")}</span>
-              <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
-                {t("billing.topup.instant")}
-              </span>
-            </div>
-
-            <div className="mt-[18px] flex flex-wrap gap-2">
-              {PRESETS.map((v) => {
-                const on = amount === v;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setAmount(v)}
-                    className={cn(
-                      "rounded-xl border px-[18px] py-[11px] font-mono text-sm transition-colors hover:border-[var(--vx-border-hover)]",
-                      on
-                        ? "border-[var(--vx-border-hover)] bg-[var(--vx-tint)] text-foreground"
-                        : "border-[var(--vx-border-2)] bg-[var(--vx-card-2)] text-[var(--vx-ink-dim)]"
-                    )}
-                  >
-                    {v.toLocaleString(localeTag())} {symbol}
-                  </button>
-                );
-              })}
-            </div>
-
-            <label className="mt-3.5 flex items-center gap-3 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 py-3.5">
-              <span className="text-[13px] whitespace-nowrap text-muted-foreground">
-                {t("billing.topup.custom_amount")}
-              </span>
-              <input
-                inputMode="numeric"
-                value={amount ? amount.toLocaleString(localeTag()) : ""}
-                onChange={(e) => {
-                  const v = parseInt(e.target.value.replace(/\D/g, ""), 10);
-                  setAmount(Number.isNaN(v) ? 0 : v);
-                }}
-                className="min-w-0 flex-1 border-none bg-transparent font-mono text-[19px] text-foreground outline-none"
-              />
-              <span className="font-mono text-[15px] text-[var(--vx-ink-faint)]">
-                {symbol}
-              </span>
-            </label>
-
-            {promoOpen ? (
-              <label className="mt-2.5 flex items-center gap-3 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 py-3">
-                <span className="text-[13px] whitespace-nowrap text-muted-foreground">
-                  {t("billing.topup.promo")}
+          <div className="flex flex-col gap-3.5">
+            <form
+              id="topup"
+              className={cn(CARD, "scroll-mt-24 px-5 py-6 sm:px-[26px]")}
+              onSubmit={(e) => {
+                e.preventDefault();
+                setTopupError("");
+                topupMutation.mutate();
+              }}
+            >
+              <div className="flex items-center justify-between gap-3.5">
+                <span className="text-base font-semibold">{t("billing.topup.title")}</span>
+                <span className="font-mono text-xs text-[var(--vx-ink-faint)]">
+                  {t("billing.topup.instant")}
                 </span>
-                <input
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  autoComplete="off"
-                  className="min-w-0 flex-1 border-none bg-transparent font-mono text-[15px] text-foreground uppercase outline-none"
-                />
-              </label>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setPromoOpen(true)}
-                className="mt-2.5 text-[12.5px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-              >
-                {t("billing.topup.promo_toggle")}
-              </button>
-            )}
-
-            <div className="mt-[18px] text-[12.5px] font-semibold tracking-[0.06em] text-[var(--vx-ink-faint)] uppercase">
-              {t("billing.topup.method")}
-            </div>
-            {enabledProviders.length === 0 ? (
-              <div className="mt-3 rounded-[14px] border border-dashed border-[var(--vx-border-2)] px-4 py-5 text-[13px] text-muted-foreground">
-                {t("billing.topup.no_providers")}
               </div>
-            ) : (
-              <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                {enabledProviders.map((code) => {
-                  const on = activeMethod === code;
-                  const meta = providerMeta(code);
-                  const row = providerRows.find((p) => p.code === code);
-                  const fee = row?.fee_percent ?? 0;
+
+              <div className="mt-[18px] flex flex-wrap gap-2">
+                {PRESETS.map((v) => {
+                  const on = amount === v;
                   return (
                     <button
-                      key={code}
+                      key={v}
                       type="button"
-                      onClick={() => setMethod(code)}
+                      onClick={() => setAmount(v)}
                       className={cn(
-                        "rounded-[14px] border p-3.5 text-left transition-colors hover:border-[var(--vx-border-hover)]",
+                        "rounded-xl border px-[18px] py-[11px] font-mono text-sm transition-colors hover:border-[var(--vx-border-hover)]",
                         on
-                          ? "border-[var(--vx-border-hover)] bg-[var(--vx-tint)]"
-                          : "border-[var(--vx-border-2)] bg-[var(--vx-card-2)]"
+                          ? "border-[var(--vx-border-hover)] bg-[var(--vx-tint)] text-foreground"
+                          : "border-[var(--vx-border-2)] bg-[var(--vx-card-2)] text-[var(--vx-ink-dim)]"
                       )}
                     >
-                      <div
-                        className={cn(
-                          "text-[13.5px] font-semibold break-words",
-                          on ? "text-foreground" : "text-[var(--vx-ink-dim)]"
-                        )}
-                      >
-                        {row?.name || meta.name}
-                      </div>
-                      <div className="mt-[5px] text-[11.5px] text-[var(--vx-ink-faint)]">
-                        {meta.note}
-                      </div>
-                      {fee > 0 && (
-                        <div className="mt-2 inline-flex rounded-full border border-[var(--vx-border-2)] px-2 py-0.5 text-[10.5px] text-muted-foreground">
-                          {t("billing.topup.fee", { fee })}
-                        </div>
-                      )}
+                      {v.toLocaleString(localeTag())} {symbol}
                     </button>
                   );
                 })}
               </div>
-            )}
 
-            {activeMethod === "freekassa" && freekassaMethods.length > 0 && (
-              <select
-                value={freekassaMethod}
-                onChange={(e) => setFreekassaMethod(e.target.value)}
-                className="mt-3 h-11 w-full rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 text-[13px] text-foreground outline-none focus:border-[var(--vx-border-hover)]"
-              >
-                <option value="">{t("billing.topup.freekassa_select")}</option>
-                {freekassaMethods.map((m) => (
-                  <option key={m.id} value={String(m.id)}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {quote && (quote.feePercent > 0 || quote.converted) && (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 py-3 text-[12.5px]">
-                <span className="text-muted-foreground">
-                  {[
-                    quote.feePercent > 0 ? t("billing.topup.fee", { fee: quote.feePercent }) : "",
-                    quote.converted
-                      ? t("billing.topup.conversion", { currency: quote.chargeCurrency })
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
+              <label className="mt-3.5 flex items-center gap-3 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 py-3.5">
+                <span className="text-[13px] whitespace-nowrap text-muted-foreground">
+                  {t("billing.topup.custom_amount")}
                 </span>
-                <span className="font-mono font-medium text-foreground">
-                  {quote.chargeAmount != null
-                    ? t("billing.payment.to_pay", {
-                        amount: formatAmount(quote.chargeAmount),
-                        currency: quote.chargeCurrency,
-                      })
-                    : t("billing.topup.rate_pending", { currency: quote.chargeCurrency })}
+                <input
+                  inputMode="numeric"
+                  value={amount ? amount.toLocaleString(localeTag()) : ""}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value.replace(/\D/g, ""), 10);
+                    setAmount(Number.isNaN(v) ? 0 : v);
+                  }}
+                  className="min-w-0 flex-1 border-none bg-transparent font-mono text-[19px] text-foreground outline-none"
+                />
+                <span className="font-mono text-[15px] text-[var(--vx-ink-faint)]">
+                  {symbol}
                 </span>
-              </div>
-            )}
+              </label>
 
-            {topupError && (
-              <p className="mt-3 text-[13px] text-destructive">{topupError}</p>
-            )}
+              {promoOpen ? (
+                <label className="mt-2.5 flex items-center gap-3 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 py-3">
+                  <span className="text-[13px] whitespace-nowrap text-muted-foreground">
+                    {t("billing.topup.promo")}
+                  </span>
+                  <input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    autoComplete="off"
+                    className="min-w-0 flex-1 border-none bg-transparent font-mono text-[15px] text-foreground uppercase outline-none"
+                  />
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPromoOpen(true)}
+                  className="mt-2.5 text-[12.5px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                >
+                  {t("billing.topup.promo_toggle")}
+                </button>
+              )}
 
-            <div className="mt-[18px] flex flex-col items-stretch gap-2">
-              <button
-                type="submit"
-                disabled={
-                  topupMutation.isPending || !activeMethod || amount <= 0 || needsFreekassaMethod
-                }
-                className="vx-btn rounded-full px-4 py-[13px] text-center text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {topupMutation.isPending
-                  ? t("billing.topup.creating")
-                  : activeProvider?.manual
-                    ? t("billing.topup.bank_submit")
-                    : t("billing.topup.submit_amount", {
-                        amount: amount.toLocaleString(localeTag()),
-                        symbol,
-                      })}
-              </button>
-              <div className="flex items-center justify-center gap-1.5 text-[12.5px] leading-[1.4] text-[var(--vx-ink-faint)]">
-                <i className="ri-mail-check-line text-[14px]" />
-                {t("billing.topup.receipt_hint")}
+              <div className="mt-[18px] text-[12.5px] font-semibold tracking-[0.06em] text-[var(--vx-ink-faint)] uppercase">
+                {t("billing.topup.method")}
               </div>
-            </div>
-          </form>
+              {enabledProviders.length === 0 ? (
+                <div className="mt-3 rounded-[14px] border border-dashed border-[var(--vx-border-2)] px-4 py-5 text-[13px] text-muted-foreground">
+                  {t("billing.topup.no_providers")}
+                </div>
+              ) : (
+                <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  {enabledProviders.map((code) => {
+                    const on = activeMethod === code;
+                    const meta = providerMeta(code);
+                    const row = providerRows.find((p) => p.code === code);
+                    const fee = row?.fee_percent ?? 0;
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setMethod(code)}
+                        className={cn(
+                          "rounded-[14px] border p-3.5 text-left transition-colors hover:border-[var(--vx-border-hover)]",
+                          on
+                            ? "border-[var(--vx-border-hover)] bg-[var(--vx-tint)]"
+                            : "border-[var(--vx-border-2)] bg-[var(--vx-card-2)]"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "text-[13.5px] font-semibold break-words",
+                            on ? "text-foreground" : "text-[var(--vx-ink-dim)]"
+                          )}
+                        >
+                          {row?.name || meta.name}
+                        </div>
+                        <div className="mt-[5px] text-[11.5px] text-[var(--vx-ink-faint)]">
+                          {meta.note}
+                        </div>
+                        {fee > 0 && (
+                          <div className="mt-2 inline-flex rounded-full border border-[var(--vx-border-2)] px-2 py-0.5 text-[10.5px] text-muted-foreground">
+                            {t("billing.topup.fee", { fee })}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {activeMethod === "freekassa" && freekassaMethods.length > 0 && (
+                <select
+                  value={freekassaMethod}
+                  onChange={(e) => setFreekassaMethod(e.target.value)}
+                  className="mt-3 h-11 w-full rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 text-[13px] text-foreground outline-none focus:border-[var(--vx-border-hover)]"
+                >
+                  <option value="">{t("billing.topup.freekassa_select")}</option>
+                  {freekassaMethods.map((m) => (
+                    <option key={m.id} value={String(m.id)}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {quote && (quote.feePercent > 0 || quote.converted) && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-[14px] border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] px-4 py-3 text-[12.5px]">
+                  <span className="text-muted-foreground">
+                    {[
+                      quote.feePercent > 0 ? t("billing.topup.fee", { fee: quote.feePercent }) : "",
+                      quote.converted
+                        ? t("billing.topup.conversion", { currency: quote.chargeCurrency })
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                  <span className="font-mono font-medium text-foreground">
+                    {quote.chargeAmount != null
+                      ? t("billing.payment.to_pay", {
+                          amount: formatAmount(quote.chargeAmount),
+                          currency: quote.chargeCurrency,
+                        })
+                      : t("billing.topup.rate_pending", { currency: quote.chargeCurrency })}
+                  </span>
+                </div>
+              )}
+
+              {topupError && (
+                <p className="mt-3 text-[13px] text-destructive">{topupError}</p>
+              )}
+
+              <div className="mt-[18px] flex flex-col items-stretch gap-2">
+                <button
+                  type="submit"
+                  disabled={
+                    topupMutation.isPending || !activeMethod || amount <= 0 || needsFreekassaMethod
+                  }
+                  className="vx-btn rounded-full px-4 py-[13px] text-center text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {topupMutation.isPending
+                    ? t("billing.topup.creating")
+                    : activeProvider?.manual
+                      ? t("billing.topup.bank_submit")
+                      : t("billing.topup.submit_amount", {
+                          amount: amount.toLocaleString(localeTag()),
+                          symbol,
+                        })}
+                </button>
+                <div className="flex items-center justify-center gap-1.5 text-[12.5px] leading-[1.4] text-[var(--vx-ink-faint)]">
+                  <i className="ri-mail-check-line text-[14px]" />
+                  {t("billing.topup.receipt_hint")}
+                </div>
+              </div>
+            </form>
+
+            <BillingPromoCodes
+              symbol={symbol}
+              onUse={(code) => {
+                setPromoCode(code);
+                setPromoOpen(true);
+                toast.success(t("billing.promos.used_in_topup"));
+                document
+                  .getElementById("topup")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
+          </div>
 
           <div className="flex flex-col gap-3.5">
             <div className={cn(CARD, "px-[26px] py-6")}>

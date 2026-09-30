@@ -18,6 +18,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchBilling,
+  fetchHostingQuote,
   fetchHostingRentForm,
   submitHostingRent,
   type HostingPlanSummary,
@@ -157,6 +158,7 @@ export function HostingRentPageContent() {
   const [domain, setDomain] = useState("");
   const [period, setPeriod] = useState(30);
   const [walletId, setWalletId] = useState("");
+  const [promoCode, setPromoCode] = useState("");
 
   const { data, isLoading, isError } = useQuery({
     queryKey: queryKeys.hostingRent,
@@ -188,10 +190,20 @@ export function HostingRentPageContent() {
     ? selectedPlan.rental_periods
     : [30];
 
-  const base = basePrice(selectedPlan, period);
-  const discount = periodDiscount(selectedPlan, period);
-  const discountValue = base * (discount / 100);
-  const total = base - discountValue;
+  const quoteQuery = useQuery({
+    queryKey: ["hosting-quote", selectedPlanId, period, promoCode.trim()],
+    queryFn: () => fetchHostingQuote(selectedPlanId!, period, promoCode.trim() || undefined),
+    enabled: !!selectedPlanId,
+    placeholderData: (prev) => prev,
+  });
+  const quote = quoteQuery.data;
+  const promoPreview = quote?.promo_preview;
+
+  const base = quote?.base_cost ?? basePrice(selectedPlan, period);
+  const discount = quote?.period_discount_percent ?? periodDiscount(selectedPlan, period);
+  const discountValue = quote?.period_discount ?? base * (discount / 100);
+  const promoDiscount = promoPreview?.valid ? (promoPreview.discount ?? 0) : 0;
+  const total = quote?.final_cost ?? base - discountValue;
 
   const selectPlan = useCallback((plan: HostingPlanSummary) => {
     setSelectedPlanId(plan.id);
@@ -205,6 +217,7 @@ export function HostingRentPageContent() {
         domain,
         period,
         wallet_id: walletId,
+        promo_code: promoCode.trim() || undefined,
       }),
     onSuccess: (res) => {
       toast.success(t("billing.hosting.rent.success"));
@@ -363,6 +376,23 @@ export function HostingRentPageContent() {
                 </label>
               )}
 
+              <label className="flex flex-col gap-[7px]">
+                <span className="text-[12.5px] text-muted-foreground">
+                  {t("billing.hosting.rent.promo")}
+                </span>
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  autoComplete="off"
+                  placeholder={t("billing.hosting.rent.promo_placeholder")}
+                  className={cn(fieldClass, "font-mono uppercase")}
+                />
+                {promoCode.trim() && promoPreview?.error && (
+                  <span className="text-[11.5px] text-destructive">{promoPreview.error}</span>
+                )}
+              </label>
+
               <div className="h-px bg-border" />
 
               <div className="flex flex-col gap-2 text-[13px]">
@@ -386,6 +416,14 @@ export function HostingRentPageContent() {
                     {discount ? `−${formatAmount(discountValue)}` : "—"}
                   </span>
                 </div>
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>{t("billing.topup.promo")}</span>
+                    <span className="font-mono text-[var(--vx-info)]">
+                      −{formatAmount(promoDiscount)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-baseline justify-between border-t border-border pt-2">
                   <span className="text-[12.5px] text-muted-foreground">
                     {t("billing.hosting.rent.total")}

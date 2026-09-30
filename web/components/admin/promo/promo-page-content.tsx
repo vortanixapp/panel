@@ -42,6 +42,7 @@ type FormState = {
   starts_at: string;
   ends_at: string;
   max_uses: string;
+  max_uses_per_user: string;
   min_amount: string;
   only_new_users: boolean;
   description: string;
@@ -60,6 +61,7 @@ export const PROMO_SCOPES: { value: AdminPromotionScope; labelKey: string }[] = 
   { value: "rent", labelKey: "admin.promo.scope.rent" },
   { value: "renew", labelKey: "admin.promo.scope.renew" },
   { value: "topup", labelKey: "admin.promo.scope.topup" },
+  { value: "hosting", labelKey: "admin.promo.scope.hosting" },
 ];
 
 const emptyForm: FormState = {
@@ -71,6 +73,7 @@ const emptyForm: FormState = {
   starts_at: "",
   ends_at: "",
   max_uses: "",
+  max_uses_per_user: "1",
   min_amount: "",
   only_new_users: false,
   description: "",
@@ -124,6 +127,7 @@ function toForm(p: AdminPromotion): FormState {
     starts_at: toDateInput(p.starts_at),
     ends_at: toDateInput(p.ends_at),
     max_uses: p.max_uses === null ? "" : String(p.max_uses),
+    max_uses_per_user: p.max_uses_per_user == null ? "" : String(p.max_uses_per_user),
     min_amount: p.min_amount === null ? "" : String(p.min_amount),
     only_new_users: p.only_new_users,
     description: p.description,
@@ -153,7 +157,8 @@ function toPayload(f: FormState): AdminPromotionInput {
     active: f.active,
     starts_at: f.starts_at || null,
     ends_at: f.ends_at || null,
-    max_uses: numOrNull(f.max_uses),
+    max_uses: Number(f.max_uses) || 0,
+    max_uses_per_user: Number(f.max_uses_per_user) || 0,
     min_amount: numOrNull(f.min_amount),
     only_new_users: f.only_new_users,
     description: f.description.trim(),
@@ -331,6 +336,16 @@ export function PromoPageContent() {
                 min="1"
                 value={form.max_uses}
                 onChange={(e) => setForm({ ...form, max_uses: e.target.value })}
+                placeholder={t("admin.promo.no_limit")}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>{t("admin.promo.max_uses_per_user")}</Label>
+              <Input
+                type="number"
+                min="1"
+                value={form.max_uses_per_user}
+                onChange={(e) => setForm({ ...form, max_uses_per_user: e.target.value })}
                 placeholder={t("admin.promo.no_limit")}
               />
             </div>
@@ -531,6 +546,9 @@ export function PromoPageContent() {
                       {t("admin.promo.uses", { count: p.used_count })}
                       {p.max_uses !== null
                         ? t("admin.promo.uses_of", { count: p.max_uses })
+                        : ""}
+                      {p.max_uses_per_user != null
+                        ? t("admin.promo.per_user_tag", { count: p.max_uses_per_user })
                         : ""}
                       {p.min_amount !== null
                         ? t("admin.promo.min_from", { amount: p.min_amount })

@@ -108,7 +108,7 @@ func (h *Handler) HostingRentForm(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, _ := h.dbOf(r.Context()).Query(r.Context(), `
 		SELECT id::text, name, price_monthly, disk_mb, max_domains, max_databases, max_email_accounts,
-		       has_ssl, has_ssh, has_cron, has_backup, rental_periods
+		       has_ssl, has_ssh, has_cron, has_backup, rental_periods, discounts
 		FROM core.hosting_plans WHERE active = true
 		ORDER BY position, name
 	`)
@@ -124,9 +124,9 @@ func (h *Handler) HostingRentForm(w http.ResponseWriter, r *http.Request) {
 			var price float64
 			var diskMB, maxDomains, maxDB, maxEmail int
 			var hasSSL, hasSSH, hasCron, hasBackup bool
-			var periods []byte
+			var periods, discounts []byte
 			if rows.Scan(&id, &name, &price, &diskMB, &maxDomains, &maxDB, &maxEmail,
-				&hasSSL, &hasSSH, &hasCron, &hasBackup, &periods) == nil {
+				&hasSSL, &hasSSH, &hasCron, &hasBackup, &periods, &discounts) == nil {
 				plan := map[string]any{
 					"id": id, "name": name, "price_monthly": price,
 					"disk_mb": diskMB, "has_ssl": hasSSL, "has_ssh": hasSSH,
@@ -137,6 +137,10 @@ func (h *Handler) HostingRentForm(w http.ResponseWriter, r *http.Request) {
 				}
 				if diskMB >= 1024 {
 					plan["disk_gb"] = diskMB / 1024
+				}
+				var planDiscounts map[string]any
+				if json.Unmarshal(discounts, &planDiscounts) == nil && len(planDiscounts) > 0 {
+					plan["discounts"] = planDiscounts
 				}
 				if len(periods) > 0 {
 					var rentalPeriods []any
@@ -149,56 +153,6 @@ func (h *Handler) HostingRentForm(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"plans": plans})
-}
-
-func (h *Handler) HostingRentSubmit(w http.ResponseWriter, r *http.Request) {
-	claims, ok := tenantClaims(r.Context())
-	if !ok {
-		writeError(w, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-	if h.refuseUnidentified(r.Context(), w, claims.UserID, claims.Role) {
-		return
-	}
-	var body struct {
-		PlanID   string `json:"plan_id"`
-		Username string `json:"username"`
-		Domain   string `json:"domain"`
-		Period   int    `json:"period"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
-	username := body.Username
-	if username == "" {
-		username = body.Domain
-	}
-	periodDays := 30
-	if body.Period > 0 {
-		periodDays = body.Period
-	}
-	var id string
-	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		INSERT INTO core.hosting_accounts (
-			user_id, hosting_server_id, hosting_plan_id, username, primary_domain, expires_at
-		)
-		SELECT $1, p.hosting_server_id, p.id, $3, NULLIF($4, ''), now() + make_interval(days => $5)
-		FROM core.hosting_plans p
-		WHERE p.id = NULLIF($2, '')::uuid
-		RETURNING id::text
-	`, claims.UserID, body.PlanID, username, body.Domain, periodDays).Scan(&id)
-	if err != nil || id == "" {
-		writeError(w, http.StatusBadRequest, "invalid plan or failed to create account")
-		return
-	}
-	var hostingServerID, planPackage string
-	_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
-		SELECT hs.id::text, hp.panel_package_name
-		FROM core.hosting_accounts ha
-		JOIN core.hosting_servers hs ON hs.id = ha.hosting_server_id
-		JOIN core.hosting_plans hp ON hp.id = ha.hosting_plan_id
-		WHERE ha.id = $1
-	`, id).Scan(&hostingServerID, &planPackage)
-	h.provisionHostingAccount(r, id, username, body.Domain, hostingServerID, planPackage)
-	writeJSON(w, http.StatusCreated, map[string]string{"id": id})
 }
 
 func (h *Handler) GetHostingAccount(w http.ResponseWriter, r *http.Request) {
@@ -214,11 +168,12 @@ func (h *Handler) GetHostingAccount(w http.ResponseWriter, r *http.Request) {
 	var diskMB, maxDomains, maxDB, maxEmail *int
 	var hasSSL, hasSSH, hasCron, hasBackup *bool
 	var serverPanelType *string
+	var renewalRaw, rentalRaw []byte
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
 		SELECT ha.username, ha.primary_domain, ha.status, ha.expires_at::text, ha.ip_address,
 		       ha.panel_login_url, ha.created_at::text, hp.name, hp.disk_mb, hp.max_domains, hp.max_databases,
 		       hp.max_email_accounts, hp.has_ssl, hp.has_ssh, hp.has_cron, hp.has_backup,
-		       hs.panel_type
+		       hs.panel_type, hp.renewal_periods, hp.rental_periods
 		FROM core.hosting_accounts ha
 		LEFT JOIN core.hosting_plans hp ON hp.id = ha.hosting_plan_id
 		LEFT JOIN core.hosting_servers hs ON hs.id = ha.hosting_server_id
@@ -226,7 +181,7 @@ func (h *Handler) GetHostingAccount(w http.ResponseWriter, r *http.Request) {
 	`, id, claims.UserID).Scan(
 		&username, &primaryDomain, &status, &exp, &ip, &panelURL, &created, &planName,
 		&diskMB, &maxDomains, &maxDB, &maxEmail, &hasSSL, &hasSSH, &hasCron, &hasBackup,
-		&serverPanelType,
+		&serverPanelType, &renewalRaw, &rentalRaw,
 	)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "not found")
@@ -298,6 +253,14 @@ func (h *Handler) GetHostingAccount(w http.ResponseWriter, r *http.Request) {
 		}
 		if hasBackup != nil {
 			plan["has_backup"] = *hasBackup
+		}
+		var periods []int
+		_ = json.Unmarshal(renewalRaw, &periods)
+		if len(periods) == 0 {
+			_ = json.Unmarshal(rentalRaw, &periods)
+		}
+		if len(periods) > 0 {
+			plan["renewal_periods"] = periods
 		}
 		account["hosting_plan"] = plan
 	}

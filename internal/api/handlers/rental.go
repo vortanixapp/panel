@@ -95,7 +95,14 @@ func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
 			resp["promo_preview"] = preview
 			resp["breakdown"] = pricing.Breakdown(tariffJSON, order, periodDays)
 			resp["count"] = count
-			resp["total_cost"] = math.Round(preview.FinalCost*float64(count)*100) / 100
+			promoted := count
+			if preview.Valid && preview.PromoID != "" {
+				if left := payments.RemainingPromoUses(ctx, h.dbOf(ctx), preview.PromoID, claims.UserID); left >= 0 && left < count {
+					promoted = left
+				}
+			}
+			resp["promo_servers"] = promoted
+			resp["total_cost"] = math.Round((preview.FinalCost*float64(promoted)+baseCost*float64(count-promoted))*100) / 100
 			resp["currency"] = tariffCurrency(tariffJSON)
 		}
 	}
@@ -497,6 +504,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 	hourlyRate := 0.0
 	hourlyCarry := 0.0
 	rentPrice := 0.0
+	basePrice := 0.0
 	promoID := ""
 	currency := tariffCurrency(tariffJSON)
 
@@ -523,6 +531,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 		preview := payments.ApplyRentDiscount(promo, baseCost)
 		rentPrice = preview.FinalCost
+		basePrice = baseCost
 		promoID = preview.PromoID
 	}
 
@@ -546,6 +555,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 
 	count := rentBatchCount(strconv.Itoa(body.Count))
 	created := []map[string]any{}
+	totalCost := 0.0
 	var failStatus int
 	var failCode, failMessage string
 
@@ -585,20 +595,39 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		serverPrice := rentPrice
+		promoClaimed := false
+		if promoID != "" {
+			claimed, _ := payments.ClaimPromoUsage(r.Context(), h.dbOf(r.Context()), promoID, claims.UserID)
+			switch {
+			case claimed:
+				promoClaimed = true
+			case i == 0:
+				dropServer()
+				failStatus, failCode, failMessage = http.StatusConflict, "promo_exhausted", "Промокод уже использован"
+			default:
+				serverPrice = basePrice
+			}
+			if failCode != "" {
+				break
+			}
+		}
+
 		rentTxID := ""
-		if rentPrice > 0 {
+		if serverPrice > 0 {
 			var debitErr error
 			rentTxID, debitErr = h.debitWalletForRentSource(r, claims, body.WalletID, currency,
-				rentPrice, "Server rent: "+name, "server_rent", "")
+				serverPrice, "Server rent: "+name, "server_rent", "")
 			if debitErr != nil {
 				dropServer()
+				if promoClaimed {
+					_ = payments.ReleasePromoUsage(r.Context(), h.dbOf(r.Context()), promoID, claims.UserID)
+				}
 				failStatus, failCode, failMessage = http.StatusPaymentRequired, "insufficient_funds", debitErr.Error()
 				break
 			}
-			if promoID != "" {
-				_ = payments.IncrementPromoUsage(r.Context(), h.dbOf(r.Context()), promoID)
-			}
 		}
+		totalCost += serverPrice
 		if rentTxID != "" {
 			_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
 				UPDATE core.transactions SET source_id = $2::uuid WHERE id = $1
@@ -619,7 +648,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 			"node_id": nodeID, "user_id": claims.UserID,
 		})
 		h.launchNewServer(r.Context(), id, nodeID, gameID, name, limitsJSON)
-		created = append(created, map[string]any{"id": id, "name": name, "cost": rentPrice})
+		created = append(created, map[string]any{"id": id, "name": name, "cost": serverPrice})
 	}
 
 	if len(created) == 0 {
@@ -639,7 +668,7 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		"status":      "provisioning",
 		"period_days": periodDays,
 		"expires_at":  expires.Format(time.RFC3339),
-		"cost":        math.Round(rentPrice*float64(len(created))*100) / 100,
+		"cost":        math.Round(totalCost*100) / 100,
 	}
 	if failCode != "" {
 		resp["partial_error"] = failMessage

@@ -26,6 +26,7 @@ import {
   createHostingDomain,
   createHostingDatabase,
   createHostingEmail,
+  previewHostingRenew,
   renewHostingAccount,
   changeHostingPassword,
 } from "@/lib/api";
@@ -37,6 +38,7 @@ import {
   isHostingExpired,
   planDiskLabel,
 } from "@/lib/hosting-status";
+import { formatAmount } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
@@ -95,6 +97,7 @@ export function HostingDetailPageContent() {
   const [newEmail, setNewEmail] = useState("");
   const [newEmailPass, setNewEmailPass] = useState("");
   const [renewPeriod, setRenewPeriod] = useState(30);
+  const [renewPromo, setRenewPromo] = useState("");
   const [newPanelPass, setNewPanelPass] = useState("");
 
   const qc = useQueryClient();
@@ -144,8 +147,21 @@ export function HostingDetailPageContent() {
       toast.error(e.message || t("billing.hosting.detail.email_add_failed")),
   });
 
+  const renewPeriods = account?.hosting_plan?.renewal_periods?.length
+    ? account.hosting_plan.renewal_periods
+    : [30, 60, 90, 180, 365];
+  const effectiveRenewPeriod = renewPeriods.includes(renewPeriod) ? renewPeriod : renewPeriods[0];
+
+  const renewQuote = useQuery({
+    queryKey: ["hosting-renew-quote", id, effectiveRenewPeriod, renewPromo.trim()],
+    queryFn: () => previewHostingRenew(id!, effectiveRenewPeriod, renewPromo.trim() || undefined),
+    enabled: !!id && !!account,
+    placeholderData: (prev) => prev,
+  });
+
   const renewMut = useMutation({
-    mutationFn: (period: number) => renewHostingAccount(id!, period),
+    mutationFn: (period: number) =>
+      renewHostingAccount(id!, period, undefined, renewPromo.trim() || undefined),
     onSuccess: () => {
       toast.success(t("billing.hosting.detail.renewed"));
       refresh();
@@ -575,19 +591,27 @@ export function HostingDetailPageContent() {
             >
               <div className="flex flex-wrap gap-2">
                 <select
-                  value={renewPeriod}
+                  value={effectiveRenewPeriod}
                   onChange={(e) => setRenewPeriod(Number(e.target.value))}
                   className={cn(fieldClass, "min-w-[160px] flex-1 px-2.5")}
                 >
-                  {[30, 60, 90, 180, 365].map((p) => (
+                  {renewPeriods.map((p) => (
                     <option key={p} value={p}>
                       {t("billing.hosting.days", { days: p })}
                     </option>
                   ))}
                 </select>
+                <input
+                  type="text"
+                  value={renewPromo}
+                  onChange={(e) => setRenewPromo(e.target.value)}
+                  autoComplete="off"
+                  placeholder={t("billing.hosting.rent.promo")}
+                  className={cn(fieldClass, "min-w-[140px] flex-1 font-mono uppercase")}
+                />
                 <button
                   type="button"
-                  onClick={() => renewMut.mutate(renewPeriod)}
+                  onClick={() => renewMut.mutate(effectiveRenewPeriod)}
                   disabled={renewMut.isPending}
                   className={cn(btnPrimary, "h-[38px] px-[18px]")}
                 >
@@ -596,6 +620,20 @@ export function HostingDetailPageContent() {
                     : t("billing.hosting.detail.renew")}
                 </button>
               </div>
+              {renewQuote.data && (
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-muted-foreground">
+                  <span>
+                    {renewPromo.trim() && renewQuote.data.promo_preview.error
+                      ? renewQuote.data.promo_preview.error
+                      : ""}
+                  </span>
+                  <span className="font-mono text-foreground">
+                    {t("billing.hosting.detail.renew_total", {
+                      amount: `${formatAmount(renewQuote.data.final_cost)} ${renewQuote.data.currency}`,
+                    })}
+                  </span>
+                </div>
+              )}
             </Card>
 
             <Card

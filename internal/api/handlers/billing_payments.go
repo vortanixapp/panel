@@ -7,6 +7,7 @@ import (
 
 	"fmt"
 	"github.com/jackc/pgx/v5"
+	"github.com/vortanixapp/panel/internal/api/payments"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 )
@@ -51,6 +52,16 @@ func (h *Handler) completeTopupPayment(ctx context.Context, paymentID, providerP
 	if creditAmount <= 0 {
 		creditAmount = amount
 	}
+	if promoID != nil {
+		claimed, err := payments.ClaimPromoUsageTx(ctx, tx, *promoID, userID, false)
+		if err != nil {
+			return err
+		}
+		if !claimed {
+			creditAmount = amount
+			promoID = nil
+		}
+	}
 
 	var walletID string
 	err = tx.QueryRow(ctx, `
@@ -80,14 +91,6 @@ func (h *Handler) completeTopupPayment(ctx context.Context, paymentID, providerP
 	`, walletID, creditAmount, desc, paymentID)
 	if err != nil {
 		return err
-	}
-
-	if promoID != nil {
-		_, _ = tx.Exec(ctx, `
-			UPDATE core.promotions
-			SET used_count = used_count + 1
-			WHERE id = $1::uuid AND (max_uses IS NULL OR used_count < max_uses)
-		`, *promoID)
 	}
 
 	tag, err := tx.Exec(ctx, `

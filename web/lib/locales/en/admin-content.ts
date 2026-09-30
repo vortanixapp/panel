@@ -200,6 +200,9 @@ export const adminContent = {
   "admin.promo.scope.rent": "Rental",
   "admin.promo.scope.renew": "Renewal",
   "admin.promo.scope.topup": "Top-up",
+  "admin.promo.scope.hosting": "Hosting",
+  "admin.promo.max_uses_per_user": "Limit per user",
+  "admin.promo.per_user_tag": " · {count} per user",
   "admin.promo.scope_hint":
     "Nothing selected — the promotion applies everywhere",
   "admin.promo.bonus_percent": "Top-up bonus, %",
