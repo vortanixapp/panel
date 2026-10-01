@@ -133,6 +133,13 @@ export const auth = {
   "auth.verify.change_success": "Done: your account email is now {email}.",
   "auth.verify.change_failed": "Could not confirm the address. Request the email change again in settings.",
   "auth.verify.to_settings": "Open settings",
+  "auth.register.check_email_title": "Check your inbox",
+  "auth.register.check_email_body": "We sent an email to {email}. Open it and follow the link to finish signing up. The link works for 24 hours.",
+  "auth.register.check_email_hint": "No email? Check your spam folder or try signing up again in a few minutes.",
+  "auth.verify.register_title": "Confirming your registration",
+  "auth.verify.register_checking": "Confirming your registration…",
+  "auth.verify.register_failed": "Could not confirm the registration.",
+  "auth.verify.register_retry": "Sign up again",
   "auth.verify.failed":
     "Could not confirm the email. Sign in to your account and try again.",
   "auth.verify.resend_failed": "Could not send the email. Sign in to your account.",

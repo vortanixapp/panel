@@ -170,7 +170,7 @@ func (h *Handler) WHMCSSSOExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access, refresh, err := h.issueAuthTokens(r, userID, email, role, "", 0)
+	access, refresh, err := h.issueAuthTokens(r, userID, email, role, 0)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return

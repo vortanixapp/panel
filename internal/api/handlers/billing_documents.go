@@ -379,7 +379,7 @@ func (h *Handler) writeBillingAct(w http.ResponseWriter, r *http.Request, userID
 		writeError(w, http.StatusInternalServerError, "Не удалось присвоить номер акта")
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	setHTMLDocumentHeaders(w)
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write([]byte(renderBillingAct(profile, payer, number, start, currency, lines)))
 }
@@ -469,7 +469,7 @@ func (h *Handler) writeReconciliation(w http.ResponseWriter, r *http.Request, us
 		writeError(w, http.StatusInternalServerError, "Не удалось собрать операции за период")
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	setHTMLDocumentHeaders(w)
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write([]byte(renderReconciliation(profile, payer, currency, from, to, opening, entries)))
 }

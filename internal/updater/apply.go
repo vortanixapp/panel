@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/dockerapi"
+	"github.com/vortanixapp/panel/pkg/updates"
 )
 
 const keepBackups = 5
@@ -59,6 +60,10 @@ func Apply(args []string) int {
 	a.files = files
 	if a.version == "" || a.project == "" || a.workDir == "" || len(a.files) == 0 {
 		fmt.Printf("%sне хватает параметров обновления\n", errorPrefix)
+		return 2
+	}
+	if !updates.IsSemver(a.version) {
+		fmt.Printf("%sневерный номер версии\n", errorPrefix)
 		return 2
 	}
 	if a.root == "" {

@@ -53,6 +53,14 @@ func EmailChangeEmail(l i18n.Localizer, brand mailtpl.Brand, email, confirmURL s
 	return letter(l, "mail.email_change", confirmURL, i18n.Params{"email": email}).Message(brand)
 }
 
+func RegistrationConfirmEmail(l i18n.Localizer, brand mailtpl.Brand, confirmURL string) mailer.Message {
+	return letter(l, "mail.register_confirm", confirmURL, nil).Message(brand)
+}
+
+func RegistrationExistsEmail(l i18n.Localizer, brand mailtpl.Brand, loginURL string) mailer.Message {
+	return letter(l, "mail.register_exists", loginURL, nil).Message(brand)
+}
+
 func TestEmail(l i18n.Localizer, brand mailtpl.Brand, to string) mailer.Message {
 	return letter(l, "mail.test", "", i18n.Params{"email": to}).Message(brand)
 }

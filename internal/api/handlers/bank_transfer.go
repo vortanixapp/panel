@@ -72,7 +72,7 @@ func (h *Handler) PaymentInvoice(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		payer = billingPayer{UserID: userID, PayerType: "person"}
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	setHTMLDocumentHeaders(w)
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write([]byte(renderPaymentInvoice(profile, payer, invoice, createdAt, amount, currency)))
 }

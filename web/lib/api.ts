@@ -295,9 +295,11 @@ export async function register(
 ) {
   const ref = referralCode();
   return apiFetch<{
-    access_token: string;
-    refresh_token: string;
-    user: { id: string; email: string; role: string };
+    status?: "confirmation_sent";
+    email?: string;
+    access_token?: string;
+    refresh_token?: string;
+    user?: { id: string; email: string; role: string };
   }>("/v1/auth/register", {
     method: "POST",
     body: JSON.stringify({
@@ -310,6 +312,17 @@ export async function register(
       accept_personal_data: Boolean(consents?.personalData),
       ...(ref ? { referral_code: ref } : {}),
     }),
+  });
+}
+
+export async function confirmRegistration(token: string) {
+  return apiFetch<{
+    access_token: string;
+    refresh_token: string;
+    user: { id: string; email: string; role: string };
+  }>("/v1/auth/register/confirm", {
+    method: "POST",
+    body: JSON.stringify({ token }),
   });
 }
 
@@ -405,8 +418,21 @@ export async function resendEmailVerification() {
   }>("/v1/email/verification-notification", { method: "POST" });
 }
 
+function trustedVerifyURL(raw: string): string | null {
+  try {
+    const target = new URL(raw, window.location.origin);
+    const allowed = new Set([window.location.origin, new URL(API_URL || "/", window.location.origin).origin]);
+    if (!allowed.has(target.origin) || !target.pathname.startsWith("/v1/email/verify/")) return null;
+    return target.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyEmailURL(verifyURL: string) {
-  const res = await fetch(verifyURL, {
+  const safeURL = trustedVerifyURL(verifyURL);
+  if (!safeURL) throw new Error("Verification failed");
+  const res = await fetch(safeURL, {
     headers: authHeaders({ Accept: "application/json" }),
     credentials: "include",
   });

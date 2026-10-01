@@ -53,6 +53,12 @@ const (
 	supportAttachmentMaxBytes = 8 << 20
 	supportAttachmentDir      = "support"
 	supportAttachmentMaxCount = 5
+	supportTicketFilesMax     = 25
+	supportUserDailyBytesMax  = 100 << 20
+	supportSubjectMax         = 200
+	supportBodyMax            = 20000
+	supportNewPerHour         = 10
+	supportReplyPerWindow     = 30
 )
 
 var supportAttachmentTypes = map[string]string{
@@ -115,6 +121,23 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 	if len(headers) > supportAttachmentMaxCount {
 		writeError(w, http.StatusBadRequest, "Не больше 5 файлов за раз")
 		return
+	}
+	if !isStaffRole(claims.Role) {
+		var inTicket int
+		var userDaily int64
+		_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
+			SELECT (SELECT COUNT(*) FROM core.support_message_attachments WHERE ticket_id = $1::uuid),
+			       (SELECT COALESCE(SUM(size_bytes), 0) FROM core.support_message_attachments
+			        WHERE user_id = $2::uuid AND created_at > now() - interval '1 day')
+		`, ticketID, claims.UserID).Scan(&inTicket, &userDaily)
+		if inTicket+len(headers) > supportTicketFilesMax {
+			writeError(w, http.StatusTooManyRequests, "В обращении уже слишком много вложений")
+			return
+		}
+		if userDaily >= supportUserDailyBytesMax {
+			writeError(w, http.StatusTooManyRequests, "Достигнут суточный лимит загрузки файлов — повторите завтра")
+			return
+		}
 	}
 
 	type pending struct {

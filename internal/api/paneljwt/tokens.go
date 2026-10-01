@@ -23,6 +23,7 @@ type Claims struct {
 
 type refreshClaims struct {
 	UserID    string `json:"user_id,omitempty"`
+	SessionID string `json:"sid,omitempty"`
 	TokenType string `json:"typ,omitempty"`
 	jwtlib.RegisteredClaims
 }
@@ -58,20 +59,21 @@ func (m *Manager) AccessToken(userID, email, role, sessionID string) (string, er
 	return jwtlib.NewWithClaims(jwtlib.SigningMethodHS256, claims).SignedString(m.secret)
 }
 
-func (m *Manager) RefreshToken(userID, sessionID string) (string, error) {
-	return m.RefreshTokenWithTTL(userID, sessionID, m.refreshTTL)
+func (m *Manager) RefreshToken(userID, sessionID, tokenID string) (string, error) {
+	return m.RefreshTokenWithTTL(userID, sessionID, tokenID, m.refreshTTL)
 }
 
-func (m *Manager) RefreshTokenWithTTL(userID, sessionID string, ttl time.Duration) (string, error) {
+func (m *Manager) RefreshTokenWithTTL(userID, sessionID, tokenID string, ttl time.Duration) (string, error) {
 	if ttl <= 0 {
 		ttl = m.refreshTTL
 	}
 	now := time.Now()
 	claims := refreshClaims{
+		SessionID: sessionID,
 		TokenType: typeRefresh,
 		RegisteredClaims: jwtlib.RegisteredClaims{
 			Subject:   userID,
-			ID:        sessionID,
+			ID:        tokenID,
 			ExpiresAt: jwtlib.NewNumericDate(now.Add(ttl)),
 			IssuedAt:  jwtlib.NewNumericDate(now),
 		},
@@ -104,11 +106,11 @@ func (m *Manager) ParseAccess(tokenString string) (*Claims, error) {
 }
 
 func (m *Manager) ParseRefresh(tokenString string) (userID, sessionID string, err error) {
-	userID, sessionID, _, err = m.ParseRefreshDetails(tokenString)
+	userID, sessionID, _, _, err = m.ParseRefreshDetails(tokenString)
 	return userID, sessionID, err
 }
 
-func (m *Manager) ParseRefreshDetails(tokenString string) (userID, sessionID string, expiresAt time.Time, err error) {
+func (m *Manager) ParseRefreshDetails(tokenString string) (userID, sessionID, tokenID string, expiresAt time.Time, err error) {
 	token, err := jwtlib.ParseWithClaims(tokenString, &refreshClaims{}, func(t *jwtlib.Token) (any, error) {
 		if t.Method != jwtlib.SigningMethodHS256 {
 			return nil, fmt.Errorf("unexpected signing method")
@@ -116,18 +118,22 @@ func (m *Manager) ParseRefreshDetails(tokenString string) (userID, sessionID str
 		return m.secret, nil
 	})
 	if err != nil {
-		return "", "", time.Time{}, err
+		return "", "", "", time.Time{}, err
 	}
 	claims, ok := token.Claims.(*refreshClaims)
 	if !ok || !token.Valid {
-		return "", "", time.Time{}, fmt.Errorf("invalid token")
+		return "", "", "", time.Time{}, fmt.Errorf("invalid token")
 	}
 	if claims.UserID != "" || (claims.TokenType != "" && claims.TokenType != typeRefresh) {
-		return "", "", time.Time{}, fmt.Errorf("not a refresh token")
+		return "", "", "", time.Time{}, fmt.Errorf("not a refresh token")
 	}
 	expiresAt = time.Time{}
 	if claims.ExpiresAt != nil {
 		expiresAt = claims.ExpiresAt.Time
 	}
-	return claims.Subject, claims.ID, expiresAt, nil
+	sessionID = claims.SessionID
+	if sessionID == "" {
+		sessionID = claims.ID
+	}
+	return claims.Subject, sessionID, claims.ID, expiresAt, nil
 }

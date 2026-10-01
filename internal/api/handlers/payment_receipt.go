@@ -99,7 +99,7 @@ func (h *Handler) PaymentReceipt(w http.ResponseWriter, r *http.Request) {
 		Company:    h.accountingProfile(ctx),
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	setHTMLDocumentHeaders(w)
 	_, _ = w.Write([]byte(renderReceipt(data)))
 }
 

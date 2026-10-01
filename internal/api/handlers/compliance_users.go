@@ -330,7 +330,7 @@ var userExportSections = []struct {
 		FROM core.identification_events e WHERE e.user_id = $1`},
 	{"consents", `SELECT COALESCE(jsonb_agg(to_jsonb(c) ORDER BY c.created_at), '[]'::jsonb)
 		FROM core.legal_consents c WHERE c.user_id = $1`},
-	{"sessions", `SELECT COALESCE(jsonb_agg(to_jsonb(s) ORDER BY s.created_at), '[]'::jsonb)
+	{"sessions", `SELECT COALESCE(jsonb_agg(to_jsonb(s) - 'refresh_jti' - 'prev_refresh_jti' ORDER BY s.created_at), '[]'::jsonb)
 		FROM core.user_sessions s WHERE s.user_id = $1`},
 	{"login_attempts", `SELECT COALESCE(jsonb_agg(to_jsonb(a) ORDER BY a.created_at DESC), '[]'::jsonb)
 		FROM (SELECT * FROM core.login_attempts WHERE user_id = $1 ORDER BY created_at DESC LIMIT 500) a`},

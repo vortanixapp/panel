@@ -43,6 +43,12 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "Слишком много неверных кодов — войдите заново")
 		return
 	}
+	if !h.allowAttempt(ctx, "2fa:user:"+pending["user_id"], 10, 15*time.Minute) {
+		_ = h.cache.Delete(ctx, "2fa:"+req.Token)
+		h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "2FA: превышен лимит попыток для учётной записи", false)
+		writeError(w, http.StatusTooManyRequests, "Слишком много неверных кодов — попробуйте через несколько минут")
+		return
+	}
 
 	var secret string
 	if err := h.dbOf(ctx).QueryRow(ctx, `
@@ -63,7 +69,7 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.cache.Delete(ctx, "2fa:"+req.Token, "2fa:tries:"+req.Token)
-	access, refresh, err := h.issueAuthTokens(r, pending["user_id"], pending["email"], pending["role"], "", rememberRefreshTTL)
+	access, refresh, err := h.issueAuthTokens(r, pending["user_id"], pending["email"], pending["role"], rememberRefreshTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return

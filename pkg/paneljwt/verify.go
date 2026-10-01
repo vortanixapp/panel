@@ -10,6 +10,7 @@ type Claims struct {
 	UserID    string `json:"user_id"`
 	Email     string `json:"email"`
 	Role      string `json:"role"`
+	SessionID string `json:"session_id,omitempty"`
 	TokenType string `json:"typ,omitempty"`
 	jwtlib.RegisteredClaims
 }

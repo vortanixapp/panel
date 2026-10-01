@@ -15,65 +15,17 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/pkg/rbac"
 )
 
 const (
-	rbacRoleUser    = "user"
-	rbacRoleSupport = "support"
-	rbacRoleAdmin   = "admin"
+	rbacRoleUser    = rbac.RoleUser
+	rbacRoleSupport = rbac.RoleSupport
+	rbacRoleAdmin   = rbac.RoleAdmin
 )
 
 func rbacAllPermissionKeys() []string {
-	return []string{
-		"admin.dashboard.read",
-		"admin.billing.read",
-		"admin.billing.write",
-		"admin.users.read",
-		"admin.users.write",
-		"admin.servers.read",
-		"admin.servers.write",
-		"admin.support.read",
-		"admin.support.write",
-		"admin.kb.read",
-		"admin.kb.write",
-		"admin.notifications.read",
-		"admin.bug_report.read",
-		"admin.bug_report.write",
-		"admin.locations.read",
-		"admin.locations.write",
-		"admin.mysql.read",
-		"admin.mysql.write",
-		"admin.games.read",
-		"admin.games.write",
-		"admin.tariffs.read",
-		"admin.tariffs.write",
-		"admin.daemons.read",
-		"admin.daemons.write",
-		"admin.plugins.read",
-		"admin.plugins.write",
-		"admin.maps.read",
-		"admin.maps.write",
-		"admin.news.read",
-		"admin.news.write",
-		"admin.promotions.read",
-		"admin.promotions.write",
-		"admin.bonuses.read",
-		"admin.mailings.read",
-		"admin.mailings.write",
-		"admin.settings.write",
-		"admin.payment_providers.write",
-		"admin.language.write",
-		"admin.logs.read",
-		"admin.jobs.read",
-		"admin.jobs.write",
-		"admin.updates.read",
-		"admin.updates.write",
-		"admin.groups.write",
-		"admin.hosting.read",
-		"admin.hosting.write",
-		"admin.whmcs.write",
-		"admin.template.write",
-	}
+	return rbac.AllKeys()
 }
 
 func rbacPermissionLabels() map[string]string {
@@ -138,50 +90,15 @@ func rbacGroupLabels() map[string]string {
 }
 
 func rbacDefaultRolePermissions(role string) map[string]bool {
-	keys := rbacAllPermissionKeys()
-	perms := make(map[string]bool, len(keys))
-	for _, k := range keys {
-		perms[k] = false
-	}
-
-	switch role {
-	case rbacRoleAdmin, "owner":
-		for _, k := range keys {
-			perms[k] = true
-		}
-	case rbacRoleSupport:
-		for _, k := range []string{
-			"admin.dashboard.read",
-			"admin.support.read",
-			"admin.support.write",
-			"admin.logs.read",
-			"admin.jobs.read",
-			"admin.notifications.read",
-		} {
-			perms[k] = true
-		}
-	}
-	return perms
+	return rbac.DefaultRole(role)
 }
 
 func rbacNormalizeRole(role string) string {
-	switch role {
-	case rbacRoleSupport, rbacRoleAdmin:
-		return role
-	case "owner":
-		return rbacRoleAdmin
-	default:
-		return rbacRoleUser
-	}
+	return rbac.NormalizeRole(role)
 }
 
 func rbacNormalizePermissions(source map[string]bool) map[string]bool {
-	keys := rbacAllPermissionKeys()
-	out := make(map[string]bool, len(keys))
-	for _, k := range keys {
-		out[k] = source[k]
-	}
-	return out
+	return rbac.Normalize(source)
 }
 
 func rbacCustomGroupKey(key string) bool {
@@ -190,34 +107,7 @@ func rbacCustomGroupKey(key string) bool {
 }
 
 func (h *Handler) rbacLoadRolePermissions(ctx context.Context, role string) map[string]bool {
-	defaults := rbacDefaultRolePermissions(role)
-	key := "rbac.permissions." + role
-
-	var raw []byte
-	err := h.dbOf(ctx).QueryRow(ctx, `SELECT value FROM core.tenant_settings WHERE key = $1`, key).Scan(&raw)
-	if err == nil && len(raw) > 0 {
-		var stored map[string]bool
-		if json.Unmarshal(raw, &stored) == nil {
-			for k, v := range stored {
-				defaults[k] = v
-			}
-			return defaults
-		}
-	}
-
-	var nestedRaw []byte
-	if h.dbOf(ctx).QueryRow(ctx, `SELECT value FROM core.tenant_settings WHERE key = 'rbac.permissions'`).Scan(&nestedRaw) == nil && len(nestedRaw) > 0 {
-		var nested map[string]map[string]bool
-		if json.Unmarshal(nestedRaw, &nested) == nil {
-			if stored, ok := nested[role]; ok {
-				for k, v := range stored {
-					defaults[k] = v
-				}
-			}
-		}
-	}
-
-	return defaults
+	return rbac.LoadRole(ctx, h.dbOf(ctx), role)
 }
 
 func (h *Handler) rbacSaveRolePermissions(ctx context.Context, role string, permissions map[string]bool) error {
@@ -301,21 +191,7 @@ func (h *Handler) rbacFindGroup(ctx context.Context, key string) (rbacGroup, boo
 }
 
 func (h *Handler) rbacClaimsPermissions(ctx context.Context, claims *paneljwt.Claims) map[string]bool {
-	if claims.Role == rbacRoleSupport && claims.UserID != "" {
-		var raw []byte
-		err := h.dbOf(ctx).QueryRow(ctx, `
-			SELECT g.permissions
-			FROM core.users u
-			JOIN core.staff_groups g ON g.id = u.staff_group_id
-			WHERE u.id::text = $1 AND u.role = 'support'
-		`, claims.UserID).Scan(&raw)
-		if err == nil {
-			stored := map[string]bool{}
-			_ = json.Unmarshal(raw, &stored)
-			return rbacNormalizePermissions(stored)
-		}
-	}
-	return h.rbacLoadRolePermissions(ctx, rbacNormalizeRole(claims.Role))
+	return rbac.ForUser(ctx, h.dbOf(ctx), claims.UserID, claims.Role)
 }
 
 func rbacGroupFields(name, description string) (string, string, string) {
@@ -379,6 +255,29 @@ func (h *Handler) UpdateGroups(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	keys := rbacAllPermissionKeys()
 	for groupKey, incoming := range body.Permissions {
+		requested := make(map[string]bool, len(keys))
+		for _, key := range keys {
+			requested[key] = rbacTruthy(incoming[key])
+		}
+		var current map[string]bool
+		switch {
+		case groupKey == rbacRoleAdmin || groupKey == rbacRoleSupport:
+			current = h.rbacLoadRolePermissions(ctx, groupKey)
+		case rbacCustomGroupKey(groupKey):
+			group, found := h.rbacFindGroup(ctx, groupKey)
+			if !found {
+				continue
+			}
+			current = group.Permissions
+		default:
+			continue
+		}
+		if msg := h.groupGrantRefusal(r, claims, current, requested); msg != "" {
+			writeError(w, http.StatusForbidden, msg)
+			return
+		}
+	}
+	for groupKey, incoming := range body.Permissions {
 		normalized := make(map[string]bool, len(keys))
 		for _, key := range keys {
 			normalized[key] = rbacTruthy(incoming[key])
@@ -439,6 +338,10 @@ func (h *Handler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		permissions = source.Permissions
+		if msg := h.groupGrantRefusal(r, claims, rbacNormalizePermissions(nil), permissions); msg != "" {
+			writeError(w, http.StatusForbidden, msg)
+			return
+		}
 	}
 	raw, _ := json.Marshal(permissions)
 
@@ -587,6 +490,26 @@ func (h *Handler) rbacCan(ctx context.Context, claims *paneljwt.Claims, permissi
 		return false
 	}
 	return h.rbacClaimsPermissions(ctx, claims)[permission]
+}
+
+func (h *Handler) actorPermissions(r *http.Request, claims *paneljwt.Claims) map[string]bool {
+	if key, ok := apiKeyFromContext(r.Context()); ok {
+		return key.Scopes
+	}
+	return h.rbacClaimsPermissions(r.Context(), claims)
+}
+
+func (h *Handler) groupGrantRefusal(r *http.Request, claims *paneljwt.Claims, current, requested map[string]bool) string {
+	if _, isKey := apiKeyFromContext(r.Context()); !isKey && claims.Role == "owner" {
+		return ""
+	}
+	own := h.actorPermissions(r, claims)
+	for _, key := range rbacAllPermissionKeys() {
+		if requested[key] && !current[key] && !own[key] {
+			return "Нельзя выдать право, которого нет у вас: " + key
+		}
+	}
+	return ""
 }
 
 func (h *Handler) requirePermission(w http.ResponseWriter, r *http.Request, claims *paneljwt.Claims, permission string) bool {
@@ -743,7 +666,7 @@ func (h *Handler) adminRBACMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if permission == "admin.groups.write" && isAdminRole(claims.Role) {
+		if permission == "admin.groups.write" && claims.Role == "owner" {
 			next.ServeHTTP(w, r)
 			return
 		}

@@ -23,6 +23,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/netaddr"
 	"github.com/vortanixapp/panel/pkg/paneljwt"
 	"github.com/vortanixapp/panel/pkg/panelsecret"
+	"github.com/vortanixapp/panel/pkg/rbac"
 )
 
 func main() {
@@ -37,12 +38,14 @@ func main() {
 	jwtSecret := env("JWT_SECRET", panelsecret.DevJWTSecret)
 
 	ctx := context.Background()
+	var db rbac.Querier
 	if dbURL := env("DATABASE_URL", ""); dbURL != "" {
 		pool, err := pgxpool.New(ctx, dbURL)
 		if err != nil {
 			log.Fatalf("database: %v", err)
 		}
 		defer pool.Close()
+		db = pool
 		resolved, err := panelsecret.JWT(ctx, pool, jwtSecret)
 		if err != nil {
 			log.Fatalf("ключ подписи токенов: %v", err)
@@ -63,7 +66,7 @@ func main() {
 			wsOrigins = append(wsOrigins, extra)
 		}
 	}
-	h := handlers.New(rdb, relayclient.New(relayURL, secret), paneljwt.NewVerifier(jwtSecret), wsOrigins...)
+	h := handlers.New(rdb, relayclient.New(relayURL, secret), paneljwt.NewVerifier(jwtSecret), db, wsOrigins...)
 
 	r := chi.NewRouter()
 	r.Use(httplog.Logger)

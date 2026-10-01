@@ -33,8 +33,8 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Пароль должен быть не короче 8 символов")
 		return
 	}
-	if len(req.NewPassword) > 128 {
-		writeError(w, http.StatusBadRequest, "Пароль должен быть не длиннее 128 символов")
+	if len(req.NewPassword) > 72 {
+		writeError(w, http.StatusBadRequest, "Пароль должен быть не длиннее 72 байт")
 		return
 	}
 

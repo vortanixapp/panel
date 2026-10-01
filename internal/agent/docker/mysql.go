@@ -192,6 +192,12 @@ func MySQLCreateDB(ctx context.Context, payload map[string]any) error {
 	if database == "" || username == "" || password == "" {
 		return fmt.Errorf("database, username and password required")
 	}
+	if err := guardMySQLDatabase(database); err != nil {
+		return err
+	}
+	if err := guardMySQLUser(username); err != nil {
+		return err
+	}
 
 	hosts := mysqlUserHosts()
 	tls := mysqlSupportsTLS(ctx, inst)
@@ -213,8 +219,14 @@ func MySQLDeleteDB(ctx context.Context, payload map[string]any) error {
 	if database == "" {
 		return fmt.Errorf("database required")
 	}
+	if err := guardMySQLDatabase(database); err != nil {
+		return err
+	}
 	sql := fmt.Sprintf("DROP DATABASE IF EXISTS `%s`;", mysqlEscapeIdent(database))
 	if username != "" {
+		if err := guardMySQLUser(username); err != nil {
+			return err
+		}
 		sql += mysqlDropUserSQL(username, mysqlUserHosts())
 	}
 	sql += "FLUSH PRIVILEGES;"
@@ -390,6 +402,12 @@ func MySQLMigrateDB(ctx context.Context, serverID string, payload map[string]any
 	password := StringFromPayload(payload["password"])
 	if database == "" || username == "" || password == "" {
 		return fmt.Errorf("database, username and password required")
+	}
+	if err := guardMySQLDatabase(database); err != nil {
+		return err
+	}
+	if err := guardMySQLUser(username); err != nil {
+		return err
 	}
 
 	dbIdent := mysqlEscapeIdent(database)

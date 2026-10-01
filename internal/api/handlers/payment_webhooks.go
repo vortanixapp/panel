@@ -65,6 +65,12 @@ func (h *Handler) PaymentWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if def, known := payments.Definition(code); known && len(def.MissingFields(row.Config)) > 0 {
+		log.Printf("%s: уведомление пришло, но в настройках провайдера не заполнены обязательные ключи", code)
+		writePaymentResponse(w, payments.RejectResponse(provider, payments.Notification{}, errors.New("provider is not configured")))
+		return
+	}
+
 	req := payments.NewNotifyRequest(r, body, h.paymentNotifyURL(code))
 	n, err := notifier.HandleNotification(ctx, row.Config, req)
 	if err != nil {

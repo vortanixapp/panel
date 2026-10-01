@@ -133,6 +133,13 @@ export const auth = {
   "auth.verify.change_success": "Готово: почта учётной записи теперь {email}.",
   "auth.verify.change_failed": "Не удалось подтвердить адрес. Запросите смену почты в настройках заново.",
   "auth.verify.to_settings": "Открыть настройки",
+  "auth.register.check_email_title": "Проверьте почту",
+  "auth.register.check_email_body": "Мы отправили письмо на {email}. Откройте его и перейдите по ссылке, чтобы завершить регистрацию. Ссылка действует 24 часа.",
+  "auth.register.check_email_hint": "Письма нет? Загляните в папку «Спам» или попробуйте зарегистрироваться ещё раз через несколько минут.",
+  "auth.verify.register_title": "Подтверждение регистрации",
+  "auth.verify.register_checking": "Подтверждаем регистрацию…",
+  "auth.verify.register_failed": "Не удалось подтвердить регистрацию.",
+  "auth.verify.register_retry": "Зарегистрироваться заново",
   "auth.verify.failed":
     "Не удалось подтвердить email. Войдите в аккаунт и попробуйте снова.",
   "auth.verify.resend_failed": "Не удалось отправить письмо. Войдите в аккаунт.",

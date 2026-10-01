@@ -413,9 +413,10 @@ func (h *Handler) enrichServerDetail(ctx context.Context, serverID string, item 
 	gameID, _ := item["game_id"].(string)
 	item["available_game_versions"] = h.listActiveGameVersions(ctx, gameID)
 	item["steam_updatable"] = h.gameSteamUpdatable(ctx, gameID)
-	item["viewer_permissions"] = viewerPermissionsForAccess(access)
+	viewerPerms := viewerPermissionsForAccess(access)
+	item["viewer_permissions"] = viewerPerms
 	h.enrichServerLiveFields(ctx, serverID, item)
-	if mysql, ok := config["mysql"].(map[string]any); ok {
+	if mysql, ok := config["mysql"].(map[string]any); ok && viewerHasPermission(viewerPerms, "can_view_mysql") {
 		item["mysql_host"] = mysql["host"]
 		item["mysql_port"] = mysql["port"]
 		item["mysql_database"] = mysql["database"]

@@ -48,7 +48,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	if token == "" {
 		token = cookieValue(r, refreshCookie)
 	}
-	userID, sessionID, expiresAt, err := h.tokens.ParseRefreshDetails(token)
+	userID, sessionID, tokenID, expiresAt, err := h.tokens.ParseRefreshDetails(token)
 	if err != nil {
 		h.clearAuthCookies(w, r)
 		writeError(w, http.StatusUnauthorized, "invalid refresh token")
@@ -68,14 +68,22 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid refresh token")
 		return
 	}
-	var alive bool
-	if err := h.dbOf(ctx).QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM core.user_sessions WHERE id = $1 AND user_id = $2)`,
-		sessionID, userID,
-	).Scan(&alive); err != nil || !alive {
+	refreshJTI, outcome, rotateErr := h.rotateRefresh(ctx, userID, sessionID, tokenID)
+	if rotateErr != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	switch outcome {
+	case refreshOutcomeGone:
 		h.clearAuthCookies(w, r)
 		h.forgetLogin(w, r, userID)
 		writeError(w, http.StatusUnauthorized, "Сессия закрыта")
+		return
+	case refreshOutcomeReused:
+		h.onRefreshReuse(ctx, r, userID, sessionID)
+		h.clearAuthCookies(w, r)
+		h.forgetLogin(w, r, userID)
+		writeError(w, http.StatusUnauthorized, "Сессия закрыта: токен обновления уже использовался. Войдите заново")
 		return
 	}
 	var email, role string
@@ -90,7 +98,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "user not found")
 		return
 	}
-	access, refresh, err := h.issueAuthTokens(r, userID, email, role, sessionID, refreshTTL)
+	access, refresh, err := h.reissueAuthTokens(r, userID, email, role, sessionID, refreshJTI, refreshTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
@@ -108,6 +116,7 @@ type forgotPasswordRequest struct {
 }
 
 func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	started := time.Now()
 	var req forgotPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
@@ -128,6 +137,7 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		WHERE u.email = $1
 	`, strings.ToLower(req.Email)).Scan(&userID)
 	if err != nil {
+		holdUntil(started, uniformResponseFloor)
 		writeJSON(w, http.StatusOK, map[string]string{"status": "sent"})
 		return
 	}
@@ -144,13 +154,14 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	if h.mailConfigured(ctx) {
 		msg := mail.PasswordResetEmail(i18n.ForUser(ctx, h.dbOf(ctx), userID), h.mailBrand(ctx, r), resetURL)
 		msg.To = req.Email
-		_ = h.sendMail(ctx, "mail.reset", userID, req.Email, msg)
+		h.sendMailAsync("mail.reset", userID, req.Email, msg)
 	} else if h.mail.DevExpose {
 		log.Printf("восстановление пароля: почта не настроена, ссылка для %s: %s", req.Email, resetURL)
 	} else {
 		log.Printf("восстановление пароля: почта не настроена, письмо для %s не отправлено", req.Email)
 	}
 
+	holdUntil(started, uniformResponseFloor)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "sent"})
 }
 
@@ -185,7 +196,11 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid or expired token")
 		return
 	}
-	newHash, _ := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	newHash, hashErr := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if hashErr != nil {
+		writeError(w, http.StatusBadRequest, "Пароль слишком длинный — не больше 72 байт")
+		return
+	}
 	_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.users SET password_hash = $1 WHERE id = $2`, string(newHash), userID)
 	_, _ = h.dbOf(ctx).Exec(ctx, `
 		UPDATE core.password_reset_tokens SET used_at = now()

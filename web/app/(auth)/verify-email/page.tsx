@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,11 +13,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  adoptSession,
   confirmEmailChange,
+  confirmRegistration,
   resendEmailVerification,
   verifyEmailURL,
   hasSession,
 } from "@/lib/api";
+import { postLoginPath } from "@/lib/auth-redirect";
 import { useT } from "@/hooks/use-translations";
 
 function ChangeEmailContent({ token }: { token: string }) {
@@ -79,8 +82,63 @@ function ChangeEmailContent({ token }: { token: string }) {
   );
 }
 
+function ConfirmRegistrationContent({ token }: { token: string }) {
+  const t = useT();
+  const router = useRouter();
+  const started = useRef(false);
+  const [failed, setFailed] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    confirmRegistration(token)
+      .then((res) => {
+        adoptSession();
+        router.replace(postLoginPath(res.user?.role ?? "user"));
+      })
+      .catch((err: unknown) => {
+        setMessage(err instanceof Error && err.message ? err.message : t("auth.verify.register_failed"));
+        setFailed(true);
+      });
+  }, [token, t, router]);
+
+  return (
+    <div className="flex min-h-svh flex-col items-center justify-center p-6">
+      <Card className="w-full max-w-md text-center">
+        <CardHeader>
+          <CardTitle>{t("auth.verify.register_title")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!failed && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t("auth.verify.register_checking")}
+            </div>
+          )}
+          {failed && (
+            <>
+              <p className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {message}
+              </p>
+              <Button asChild className="w-full">
+                <Link href="/register">{t("auth.verify.register_retry")}</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/login">{t("auth.back_to_login")}</Link>
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function VerifyEmailContent() {
   const params = useSearchParams();
+  const registerToken = params.get("register")?.trim() ?? "";
+  if (registerToken) return <ConfirmRegistrationContent token={registerToken} />;
   const changeToken = params.get("change")?.trim() ?? "";
   if (changeToken) return <ChangeEmailContent token={changeToken} />;
   return <VerifyLinkContent />;

@@ -150,6 +150,8 @@ func mailTemplateDefs() []mailTemplateDef {
 		{Prefix: "mail.verify", Fields: []string{"subject", "title", "body", "action"}},
 		{Prefix: "mail.reset", Fields: []string{"subject", "title", "body", "action"}},
 		{Prefix: "mail.email_change", Fields: []string{"subject", "title", "body", "action"}},
+		{Prefix: "mail.register_confirm", Fields: []string{"subject", "title", "body", "action"}},
+		{Prefix: "mail.register_exists", Fields: []string{"subject", "title", "body", "action"}},
 		{Prefix: "mail.test", Fields: []string{"subject", "title", "body"}},
 	}
 	for i := range defs {

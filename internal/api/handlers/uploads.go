@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -50,8 +51,18 @@ func (h *Handler) uploadPublicURL(r *http.Request, stored string) string {
 	return h.publicBaseURL(r) + path
 }
 
+var avatarFilePattern = regexp.MustCompile(`^/v1/uploads/avatars/[A-Za-z0-9][A-Za-z0-9._-]{0,80}$`)
+
+func ownAvatarPath(stored string) bool {
+	path := strings.TrimSpace(stored)
+	if u, err := url.Parse(path); err == nil && u.Host != "" {
+		path = u.Path
+	}
+	return avatarFilePattern.MatchString(path) && !strings.Contains(path, "..")
+}
+
 func (h *Handler) avatarPublicURL(r *http.Request, stored *string) *string {
-	if stored == nil {
+	if stored == nil || !ownAvatarPath(*stored) {
 		return nil
 	}
 	fixed := h.uploadPublicURL(r, *stored)
@@ -104,6 +115,12 @@ func setUploadHeaders(w http.ResponseWriter, contentType string) {
 	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox")
+}
+
+func setHTMLDocumentHeaders(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src * data:; sandbox")
 }
 
 func (h *Handler) ServeBranding(w http.ResponseWriter, r *http.Request) {

@@ -27,6 +27,9 @@ func (h *Handler) ServerMysqlInfo(w http.ResponseWriter, r *http.Request) {
 			info["catalog"] = filterMysqlCatalog(serverID, result)
 		}
 	}
+	if instances, ok := info["mysql_instances"].([]any); ok {
+		info["mysql_instances"] = maskMySQLInstances(instances, false)
+	}
 	writeJSON(w, http.StatusOK, info)
 }
 
@@ -284,6 +287,11 @@ func (h *Handler) mysqlAgentPayload(r *http.Request, serverID string, base map[s
 	payload := map[string]any{}
 	for k, v := range base {
 		payload[k] = v
+	}
+	for _, field := range []string{"database", "username"} {
+		if name, ok := payload[field].(string); ok && strings.TrimSpace(name) != "" && !ownsMysqlName(serverID, name) {
+			delete(payload, field)
+		}
 	}
 	if instances := h.nodeMysqlInstances(r, serverID); len(instances) > 0 {
 		payload["mysql_instances"] = instances

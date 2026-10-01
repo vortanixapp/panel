@@ -217,6 +217,12 @@ without notification.
 Links in these messages are built from `FRONTEND_URL`, which is set by
 `init-env.sh`. If messages contain an incorrect address, re-run the script.
 
+With SMTP configured, registration is confirmed by email: the account is created
+after the link in the message is opened, and an attempt to register an address
+that is already taken looks the same in the response as a successful one, so the
+set of addresses in the panel cannot be enumerated. To create accounts
+immediately, set `REGISTRATION_CONFIRM_EMAIL=off` in `deploy/.env`.
+
 ## Game images
 
 The repository contains build recipes, not prebuilt game images. The

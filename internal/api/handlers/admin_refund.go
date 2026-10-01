@@ -60,7 +60,28 @@ func (h *Handler) AdminRefundPayment(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, outcome)
 }
 
+func (h *Handler) lockRefund(ctx context.Context, paymentID string) (func(), error) {
+	conn, err := h.dbOf(ctx).Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	key := "refund:" + paymentID
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock(hashtextextended($1, 0))`, key); err != nil {
+		conn.Release()
+		return nil, err
+	}
+	return func() {
+		_, _ = conn.Exec(context.Background(), `SELECT pg_advisory_unlock(hashtextextended($1, 0))`, key)
+		conn.Release()
+	}, nil
+}
+
 func (h *Handler) refundPayment(ctx context.Context, actorID, actorEmail, paymentID string, requested float64, reason string) (refundOutcome, error) {
+	unlock, lockErr := h.lockRefund(ctx, paymentID)
+	if lockErr != nil {
+		return refundOutcome{}, refundFail(http.StatusInternalServerError, "database error")
+	}
+	defer unlock()
 	reason = strings.TrimSpace(reason)
 	var provider, currency, status, userID string
 	var providerPaymentID *string

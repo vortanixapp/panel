@@ -105,7 +105,7 @@ func (h *Handler) AdminAPIKeyCreate(w http.ResponseWriter, r *http.Request) {
 	for _, k := range rbacAllPermissionKeys() {
 		allowed[k] = true
 	}
-	own := h.rbacClaimsPermissions(r.Context(), claims)
+	own := h.actorPermissions(r, claims)
 	scopes := []string{}
 	for _, s := range body.Scopes {
 		s = strings.TrimSpace(s)

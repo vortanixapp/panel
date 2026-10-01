@@ -12,6 +12,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/netaddr"
 )
 
 const (
@@ -19,6 +21,8 @@ const (
 	webhookMaxAttempts = 6
 	webhookInterval    = 30 * time.Second
 )
+
+var webhookClient = netaddr.OutboundClient(webhookTimeout)
 
 func (r *Runner) WebhookLoop(ctx context.Context) {
 	ticker := time.NewTicker(webhookInterval)
@@ -126,7 +130,7 @@ func postWebhook(ctx context.Context, d webhookDelivery) (*int, error) {
 	mac.Write(d.payload)
 	req.Header.Set("X-Vortanix-Signature", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := webhookClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

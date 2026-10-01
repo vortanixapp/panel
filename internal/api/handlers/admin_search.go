@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,7 +16,7 @@ type searchHit struct {
 }
 
 func (h *Handler) AdminSearch(w http.ResponseWriter, r *http.Request) {
-	_, ok := tenantClaims(r.Context())
+	claims, ok := tenantClaims(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -27,7 +28,29 @@ func (h *Handler) AdminSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	results := []searchHit{}
+	allowed := h.actorPermissions(r, claims)
 
+	if allowed["admin.users.read"] {
+		results = append(results, h.searchUsers(ctx, query)...)
+	}
+	if allowed["admin.servers.read"] {
+		results = append(results, h.searchServers(ctx, query)...)
+	}
+	if allowed["admin.billing.read"] {
+		results = append(results, h.searchPayments(ctx, query)...)
+	}
+	if allowed["admin.support.read"] {
+		results = append(results, h.searchTickets(ctx, query)...)
+	}
+	if allowed["admin.locations.read"] {
+		results = append(results, h.searchLocations(ctx, query)...)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"results": results, "query": query})
+}
+
+func (h *Handler) searchUsers(ctx context.Context, query string) []searchHit {
+	results := []searchHit{}
 	if rows, err := h.readerOf(ctx).Query(ctx, `
 		SELECT u.id::text, u.email, COALESCE(p.first_name, ''), COALESCE(p.last_name, ''), u.role
 		FROM core.users u
@@ -51,7 +74,11 @@ func (h *Handler) AdminSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		rows.Close()
 	}
+	return results
+}
 
+func (h *Handler) searchServers(ctx context.Context, query string) []searchHit {
+	results := []searchHit{}
 	if rows, err := h.readerOf(ctx).Query(ctx, `
 		SELECT s.id::text, s.name, COALESCE(s.ip_address, ''), COALESCE(s.primary_port, 0),
 		       s.game_id, COALESCE(u.email, ''), COALESCE(n.name, '')
@@ -82,7 +109,11 @@ func (h *Handler) AdminSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		rows.Close()
 	}
+	return results
+}
 
+func (h *Handler) searchPayments(ctx context.Context, query string) []searchHit {
+	results := []searchHit{}
 	if rows, err := h.readerOf(ctx).Query(ctx, `
 		SELECT p.id::text, p.amount::float8, p.currency, p.status, COALESCE(p.provider, ''),
 		       COALESCE(u.email, ''), COALESCE(p.provider_payment_id, '')
@@ -108,7 +139,11 @@ func (h *Handler) AdminSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		rows.Close()
 	}
+	return results
+}
 
+func (h *Handler) searchTickets(ctx context.Context, query string) []searchHit {
+	results := []searchHit{}
 	if rows, err := h.readerOf(ctx).Query(ctx, `
 		SELECT t.id::text, t.subject, t.status, COALESCE(u.email, '')
 		FROM core.support_tickets t
@@ -129,7 +164,11 @@ func (h *Handler) AdminSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		rows.Close()
 	}
+	return results
+}
 
+func (h *Handler) searchLocations(ctx context.Context, query string) []searchHit {
+	results := []searchHit{}
 	if rows, err := h.readerOf(ctx).Query(ctx, `
 		SELECT id::text, name, COALESCE(fqdn, ''), status
 		FROM core.nodes
@@ -149,8 +188,7 @@ func (h *Handler) AdminSearch(w http.ResponseWriter, r *http.Request) {
 		}
 		rows.Close()
 	}
-
-	writeJSON(w, http.StatusOK, map[string]any{"results": results, "query": query})
+	return results
 }
 
 func roleLabelRU(role string) string {

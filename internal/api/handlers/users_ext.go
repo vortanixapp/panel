@@ -91,7 +91,7 @@ func (h *Handler) ImpersonateUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	access, refresh, err := h.issueAuthTokens(r, id, email, role, "", 0)
+	access, refresh, err := h.issueAuthTokens(r, id, email, role, 0)
 
 	if err != nil {
 

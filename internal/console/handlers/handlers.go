@@ -16,6 +16,7 @@ import (
 	"github.com/vortanixapp/panel/internal/console/relayclient"
 	"github.com/vortanixapp/panel/pkg/paneljwt"
 	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/rbac"
 )
 
 const (
@@ -32,13 +33,14 @@ type Handler struct {
 	redis *redis.Client
 	relay *relayclient.Client
 	jwt   *paneljwt.Verifier
+	db    rbac.Querier
 	upgr  websocket.Upgrader
 }
 
-func New(rdb *redis.Client, relay *relayclient.Client, jwt *paneljwt.Verifier, allowedOrigins ...string) *Handler {
+func New(rdb *redis.Client, relay *relayclient.Client, jwt *paneljwt.Verifier, db rbac.Querier, allowedOrigins ...string) *Handler {
 	allowed := normalizeOrigins(allowedOrigins)
 	return &Handler{
-		redis: rdb, relay: relay, jwt: jwt,
+		redis: rdb, relay: relay, jwt: jwt, db: db,
 		upgr: websocket.Upgrader{CheckOrigin: originChecker(allowed)},
 	}
 }
@@ -239,10 +241,14 @@ func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid token")
 		return
 	}
-	switch claims.Role {
-	case "owner", "admin", "support":
-	default:
+	ctx := r.Context()
+	permissions, access := h.dashboardViewer(ctx, claims.UserID, claims.SessionID)
+	switch access {
+	case viewerDenied:
 		writeError(w, http.StatusForbidden, "forbidden")
+		return
+	case viewerUnknown:
+		writeError(w, http.StatusServiceUnavailable, "access check unavailable")
 		return
 	}
 
@@ -252,7 +258,6 @@ func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	ctx := r.Context()
 	pubsub := h.redis.Subscribe(ctx, protocol.TenantEventsChannel())
 	defer pubsub.Close()
 
@@ -261,7 +266,9 @@ func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {
 	conn.SetPongHandler(func(string) error {
 		return conn.SetReadDeadline(time.Now().Add(consolePongWait))
 	})
+	gone := make(chan struct{})
 	go func() {
+		defer close(gone)
 		for {
 			if _, _, err := conn.ReadMessage(); err != nil {
 				_ = conn.Close()
@@ -272,12 +279,17 @@ func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {
 
 	ticker := time.NewTicker(consolePingPeriod)
 	defer ticker.Stop()
+	recheck := time.NewTicker(dashboardRecheckEvery)
+	defer recheck.Stop()
 	messages := pubsub.Channel()
 	for {
 		select {
 		case msg, ok := <-messages:
 			if !ok {
 				return
+			}
+			if !dashboardEventAllowed(permissions, []byte(msg.Payload)) {
+				continue
 			}
 			_ = conn.SetWriteDeadline(time.Now().Add(consoleWriteWait))
 			if conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload)) != nil {
@@ -288,6 +300,19 @@ func (h *Handler) DashboardWS(w http.ResponseWriter, r *http.Request) {
 			if conn.WriteMessage(websocket.PingMessage, nil) != nil {
 				return
 			}
+		case <-recheck.C:
+			fresh, state := h.dashboardViewer(ctx, claims.UserID, claims.SessionID)
+			switch state {
+			case viewerDenied:
+				_ = conn.WriteControl(websocket.CloseMessage,
+					websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "access revoked"),
+					time.Now().Add(consoleWriteWait))
+				return
+			case viewerAllowed:
+				permissions = fresh
+			}
+		case <-gone:
+			return
 		case <-ctx.Done():
 			return
 		}

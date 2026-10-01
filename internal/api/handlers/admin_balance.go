@@ -18,6 +18,10 @@ func (h *Handler) AdminAdjustUserBalance(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	userID := chi.URLParam(r, "id")
+	if userID == claims.UserID && claims.Role != "owner" {
+		writeError(w, http.StatusForbidden, "Нельзя менять баланс собственной учётной записи")
+		return
+	}
 	var body struct {
 		Amount   float64 `json:"amount"`
 		Currency string  `json:"currency"`
@@ -35,6 +39,10 @@ func (h *Handler) AdminAdjustUserBalance(w http.ResponseWriter, r *http.Request)
 	currency := strings.ToUpper(strings.TrimSpace(body.Currency))
 	if currency == "" {
 		currency = "RUB"
+	}
+	if len(currency) < 3 || len(currency) > 5 || strings.Trim(currency, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") != "" {
+		writeError(w, http.StatusBadRequest, "Неверный код валюты")
+		return
 	}
 	comment := strings.TrimSpace(body.Comment)
 	if comment == "" {

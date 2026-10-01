@@ -343,6 +343,8 @@ func bonusPromoCode() string {
 
 const bonusCooldown = 24 * time.Hour
 
+var errBonusCooldown = errors.New("бонус уже получен")
+
 var bonusFallbackColors = []string{"#3a3b3d", "#555658", "#757678", "#9a9b9d", "#c9cacc", "#e8a03c"}
 
 func (h *Handler) loadBonusPrizes(ctx context.Context) []bonusPrize {
@@ -528,6 +530,13 @@ func (h *Handler) DailyBonusSpin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	credited, promoCode, err := h.grantBonusPrize(ctx, claims.UserID, prize)
+	if errors.Is(err, errBonusCooldown) {
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{
+			"error":        "bonus already claimed",
+			"next_spin_at": time.Now().Add(bonusCooldown).UTC().Format(time.RFC3339),
+		})
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to grant prize")
 		return
@@ -590,6 +599,22 @@ func (h *Handler) grantBonusPrize(
 		return 0, "", err
 	}
 	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "daily_bonus:"+userID); err != nil {
+		return 0, "", err
+	}
+	var recent bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM core.daily_bonus_spins
+			WHERE user_id = $1 AND created_at > now() - make_interval(secs => $2::float8)
+		)
+	`, userID, bonusCooldown.Seconds()).Scan(&recent); err != nil {
+		return 0, "", err
+	}
+	if recent {
+		return 0, "", errBonusCooldown
+	}
 
 	credited := 0.0
 	if prize.Type == "balance" && prize.Value > 0 {

@@ -16,6 +16,8 @@ import (
 	"github.com/vortanixapp/panel/pkg/portalloc"
 )
 
+const trialCreateGate = 20 * time.Second
+
 type trialSettings struct {
 	Enabled      bool
 	Hours        int
@@ -133,6 +135,10 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 	cfg := h.trialSettings(ctx)
 	if !cfg.Enabled {
 		writeError(w, http.StatusConflict, "Пробный сервер сейчас не выдаётся")
+		return
+	}
+	if !h.allowAttempt(ctx, "trial:create:"+claims.UserID, 1, trialCreateGate) {
+		writeError(w, http.StatusTooManyRequests, "Заявка на пробный сервер уже обрабатывается — подождите несколько секунд")
 		return
 	}
 	if at := h.trialAvailableAt(ctx, claims.UserID, cfg.CooldownDays); at.After(time.Now()) {

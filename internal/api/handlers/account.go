@@ -601,10 +601,6 @@ var allowedAvatarTypes = map[string]string{
 	"image/webp": ".webp",
 }
 
-type avatarURLRequest struct {
-	AvatarURL string `json:"avatar_url"`
-}
-
 func (h *Handler) removeAvatarFiles(userID, keep string) {
 	for _, ext := range []string{".jpg", ".png", ".webp"} {
 		if ext == keep {
@@ -632,19 +628,7 @@ func (h *Handler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-		var req avatarURLRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid json")
-			return
-		}
-		avatarURL := strings.TrimSpace(req.AvatarURL)
-		if !strings.HasPrefix(avatarURL, "https://") && !strings.HasPrefix(avatarURL, "http://") {
-			writeError(w, http.StatusUnprocessableEntity, "Укажите ссылку на изображение")
-			return
-		}
-		h.removeAvatarFiles(claims.UserID, "")
-		h.saveAvatarURL(ctx, claims.UserID, &avatarURL)
-		h.writeAccount(w, r, claims)
+		writeError(w, http.StatusUnsupportedMediaType, "Аватар загружается файлом: выберите изображение JPG, PNG или WebP")
 		return
 	}
 

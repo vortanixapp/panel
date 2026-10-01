@@ -402,7 +402,7 @@ func (t *transfer) mergeEnv(body io.Reader) error {
 			continue
 		}
 		value, found := values[key]
-		if !found {
+		if !found || strings.ContainsAny(value, "\r\n") {
 			continue
 		}
 		lines[i] = key + "=" + value
@@ -410,7 +410,7 @@ func (t *transfer) mergeEnv(body io.Reader) error {
 	}
 	for _, key := range transferEnvKeys {
 		value, found := values[key]
-		if !found || applied[key] {
+		if !found || applied[key] || strings.ContainsAny(value, "\r\n") {
 			continue
 		}
 		if n := len(lines); n > 0 && lines[n-1] == "" {

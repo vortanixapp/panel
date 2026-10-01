@@ -170,7 +170,10 @@ func (h *Handler) pendingLegalDocuments(ctx context.Context, userID string) ([]l
 }
 
 func (h *Handler) recordConsents(ctx context.Context, r *http.Request, userID string, kinds []string, source string) error {
-	agent := r.Header.Get("User-Agent")
+	return h.recordConsentsAt(ctx, userID, kinds, source, clientIP(r), r.Header.Get("User-Agent"))
+}
+
+func (h *Handler) recordConsentsAt(ctx context.Context, userID string, kinds []string, source, ip, agent string) error {
 	if utf8.RuneCountInString(agent) > 300 {
 		agent = string([]rune(agent)[:300])
 	}
@@ -182,7 +185,7 @@ func (h *Handler) recordConsents(ctx context.Context, r *http.Request, userID st
 			WHERE kind = ANY($2::text[])
 			ORDER BY kind, version DESC
 		) d
-	`, userID, kinds, source, clientIP(r), agent)
+	`, userID, kinds, source, ip, agent)
 	return err
 }
 

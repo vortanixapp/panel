@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	netmail "net/mail"
 	"slices"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Get("/v1/setup/status", h.SetupStatus)
 	r.Post("/v1/auth/login", h.Login)
 	r.Post("/v1/auth/register", h.Register)
+	r.Post("/v1/auth/register/confirm", h.ConfirmRegistration)
 	r.Post("/v1/auth/email-change/confirm", h.ConfirmEmailChange)
 	r.HandleFunc("/v1/webhooks/{provider}", h.PaymentWebhook)
 	r.Get("/v1/pay/{id}", h.PaymentCheckoutPage)
@@ -145,7 +147,7 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 
 	h.ensureDefaultWallet(ctx, userID)
 
-	access, refresh, err := h.issueAuthTokens(r, userID, req.OwnerEmail, "owner", "", rememberRefreshTTL)
+	access, refresh, err := h.issueAuthTokens(r, userID, req.OwnerEmail, "owner", rememberRefreshTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
@@ -205,6 +207,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	`, strings.ToLower(req.Email)).Scan(&userID, &role, &hash, &twoFAEnabled)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			burnPasswordCheck(req.Password)
 			h.recordLoginAttempt(ctx, r, "", req.Email, "нет такого пользователя", false)
 			h.autoBlockIfNeeded(ctx, clientIP(r))
 			writeError(w, http.StatusUnauthorized, "invalid credentials")
@@ -241,7 +244,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access, refresh, err := h.issueAuthTokens(r, userID, req.Email, role, "", refreshTTLForRemember(req.Remember))
+	access, refresh, err := h.issueAuthTokens(r, userID, req.Email, role, refreshTTLForRemember(req.Remember))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
@@ -293,6 +296,7 @@ type registerRequest struct {
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	started := time.Now()
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
@@ -323,11 +327,26 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to hash password")
+		writeError(w, http.StatusUnprocessableEntity, "Пароль слишком длинный — не больше 72 байт")
 		return
 	}
 
-	email := strings.ToLower(req.Email)
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if parsed, parseErr := netmail.ParseAddress(email); parseErr != nil || parsed.Address != email || len(email) > 254 {
+		writeError(w, http.StatusUnprocessableEntity, "Укажите корректный адрес почты")
+		return
+	}
+	if h.registrationConfirmRequired(ctx) {
+		h.registerWithConfirmation(w, r, started, pendingRegistration{
+			Email:        email,
+			PasswordHash: string(hash),
+			FirstName:    strings.TrimSpace(req.Name),
+			LastName:     strings.TrimSpace(req.LastName),
+			ReferralCode: referralCodeFrom(r, req.ReferralCode),
+			Consents:     consentKinds,
+		})
+		return
+	}
 	var emailTaken bool
 	if err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT EXISTS(
@@ -339,6 +358,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if emailTaken {
+		if ip := clientIP(r); ip != "" && !h.allowAttempt(ctx, "register:dup:"+ip, 5, time.Hour) {
+			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте позже")
+			return
+		}
 		writeError(w, http.StatusConflict, "email already registered")
 		return
 	}
@@ -378,7 +401,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		`, userID, dn, fn, ln)
 	}
 
-	access, refresh, err := h.issueAuthTokens(r, userID, email, "user", "", 0)
+	access, refresh, err := h.issueAuthTokens(r, userID, email, "user", 0)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return

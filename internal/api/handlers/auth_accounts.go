@@ -74,7 +74,7 @@ func (h *Handler) SwitchAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, sessionID, expiresAt, err := h.tokens.ParseRefreshDetails(saved.Refresh)
+	userID, sessionID, tokenID, expiresAt, err := h.tokens.ParseRefreshDetails(saved.Refresh)
 	if err != nil || userID != target || sessionID == "" || expiresAt.Before(time.Now()) {
 		h.forgetLogin(w, r, target)
 		writeCodedError(w, http.StatusUnauthorized, "session_expired",
@@ -83,11 +83,15 @@ func (h *Handler) SwitchAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	var alive bool
-	if err := h.dbOf(ctx).QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM core.user_sessions WHERE id = $1 AND user_id = $2)`,
-		sessionID, userID,
-	).Scan(&alive); err != nil || !alive {
+	refreshJTI, outcome, rotateErr := h.rotateRefresh(ctx, userID, sessionID, tokenID)
+	if rotateErr != nil {
+		writeError(w, http.StatusInternalServerError, "database error")
+		return
+	}
+	if outcome == refreshOutcomeReused {
+		h.onRefreshReuse(ctx, r, userID, sessionID)
+	}
+	if outcome == refreshOutcomeGone || outcome == refreshOutcomeReused {
 		h.forgetLogin(w, r, target)
 		writeCodedError(w, http.StatusUnauthorized, "session_expired",
 			"Сеанс этого аккаунта закрыт — войдите в него заново")
@@ -104,7 +108,7 @@ func (h *Handler) SwitchAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access, refresh, err := h.issueAuthTokens(r, userID, email, role, sessionID, rememberRefreshTTL)
+	access, refresh, err := h.reissueAuthTokens(r, userID, email, role, sessionID, refreshJTI, rememberRefreshTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return

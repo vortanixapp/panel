@@ -208,6 +208,10 @@ func (h *Handler) AdminStartPanelUpdate(w http.ResponseWriter, r *http.Request) 
 		}
 		version = rel.Version
 	}
+	if !updates.IsSemver(version) {
+		writeError(w, http.StatusUnprocessableEntity, "Укажите версию выпуска, например 0.1.16")
+		return
+	}
 	current := buildinfo.Current()
 	if updates.IsSemver(current) && !updates.IsNewer(version, current) {
 		writeError(w, http.StatusConflict, fmt.Sprintf("Установлена версия %s, выпуск %s не новее", current, version))

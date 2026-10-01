@@ -5,12 +5,15 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const minJWTSecretLength = 32
 
 const (
 	DevJWTSecret      = "dev-secret-change-in-production"
@@ -48,6 +51,9 @@ func DevSecretsAllowed() bool {
 
 func JWT(ctx context.Context, db *pgxpool.Pool, envValue string) (string, error) {
 	if configured(envValue) {
+		if len(strings.TrimSpace(envValue)) < minJWTSecretLength {
+			log.Printf("JWT_SECRET короче %d символов: такой ключ подписи токенов можно подобрать. Задайте длинный случайный (openssl rand -base64 32)", minJWTSecretLength)
+		}
 		return envValue, nil
 	}
 	if db == nil {

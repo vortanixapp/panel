@@ -6,12 +6,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vortanixapp/panel/pkg/backupname"
 	"github.com/vortanixapp/panel/pkg/cronexpr"
 )
+
+const serverNameMax = 100
 
 func (h *Handler) PatchServer(w http.ResponseWriter, r *http.Request) {
 	serverID := chi.URLParam(r, "id")
@@ -25,9 +28,20 @@ func (h *Handler) PatchServer(w http.ResponseWriter, r *http.Request) {
 	var cfg, lim []byte
 	fields := []string{}
 	if v, has := body["name"]; has && v != nil {
+		name, isText := v.(string)
+		name = strings.TrimSpace(name)
+		if !isText || name == "" || utf8.RuneCountInString(name) > serverNameMax {
+			writeError(w, http.StatusUnprocessableEntity, "Название сервера — от 1 до 100 символов")
+			return
+		}
+		body["name"] = name
 		fields = append(fields, "name")
 	}
 	if v, has := body["config"]; has {
+		if !isStaffRole(claims.Role) {
+			writeError(w, http.StatusForbidden, "Изменение конфигурации доступно только сотрудникам")
+			return
+		}
 		cfg, _ = json.Marshal(v)
 		fields = append(fields, "config")
 	}

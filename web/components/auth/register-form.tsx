@@ -60,6 +60,7 @@ export function RegisterForm() {
   const [configured, setConfigured] = useState<string[]>([]);
   const [telegramBot, setTelegramBot] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sentTo, setSentTo] = useState("");
   const { legal } = useBrand();
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPersonalData, setAcceptPersonalData] = useState(false);
@@ -100,6 +101,10 @@ export function RegisterForm() {
         { name: values.name, lastName: values.lastName },
         { terms: acceptTerms, personalData: acceptPersonalData }
       );
+      if (res.status === "confirmation_sent") {
+        setSentTo(res.email ?? values.email);
+        return;
+      }
       adoptSession();
       router.push(postLoginPath(res.user?.role ?? "user"));
     } catch (err) {
@@ -157,6 +162,23 @@ export function RegisterForm() {
   };
 
   const socialButtons = SOCIAL_BUTTONS.filter((b) => configured.includes(b.key));
+
+  if (sentTo) {
+    return (
+      <>
+        <AuthHeading
+          title={t("auth.register.check_email_title")}
+          subtitle={t("auth.register.check_email_body", { email: sentTo })}
+        />
+        <p className="text-[14px] leading-[1.55] text-muted-foreground">{t("auth.register.check_email_hint")}</p>
+        <AuthSwitch>
+          <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+            {t("auth.back_to_login")}
+          </Link>
+        </AuthSwitch>
+      </>
+    );
+  }
 
   return (
     <>

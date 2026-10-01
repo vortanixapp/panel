@@ -3,10 +3,31 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	netmail "net/mail"
+	"regexp"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/vortanixapp/panel/internal/api/hosting"
 )
+
+var (
+	hostingDomainPattern = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+	hostingNamePattern   = regexp.MustCompile(`^[A-Za-z0-9_]{1,32}$`)
+)
+
+func validHostingDomain(domain string) bool {
+	return len(domain) <= 253 && hostingDomainPattern.MatchString(domain)
+}
+
+func validHostingMailbox(address string) bool {
+	parsed, err := netmail.ParseAddress(address)
+	if err != nil || parsed.Address != address || len(address) > 254 {
+		return false
+	}
+	_, domain, found := strings.Cut(address, "@")
+	return found && validHostingDomain(strings.ToLower(domain))
+}
 
 func (h *Handler) ListHostingDomains(w http.ResponseWriter, r *http.Request) {
 	claims, ok := tenantClaims(r.Context())
@@ -38,8 +59,13 @@ func (h *Handler) CreateHostingDomain(w http.ResponseWriter, r *http.Request) {
 		Domain string `json:"domain"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
+	body.Domain = strings.ToLower(strings.TrimSpace(body.Domain))
 	if body.Domain == "" {
 		writeError(w, http.StatusBadRequest, "domain required")
+		return
+	}
+	if !validHostingDomain(body.Domain) {
+		writeError(w, http.StatusUnprocessableEntity, "Укажите домен вида example.com")
 		return
 	}
 	adapter := hosting.NewAdapter(panelCfg)
@@ -94,6 +120,10 @@ func (h *Handler) CreateHostingDatabase(w http.ResponseWriter, r *http.Request) 
 	if body.User == "" {
 		body.User = body.Name
 	}
+	if !hostingNamePattern.MatchString(body.Name) || !hostingNamePattern.MatchString(body.User) {
+		writeError(w, http.StatusUnprocessableEntity, "Имя базы и пользователя — латинские буквы, цифры и подчёркивание, до 32 символов")
+		return
+	}
 	adapter := hosting.NewAdapter(panelCfg)
 	if err := adapter.AddDatabase(r.Context(), panelID, body.Name, body.User); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -139,8 +169,17 @@ func (h *Handler) CreateHostingEmail(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
+	body.Address = strings.TrimSpace(body.Address)
 	if body.Address == "" {
 		writeError(w, http.StatusBadRequest, "address required")
+		return
+	}
+	if !validHostingMailbox(body.Address) {
+		writeError(w, http.StatusUnprocessableEntity, "Неверный адрес почтового ящика")
+		return
+	}
+	if len(body.Password) < 8 {
+		writeError(w, http.StatusUnprocessableEntity, "Пароль ящика — не короче 8 символов")
 		return
 	}
 	adapter := hosting.NewAdapter(panelCfg)
@@ -197,7 +236,7 @@ func (h *Handler) hostingPanelRef(r *http.Request, accountID, userID string) (pa
 		       COALESCE(hs.api_username, ''), COALESCE(hs.api_token_enc, '')
 		FROM core.hosting_accounts ha
 		JOIN core.hosting_servers hs ON hs.id = ha.hosting_server_id
-		WHERE ha.id = $1 AND ha.user_id = $2
+		WHERE ha.id = $1 AND ha.user_id = $2 AND ha.status = 'active'
 	`, accountID, userID).Scan(&panelAccountID, &cfg.PanelType, &cfg.APIURL, &cfg.APIUsername, &cfg.APIToken)
 	cfg.APIToken = h.secrets.MustDecrypt(cfg.APIToken)
 	return

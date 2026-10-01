@@ -29,13 +29,17 @@ const (
 	socialIntentLink  = "link"
 )
 
-const oauthStateTTL = 30 * time.Minute
+const (
+	oauthStateTTL    = 30 * time.Minute
+	oauthNonceCookie = "vtx_oauth"
+)
 
 type oauthState struct {
 	Intent     string `json:"intent"`
 	TenantSlug string `json:"tenant_slug"`
 	ReturnPath string `json:"return_path"`
 	UserID     string `json:"user_id"`
+	Nonce      string `json:"nonce"`
 	Exp        int64  `json:"exp"`
 }
 
@@ -109,6 +113,10 @@ func (h *Handler) startSocialOAuth(w http.ResponseWriter, r *http.Request, inten
 	if len(linkUserID) > 0 {
 		st.UserID = linkUserID[0]
 	}
+	st.Nonce = randomToken(16)
+	nonceJar := h.authCookie(r, oauthNonceCookie, st.Nonce, "/v1", oauthStateTTL)
+	nonceJar.HttpOnly = true
+	http.SetCookie(w, nonceJar)
 	state := h.encodeOAuthState(st)
 	authURL, err := p.AuthCodeURL(state)
 	if err != nil {
@@ -141,6 +149,12 @@ func (h *Handler) socialExchange(w http.ResponseWriter, r *http.Request, forcedI
 	}
 	st, err := h.decodeOAuthState(req.State)
 	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid state")
+		return
+	}
+	bound := st.Nonce != "" && hmac.Equal([]byte(st.Nonce), []byte(cookieValue(r, oauthNonceCookie)))
+	http.SetCookie(w, h.authCookie(r, oauthNonceCookie, "", "/v1", 0))
+	if !bound {
 		writeError(w, http.StatusBadRequest, "invalid state")
 		return
 	}
@@ -204,11 +218,21 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 			})
 			return
 		}
+		var existingVerified bool
 		if email != "" {
 			_ = h.dbOf(ctx).QueryRow(ctx, `
-				SELECT id::text, email, role FROM core.users
+				SELECT id::text, email, role, email_verified_at IS NOT NULL FROM core.users
 				WHERE email = $1 AND status = 'active'
-			`, email).Scan(&userID, &email, &role)
+			`, email).Scan(&userID, &email, &role, &existingVerified)
+		}
+		if userID != "" && !existingVerified {
+			h.recordLoginAttempt(ctx, r, userID, email, "соцвход: почта учётной записи не подтверждена", false)
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{
+				"ok": false,
+				"message": "Учётная запись с этим email уже есть, но почта в ней не подтверждена. " +
+					"Войдите по паролю или восстановите его и привяжите соцсеть в настройках.",
+			})
+			return
 		}
 		if userID == "" {
 			var taken bool
@@ -266,7 +290,7 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	access, refresh, err := h.issueAuthTokens(r, userID, email, role, "", rememberRefreshTTL)
+	access, refresh, err := h.issueAuthTokens(r, userID, email, role, rememberRefreshTTL)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
@@ -434,6 +458,10 @@ func (h *Handler) handleTelegramWithState(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "error": "Не удалось подтвердить данные от Telegram."})
 		return
 	}
+	if claimed, err := h.cache.Claim(r.Context(), "tg:login:"+data["hash"], time.Hour); err == nil && !claimed {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "error": "Эта ссылка входа уже использована. Войдите заново."})
+		return
+	}
 	telegramID := strings.TrimSpace(data["id"])
 	if telegramID == "" {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "error": "Не удалось получить Telegram ID."})
@@ -456,6 +484,8 @@ func (h *Handler) handleTelegramWithState(w http.ResponseWriter, r *http.Request
 	h.loginOrRegisterSocial(w, r, st.TenantSlug, "telegram", profile, r.URL.Query().Get("ref"))
 }
 
+const telegramAuthMaxAge = 1800
+
 func extractTelegramData(r *http.Request) map[string]string {
 	keys := []string{"id", "first_name", "last_name", "username", "photo_url", "auth_date", "hash"}
 	out := make(map[string]string, len(keys))
@@ -471,7 +501,7 @@ func verifyTelegramHash(data map[string]string, botToken string) bool {
 		return false
 	}
 	authDate, _ := strconv.ParseInt(data["auth_date"], 10, 64)
-	if authDate == 0 || time.Now().Unix()-authDate > 86400 {
+	if authDate == 0 || time.Now().Unix()-authDate > telegramAuthMaxAge {
 		return false
 	}
 	var pairs []string

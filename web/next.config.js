@@ -1,6 +1,12 @@
+const BASE_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
 const FRAME_HEADERS = [
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
-  { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
 ];
 
 const SITE_FILE = "/:file([A-Za-z0-9][A-Za-z0-9._-]*\\.(?:html|htm|txt|xml|HTML|HTM|TXT|XML))";
@@ -15,12 +21,14 @@ const SITE_FILE_HEADERS = [
 
 const nextConfig = {
   output: "standalone",
+  poweredByHeader: false,
   images: {
     unoptimized: true,
     remotePatterns: [],
   },
   async headers() {
     return [
+      { source: "/:path*", headers: BASE_HEADERS },
       { source: "/", headers: FRAME_HEADERS },
       { source: "/:path((?!monitoring/public/).+)", headers: FRAME_HEADERS },
       { source: SITE_FILE, headers: SITE_FILE_HEADERS },

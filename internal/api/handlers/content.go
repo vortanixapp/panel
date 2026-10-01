@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/vortanixapp/panel/internal/api/jobwake"
@@ -90,7 +91,26 @@ func (h *Handler) CreateSupportTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 
+	ctx := r.Context()
+	body.Subject = strings.TrimSpace(body.Subject)
+	body.Body = strings.TrimSpace(body.Body)
+	if body.Subject == "" || body.Body == "" {
+		writeError(w, http.StatusUnprocessableEntity, "Укажите тему и текст обращения")
+		return
+	}
+	if utf8.RuneCountInString(body.Subject) > supportSubjectMax || utf8.RuneCountInString(body.Body) > supportBodyMax {
+		writeError(w, http.StatusUnprocessableEntity, "Тема или текст обращения слишком длинные")
+		return
+	}
+	if !h.allowAttempt(ctx, "support:new:"+claims.UserID, supportNewPerHour, time.Hour) {
+		writeError(w, http.StatusTooManyRequests, "Слишком много обращений за час — попробуйте позже")
+		return
+	}
+
 	category := strings.TrimSpace(body.Category)
+	if utf8.RuneCountInString(category) > 32 {
+		category = ""
+	}
 	if category == "" {
 		category = "other"
 	}
@@ -105,6 +125,19 @@ func (h *Handler) CreateSupportTicket(w http.ResponseWriter, r *http.Request) {
 	serviceID := strings.TrimSpace(body.ServiceID)
 	if serviceKind == "" || serviceID == "" {
 		serviceKind, serviceID = "", ""
+	}
+	if serviceID != "" {
+		owned := false
+		for _, svc := range h.userServices(ctx, claims.UserID) {
+			if svc.Kind == serviceKind && svc.ID == serviceID {
+				owned = true
+				break
+			}
+		}
+		if !owned {
+			writeError(w, http.StatusUnprocessableEntity, "Услуга не найдена")
+			return
+		}
 	}
 
 	var id string
@@ -214,6 +247,14 @@ func (h *Handler) ReplySupportTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.TrimSpace(body.Body) == "" {
 		writeError(w, http.StatusBadRequest, "Нужен текст сообщения")
+		return
+	}
+	if utf8.RuneCountInString(body.Body) > supportBodyMax {
+		writeError(w, http.StatusUnprocessableEntity, "Сообщение слишком длинное")
+		return
+	}
+	if !staff && !h.allowAttempt(ctx, "support:reply:"+claims.UserID, supportReplyPerWindow, 10*time.Minute) {
+		writeError(w, http.StatusTooManyRequests, "Слишком много сообщений — попробуйте через несколько минут")
 		return
 	}
 

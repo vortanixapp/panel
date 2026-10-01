@@ -47,6 +47,7 @@ const (
 	KindSocialAccount  Kind = "security.social"
 	KindRecoveryCode   Kind = "security.recovery"
 	KindAPIToken       Kind = "security.api_token"
+	KindSessionRevoked Kind = "security.session_revoked"
 
 	KindAnnounce Kind = "system.announce"
 
@@ -135,6 +136,7 @@ var defs = map[Kind]Def{
 	KindSocialAccount:  {Group: GroupSecurity, Icon: "ri-links-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 	KindRecoveryCode:   {Group: GroupSecurity, Icon: "ri-key-2-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
 	KindAPIToken:       {Group: GroupSecurity, Icon: "ri-code-s-slash-line", Severity: SeverityWarning, Channels: channelsAll, Required: true},
+	KindSessionRevoked: {Group: GroupSecurity, Icon: "ri-shield-cross-line", Severity: SeverityCritical, Channels: channelsAll, Required: true},
 
 	KindAnnounce: {Group: GroupSystem, Icon: "ri-megaphone-line", Severity: SeverityInfo, Channels: channelsAll},
 

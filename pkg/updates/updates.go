@@ -163,6 +163,9 @@ func Parse(v string) ([3]int, bool) {
 	var out [3]int
 	v = buildinfo.Normalize(v)
 	if i := strings.IndexAny(v, "-+"); i >= 0 {
+		if !versionSuffixValid(v[i:]) {
+			return out, false
+		}
 		v = v[:i]
 	}
 	parts := strings.Split(v, ".")
@@ -177,6 +180,17 @@ func Parse(v string) ([3]int, bool) {
 		out[i] = n
 	}
 	return out, true
+}
+
+func versionSuffixValid(s string) bool {
+	for _, r := range s {
+		switch {
+		case r >= '0' && r <= '9', r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r == '.', r == '-', r == '+':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func IsSemver(v string) bool {
