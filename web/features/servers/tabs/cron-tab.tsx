@@ -12,6 +12,9 @@ import {
   VX_FAINT,
   VX_INPUT_MONO,
   VX_ROW_LINE,
+  VX_TBL_TD,
+  VX_TBL_TH,
+  VX_TBL_WRAP,
   Toggle,
 } from "@/components/vx/panel-ui";
 import {
@@ -32,8 +35,6 @@ import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
-
-const GRID = "grid-cols-[150px_minmax(0,1fr)_70px_70px] sm:grid-cols-[190px_minmax(0,1fr)_90px_80px]";
 
 export function ServerCronTab() {
   const t = useT();
@@ -118,70 +119,75 @@ export function ServerCronTab() {
         <p className={cn("px-[18px] pt-3 text-[11.5px] leading-[1.6]", VX_FAINT)}>
           {t("servers.cron.tz_hint", { tz: timeZone })}
         </p>
-        <div className="overflow-x-auto px-[18px] pt-1.5 pb-4">
-          <div className="min-w-[440px]">
-            <div
-              className={cn(
-                "grid gap-3 py-2.5 text-[10.5px] tracking-[0.08em] uppercase",
-                GRID,
-                VX_ROW_LINE,
-                VX_FAINT
+        <div className={VX_TBL_WRAP}>
+          <table className="vx-tbl vx-tbl-flat w-full table-fixed border-collapse text-left">
+            <thead>
+              <tr>
+                <th className={cn(VX_TBL_TH, "w-[190px]")}>{t("servers.cron.col_schedule")}</th>
+                <th className={VX_TBL_TH}>{t("servers.cron.col_command")}</th>
+                <th className={cn(VX_TBL_TH, "w-[90px]")}>{t("servers.cron.col_enabled")}</th>
+                <th className={cn(VX_TBL_TH, "w-[80px]")} />
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.length === 0 ? (
+                <tr>
+                  <td colSpan={4}>
+                    <EmptyState>{t("servers.cron.empty")}</EmptyState>
+                  </td>
+                </tr>
+              ) : (
+                jobs.map((job) => (
+                  <tr key={job.id} className={cn("text-[12.5px] last:border-b-0", VX_ROW_LINE)}>
+                    <td className={VX_TBL_TD} data-cell="full">
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="font-mono text-[12px]">{job.schedule}</span>
+                        {job.invalid ? (
+                          <span className="text-[10.5px] text-[var(--vx-danger)]">
+                            {t("servers.cron.invalid_schedule")}
+                          </span>
+                        ) : job.next_run ? (
+                          <span className={cn("text-[10.5px]", VX_FAINT)}>
+                            {t("servers.cron.next_run", { date: formatRun(job.next_run) })}
+                          </span>
+                        ) : null}
+                      </span>
+                    </td>
+                    <td
+                      className={VX_TBL_TD}
+                      data-cell="block"
+                      data-label={t("servers.cron.col_command")}
+                    >
+                      <span className="block font-mono text-[12px] break-all text-[var(--vx-dim)] md:truncate">
+                        {job.command}
+                      </span>
+                    </td>
+                    <td className={VX_TBL_TD} data-label={t("servers.cron.col_enabled")}>
+                      <Toggle
+                        label={t("servers.cron.job_toggle")}
+                        checked={job.enabled}
+                        disabled={toggleMutation.isPending}
+                        onChange={(enabled) => toggleMutation.mutate({ jobId: job.id, enabled })}
+                      />
+                    </td>
+                    <td className={cn(VX_TBL_TD, "text-right")} data-cell="actions">
+                      <button
+                        type="button"
+                        disabled={deleteMutation.isPending}
+                        onClick={async () => {
+                          if (!await confirmAction(t("servers.cron.delete_confirm"))) return;
+                          deleteMutation.mutate(job.id);
+                        }}
+                        className="text-[11.5px] text-[var(--vx-danger)] transition-opacity hover:opacity-80 disabled:opacity-40"
+                      >
+                        {t("common.delete")}
+                      </button>
+                    </td>
+                  </tr>
+                ))
               )}
-            >
-              <span>{t("servers.cron.col_schedule")}</span>
-              <span>{t("servers.cron.col_command")}</span>
-              <span>{t("servers.cron.col_enabled")}</span>
-              <span />
-            </div>
-
-            {jobs.length === 0 ? (
-              <EmptyState>{t("servers.cron.empty")}</EmptyState>
-            ) : (
-              jobs.map((job) => (
-                <div
-                  key={job.id}
-                  className={cn(
-                    "grid items-center gap-3 py-2.5 text-[12.5px] last:border-b-0",
-                    GRID,
-                    VX_ROW_LINE
-                  )}
-                >
-                  <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="font-mono text-[12px]">{job.schedule}</span>
-                    {job.invalid ? (
-                      <span className="text-[10.5px] text-[var(--vx-danger)]">
-                        {t("servers.cron.invalid_schedule")}
-                      </span>
-                    ) : job.next_run ? (
-                      <span className={cn("text-[10.5px]", VX_FAINT)}>
-                        {t("servers.cron.next_run", { date: formatRun(job.next_run) })}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="truncate font-mono text-[12px] text-[var(--vx-dim)]">
-                    {job.command}
-                  </span>
-                  <Toggle
-                    label={t("servers.cron.job_toggle")}
-                    checked={job.enabled}
-                    disabled={toggleMutation.isPending}
-                    onChange={(enabled) => toggleMutation.mutate({ jobId: job.id, enabled })}
-                  />
-                  <button
-                    type="button"
-                    disabled={deleteMutation.isPending}
-                    onClick={async () => {
-                      if (!await confirmAction(t("servers.cron.delete_confirm"))) return;
-                      deleteMutation.mutate(job.id);
-                    }}
-                    className="justify-self-end text-[11.5px] text-[var(--vx-danger)] transition-opacity hover:opacity-80 disabled:opacity-40"
-                  >
-                    {t("common.delete")}
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
+            </tbody>
+          </table>
         </div>
       </Panel>
 

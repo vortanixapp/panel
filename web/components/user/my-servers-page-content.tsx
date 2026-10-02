@@ -33,7 +33,7 @@ import {
 } from "@/lib/server-status";
 
 const COLUMNS =
-  "grid-cols-[minmax(230px,1.4fr)_150px_minmax(190px,1fr)_180px_150px_196px]";
+  "@7xl/content:grid-cols-[minmax(230px,1.4fr)_150px_minmax(190px,1fr)_180px_150px_196px]";
 
 function meterTone(value: number) {
   if (value >= 85) return { bar: "bg-rose-500", text: "text-rose-500" };
@@ -199,7 +199,7 @@ export function MyServersPageContent() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 rounded-xl border bg-card px-3.5 py-3">
-              <div className="relative min-w-[200px] flex-1 basis-[260px]">
+              <div className="relative min-w-[200px] flex-1 basis-[260px] max-sm:basis-full">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={search}
@@ -270,11 +270,11 @@ export function MyServersPageContent() {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <div className="vx-stagger flex min-w-[1040px] flex-col">
+                <div>
+                  <div className="vx-stagger flex flex-col">
                     <div
                       className={cn(
-                        "grid gap-3.5 border-b bg-muted/40 py-3 pr-5 pl-6 font-mono text-[11px] tracking-wider text-muted-foreground uppercase",
+                        "hidden gap-3.5 border-b bg-muted/40 py-3 pr-5 pl-6 font-mono text-[11px] tracking-wider text-muted-foreground uppercase @7xl/content:grid",
                         COLUMNS
                       )}
                     >
@@ -332,7 +332,7 @@ function ServerRow({
   return (
     <div
       className={cn(
-        "relative grid items-center gap-3.5 border-b py-4 pr-5 pl-6 transition-colors hover:bg-muted/30",
+        "relative grid grid-cols-2 items-center gap-x-4 gap-y-3.5 border-b py-4 pr-4 pl-5 transition-colors hover:bg-muted/30 @7xl/content:gap-3.5 @7xl/content:pr-5 @7xl/content:pl-6",
         COLUMNS
       )}
     >
@@ -351,7 +351,7 @@ function ServerRow({
         </div>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 justify-self-end text-right @7xl/content:justify-self-auto @7xl/content:text-left">
         <span
           className={cn(
             "inline-flex items-center gap-2 text-[13px]",
@@ -374,19 +374,19 @@ function ServerRow({
         )}
       </div>
 
-      <div className="min-w-0 space-y-1.5">
+      <div className="order-1 min-w-0 space-y-1.5 @7xl/content:order-none">
         <div className="truncate font-mono text-[13px]">{addr}</div>
         <div className="truncate text-xs text-muted-foreground">
           {server.tariff?.name || t("servers.list.no_tariff")}
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="order-3 col-span-2 grid grid-cols-2 gap-x-5 @7xl/content:order-none @7xl/content:col-span-1 @7xl/content:block @7xl/content:space-y-2">
         <Meter label="CPU" value={server.cpu_percent} />
         <Meter label="RAM" value={server.ram_percent} />
       </div>
 
-      <div className="space-y-1.5">
+      <div className="order-2 space-y-1.5 text-right @7xl/content:order-none @7xl/content:text-left">
         <div className="font-mono text-[13px]">
           {expiresAt
             ? t("servers.list.until", {
@@ -410,11 +410,11 @@ function ServerRow({
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-1.5">
+      <div className="order-4 col-span-2 flex items-center gap-1.5 @7xl/content:order-none @7xl/content:col-span-1 @7xl/content:justify-end">
         <Button
           variant="outline"
           asChild
-          className="h-[30px] rounded-lg px-3 text-xs font-medium"
+          className="h-9 flex-1 rounded-lg px-3 text-xs font-medium @7xl/content:h-[30px] @7xl/content:flex-none"
         >
           <Link href={`/servers/${server.id}`}>
             {t("servers.list.manage")}
@@ -423,7 +423,7 @@ function ServerRow({
         <Button
           variant="outline"
           size="icon"
-          className="size-[30px] rounded-lg"
+          className="size-9 rounded-lg @7xl/content:size-[30px]"
           title={t("common.restart")}
           disabled={loading || !canStop}
           onClick={() => onAction(server.id, "restart")}
@@ -434,7 +434,7 @@ function ServerRow({
           <Button
             variant="outline"
             size="icon"
-            className="size-[30px] rounded-lg border-emerald-500/30 text-emerald-500 hover:text-emerald-500"
+            className="size-9 rounded-lg border-emerald-500/30 text-emerald-500 hover:text-emerald-500 @7xl/content:size-[30px]"
             title={t("common.start")}
             disabled={loading}
             onClick={() => onAction(server.id, "start")}
@@ -445,7 +445,7 @@ function ServerRow({
           <Button
             variant="outline"
             size="icon"
-            className="size-[30px] rounded-lg border-rose-500/30 text-rose-500 hover:text-rose-500"
+            className="size-9 rounded-lg border-rose-500/30 text-rose-500 hover:text-rose-500 @7xl/content:size-[30px]"
             title={t("common.stop")}
             disabled={loading || !canStop}
             onClick={() => onAction(server.id, "stop")}
@@ -458,7 +458,7 @@ function ServerRow({
             <Button
               variant="outline"
               size="icon"
-              className="size-[30px] rounded-lg"
+              className="size-9 rounded-lg @7xl/content:size-[30px]"
               title={t("common.more")}
             >
               <MoreHorizontal className="size-3.5" />
@@ -557,7 +557,7 @@ function FilterSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="h-9 rounded-lg border border-input bg-transparent px-3 text-[13px] outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+      className="h-9 rounded-lg border border-input bg-transparent px-3 text-[13px] outline-none transition-[color,box-shadow] max-sm:min-w-[140px] max-sm:flex-1 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>

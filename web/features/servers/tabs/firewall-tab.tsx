@@ -8,10 +8,12 @@ import {
   Btn,
   EmptyState,
   Panel,
-  VX_FAINT,
   VX_INPUT_MONO,
   VX_ROW_LINE,
   VX_SELECT,
+  VX_TBL_TD,
+  VX_TBL_TH,
+  VX_TBL_WRAP,
   Toggle,
 } from "@/components/vx/panel-ui";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,8 +26,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
-
-const GRID = "grid-cols-[90px_90px_minmax(0,1fr)_70px] sm:grid-cols-[110px_110px_minmax(0,1fr)_80px]";
 
 export function ServerFirewallTab() {
   const t = useT();
@@ -113,57 +113,61 @@ export function ServerFirewallTab() {
       }
       flush
     >
-      <div className="overflow-x-auto px-[18px] pt-1.5 pb-4">
-        <div className="min-w-[400px]">
-          <div
-            className={cn(
-              "grid gap-3 py-2.5 text-[10.5px] tracking-[0.08em] uppercase",
-              GRID,
-              VX_ROW_LINE,
-              VX_FAINT
-            )}
-          >
-            <span>{t("servers.firewall.col_protocol")}</span>
-            <span>{t("servers.firewall.col_port")}</span>
-            <span>{t("servers.firewall.col_enabled")}</span>
-            <span />
-          </div>
-
-          {rules.length === 0 ? (
-            <EmptyState>{t("servers.firewall.empty")}</EmptyState>
-          ) : (
-            rules.map((rule) => (
-              <div
-                key={rule.id}
-                className={cn(
-                  "grid items-center gap-3 py-2.5 font-mono text-[12px] last:border-b-0",
-                  GRID,
-                  VX_ROW_LINE
-                )}
-              >
-                <span>{rule.protocol.toUpperCase()}</span>
-                <span>{rule.port_from}</span>
-                <Toggle
-                  label={t("servers.firewall.rule_toggle")}
-                  checked={rule.enabled}
-                  disabled={toggleMutation.isPending}
-                  onChange={(enabled) => toggleMutation.mutate({ ruleId: rule.id, enabled })}
-                />
-                <button
-                  type="button"
-                  disabled={deleteMutation.isPending}
-                  onClick={async () => {
-                    if (!await confirmAction(t("servers.firewall.delete_confirm"))) return;
-                    deleteMutation.mutate(rule.id);
-                  }}
-                  className="justify-self-end font-sans text-[11.5px] text-[var(--vx-danger)] transition-opacity hover:opacity-80 disabled:opacity-40"
+      <div className={VX_TBL_WRAP}>
+        <table className="vx-tbl vx-tbl-flat w-full table-fixed border-collapse text-left">
+          <thead>
+            <tr>
+              <th className={cn(VX_TBL_TH, "w-[110px]")}>{t("servers.firewall.col_protocol")}</th>
+              <th className={cn(VX_TBL_TH, "w-[110px]")}>{t("servers.firewall.col_port")}</th>
+              <th className={VX_TBL_TH}>{t("servers.firewall.col_enabled")}</th>
+              <th className={cn(VX_TBL_TH, "w-[80px]")} />
+            </tr>
+          </thead>
+          <tbody>
+            {rules.length === 0 ? (
+              <tr>
+                <td colSpan={4}>
+                  <EmptyState>{t("servers.firewall.empty")}</EmptyState>
+                </td>
+              </tr>
+            ) : (
+              rules.map((rule) => (
+                <tr
+                  key={rule.id}
+                  className={cn("font-mono text-[12px] last:border-b-0", VX_ROW_LINE)}
                 >
-                  {t("common.delete")}
-                </button>
-              </div>
-            ))
-          )}
-        </div>
+                  <td className={VX_TBL_TD} data-cell="lead">
+                    {rule.protocol.toUpperCase()}
+                  </td>
+                  <td className={VX_TBL_TD} data-cell="full">
+                    {rule.port_from}
+                  </td>
+                  <td className={VX_TBL_TD} data-label={t("servers.firewall.col_enabled")}>
+                    <Toggle
+                      label={t("servers.firewall.rule_toggle")}
+                      checked={rule.enabled}
+                      disabled={toggleMutation.isPending}
+                      onChange={(enabled) => toggleMutation.mutate({ ruleId: rule.id, enabled })}
+                    />
+                  </td>
+                  <td className={cn(VX_TBL_TD, "text-right")} data-cell="actions">
+                    <button
+                      type="button"
+                      disabled={deleteMutation.isPending}
+                      onClick={async () => {
+                        if (!await confirmAction(t("servers.firewall.delete_confirm"))) return;
+                        deleteMutation.mutate(rule.id);
+                      }}
+                      className="font-sans text-[11.5px] text-[var(--vx-danger)] transition-opacity hover:opacity-80 disabled:opacity-40"
+                    >
+                      {t("common.delete")}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </Panel>
   );

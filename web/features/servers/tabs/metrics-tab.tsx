@@ -22,7 +22,7 @@ const HISTORY_PERIODS = [1, 7, 14, 30, 60, 90, 180] as const;
 const CHART_W = 600;
 const CHART_H = 170;
 
-const GRID = "grid-cols-[minmax(0,1fr)_repeat(4,64px)] sm:grid-cols-[minmax(0,1fr)_repeat(4,80px)]";
+const GRID = "grid-cols-[minmax(0,1fr)_repeat(4,50px)] sm:grid-cols-[minmax(0,1fr)_repeat(4,80px)]";
 
 function chartScaleMax(...series: number[][]): number {
   let peak = 0;
@@ -160,46 +160,44 @@ export function ServerMetricsTab() {
         }
         flush
       >
-        <div className="overflow-x-auto px-[18px] pt-1.5 pb-4">
-          <div className="min-w-[420px]">
-            <div
-              className={cn(
-                "grid gap-3 py-2.5 text-[10.5px] tracking-[0.08em] uppercase",
-                GRID,
-                VX_ROW_LINE,
-                VX_FAINT
-              )}
-            >
-              <span>{t("servers.metrics.col_date")}</span>
-              <span>{t("servers.metrics.col_online")}</span>
-              <span>CPU</span>
-              <span>RAM</span>
-              <span>{t("servers.metrics.col_disk")}</span>
-            </div>
-
-            {historyQuery.isLoading ? (
-              <VxInlineLoader label={t("servers.metrics.history_loading")} />
-            ) : historyRows.length === 0 ? (
-              <EmptyState>{t("servers.metrics.history_empty")}</EmptyState>
-            ) : (
-              historyRows.map((r) => (
-                <div
-                  key={r.label}
-                  className={cn(
-                    "grid gap-3 py-2.5 font-mono text-[12px] text-[var(--vx-dim)] last:border-b-0",
-                    GRID,
-                    VX_ROW_LINE
-                  )}
-                >
-                  <span>{r.label}</span>
-                  <span>{r.online ?? "—"}</span>
-                  <span>{pctText(r.cpu)}</span>
-                  <span>{pctText(r.ram)}</span>
-                  <span>{pctText(r.disk)}</span>
-                </div>
-              ))
+        <div className="px-4 pt-1.5 pb-4 sm:px-[18px]">
+          <div
+            className={cn(
+              "grid gap-2 py-2.5 text-[10px] tracking-[0.04em] uppercase sm:gap-3 sm:text-[10.5px] sm:tracking-[0.08em]",
+              GRID,
+              VX_ROW_LINE,
+              VX_FAINT
             )}
+          >
+            <span>{t("servers.metrics.col_date")}</span>
+            <span>{t("servers.metrics.col_online")}</span>
+            <span>CPU</span>
+            <span>RAM</span>
+            <span>{t("servers.metrics.col_disk")}</span>
           </div>
+
+          {historyQuery.isLoading ? (
+            <VxInlineLoader label={t("servers.metrics.history_loading")} />
+          ) : historyRows.length === 0 ? (
+            <EmptyState>{t("servers.metrics.history_empty")}</EmptyState>
+          ) : (
+            historyRows.map((r) => (
+              <div
+                key={r.label}
+                className={cn(
+                  "grid gap-2 py-2.5 font-mono text-[12px] text-[var(--vx-dim)] last:border-b-0 sm:gap-3",
+                  GRID,
+                  VX_ROW_LINE
+                )}
+              >
+                <span>{r.label}</span>
+                <span>{r.online ?? "—"}</span>
+                <span>{pctText(r.cpu)}</span>
+                <span>{pctText(r.ram)}</span>
+                <span>{pctText(r.disk)}</span>
+              </div>
+            ))
+          )}
         </div>
       </Panel>
     </div>

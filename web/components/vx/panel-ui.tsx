@@ -16,6 +16,10 @@ export const VX_MONO_LABEL =
   "font-mono text-[10.5px] tracking-[0.08em] uppercase text-[var(--vx-faint)]";
 
 export const VX_ROW_LINE = "border-b border-[var(--vx-elevated)]";
+export const VX_TBL_WRAP = "px-1.5 pt-1.5 pb-3 md:px-[18px] md:pb-4";
+export const VX_TBL_TH =
+  "py-2.5 pr-3 text-left text-[10.5px] font-normal tracking-[0.08em] uppercase text-[var(--vx-faint)] border-b border-[var(--vx-elevated)] last:pr-0";
+export const VX_TBL_TD = "py-2.5 pr-3 align-middle last:pr-0";
 
 export const VX_INPUT =
   "h-[34px] w-full rounded-[9px] border border-[var(--vx-border-2)] bg-[var(--vx-bg)] px-2.5 text-[12.5px] text-[var(--vx-fg)] outline-none transition-colors placeholder:text-[var(--vx-ghost)] focus:border-[var(--vx-border-hover)] disabled:cursor-not-allowed disabled:opacity-50";

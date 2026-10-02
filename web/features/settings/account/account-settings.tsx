@@ -1,7 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useT } from "@/hooks/use-translations";
 import { useAccountQuery } from "@/hooks/use-account";
 import { cn } from "@/lib/utils";
@@ -52,8 +58,9 @@ export function AccountSettings() {
   const { data: account } = useAccountQuery();
   const tabs = TABS.filter((item) => !item.feature || account?.user.features?.[item.feature]);
   const { tab, anchor } = resolveTab(searchParams.get("tab"), account ? tabs : TABS);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
+  const [compact, setCompact] = useState(false);
 
   const select = useCallback(
     (id: string) => {
@@ -64,29 +71,21 @@ export function AccountSettings() {
     [pathname, router, searchParams]
   );
 
-  const updateEdges = useCallback(() => {
+  const measure = useCallback(() => {
     const el = listRef.current;
-    if (!el) return;
-    setEdges({
-      left: el.scrollLeft > 4,
-      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4,
-    });
+    if (el) setCompact(el.scrollWidth > el.clientWidth + 1);
   }, []);
 
-  const tabIds = tabs.map((item) => item.id).join(",");
+  const signature = tabs.map((item) => `${item.id}:${t(item.labelKey)}`).join("|");
 
-  useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    const active = el.querySelector<HTMLElement>(`[data-tab="${tab}"]`);
-    active?.scrollIntoView({ block: "nearest", inline: "nearest" });
-    updateEdges();
-  }, [tab, tabIds, updateEdges]);
-
-  useEffect(() => {
-    window.addEventListener("resize", updateEdges);
-    return () => window.removeEventListener("resize", updateEdges);
-  }, [updateEdges]);
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(wrap);
+    return () => observer.disconnect();
+  }, [measure, signature]);
 
   useEffect(() => {
     if (!anchor) return;
@@ -95,6 +94,8 @@ export function AccountSettings() {
     }, 250);
     return () => window.clearTimeout(timer);
   }, [anchor, account]);
+
+  const current = tabs.find((item) => item.id === tab) ?? tabs[0];
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const index = tabs.findIndex((item) => item.id === tab);
@@ -123,14 +124,49 @@ export function AccountSettings() {
       </div>
 
       <div className="sticky top-0 z-20 -mx-1 bg-background/85 px-1 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-        <div className="relative">
+        <div ref={wrapRef} className="relative">
+          {compact && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-border bg-card px-3.5 text-[14px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <i className={current.icon} />
+                    <span className="truncate">{t(current.labelKey)}</span>
+                  </span>
+                  <i className="ri-arrow-down-s-line text-[18px] text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                collisionPadding={8}
+                className="max-h-(--radix-dropdown-menu-content-available-height) w-(--radix-dropdown-menu-trigger-width) overflow-y-auto overscroll-contain"
+              >
+                {tabs.map((item) => (
+                  <DropdownMenuItem
+                    key={item.id}
+                    onSelect={() => select(item.id)}
+                    className={cn("gap-2.5 py-2.5 text-[13.5px]", item.id === tab && "font-medium")}
+                  >
+                    <i className={item.icon} />
+                    {t(item.labelKey)}
+                    {item.id === tab && <i className="ri-check-line ml-auto text-[15px]" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <div
             ref={listRef}
             role="tablist"
             aria-label={t("common.settings")}
             onKeyDown={onKeyDown}
-            onScroll={updateEdges}
-            className="flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className={cn(
+              "flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+              compact && "pointer-events-none invisible absolute inset-x-0 top-0 h-0"
+            )}
           >
             {tabs.map((item) => {
               const active = item.id === tab;
@@ -156,20 +192,6 @@ export function AccountSettings() {
               );
             })}
           </div>
-          <div
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-px left-px w-8 rounded-l-xl bg-gradient-to-r from-card to-transparent transition-opacity",
-              edges.left ? "opacity-100" : "opacity-0"
-            )}
-          />
-          <div
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-px right-px w-8 rounded-r-xl bg-gradient-to-l from-card to-transparent transition-opacity",
-              edges.right ? "opacity-100" : "opacity-0"
-            )}
-          />
         </div>
       </div>
 

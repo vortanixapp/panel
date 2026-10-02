@@ -261,7 +261,7 @@ export function ProjectDetailContent() {
         </div>
 
         <div className={cn(CARD, "overflow-hidden")}>
-          <div className="flex items-center gap-1 border-b border-[var(--vx-border)] px-3 py-2.5">
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-2.5 border-b border-[var(--vx-border)] px-3 py-2.5">
             {(
               [
                 { id: "servers" as const, label: t("projects.tab_servers") },
@@ -282,19 +282,20 @@ export function ProjectDetailContent() {
                 {item.label}
               </button>
             ))}
-            <div className="ml-auto flex items-center gap-2">
-              {tab === "servers" && (
-                <>
-                  <Btn onClick={() => setPicker((v) => !v)}>
-                    <i className="ri-add-line" />
-                    {t("projects.add_servers")}
-                  </Btn>
-                  <Link href="/rent-server" className={btnClass("primary", "sm")}>
-                    {t("projects.order_here")}
-                  </Link>
-                </>
-              )}
-            </div>
+            {tab === "servers" && (
+              <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+                <Btn className="flex-1 sm:flex-none" onClick={() => setPicker((v) => !v)}>
+                  <i className="ri-add-line" />
+                  {t("projects.add_servers")}
+                </Btn>
+                <Link
+                  href="/rent-server"
+                  className={cn(btnClass("primary", "sm"), "flex-1 justify-center sm:flex-none")}
+                >
+                  {t("projects.order_here")}
+                </Link>
+              </div>
+            )}
           </div>
 
           {tab === "servers" ? (
@@ -367,7 +368,7 @@ export function ProjectDetailContent() {
                     key={server.id}
                     className="flex flex-wrap items-center gap-3 border-b border-[var(--vx-divider)] px-4 py-3 last:border-b-0"
                   >
-                    <span className="flex min-w-[180px] flex-1 flex-col">
+                    <span className="flex min-w-[180px] flex-1 flex-col max-sm:basis-full">
                       <span className="truncate text-[13.5px] font-medium">{server.name}</span>
                       <span className={cn("truncate font-mono text-[11px]", DIM)}>
                         {server.game_name} · {server.location || "—"}
@@ -380,7 +381,10 @@ export function ProjectDetailContent() {
                     <span className="font-mono text-[12.5px]">
                       {money(server.monthly_cost, data.project.currency)}
                     </span>
-                    <Link href={`/servers/${server.id}`} className={btnClass("default", "sm")}>
+                    <Link
+                      href={`/servers/${server.id}`}
+                      className={cn(btnClass("default", "sm"), "max-sm:ml-auto")}
+                    >
                       {t("projects.open_server")}
                     </Link>
                     <Btn
