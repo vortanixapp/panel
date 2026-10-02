@@ -5,8 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -29,6 +27,9 @@ type notificationChannels struct {
 	Discord        bool   `json:"discord"`
 	TelegramChatID string `json:"telegram_chat_id"`
 	DiscordWebhook string `json:"discord_webhook"`
+
+	TelegramLinked  bool `json:"telegram_linked"`
+	TelegramControl bool `json:"telegram_control"`
 }
 
 type notificationGroupPrefs struct {
@@ -75,10 +76,13 @@ func (h *Handler) loadNotificationPrefs(ctx context.Context, db notify.DB, userI
 	var raw []byte
 	_ = db.QueryRow(ctx, `
 		SELECT email_enabled, telegram_enabled, discord_enabled,
-		       telegram_chat_id, discord_webhook, routes
+		       telegram_chat_id, discord_webhook, routes,
+		       telegram_verified_at IS NOT NULL AND telegram_user_id IS NOT NULL,
+		       telegram_control
 		FROM core.user_notification_channels
 		WHERE user_id = $1
-	`, userID).Scan(&c.Email, &c.Telegram, &c.Discord, &c.TelegramChatID, &c.DiscordWebhook, &raw)
+	`, userID).Scan(&c.Email, &c.Telegram, &c.Discord, &c.TelegramChatID, &c.DiscordWebhook, &raw,
+		&c.TelegramLinked, &c.TelegramControl)
 	return c, notify.ParseRoutes(raw)
 }
 
@@ -150,6 +154,7 @@ func (h *Handler) NotificationChannelsUpdate(w http.ResponseWriter, r *http.Requ
 		Telegram         *bool                      `json:"telegram"`
 		Discord          *bool                      `json:"discord"`
 		TelegramChatID   *string                    `json:"telegram_chat_id"`
+		TelegramControl  *bool                      `json:"telegram_control"`
 		DiscordWebhook   *string                    `json:"discord_webhook"`
 		Routes           map[string]map[string]bool `json:"routes"`
 		Quiet            *notificationQuiet         `json:"quiet"`
@@ -169,13 +174,19 @@ func (h *Handler) NotificationChannelsUpdate(w http.ResponseWriter, r *http.Requ
 	if body.Discord != nil {
 		current.Discord = *body.Discord
 	}
+	chatChanged := false
 	if body.TelegramChatID != nil {
 		v := strings.TrimSpace(*body.TelegramChatID)
 		if v != "" && !telegramChatIDPattern.MatchString(v) {
 			writeError(w, http.StatusBadRequest, "invalid_chat_id")
 			return
 		}
+		chatChanged = v != current.TelegramChatID
 		current.TelegramChatID = v
+	}
+	if body.TelegramControl != nil && *body.TelegramControl && (!current.TelegramLinked || chatChanged) {
+		writeError(w, http.StatusBadRequest, "telegram_not_linked")
+		return
 	}
 	if body.DiscordWebhook != nil {
 		v := strings.TrimSpace(*body.DiscordWebhook)
@@ -222,6 +233,26 @@ func (h *Handler) NotificationChannelsUpdate(w http.ResponseWriter, r *http.Requ
 		current.TelegramChatID, current.DiscordWebhook, routes.JSON()); err != nil {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
+	}
+
+	if chatChanged {
+		if _, err := db.Exec(ctx, `
+			UPDATE core.user_notification_channels
+			SET telegram_user_id = NULL, telegram_verified_at = NULL, telegram_control = false, updated_at = now()
+			WHERE user_id = $1
+		`, claims.UserID); err != nil {
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		current.TelegramLinked, current.TelegramControl = false, false
+	} else if body.TelegramControl != nil {
+		if _, err := db.Exec(ctx, `
+			UPDATE core.user_notification_channels SET telegram_control = $2, updated_at = now() WHERE user_id = $1
+		`, claims.UserID, *body.TelegramControl); err != nil {
+			writeError(w, http.StatusInternalServerError, "database error")
+			return
+		}
+		current.TelegramControl = *body.TelegramControl
 	}
 
 	if body.Quiet != nil {
@@ -387,6 +418,21 @@ func (h *Handler) NotificationTelegramLinkCheck(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	var done struct {
+		UserID string `json:"user_id"`
+		Chat   string `json:"chat"`
+	}
+	linked, err := h.cache.GetJSON(ctx, telegramLinkDoneKey(code), &done)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "cache error")
+		return
+	}
+	if linked && done.UserID == claims.UserID {
+		_ = h.cache.Delete(ctx, telegramLinkDoneKey(code))
+		writeJSON(w, http.StatusOK, map[string]string{"status": "linked", "chat": done.Chat})
+		return
+	}
+
 	var link telegramLink
 	found, err := h.cache.GetJSON(ctx, telegramLinkKey(code), &link)
 	if err != nil {
@@ -397,54 +443,9 @@ func (h *Handler) NotificationTelegramLinkCheck(w http.ResponseWriter, r *http.R
 		writeJSON(w, http.StatusOK, map[string]string{"status": "expired"})
 		return
 	}
-
-	token := h.notifyTelegramToken(ctx)
-	if token == "" {
+	if h.notifyTelegramToken(ctx) == "" {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "unavailable"})
 		return
 	}
-
-	lookup, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-	chat, matched, err := notify.TelegramFindStart(lookup, &http.Client{Timeout: 15 * time.Second}, token, code, time.Now())
-	if errors.Is(err, notify.ErrTelegramWebhook) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "unavailable", "reason": "webhook"})
-		return
-	}
-	if err != nil {
-		log.Printf("telegram: проверка подключения оповещений: %v", err)
-		writeJSON(w, http.StatusOK, map[string]string{"status": "pending"})
-		return
-	}
-	if !matched {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "pending"})
-		return
-	}
-
-	db := h.dbOf(ctx)
-	if _, err := db.Exec(ctx, `
-		INSERT INTO core.user_notification_channels (user_id, telegram_enabled, telegram_chat_id, updated_at)
-		VALUES ($1, true, $2, now())
-		ON CONFLICT (user_id) DO UPDATE SET
-		    telegram_enabled = true,
-		    telegram_chat_id = EXCLUDED.telegram_chat_id,
-		    updated_at       = now()
-	`, claims.UserID, chat.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, "database error")
-		return
-	}
-	_ = h.cache.Delete(ctx, telegramLinkKey(code))
-
-	l := i18n.ForUser(ctx, db, claims.UserID)
-	if err := notify.Send(ctx, h.notifyConfig(ctx, r), notify.Delivery{
-		Kind:    notify.KindAnnounce,
-		Channel: notify.ChannelTelegram,
-		Target:  chat.ID,
-		Subject: l.T("notify.telegram_linked.title"),
-		Body:    l.T("notify.telegram_linked.body", i18n.Params{"app": h.panelDisplayName(ctx, r)}),
-	}); err != nil {
-		log.Printf("telegram: приветствие после подключения не отправлено: %v", err)
-	}
-
-	writeJSON(w, http.StatusOK, map[string]string{"status": "linked", "chat": chat.Title})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "pending"})
 }

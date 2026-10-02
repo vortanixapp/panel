@@ -19,6 +19,7 @@ import { ServerMetricsTab } from "@/features/servers/tabs/metrics-tab";
 import { ServerMysqlTab } from "@/features/servers/tabs/mysql-tab";
 import { ServerPluginsTab } from "@/features/servers/tabs/plugins-tab";
 import { ServerPortsTab } from "@/features/servers/tabs/ports-tab";
+import { ServerWipesTab } from "@/features/servers/tabs/wipes-tab";
 import type { AdminServerTabKey } from "@/lib/server-tabs";
 import { useT } from "@/hooks/use-translations";
 
@@ -38,6 +39,7 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   plugins: ServerPluginsTab,
   maps: ServerMapsTab,
   copies: ServerCopiesTab,
+  wipes: ServerWipesTab,
 };
 
 export function AdminServerTabContent({ tab }: { tab: string }) {

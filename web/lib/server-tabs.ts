@@ -17,6 +17,7 @@ export type ServerTabKey =
   | "plugins"
   | "maps"
   | "copies"
+  | "wipes"
   | "friends";
 
 type ServerTabDef = { key: ServerTabKey; suffix: string; label: string };
@@ -36,6 +37,7 @@ const SERVER_TAB_SUFFIXES: { key: ServerTabKey; suffix: string }[] = [
   { key: "plugins", suffix: "/plugins" },
   { key: "maps", suffix: "/maps" },
   { key: "copies", suffix: "/copies" },
+  { key: "wipes", suffix: "/wipes" },
   { key: "friends", suffix: "/friends" },
 ];
 
@@ -55,10 +57,17 @@ export function isCs16Server(server: DashboardServer): boolean {
   return ["cs16", "cstrike", "counter_strike", "cs_1_6"].includes(gameSlug(server));
 }
 
+const WIPE_GAMES = ["rust", "arkse", "arksa", "dayz", "dayzdev"];
+
+export function isWipeServer(server: DashboardServer): boolean {
+  return WIPE_GAMES.includes(gameSlug(server));
+}
+
 export function canViewServerTab(server: DashboardServer, tab: ServerTabKey, isOwner: boolean): boolean {
   if (tab === "main") return true;
   if (tab === "tariff") return isOwner;
   if (tab === "maps" && !isCs16Server(server)) return false;
+  if (tab === "wipes" && !isWipeServer(server)) return false;
 
   const perms = server.viewer_permissions ?? {};
   const keyByTab: Partial<Record<ServerTabKey, keyof typeof perms>> = {
@@ -74,6 +83,7 @@ export function canViewServerTab(server: DashboardServer, tab: ServerTabKey, isO
     plugins: "can_settings_edit",
     maps: "can_settings_edit",
     copies: "can_settings_edit",
+    wipes: "can_view_settings",
     friends: "can_view_friends",
   };
 
@@ -110,13 +120,16 @@ const ADMIN_SERVER_TAB_SUFFIXES: { key: AdminServerTabKey; suffix: string }[] = 
   { key: "firewall", suffix: "/firewall" },
   { key: "ports", suffix: "/ports" },
   { key: "copies", suffix: "/copies" },
+  { key: "wipes", suffix: "/wipes" },
   { key: "plugins", suffix: "/plugins" },
   { key: "maps", suffix: "/maps" },
 ];
 
 export function adminServerTabDefs(server?: DashboardServer): AdminServerTabDef[] {
   return ADMIN_SERVER_TAB_SUFFIXES.filter(
-    (tab) => tab.key !== "maps" || !server || isCs16Server(server)
+    (tab) =>
+      (tab.key !== "maps" || !server || isCs16Server(server)) &&
+      (tab.key !== "wipes" || !server || isWipeServer(server))
   ).map(({ key, suffix }) => ({ key, suffix, label: t(`server.tab.${key}`) }));
 }
 
@@ -148,7 +161,7 @@ export function isServerTabDisabled(server: DashboardServer, tab: ServerTabKey):
 
   if (tab === "tariff") return provisioning || installFailed || expired;
   if (
-    ["console", "metrics", "ftp", "mysql", "cron", "firewall", "settings", "maps", "copies", "ports"].includes(
+    ["console", "metrics", "ftp", "mysql", "cron", "firewall", "settings", "maps", "copies", "ports", "wipes"].includes(
       tab
     )
   ) {

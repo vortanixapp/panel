@@ -16,6 +16,7 @@ import { ServerMysqlTab } from "@/features/servers/tabs/mysql-tab";
 import { ServerPluginsTab } from "@/features/servers/tabs/plugins-tab";
 import { ServerPortsTab } from "@/features/servers/tabs/ports-tab";
 import { ServerTariffTab } from "@/features/servers/tabs/tariff-tab";
+import { ServerWipesTab } from "@/features/servers/tabs/wipes-tab";
 
 const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   logs: ServerLogsTab,
@@ -29,6 +30,7 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   plugins: ServerPluginsTab,
   maps: ServerMapsTab,
   copies: ServerCopiesTab,
+  wipes: ServerWipesTab,
   friends: ServerFriendsTab,
 };
 

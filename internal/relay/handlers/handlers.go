@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -540,7 +541,7 @@ func (h *Handler) InternalCommandSync(w http.ResponseWriter, r *http.Request) {
 		writeCoded(w, http.StatusBadGateway, "node offline", protocol.CodeNodeOffline)
 		return
 	}
-	ack, ok := h.waiter.Wait(req.CommandID, waitCh, 12*time.Second)
+	ack, ok := h.waiter.Wait(req.CommandID, waitCh, syncWaitFor(r))
 	if !ok {
 		writeCoded(w, http.StatusGatewayTimeout, "agent command timeout", protocol.CodeTaskTimeout)
 		return
@@ -558,6 +559,19 @@ func (h *Handler) InternalCommandSync(w http.ResponseWriter, r *http.Request) {
 		"ok":         true,
 		"result":     ack.Result,
 	})
+}
+
+const (
+	syncWaitDefault = 12 * time.Second
+	syncWaitMax     = 15 * time.Minute
+)
+
+func syncWaitFor(r *http.Request) time.Duration {
+	seconds, err := strconv.Atoi(r.URL.Query().Get("wait"))
+	if err != nil || seconds <= 0 {
+		return syncWaitDefault
+	}
+	return min(time.Duration(seconds)*time.Second, syncWaitMax)
 }
 
 func (h *Handler) InternalCommandSyncBinary(w http.ResponseWriter, r *http.Request) {

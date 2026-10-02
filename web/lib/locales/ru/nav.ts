@@ -83,6 +83,7 @@ export const nav = {
   "server.tab.plugins": "Плагины",
   "server.tab.maps": "Карты",
   "server.tab.copies": "Копии",
+  "server.tab.wipes": "Вайпы",
   "server.tab.friends": "Друзья",
   "server.tab.rent": "Аренда",
   "server.tab.owner": "Владелец",

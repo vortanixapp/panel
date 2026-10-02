@@ -44,6 +44,7 @@ type Delivery struct {
 	Body        string
 	ActionLabel string
 	ActionHref  string
+	Buttons     []Button
 }
 
 func Send(ctx context.Context, cfg Config, d Delivery) error {
@@ -95,18 +96,23 @@ func sendTelegram(ctx context.Context, cfg Config, d Delivery) error {
 	form.Set("parse_mode", "HTML")
 	form.Set("disable_web_page_preview", "true")
 
+	var keyboard TelegramKeyboard
 	if d.ActionLabel != "" && d.ActionHref != "" {
 		if strings.HasPrefix(d.ActionHref, "https://") {
-			markup, err := json.Marshal(map[string]any{
-				"inline_keyboard": [][]map[string]string{{{"text": d.ActionLabel, "url": d.ActionHref}}},
-			})
-			if err != nil {
-				return err
-			}
-			form.Set("reply_markup", string(markup))
+			keyboard = append(keyboard, []TelegramButton{{Text: d.ActionLabel, URL: d.ActionHref}})
 		} else {
 			text += "\n\n" + html.EscapeString(d.ActionLabel+": "+d.ActionHref)
 		}
+	}
+	if len(d.Buttons) > 0 {
+		row := make([]TelegramButton, 0, len(d.Buttons))
+		for _, b := range d.Buttons {
+			row = append(row, TelegramButton{Text: b.Text, Data: b.Data})
+		}
+		keyboard = append(keyboard, row)
+	}
+	if markup, ok := keyboard.markup(); ok {
+		form.Set("reply_markup", markup)
 	}
 	form.Set("text", text)
 

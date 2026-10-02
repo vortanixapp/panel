@@ -362,6 +362,36 @@ function TelegramChannel({ prefs, save }: { prefs: NotificationPrefs; save: Save
           </button>
         </div>
       )}
+      {available && connected && !link && (
+        prefs.channels.telegram_linked ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 px-3.5 py-3">
+            <div className="min-w-0">
+              <div className="text-[13px] font-medium">{t("notifications.prefs.telegram_control")}</div>
+              <div className="text-[12px] text-muted-foreground">{t("notifications.prefs.telegram_control_hint")}</div>
+            </div>
+            <Switch
+              checked={prefs.channels.telegram_control}
+              aria-label={t("notifications.prefs.telegram_control")}
+              onCheckedChange={(on) => save({ telegram_control: on })}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="min-w-[200px] flex-1 text-[12.5px] text-muted-foreground">
+              {t("notifications.prefs.telegram_control_relink")}
+            </p>
+            <button
+              type="button"
+              onClick={() => start.mutate()}
+              disabled={start.isPending || !bot}
+              className={cn(btnGhost, "h-8 px-3")}
+            >
+              {start.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+              {t("notifications.prefs.telegram_connect")}
+            </button>
+          </div>
+        )
+      )}
       {available && !link && (
         <div>
           {!manual ? (

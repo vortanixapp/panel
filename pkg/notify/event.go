@@ -40,6 +40,8 @@ type Event struct {
 
 	Meta map[string]any
 
+	ServerID string
+
 	DedupeKey string
 }
 
@@ -51,7 +53,8 @@ type Recipient struct {
 	Prefs Prefs
 	Quiet Quiet
 
-	StatusEmail bool
+	StatusEmail     bool
+	TelegramControl bool
 }
 
 type Prefs struct {

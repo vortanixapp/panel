@@ -1542,6 +1542,8 @@ export type NotificationChannels = {
   discord: boolean;
   telegram_chat_id: string;
   discord_webhook: string;
+  telegram_linked: boolean;
+  telegram_control: boolean;
 };
 
 export type NotificationGroupPrefs = {
@@ -7718,4 +7720,117 @@ export type UserPromoCode = {
 
 export async function fetchPromoCodes() {
   return apiFetch<{ promo_codes: UserPromoCode[] }>("/v1/billing/promo-codes");
+}
+
+export type WipePlan = {
+  id: string;
+  name: string;
+  kind: string;
+  enabled: boolean;
+  schedule_type: "weekly" | "monthly" | "cron" | "once";
+  weekday: number;
+  nth: number;
+  time: string;
+  cron: string;
+  run_at?: string;
+  run_at_local?: string;
+  timezone: string;
+  backup_before: boolean;
+  new_seed: boolean;
+  announce_minutes: number[];
+  announce_text: string;
+  notify_owner: boolean;
+  skip_next: boolean;
+  next_run_at: string | null;
+  last_run_at: string | null;
+  last_status: string;
+};
+
+export type WipeRun = {
+  id: string;
+  plan_id: string;
+  kind: string;
+  source: string;
+  status: "announcing" | "running" | "completed" | "failed" | "cancelled";
+  stage: string;
+  starts_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  error: string;
+  details: { deleted?: number; seed?: string; backup?: string; was_running?: boolean } | null;
+  created_at: string;
+};
+
+export type WipeInfo = {
+  supported: boolean;
+  kinds?: string[];
+  seed?: boolean;
+  announce?: boolean;
+  timezone?: string;
+  default_announce_minutes?: number[];
+  max_plans?: number;
+  plans?: WipePlan[];
+  runs?: WipeRun[];
+  active_run?: WipeRun | null;
+};
+
+export type WipePlanInput = Partial<
+  Pick<
+    WipePlan,
+    | "name"
+    | "kind"
+    | "enabled"
+    | "schedule_type"
+    | "weekday"
+    | "nth"
+    | "time"
+    | "cron"
+    | "timezone"
+    | "backup_before"
+    | "new_seed"
+    | "announce_minutes"
+    | "announce_text"
+    | "notify_owner"
+    | "skip_next"
+  >
+> & { run_at?: string };
+
+export async function fetchServerWipes(serverId: string) {
+  return apiFetch<WipeInfo>(`/v1/servers/${serverId}/wipes`);
+}
+
+export async function createWipePlan(serverId: string, body: WipePlanInput) {
+  return apiFetch<{ id: string }>(`/v1/servers/${serverId}/wipes/plans`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateWipePlan(serverId: string, planId: string, body: WipePlanInput) {
+  return apiFetch<{ status: string }>(`/v1/servers/${serverId}/wipes/plans/${planId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function deleteWipePlan(serverId: string, planId: string) {
+  return apiFetch<{ status: string }>(`/v1/servers/${serverId}/wipes/plans/${planId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function runServerWipe(
+  serverId: string,
+  body: { kind: string; backup_before: boolean; new_seed: boolean; countdown_minutes: number; announce_text?: string }
+) {
+  return apiFetch<{ run_id: string }>(`/v1/servers/${serverId}/wipes/run`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function cancelWipeRun(serverId: string, runId: string) {
+  return apiFetch<{ status: string }>(`/v1/servers/${serverId}/wipes/runs/${runId}/cancel`, {
+    method: "POST",
+  });
 }

@@ -289,6 +289,10 @@ var (
 )
 
 func (h *Handler) sendServerPower(ctx context.Context, actorID, id, action string) (string, string, error) {
+	return h.dispatchServerPower(ctx, actorID, id, action, 0)
+}
+
+func (h *Handler) dispatchServerPower(ctx context.Context, actorID, id, action string, wait time.Duration) (string, string, error) {
 	var nodeID, name, gameID, status string
 	var limits []byte
 	var primaryPort int
@@ -351,12 +355,21 @@ func (h *Handler) sendServerPower(ctx context.Context, actorID, id, action strin
 		}
 	}
 	cmdID := uuid.NewString()
-	if err := h.relay.SendCommand(ctx, nodeID, relay.CommandRequest{
+	powerCmd := relay.CommandRequest{
 		CommandID: cmdID,
 		Action:    "power",
 		ServerID:  id,
 		Payload:   payload,
-	}); err != nil {
+	}
+	if wait > 0 {
+		resp, err := h.relay.CommandSyncWait(ctx, nodeID, powerCmd, wait)
+		if err != nil {
+			return "", "", fmt.Errorf("%w: %v", errAgentUnreachable, err)
+		}
+		if resp != nil && !resp.OK {
+			return "", "", fmt.Errorf("%w: команда питания не выполнена", errAgentUnreachable)
+		}
+	} else if err := h.relay.SendCommand(ctx, nodeID, powerCmd); err != nil {
 		return "", "", fmt.Errorf("%w: %v", errAgentUnreachable, err)
 	}
 

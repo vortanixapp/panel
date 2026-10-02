@@ -254,6 +254,12 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/{id}/ftp/reset-password", h.ServerFtpResetPassword)
 			r.Post("/{id}/ftp/delete", h.ServerFtpDelete)
 			r.Post("/{id}/ports/list", h.ServerPortsList)
+			r.Get("/{id}/wipes", h.ServerWipesInfo)
+			r.Post("/{id}/wipes/plans", h.ServerWipePlanCreate)
+			r.Patch("/{id}/wipes/plans/{planId}", h.ServerWipePlanUpdate)
+			r.Delete("/{id}/wipes/plans/{planId}", h.ServerWipePlanDelete)
+			r.Post("/{id}/wipes/run", h.ServerWipeRun)
+			r.Post("/{id}/wipes/runs/{runId}/cancel", h.ServerWipeRunCancel)
 		})
 
 		r.Route("/v1/admin", func(r chi.Router) {

@@ -74,18 +74,27 @@ type CommandSyncResponse struct {
 }
 
 func (c *Client) CommandSync(ctx context.Context, nodeID string, req CommandRequest) (*CommandSyncResponse, error) {
+	return c.CommandSyncWait(ctx, nodeID, req, 0)
+}
+
+func (c *Client) CommandSyncWait(ctx context.Context, nodeID string, req CommandRequest, wait time.Duration) (*CommandSyncResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
 	url := fmt.Sprintf("%s/internal/v1/nodes/%s/command/sync", c.baseURL, nodeID)
+	timeout := 15 * time.Second
+	if wait > 0 {
+		url += fmt.Sprintf("?wait=%d", int(wait.Seconds()))
+		timeout = wait + 15*time.Second
+	}
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("X-Internal-Secret", c.secret)
-	resp, err := (&http.Client{Timeout: 15 * time.Second}).Do(httpReq)
+	resp, err := (&http.Client{Timeout: timeout}).Do(httpReq)
 	if err != nil {
 		return nil, err
 	}

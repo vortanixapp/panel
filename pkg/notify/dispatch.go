@@ -85,15 +85,31 @@ func Dispatch(ctx context.Context, db DB, r Recipient, e Event) (Result, error) 
 	if until, held := r.Quiet.HoldUntil(time.Now(), DefFor(e.Kind)); held {
 		holdUntil = &until
 	}
+	serverID := e.ServerID
+	if serverID == "" {
+		serverID, _ = e.Meta["server_id"].(string)
+	}
+	controlButtons := []byte("[]")
+	if r.TelegramControl && serverID != "" {
+		if btns := ControlButtons(l, e.Kind, serverID); len(btns) > 0 {
+			if raw, err := json.Marshal(btns); err == nil {
+				controlButtons = raw
+			}
+		}
+	}
 	channels := make([]Channel, 0, len(routes))
 	for _, rt := range routes {
+		buttons := []byte("[]")
+		if rt.channel == ChannelTelegram {
+			buttons = controlButtons
+		}
 		if _, err := db.Exec(ctx, `
 			INSERT INTO core.notification_deliveries
 				( user_id, notification_id, kind, channel, target,
-				 subject, body, action_label, action_href, next_attempt_at)
-			VALUES ( $1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, COALESCE($10::timestamptz, now()))
+				 subject, body, action_label, action_href, buttons, next_attempt_at)
+			VALUES ( $1, $2::uuid, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, COALESCE($11::timestamptz, now()))
 		`, r.UserID, id, string(e.Kind), string(rt.channel), rt.target,
-			subject, text, label, href, holdUntil); err != nil {
+			subject, text, label, href, buttons, holdUntil); err != nil {
 			return Result{NotificationID: id, Channels: channels}, err
 		}
 		channels = append(channels, rt.channel)
@@ -159,7 +175,10 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		       COALESCE(c.quiet_critical, true),
 		       COALESCE(NULLIF(p.timezone, ''), NULLIF(c.quiet_tz, ''), ''),
 		       COALESCE((SELECT s.value #>> '{}' FROM core.tenant_settings s
-		                 WHERE s.key = 'vtx_mail.server_status_notifications'), '1') <> '0'
+		                 WHERE s.key = 'vtx_mail.server_status_notifications'), '1') <> '0',
+		       COALESCE(c.telegram_control, false)
+		       AND c.telegram_verified_at IS NOT NULL
+		       AND COALESCE(c.telegram_chat_id, '') <> ''
 		FROM core.users u
 		LEFT JOIN core.user_profiles p
 		       ON p.user_id = u.id
@@ -169,7 +188,7 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 	`, userID).Scan(&r.Email, &r.Locale, &r.Prefs.Email, &r.Prefs.Telegram,
 		&r.Prefs.Discord, &r.Prefs.TelegramChatID, &r.Prefs.DiscordWebhook, &routes,
 		&r.Quiet.Enabled, &r.Quiet.From, &r.Quiet.To, &r.Quiet.Critical, &r.Quiet.TimeZone,
-		&r.StatusEmail)
+		&r.StatusEmail, &r.TelegramControl)
 	if err != nil {
 		return Recipient{}, err
 	}

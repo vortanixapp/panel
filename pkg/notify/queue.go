@@ -2,6 +2,7 @@ package notify
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -57,21 +58,25 @@ func drainOne(ctx context.Context, pool *pgxpool.Pool, cfg Config) (found, deliv
 	var d Delivery
 	var attempts int
 	var userID string
+	var buttons []byte
 	err = tx.QueryRow(ctx, `
 		SELECT id::text, kind, channel, target, subject, body, action_label, action_href, attempts,
-			COALESCE(user_id::text, '')
+			COALESCE(user_id::text, ''), COALESCE(buttons, '[]'::jsonb)
 		FROM core.notification_deliveries
 		WHERE status = 'queued' AND next_attempt_at <= now()
 		ORDER BY next_attempt_at, id
 		FOR UPDATE SKIP LOCKED
 		LIMIT 1
 	`).Scan(&d.ID, &d.Kind, &d.Channel, &d.Target, &d.Subject, &d.Body,
-		&d.ActionLabel, &d.ActionHref, &attempts, &userID)
+		&d.ActionLabel, &d.ActionHref, &attempts, &userID, &buttons)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, false, nil
 	}
 	if err != nil {
 		return false, false, err
+	}
+	if len(buttons) > 0 {
+		_ = json.Unmarshal(buttons, &d.Buttons)
 	}
 
 	sendErr := Send(ctx, cfg, d)

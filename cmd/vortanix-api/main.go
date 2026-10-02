@@ -124,6 +124,8 @@ func main() {
 	h.StartServerDunningSweeper(samplerCtx)
 	h.StartReceiptOffsetSweeper(samplerCtx)
 	h.StartNotificationsLive(samplerCtx)
+	h.StartTelegramBot(samplerCtx)
+	h.StartWipeScheduler(samplerCtx)
 
 	prom := httpprom.New("core-api")
 	r := chi.NewRouter()

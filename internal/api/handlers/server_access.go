@@ -50,7 +50,7 @@ var serverReadActions = map[string]bool{
 	"logs": true, "metrics": true, "stats": true, "game_query": true,
 	"settings_read": true, "cron_list": true, "firewall_list": true,
 	"ports_list": true, "friends_list": true, "backup_schedule_read": true,
-	"console_attach": true, "mysql_list_catalog": true,
+	"console_attach": true, "mysql_list_catalog": true, "wipes_read": true,
 }
 
 func ownerViewerPermissions() map[string]any {

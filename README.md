@@ -39,6 +39,7 @@ licence keys and activation are not part of it.
   servers on billing events and signs clients in without a password. See
   [docs/whmcs.md](docs/whmcs.md).
 - **Backups.** Local, and off-site to any S3-compatible storage.
+- **Telegram bot and wipes.** Notifications with action buttons, server control (power, console, backups) from Telegram, and a wipe scheduler for Rust, ARK and DayZ. See [docs/telegram-bot.md](docs/telegram-bot.md).
 - **Updates.** The panel and the game node agents update with one button or
   automatically when a new release comes out. A database backup is taken
   before a panel update; an agent that fails to reconnect after an update

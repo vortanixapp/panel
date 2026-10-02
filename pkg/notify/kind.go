@@ -23,6 +23,8 @@ const (
 	KindServerExtended  Kind = "server.extended"
 	KindBackupReady     Kind = "backup.ready"
 	KindBackupFailed    Kind = "backup.failed"
+	KindWipeDone        Kind = "server.wipe_done"
+	KindWipeFailed      Kind = "server.wipe_failed"
 	KindNodeMaintenance Kind = "node.maintenance"
 	KindNodeOffline     Kind = "node.offline"
 	KindNodeOnline      Kind = "node.online"
@@ -112,6 +114,8 @@ var defs = map[Kind]Def{
 	KindServerExtended:  {Group: GroupServers, Icon: "ri-calendar-check-line", Severity: SeveritySuccess, Channels: channelsAll, Quiet: true},
 	KindBackupReady:     {Group: GroupServers, Icon: "ri-archive-line", Severity: SeveritySuccess, Channels: channelsAll, Quiet: true},
 	KindBackupFailed:    {Group: GroupServers, Icon: "ri-archive-line", Severity: SeverityWarning, Channels: channelsAll},
+	KindWipeDone:        {Group: GroupServers, Icon: "ri-eraser-line", Severity: SeveritySuccess, Channels: channelsAll},
+	KindWipeFailed:      {Group: GroupServers, Icon: "ri-eraser-line", Severity: SeverityCritical, Channels: channelsAll},
 	KindNodeMaintenance: {Group: GroupServers, Icon: "ri-tools-line", Severity: SeverityWarning, Channels: channelsAll},
 	KindNodeOffline:     {Group: GroupServers, Icon: "ri-cloud-off-line", Severity: SeverityCritical, Channels: channelsAll},
 	KindNodeOnline:      {Group: GroupServers, Icon: "ri-cloud-line", Severity: SeveritySuccess, Channels: channelsAll},

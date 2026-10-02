@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -32,15 +33,24 @@ func (h *Handler) agentCommand(
 	nodeID, serverID, action string,
 	payload map[string]any,
 ) (map[string]any, error) {
+	return h.agentCommandWait(ctx, nodeID, serverID, action, payload, 0)
+}
+
+func (h *Handler) agentCommandWait(
+	ctx context.Context,
+	nodeID, serverID, action string,
+	payload map[string]any,
+	wait time.Duration,
+) (map[string]any, error) {
 	if payload == nil {
 		payload = map[string]any{}
 	}
-	resp, err := h.relay.CommandSync(ctx, nodeID, relay.CommandRequest{
+	resp, err := h.relay.CommandSyncWait(ctx, nodeID, relay.CommandRequest{
 		CommandID: uuid.NewString(),
 		Action:    action,
 		ServerID:  serverID,
 		Payload:   payload,
-	})
+	}, wait)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +176,7 @@ func agentActionPermission(action string) string {
 		return "can_view_ports"
 	case "friends_list":
 		return "can_view_friends"
-	case "backup_schedule_read":
+	case "backup_schedule_read", "wipes_read":
 		return "can_view_settings"
 	case "backup_schedule_write":
 		return "can_settings_edit"
@@ -217,41 +227,48 @@ func (h *Handler) authorizeServerAction(
 	claims *paneljwt.Claims,
 	serverID, action string,
 ) bool {
-	access, err := h.resolveServerAccess(r.Context(), claims.UserID, claims.Role, serverID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "server not found")
-			return false
-		}
-		writeError(w, http.StatusInternalServerError, "database error")
+	status, message := h.serverActionDenial(r.Context(), claims.UserID, claims.Role, serverID, action)
+	if status != 0 {
+		writeError(w, status, message)
 		return false
 	}
+	return true
+}
+
+func (h *Handler) serverActionDenial(ctx context.Context, userID, role, serverID, action string) (int, string) {
+	access, err := h.resolveServerAccess(ctx, userID, role, serverID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return http.StatusNotFound, "server not found"
+		}
+		return http.StatusInternalServerError, "database error"
+	}
+	return accessDenial(access, action)
+}
+
+func accessDenial(access *serverAccess, action string) (int, string) {
 	if access.IsBlocked && !access.IsStaff && blockedForbids(action) {
 		reason := access.BlockedReason
 		if reason == "" {
 			reason = "обратитесь в поддержку"
 		}
-		writeError(w, http.StatusForbidden, "Сервер заблокирован: "+reason)
-		return false
+		return http.StatusForbidden, "Сервер заблокирован: " + reason
 	}
 	if access.IsOwner || access.StaffWrite {
-		return true
+		return 0, ""
 	}
 	if access.IsStaff {
 		if serverReadActions[action] {
-			return true
+			return 0, ""
 		}
-		writeError(w, http.StatusForbidden, "Нужно право admin.servers.write")
-		return false
+		return http.StatusForbidden, "Нужно право admin.servers.write"
 	}
 	perm := agentActionPermission(action)
 	if perm == "" || !access.IsFriend {
-		writeError(w, http.StatusForbidden, "Нет доступа к этому серверу")
-		return false
+		return http.StatusForbidden, "Нет доступа к этому серверу"
 	}
 	if allowed, _ := access.FriendPerms[perm].(bool); !allowed {
-		writeError(w, http.StatusForbidden, "Нет права "+perm)
-		return false
+		return http.StatusForbidden, "Нет права " + perm
 	}
-	return true
+	return 0, ""
 }
