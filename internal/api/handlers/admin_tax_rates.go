@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/vortanixapp/panel/internal/api/payments"
 	"github.com/vortanixapp/panel/pkg/regions"
 )
 
@@ -98,4 +99,8 @@ func (h *Handler) AdminTaxRatesUpdate(w http.ResponseWriter, r *http.Request) {
 	audit(ctx, h.dbOf(ctx), claims.UserID, "settings.update", "accounting/tax-rates",
 		map[string]any{"count": len(body.Rates)})
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "count": len(body.Rates)})
+}
+
+func (h *Handler) AdminFiscalSystems(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{"systems": payments.FiscalSystems()})
 }

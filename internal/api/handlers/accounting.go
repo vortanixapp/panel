@@ -133,7 +133,7 @@ func (h *Handler) accountingProfile(ctx context.Context) accountingProfile {
 func (p *accountingProfile) normalize() {
 	p.Country = regions.NormalizeCountry(p.Country)
 	if !regions.ValidCountry(p.Country) {
-		p.Country = defaultSellerCountry
+		p.Country = defaultSellerCountry()
 	}
 	if !slices.Contains(accountingLegalForms, p.LegalForm) {
 		p.LegalForm = ""
@@ -313,7 +313,7 @@ func (h *Handler) AdminAccountingRequisitesUpdate(w http.ResponseWriter, r *http
 	body.KPP = strings.ToUpper(body.KPP)
 	body.Country = regions.NormalizeCountry(body.Country)
 	if body.Country == "" {
-		body.Country = defaultSellerCountry
+		body.Country = defaultSellerCountry()
 	}
 	if !regions.ValidCountry(body.Country) {
 		writeError(w, http.StatusBadRequest, "страна продавца указана неверно")

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
-import { fetchTaxRates, saveTaxRates, type TaxRate } from "@/lib/api";
+import { fetchFiscalSystems, fetchTaxRates, saveTaxRates, type TaxRate } from "@/lib/api";
 import { localeTag } from "@/lib/i18n";
 import { countryName } from "@/lib/countries";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,7 @@ export function AccountingTaxes() {
   const qc = useQueryClient();
   const { accountingRegions } = usePublicSettings();
   const query = useQuery({ queryKey: KEY, queryFn: fetchTaxRates });
+  const fiscal = useQuery({ queryKey: ["admin-accounting-fiscal"], queryFn: fetchFiscalSystems });
   const [draft, setDraft] = useState<Draft>({});
   const [search, setSearch] = useState("");
   const [region, setRegion] = useState("all");
@@ -97,6 +98,19 @@ export function AccountingTaxes() {
         {t("admin.accounting.taxes.hint", {
           country: countryName(query.data?.seller_country ?? "RU", tag),
         })}
+      </div>
+
+      <div className="rounded-lg border bg-card p-4">
+        <div className="mb-2 text-sm font-medium">{t("admin.accounting.fiscal.title")}</div>
+        <p className="mb-3 text-xs text-muted-foreground">{t("admin.accounting.fiscal.hint")}</p>
+        <div className="flex flex-wrap gap-2">
+          {(fiscal.data?.systems ?? []).map((system) => (
+            <Badge key={system.country} variant={system.available ? "default" : "outline"}>
+              {countryName(system.country, tag)} · {system.name}
+              {system.available ? "" : ` · ${t("admin.accounting.fiscal.unavailable")}`}
+            </Badge>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

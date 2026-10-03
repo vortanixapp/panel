@@ -100,6 +100,10 @@ func (h *Handler) PaymentReceipt(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setHTMLDocumentHeaders(w)
+	if !data.Company.russian() || payer.foreign() {
+		_, _ = w.Write([]byte(renderReceiptIntl(data)))
+		return
+	}
 	_, _ = w.Write([]byte(renderReceipt(data)))
 }
 

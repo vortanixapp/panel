@@ -28,11 +28,23 @@ import {
   presetRange,
   type PeriodPreset,
 } from "@/lib/accounting-period";
+import { usePublicSettings } from "@/context/brand-provider";
+import { countryName } from "@/lib/countries";
+import { localeTag } from "@/lib/i18n";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-const REPORTS: AccountingReportKind[] = ["kudir", "payments", "refunds", "services", "balances", "acts", "offsets"];
+function reportsFor(regions: string[]): AccountingReportKind[] {
+  const list: AccountingReportKind[] = [];
+  if (regions.includes("cis")) list.push("kudir");
+  list.push("payments", "refunds", "services", "balances");
+  if (regions.includes("cis")) list.push("acts", "offsets");
+  list.push("tax_summary");
+  if (regions.includes("eu")) list.push("vat_oss");
+  if (regions.includes("us")) list.push("us_sales_tax");
+  return list;
+}
 
 function taxLine(t: TranslateFn, s: AccountingSummary): string {
   const currency = s.currency;
@@ -54,6 +66,7 @@ function taxLine(t: TranslateFn, s: AccountingSummary): string {
 
 export function AccountingReports() {
   const t = useT();
+  const { accountingRegions } = usePublicSettings();
   const [preset, setPreset] = useState<PeriodPreset | "custom">("month");
   const [range, setRange] = useState(() => presetRange("month"));
   const [currency, setCurrency] = useState("");
@@ -285,13 +298,48 @@ export function AccountingReports() {
         </div>
       ) : null}
 
+      {s?.tax_breakdown && s.tax_breakdown.length > 0 ? (
+        <div>
+          <h2 className="text-lg font-semibold">{t("admin.accounting.breakdown_title")}</h2>
+          <div className="mt-3 overflow-x-auto rounded-lg border bg-card">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="px-4 py-2 font-normal">{t("admin.accounting.taxes.col_country")}</th>
+                  <th className="px-4 py-2 font-normal">{t("admin.accounting.breakdown_regime")}</th>
+                  <th className="px-4 py-2 text-right font-normal">{t("admin.accounting.taxes.col_rate")}</th>
+                  <th className="px-4 py-2 text-right font-normal">{t("admin.accounting.breakdown_net")}</th>
+                  <th className="px-4 py-2 text-right font-normal">{t("admin.accounting.breakdown_tax")}</th>
+                  <th className="px-4 py-2 text-right font-normal">{t("admin.accounting.breakdown_gross")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {s.tax_breakdown.map((row) => (
+                  <tr key={`${row.country}-${row.subdivision}-${row.regime}-${row.rate}`} className="border-b last:border-b-0">
+                    <td className="px-4 py-2">
+                      {row.country ? countryName(row.country, localeTag()) : "—"}
+                      {row.subdivision ? ` · ${row.subdivision}` : ""}
+                    </td>
+                    <td className="px-4 py-2 font-mono text-xs">{row.regime}</td>
+                    <td className="px-4 py-2 text-right font-mono">{row.rate}</td>
+                    <td className="px-4 py-2 text-right font-mono">{money(row.net)}</td>
+                    <td className="px-4 py-2 text-right font-mono">{money(row.tax)}</td>
+                    <td className="px-4 py-2 text-right font-mono">{money(row.gross)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
       <div>
         <h2 className="text-lg font-semibold">{t("admin.accounting.reports_title")}</h2>
         <p className="mb-3 text-sm text-muted-foreground">
           {t("admin.accounting.reports_hint", { timezone: s?.timezone ?? "Europe/Moscow" })}
         </p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {REPORTS.map((kind) => (
+          {reportsFor(accountingRegions).map((kind) => (
             <div key={kind} className="flex flex-col justify-between gap-3 rounded-lg border bg-card p-4">
               <div>
                 <div className="text-sm font-medium">{t(`admin.accounting.report.${kind}`)}</div>

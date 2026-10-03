@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -12,7 +13,23 @@ import (
 	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
-const defaultSellerCountry = "RU"
+var regionSellerCountry = map[string]string{
+	regions.CIS:    "RU",
+	regions.EU:     "DE",
+	regions.Europe: "GB",
+	regions.US:     "US",
+}
+
+func defaultSellerCountry() string {
+	enabled := settingsreg.AccountingRegionList()
+	if len(enabled) == 0 || slices.Contains(enabled, regions.CIS) {
+		return "RU"
+	}
+	if country, ok := regionSellerCountry[enabled[0]]; ok {
+		return country
+	}
+	return "RU"
+}
 
 var taxableSources = map[string]bool{
 	"server_rent":      true,
@@ -44,7 +61,7 @@ func (h *Handler) sellerCountry(settings map[string]string) string {
 	if regions.ValidCountry(country) {
 		return country
 	}
-	return defaultSellerCountry
+	return defaultSellerCountry()
 }
 
 func (h *Handler) lookupTaxRate(ctx context.Context) tax.RateLookup {

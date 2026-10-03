@@ -1,5 +1,20 @@
 export const accountingMulti = {
   "admin.legal.template_region": "Регион шаблона",
+  "admin.accounting.report.tax_summary": "Сводка по налогам",
+  "admin.accounting.report.tax_summary_hint": "Налог по странам и режимам: база, налог и итог.",
+  "admin.accounting.report.vat_oss": "НДС ЕС (OSS)",
+  "admin.accounting.report.vat_oss_hint": "Продажи покупателям из ЕС по странам и ставкам, включая reverse charge.",
+  "admin.accounting.report.us_sales_tax": "Sales tax США",
+  "admin.accounting.report.us_sales_tax_hint": "Продажи покупателям из США по штатам и ставкам.",
+  "admin.accounting.breakdown_title": "Налог по странам",
+  "admin.accounting.breakdown_regime": "Режим",
+  "admin.accounting.breakdown_net": "Без налога",
+  "admin.accounting.breakdown_tax": "Налог",
+  "admin.accounting.breakdown_gross": "Всего",
+  "admin.accounting.fiscal.title": "Фискализация по странам",
+  "admin.accounting.fiscal.hint":
+    "Онлайн-чеки сейчас формируются только в России (54-ФЗ) через платёжные системы с включённой передачей чека. Для остальных стран выставляются инвойсы; интеграции с фискальными системами подключаются по мере появления учётных данных и тестового контура.",
+  "admin.accounting.fiscal.unavailable": "не подключено",
   "admin.accounting.tab_taxes": "Налоги",
   "admin.accounting.field.country": "Страна продавца",
   "admin.accounting.field.country_hint":

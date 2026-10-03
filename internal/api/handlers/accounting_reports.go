@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"log"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -90,6 +91,15 @@ func (h *Handler) AdminAccountingSummary(w http.ResponseWriter, r *http.Request)
 		WHERE t.type = 'debit' AND t.source_type = ANY($4::text[]) AND t.amount <> 0
 		  AND t.created_at >= $1 AND t.created_at < $2 AND UPPER(w.currency) = $3
 	`, append(period, accountingServiceSources), &services.Count, &services.Amount)
+	var storedTax, storedGross float64
+	scan(`
+		SELECT COALESCE(SUM(tt.tax), 0)::float8, COALESCE(SUM(tt.gross), 0)::float8
+		FROM core.transactions t
+		JOIN core.wallets w ON w.id = t.wallet_id
+		JOIN core.transaction_taxes tt ON tt.transaction_id = t.id
+		WHERE t.type = 'debit' AND t.source_type = ANY($4::text[]) AND t.amount <> 0
+		  AND t.created_at >= $1 AND t.created_at < $2 AND UPPER(w.currency) = $3
+	`, append(period, accountingServiceSources), &storedTax, &storedGross)
 	scan(`
 		SELECT COALESCE(SUM(ABS(t.amount)) FILTER (WHERE t.type = 'credit'), 0)::float8,
 		       COALESCE(SUM(ABS(t.amount)) FILTER (WHERE t.type = 'debit'), 0)::float8
@@ -114,6 +124,10 @@ func (h *Handler) AdminAccountingSummary(w http.ResponseWriter, r *http.Request)
 
 	var providers []accountingProviderRow
 	var months []accountingMonthRow
+	var taxBreakdown []map[string]any
+	if err == nil {
+		taxBreakdown, err = h.accountingTaxBreakdown(ctx, db, from, toEx, currency)
+	}
 	if err == nil {
 		providers, err = h.accountingProviders(ctx, db, from, toEx, currency)
 	}
@@ -135,7 +149,8 @@ func (h *Handler) AdminAccountingSummary(w http.ResponseWriter, r *http.Request)
 		"refunds":          refunds,
 		"net_income":       income.Amount - refunds.Amount,
 		"services":         services,
-		"services_vat":     vatIncluded(profile.vatRate(), services.Amount),
+		"services_vat":     math.Round((storedTax+vatIncluded(profile.vatRate(), math.Max(services.Amount-storedGross, 0)))*100) / 100,
+		"tax_breakdown":    taxBreakdown,
 		"bonuses":          otherCredits + promo,
 		"other_debits":     otherDebits,
 		"balance_open":     opening,
@@ -326,6 +341,12 @@ func (h *Handler) AdminAccountingReport(w http.ResponseWriter, r *http.Request) 
 		rows, err = rep.acts()
 	case "offsets":
 		rows, err = rep.offsets()
+	case "tax_summary":
+		rows, err = rep.taxReport("", false)
+	case "vat_oss":
+		rows, err = rep.taxReport("AND tt.regime IN ('vat_eu', 'reverse_charge')", false)
+	case "us_sales_tax":
+		rows, err = rep.taxReport("AND tt.country = 'US'", true)
 	default:
 		writeError(w, http.StatusNotFound, "Неизвестный отчёт")
 		return
@@ -337,6 +358,89 @@ func (h *Handler) AdminAccountingReport(w http.ResponseWriter, r *http.Request) 
 	}
 	name := "vortanix-" + kind + "-" + from.Format(accountingDateLayout) + "-" + to.Format(accountingDateLayout) + "-" + strings.ToLower(rep.currency) + ".csv"
 	writeAccountingCSV(w, name, rows)
+}
+
+func (h *Handler) accountingTaxBreakdown(ctx context.Context, db *pgxpool.Pool, from, to time.Time, currency string) ([]map[string]any, error) {
+	rows, err := db.Query(ctx, `
+		SELECT tt.country, tt.subdivision, tt.regime, tt.rate::float8, COUNT(*),
+		       SUM(tt.net)::float8, SUM(tt.tax)::float8, SUM(tt.gross)::float8
+		FROM core.transaction_taxes tt
+		JOIN core.transactions t ON t.id = tt.transaction_id
+		JOIN core.wallets w ON w.id = t.wallet_id
+		WHERE t.created_at >= $1 AND t.created_at < $2 AND UPPER(w.currency) = $3
+		GROUP BY tt.country, tt.subdivision, tt.regime, tt.rate
+		ORDER BY SUM(tt.gross) DESC
+	`, from, to, currency)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []map[string]any{}
+	for rows.Next() {
+		var country, sub, regime string
+		var rate, net, taxAmount, gross float64
+		var count int64
+		if err := rows.Scan(&country, &sub, &regime, &rate, &count, &net, &taxAmount, &gross); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			"country": country, "subdivision": sub, "regime": regime, "rate": rate,
+			"count": count, "net": net, "tax": taxAmount, "gross": gross,
+		})
+	}
+	return out, rows.Err()
+}
+
+func (rep accountingReport) taxReport(filter string, bySubdivision bool) ([][]string, error) {
+	rows, err := rep.db.Query(rep.ctx, `
+		SELECT tt.country, tt.subdivision, tt.regime, tt.rate::float8, COUNT(*),
+		       SUM(tt.net)::float8, SUM(tt.tax)::float8, SUM(tt.gross)::float8
+		FROM core.transaction_taxes tt
+		JOIN core.transactions t ON t.id = tt.transaction_id
+		JOIN core.wallets w ON w.id = t.wallet_id
+		WHERE t.created_at >= $1 AND t.created_at < $2 AND UPPER(w.currency) = $3 `+filter+`
+		GROUP BY tt.country, tt.subdivision, tt.regime, tt.rate
+		ORDER BY tt.country, tt.subdivision, tt.rate
+	`, rep.from, rep.to, rep.currency)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	header := []string{"Country", "Regime", "Rate %", "Supplies", "Net", "Tax", "Gross", "Currency"}
+	if bySubdivision {
+		header = []string{"Country", "State", "Regime", "Rate %", "Supplies", "Net", "Tax", "Gross", "Currency"}
+	}
+	out := [][]string{header}
+	var count int64
+	var totalNet, totalTax, totalGross float64
+	for rows.Next() {
+		var country, sub, regime string
+		var rate, net, taxAmount, gross float64
+		var n int64
+		if err := rows.Scan(&country, &sub, &regime, &rate, &n, &net, &taxAmount, &gross); err != nil {
+			return nil, err
+		}
+		count += n
+		totalNet += net
+		totalTax += taxAmount
+		totalGross += gross
+		row := []string{country}
+		if bySubdivision {
+			row = append(row, sub)
+		}
+		row = append(row, regime, csvMoney(rate), strconv.FormatInt(n, 10), csvMoney(net), csvMoney(taxAmount), csvMoney(gross), rep.currency)
+		out = append(out, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	total := []string{"Total"}
+	if bySubdivision {
+		total = append(total, "")
+	}
+	total = append(total, "", "", strconv.FormatInt(count, 10), csvMoney(totalNet), csvMoney(totalTax), csvMoney(totalGross), "")
+	return append(out, total), nil
 }
 
 func (rep accountingReport) local(t time.Time) time.Time {
@@ -541,12 +645,14 @@ func (rep accountingReport) refunds() ([][]string, error) {
 func (rep accountingReport) services() ([][]string, error) {
 	rows, err := rep.db.Query(rep.ctx, `
 		SELECT t.created_at, `+payerNameSQL+`, u.email, COALESCE(bp.inn, ''), COALESCE(t.source_type, ''),
-		       COALESCE(s.name, ''), COALESCE(tr.name, ''), ABS(t.amount)::float8
+		       COALESCE(s.name, ''), COALESCE(tr.name, ''), ABS(t.amount)::float8,
+		       COALESCE(tt.tax, -1)::float8, COALESCE(tt.rate, 0)::float8, COALESCE(tt.regime, ''), COALESCE(tt.country, '')
 		FROM core.transactions t
 		JOIN core.wallets w ON w.id = t.wallet_id
 		JOIN core.users u ON u.id = w.user_id`+payerJoinsSQL+`
 		LEFT JOIN core.servers s ON s.id = t.source_id
 		LEFT JOIN core.tariffs tr ON tr.id = s.tariff_id
+		LEFT JOIN core.transaction_taxes tt ON tt.transaction_id = t.id
 		WHERE t.type = 'debit' AND t.source_type = ANY($4::text[]) AND t.amount <> 0
 		  AND t.created_at >= $1 AND t.created_at < $2 AND UPPER(w.currency) = $3
 		ORDER BY t.created_at
@@ -557,27 +663,36 @@ func (rep accountingReport) services() ([][]string, error) {
 	defer rows.Close()
 
 	vat := rep.profile.vatRate()
-	out := [][]string{{"Дата", "Покупатель", "ИНН", "Email", "Услуга", "Сумма", "НДС", "В т. ч. НДС", "Валюта"}}
+	out := [][]string{{"Дата", "Покупатель", "ИНН", "Email", "Услуга", "Сумма", "НДС", "В т. ч. НДС", "Валюта", "Страна"}}
 	var total, totalVAT float64
 	for rows.Next() {
 		var at time.Time
-		var payer, email, inn, source, server, tariff string
-		var amount float64
-		if err := rows.Scan(&at, &payer, &email, &inn, &source, &server, &tariff, &amount); err != nil {
+		var payer, email, inn, source, server, tariff, regime, country string
+		var amount, storedTax, storedRate float64
+		if err := rows.Scan(&at, &payer, &email, &inn, &source, &server, &tariff, &amount,
+			&storedTax, &storedRate, &regime, &country); err != nil {
 			return nil, err
 		}
 		tax := vatIncluded(vat, amount)
+		label := vatLabel(vat)
+		if regime != "" {
+			tax = storedTax
+			label = regime
+			if storedRate > 0 {
+				label = regime + " " + strconv.FormatFloat(storedRate, 'f', -1, 64) + "%"
+			}
+		}
 		total += amount
 		totalVAT += tax
 		out = append(out, []string{
 			rep.local(at).Format("02.01.2006"), payer, inn, email, accountingServiceTitle(source, server, tariff),
-			csvMoney(amount), vatLabel(vat), csvMoney(tax), rep.currency,
+			csvMoney(amount), label, csvMoney(tax), rep.currency, country,
 		})
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	out = append(out, []string{"Итого", "", "", "", "", csvMoney(total), "", csvMoney(totalVAT), ""})
+	out = append(out, []string{"Итого", "", "", "", "", csvMoney(total), "", csvMoney(totalVAT), "", ""})
 	return out, nil
 }
 

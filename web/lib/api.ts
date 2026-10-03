@@ -6835,6 +6835,17 @@ export async function fetchTaxRates() {
   return apiFetch<{ rates: TaxRate[]; seller_country: string }>("/v1/admin/accounting/tax-rates");
 }
 
+export type FiscalSystem = {
+  country: string;
+  name: string;
+  available: boolean;
+  providers: string[];
+};
+
+export async function fetchFiscalSystems() {
+  return apiFetch<{ systems: FiscalSystem[] }>("/v1/admin/accounting/fiscal");
+}
+
 export async function saveTaxRates(rates: { id: number; rate: number; enabled: boolean }[]) {
   return apiFetch<{ status: string; count: number }>("/v1/admin/accounting/tax-rates", {
     method: "PUT",
@@ -6866,6 +6877,16 @@ export type AccountingSummary = {
   vat: string;
   timezone: string;
   requisites_ready: boolean;
+  tax_breakdown?: {
+    country: string;
+    subdivision: string;
+    regime: string;
+    rate: number;
+    count: number;
+    net: number;
+    tax: number;
+    gross: number;
+  }[];
 };
 
 export type AccountingReportKind =
@@ -6875,7 +6896,10 @@ export type AccountingReportKind =
   | "services"
   | "balances"
   | "acts"
-  | "offsets";
+  | "offsets"
+  | "tax_summary"
+  | "vat_oss"
+  | "us_sales_tax";
 
 export async function fetchAccountingSummary(params: AccountingPeriodParams) {
   return apiFetch<AccountingSummary>(`/v1/admin/accounting/summary?${documentQuery(params)}`);

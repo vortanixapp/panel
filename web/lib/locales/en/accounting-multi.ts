@@ -1,5 +1,20 @@
 export const accountingMulti = {
   "admin.legal.template_region": "Template region",
+  "admin.accounting.report.tax_summary": "Tax summary",
+  "admin.accounting.report.tax_summary_hint": "Tax by country and regime: net, tax and total.",
+  "admin.accounting.report.vat_oss": "EU VAT (OSS)",
+  "admin.accounting.report.vat_oss_hint": "Sales to EU buyers by country and rate, including reverse charge.",
+  "admin.accounting.report.us_sales_tax": "US sales tax",
+  "admin.accounting.report.us_sales_tax_hint": "Sales to US buyers by state and rate.",
+  "admin.accounting.breakdown_title": "Tax by country",
+  "admin.accounting.breakdown_regime": "Regime",
+  "admin.accounting.breakdown_net": "Net",
+  "admin.accounting.breakdown_tax": "Tax",
+  "admin.accounting.breakdown_gross": "Total",
+  "admin.accounting.fiscal.title": "Fiscalization by country",
+  "admin.accounting.fiscal.hint":
+    "Online receipts are currently produced only in Russia (54-FZ) through payment providers with receipts enabled. Other countries get invoices; fiscal system integrations are added as credentials and a test environment become available.",
+  "admin.accounting.fiscal.unavailable": "not connected",
   "admin.accounting.tab_taxes": "Taxes",
   "admin.accounting.field.country": "Seller country",
   "admin.accounting.field.country_hint":
