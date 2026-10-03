@@ -354,6 +354,9 @@ func (h *Handler) dispatchServerPower(ctx context.Context, actorID, id, action s
 			payload["install"] = spec
 		}
 	}
+	if action == "start" || action == "restart" {
+		h.syncRuntimeSource(ctx, id, nodeID)
+	}
 	cmdID := uuid.NewString()
 	powerCmd := relay.CommandRequest{
 		CommandID: cmdID,

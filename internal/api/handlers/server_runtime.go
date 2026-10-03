@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
@@ -113,4 +114,41 @@ func (h *Handler) SetServerRuntime(w http.ResponseWriter, r *http.Request) {
 	audit(ctx, h.dbOf(ctx), claims.UserID, "server.runtime_version", "server:"+serverID,
 		map[string]any{"kind": sel.Kind, "version": version})
 	writeJSON(w, http.StatusOK, map[string]any{"status": "saved", "kind": sel.Kind, "version": version})
+}
+
+const runtimeSyncTimeout = 8 * time.Second
+
+func (h *Handler) readServerText(ctx context.Context, nodeID, serverID, path string) string {
+	result, err := h.agentCommand(ctx, nodeID, serverID, "files_read", map[string]any{"path": path})
+	if err != nil {
+		return ""
+	}
+	content, _ := result["content"].(string)
+	return strings.TrimSpace(content)
+}
+
+func (h *Handler) syncRuntimeSource(ctx context.Context, serverID, nodeID string) {
+	sel, list, ok := h.serverRuntimeSelector(ctx, serverID)
+	if !ok || sel.URLFile == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, runtimeSyncTimeout)
+	defer cancel()
+	version := h.readServerText(ctx, nodeID, serverID, "/"+sel.File)
+	if version == "" {
+		return
+	}
+	entry, found := findRuntimeVersion(list, version)
+	if !found {
+		return
+	}
+	if h.readServerText(ctx, nodeID, serverID, "/"+sel.URLFile) == entry.URL {
+		return
+	}
+	if entry.URL == "" {
+		_, _ = h.agentCommand(ctx, nodeID, serverID, "files_delete", map[string]any{"path": "/" + sel.URLFile})
+		return
+	}
+	_, _ = h.agentCommand(ctx, nodeID, serverID, "files_write",
+		map[string]any{"path": "/" + sel.URLFile, "content": entry.URL + "\n"})
 }

@@ -132,7 +132,7 @@ install_php() {
     return 1
   fi
   mkdir -p "$extract_dir"
-  if ! tar -xzf "$tmp_archive" -C "$extract_dir"; then
+  if ! tar -xzf "$tmp_archive" -C "$extract_dir" 2>/dev/null && ! tar -xf "$tmp_archive" -C "$extract_dir"; then
     rm -rf "$tmp_archive" "$extract_dir"
     log "Archive did not unpack: $url" >&2
     return 1

@@ -529,7 +529,7 @@ export const adminContent = {
   "admin.games.runtime.help_default":
     "Without a URL the version comes from pmmp releases, where only {list} for Linux x86_64 exist",
   "admin.games.runtime.help_url":
-    "With a URL your own tar.gz is used, holding bin/php or bin/php7/bin/php inside. That is how PHP 7.x and custom builds are added — 7.x also needs its own PocketMine core on the server",
+    "With a URL your own tar.gz or tar is used, holding bin/php or bin/php7/bin/php inside. That is how PHP 7.x and custom builds are added — 7.x also needs its own PocketMine core on the server",
   "admin.games.runtime.help_restart":
     "A new URL applies on the next server start: PHP is downloaded again",
   "admin.games.edit_title": "Edit game: {name}",

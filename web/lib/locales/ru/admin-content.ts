@@ -523,7 +523,7 @@ export const adminContent = {
   "admin.games.runtime.help_default":
     "Без ссылки версия качается с релизов pmmp и доступны только {list} под Linux x86_64",
   "admin.games.runtime.help_url":
-    "Со ссылкой берётся ваш архив tar.gz, внутри которого лежит bin/php или bin/php7/bin/php. Так подключаются PHP 7.x и собственные сборки — для 7.x серверу понадобится и своё ядро PocketMine",
+    "Со ссылкой берётся ваш архив tar.gz или tar, внутри которого лежит bin/php или bin/php7/bin/php. Так подключаются PHP 7.x и собственные сборки — для 7.x серверу понадобится и своё ядро PocketMine",
   "admin.games.runtime.help_restart":
     "Новая ссылка применяется при следующем запуске сервера: PHP скачается заново",
   "admin.games.edit_title": "Редактировать игру: {name}",
