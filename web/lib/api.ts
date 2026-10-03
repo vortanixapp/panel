@@ -1644,6 +1644,8 @@ export type NotificationStreamHandlers = {
   onHello?: (unread: number) => void;
   onSync?: (unread: number) => void;
   onNotification?: (item: PanelNotification, unread: number) => void;
+  onInvalidate?: (topic: string) => void;
+  onLink?: (up: boolean) => void;
 };
 
 export function subscribeNotifications(handlers: NotificationStreamHandlers): () => void {
@@ -1665,10 +1667,14 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
     });
 
   const dispatch = (event: string, data: string) => {
-    let payload: { unread?: number; item?: PanelNotification };
+    let payload: { unread?: number; item?: PanelNotification; topic?: string };
     try {
-      payload = JSON.parse(data) as { unread?: number; item?: PanelNotification };
+      payload = JSON.parse(data) as { unread?: number; item?: PanelNotification; topic?: string };
     } catch {
+      return;
+    }
+    if (event === "invalidate") {
+      if (payload.topic) handlers.onInvalidate?.(payload.topic);
       return;
     }
     const unread = typeof payload.unread === "number" ? payload.unread : 0;
@@ -1690,6 +1696,7 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
           signal: controller.signal,
         });
         if (!res.ok || !res.body) throw new Error(String(res.status));
+        handlers.onLink?.(true);
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
@@ -1717,6 +1724,7 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
       } catch {
         if (stopped || controller.signal.aborted) return;
       }
+      handlers.onLink?.(false);
       if (stopped) return;
       if (received && Date.now() - startedAt > 5_000) {
         delay = 1_000;

@@ -12,7 +12,12 @@ import (
 	"github.com/vortanixapp/panel/pkg/notify"
 )
 
-const liveSync = "sync"
+const (
+	liveSync       = "sync"
+	liveAll        = "*"
+	liveInvalidate = "inv:"
+	liveJobsTopic  = "jobs"
+)
 
 type notifyLive struct {
 	mu   sync.Mutex
@@ -119,6 +124,10 @@ func (l *notifyLive) listen(ctx context.Context, pool *pgxpool.Pool) (bool, erro
 		}
 		userID, msg, ok := strings.Cut(n.Payload, ":")
 		if !ok || userID == "" || msg == "" {
+			continue
+		}
+		if userID == liveAll {
+			l.broadcast(msg)
 			continue
 		}
 		l.deliver(userID, msg)

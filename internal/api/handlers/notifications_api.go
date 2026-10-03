@@ -404,6 +404,15 @@ func (h *Handler) NotificationsStream(w http.ResponseWriter, r *http.Request) {
 			}
 			flusher.Flush()
 		case msg := <-events:
+			if topic, ok := strings.CutPrefix(msg, liveInvalidate); ok {
+				if topic == liveJobsTopic && !isAdminRole(claims.Role) {
+					continue
+				}
+				if !send("invalidate", map[string]string{"topic": topic}) {
+					return
+				}
+				continue
+			}
 			unread := h.notificationsUnread(ctx, db, claims.UserID)
 			if msg != liveSync {
 				if l == nil {

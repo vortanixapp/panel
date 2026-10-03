@@ -32,7 +32,7 @@ import {
   type ServerStatusCategory,
 } from "@/lib/server-status";
 
-import { pollMs } from "@/lib/public-settings";
+import { livePollMs } from "@/lib/live-link";
 const COLUMNS =
   "@7xl/content:grid-cols-[minmax(230px,1.4fr)_150px_minmax(190px,1fr)_180px_150px_196px]";
 
@@ -64,7 +64,7 @@ export function MyServersPageContent() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-servers"],
     queryFn: fetchMyServers,
-    refetchInterval: pollMs(30_000),
+    refetchInterval: livePollMs(30_000),
   });
 
   const servers = useMemo(() => data?.servers ?? [], [data?.servers]);

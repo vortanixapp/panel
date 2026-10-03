@@ -8,6 +8,7 @@ import {
   fetchAdminTaskFeed,
   type AdminTask,
 } from "@/lib/api";
+import { livePollMs } from "@/lib/live-link";
 import { pollMs } from "@/lib/public-settings";
 
 export const adminTasksKey = ["admin-tasks"] as const;
@@ -18,7 +19,11 @@ export function useAdminTaskFeed(scope: "active" | "history", enabled: boolean, 
     queryFn: () => fetchAdminTaskFeed(scope),
     enabled,
     retry: false,
-    refetchInterval: pollMs(open ? 2000 : 8000),
+    refetchInterval: (query) => {
+      const tasks = query.state.data?.tasks ?? [];
+      const working = tasks.some((task) => task.status === "queued" || task.status === "running");
+      return working ? pollMs(open ? 2000 : 8000) : livePollMs(open ? 2000 : 8000);
+    },
   });
 }
 
