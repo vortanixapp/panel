@@ -658,9 +658,15 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 		if v, ok := cmd.Payload["tail"].(float64); ok && v > 0 {
 			tail = int(v)
 		}
-		lines, logErr := docker.TailLogs(ctx, cmd.ServerID, tail)
+		var since time.Time
+		if raw, _ := cmd.Payload["since"].(string); raw != "" {
+			since, _ = time.Parse(time.RFC3339Nano, raw)
+		}
+		logs, logErr := docker.TailLogsSince(ctx, cmd.ServerID, tail, since)
 		execErr = logErr
-		a.sendAck(cmd.ID, execErr == nil, execErr, map[string]any{"lines": lines})
+		a.sendAck(cmd.ID, execErr == nil, execErr, map[string]any{
+			"lines": logs.Lines, "times": logs.Times, "incremental": logs.Incremental,
+		})
 		return
 	case "files_list":
 		path, _ := cmd.Payload["path"].(string)

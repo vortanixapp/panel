@@ -93,19 +93,38 @@ func (h *Handler) GetServerLogs(w http.ResponseWriter, r *http.Request) {
 			tail = min(n, intOf(settingsreg.ServersLogsTailMax))
 		}
 	}
-	result, ok := h.agentCommandForServer(w, r, serverID, "logs", map[string]any{"tail": tail})
+	payload := map[string]any{"tail": tail}
+	if raw := strings.TrimSpace(r.URL.Query().Get("since")); raw != "" {
+		since, err := time.Parse(time.RFC3339Nano, raw)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid since")
+			return
+		}
+		payload["since"] = since.UTC().Format(time.RFC3339Nano)
+	}
+	result, ok := h.agentCommandForServer(w, r, serverID, "logs", payload)
 	if !ok {
 		return
 	}
-	lines := []string{}
-	if raw, exists := result["lines"]; exists {
-		if arr, ok := raw.([]any); ok {
-			for _, item := range arr {
-				lines = append(lines, toString(item))
-			}
+	lines := stringList(result["lines"])
+	times := stringList(result["times"])
+	if len(times) != len(lines) {
+		times = []string{}
+	}
+	incremental, _ := result["incremental"].(bool)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"lines": lines, "times": times, "incremental": incremental,
+	})
+}
+
+func stringList(raw any) []string {
+	out := []string{}
+	if arr, ok := raw.([]any); ok {
+		for _, item := range arr {
+			out = append(out, toString(item))
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"lines": lines})
+	return out
 }
 
 func (h *Handler) ServerFilesList(w http.ResponseWriter, r *http.Request) {

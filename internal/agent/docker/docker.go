@@ -121,6 +121,9 @@ func buildRunArgs(serverID, gameID string, limits map[string]any, image string, 
 		"-m", mem,
 		"--memory-swap", mem,
 		"--restart", "unless-stopped",
+		"--log-driver", "json-file",
+		"--log-opt", "max-size=" + strconv.FormatInt(settingsreg.AgentLogMaxSizeMB.Int(), 10) + "m",
+		"--log-opt", "max-file=" + strconv.FormatInt(settingsreg.AgentLogMaxFiles.Int(), 10),
 	}
 	args = append(args, hardeningArgs()...)
 	if cpu := cpuLimit(limits); cpu != "" {

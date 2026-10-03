@@ -38,7 +38,7 @@ function TabItem({
         title={tab.disabledHint}
         className={cn(
           TAB,
-          "inline-flex cursor-not-allowed items-center border-transparent text-[var(--vx-border-hover)]"
+          "inline-flex grow cursor-not-allowed items-center justify-center border-transparent text-[var(--vx-border-hover)]"
         )}
       >
         {tab.label}
@@ -51,7 +51,7 @@ function TabItem({
       aria-current={active ? "page" : undefined}
       className={cn(
         TAB,
-        "relative inline-flex items-center",
+        "relative inline-flex grow items-center justify-center",
         active
           ? cn(
               "text-[var(--vx-fg-strong)]",

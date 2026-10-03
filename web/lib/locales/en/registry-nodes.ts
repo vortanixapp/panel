@@ -31,6 +31,10 @@ export const registryNodes = {
   "admin.settings.reg.agent.pids_limit.hint":
     "Protects against fork bombs. The VORTANIX_PIDS_LIMIT variable on the node takes precedence",
   "admin.settings.reg.agent.cron_job_timeout_min": "Time for a server cron job",
+  "admin.settings.reg.agent.log_max_size_mb": "Server log file size",
+  "admin.settings.reg.agent.log_max_size_mb.hint":
+    "Docker keeps game server logs in files and rotates them. Applies to servers created or reinstalled after the change",
+  "admin.settings.reg.agent.log_max_files": "Log files per server",
   "admin.settings.reg.agent.temp_file_age_min": "Temporary files are removed when older than",
 
   "admin.settings.reg.agent.disk_warn_free_mb": "Warning: free space below",

@@ -74,6 +74,14 @@ var (
 		Key: "agent.cron_job_timeout_min", Group: GroupNodes, Section: "agent",
 		Kind: KindInt, Default: "10", Min: 1, Max: 120, Unit: UnitMin, Agent: true,
 	})
+	AgentLogMaxSizeMB = def(Setting{
+		Key: "agent.log_max_size_mb", Group: GroupNodes, Section: "agent",
+		Kind: KindInt, Default: "10", Min: 1, Max: 1024, Unit: UnitMB, Agent: true,
+	})
+	AgentLogMaxFiles = def(Setting{
+		Key: "agent.log_max_files", Group: GroupNodes, Section: "agent",
+		Kind: KindInt, Default: "3", Min: 1, Max: 20, Unit: UnitCount, Agent: true,
+	})
 	AgentTempFileAge = def(Setting{
 		Key: "agent.temp_file_age_min", Group: GroupNodes, Section: "agent",
 		Kind: KindInt, Default: "60", Min: 10, Max: 1440, Unit: UnitMin, Agent: true,
