@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/wipe"
 )
 
@@ -147,7 +148,7 @@ func (h *Handler) ServerWipesInfo(w http.ResponseWriter, r *http.Request) {
 		"announce":                 recipe.AnnounceTool != "",
 		"timezone":                 h.serverCronTimezone(ctx, id),
 		"default_announce_minutes": wipe.DefaultAnnounceMinutes(),
-		"max_plans":                wipeMaxPlans,
+		"max_plans":                intOf(settingsreg.ServersWipeMaxPlans),
 		"plans":                    plans,
 		"runs":                     runs,
 		"active_run":               active,
@@ -289,7 +290,7 @@ func (h *Handler) ServerWipePlanCreate(w http.ResponseWriter, r *http.Request) {
 
 	var count int
 	_ = h.dbOf(ctx).QueryRow(ctx, `SELECT count(*) FROM core.server_wipe_plans WHERE server_id = $1`, id).Scan(&count)
-	if count >= wipeMaxPlans {
+	if count >= intOf(settingsreg.ServersWipeMaxPlans) {
 		writeError(w, http.StatusUnprocessableEntity, "Достигнут предел планов вайпа для сервера")
 		return
 	}

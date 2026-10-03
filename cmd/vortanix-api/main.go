@@ -32,6 +32,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/panelsecret"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 	"github.com/vortanixapp/panel/pkg/settingsreg"
+	"github.com/vortanixapp/panel/pkg/settingsreg/pgsrc"
 )
 
 var version = "dev"
@@ -82,7 +83,7 @@ func main() {
 	}
 	cfg.JWTSecret = jwtSecret
 
-	settingsreg.Init(pools.Write)
+	settingsreg.Init(pgsrc.Loader(pools.Write))
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("REGISTRATION_CONFIRM_EMAIL"))) {
 	case "0", "false", "no", "off":
 		settingsreg.AuthRegisterConfirmEmail.SetDefault("0")

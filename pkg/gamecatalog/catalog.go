@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 type PortSpec struct {
@@ -378,19 +380,21 @@ func Enabled(code string) bool {
 
 func DefaultLimits(code string) map[string]any {
 	g, ok := Resolve(code)
+	fallbackMem := int(settingsreg.ServersDefaultMemory.Int())
+	fallbackCPU := float64(settingsreg.ServersDefaultCPUMillis.Int()) / 1000
 	if !ok {
-		return map[string]any{"memory_mb": 512, "cpu": 0.5}
+		return map[string]any{"memory_mb": fallbackMem, "cpu": fallbackCPU}
 	}
 	mem := g.RecRAMMB
 	if mem <= 0 {
 		mem = g.MinRAMMB
 	}
 	if mem <= 0 {
-		mem = 512
+		mem = fallbackMem
 	}
 	cpu := g.MinCPU
 	if cpu <= 0 {
-		cpu = 0.5
+		cpu = fallbackCPU
 	}
 	limits := map[string]any{"memory_mb": mem, "cpu": cpu}
 	if g.MinDiskMB > 0 {

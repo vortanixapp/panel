@@ -17,6 +17,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/gamesettings"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/wipe"
 )
 
@@ -27,9 +28,7 @@ const (
 	wipeTickEvery      = 20 * time.Second
 	wipeMissedAfter    = 10 * time.Minute
 	wipeStaleAfter     = 10 * time.Minute
-	wipeRunTimeout     = 90 * time.Minute
 	wipeLateAnnounce   = 90 * time.Second
-	wipeMaxPlans       = 10
 	wipeHistoryLimit   = 20
 	wipeSeedMax        = 2147483646
 	wipeBackupNameTime = "20060102-1504"
@@ -394,7 +393,7 @@ func (h *Handler) wipeStartDue(ctx context.Context) {
 					h.wipeFail(context.Background(), run, "panic", fmt.Errorf("внутренняя ошибка: %v", r), false)
 				}
 			}()
-			runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), wipeRunTimeout)
+			runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), settingsreg.ServersWipeRunTimeout.Duration())
 			defer cancel()
 			h.executeWipe(runCtx, run)
 		}(run)

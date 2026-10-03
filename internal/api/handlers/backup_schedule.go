@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 type backupScheduleBody struct {
@@ -84,12 +87,12 @@ func (h *Handler) PutServerBackupSchedule(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "day_of_week must be 0..6")
 		return
 	}
-	keep := 7
+	keep := intOf(settingsreg.ServersBackupKeepDefault)
 	if body.KeepCount != nil {
 		keep = *body.KeepCount
 	}
-	if keep < 1 || keep > 30 {
-		writeError(w, http.StatusBadRequest, "keep_count must be 1..30")
+	if keepMax := intOf(settingsreg.ServersBackupKeepMax); keep < 1 || keep > keepMax {
+		writeError(w, http.StatusBadRequest, fmt.Sprintf("keep_count must be 1..%d", keepMax))
 		return
 	}
 

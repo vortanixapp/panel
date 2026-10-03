@@ -9,14 +9,21 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/backupname"
 	"github.com/vortanixapp/panel/pkg/gameconsole"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
-	backupWait  = 20 * time.Minute
-	restoreWait = 30 * time.Minute
 	stopWait    = 6 * time.Minute
 	consoleWait = 20 * time.Second
 )
+
+func backupWait() time.Duration {
+	return settingsreg.ServersBackupWait.Duration()
+}
+
+func restoreWait() time.Duration {
+	return settingsreg.ServersRestoreWait.Duration()
+}
 
 var errServerStopped = errors.New("сервер должен быть запущен")
 
@@ -54,7 +61,7 @@ func (h *Handler) createServerBackup(ctx context.Context, serverID, name, source
 	`, serverID, source).Scan(&backupID); err != nil {
 		return "", "", 0, err
 	}
-	result, err := h.agentCommandWait(ctx, nodeID, serverID, "backup_create", map[string]any{"name": name}, backupWait)
+	result, err := h.agentCommandWait(ctx, nodeID, serverID, "backup_create", map[string]any{"name": name}, backupWait())
 	if err != nil {
 		_, _ = h.dbOf(ctx).Exec(ctx, `UPDATE core.server_backups SET status = 'failed', error = $2 WHERE id = $1`, backupID, err.Error())
 		return "", "", 0, err
@@ -81,7 +88,7 @@ func (h *Handler) restoreServerBackup(ctx context.Context, serverID, name string
 	if err != nil {
 		return err
 	}
-	_, err = h.agentCommandWait(ctx, nodeID, serverID, "backup_restore", map[string]any{"name": name}, restoreWait)
+	_, err = h.agentCommandWait(ctx, nodeID, serverID, "backup_restore", map[string]any{"name": name}, restoreWait())
 	return err
 }
 

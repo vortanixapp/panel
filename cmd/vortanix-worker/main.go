@@ -21,6 +21,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/panelsecret"
 	"github.com/vortanixapp/panel/pkg/secretbox"
 	"github.com/vortanixapp/panel/pkg/settingsreg"
+	"github.com/vortanixapp/panel/pkg/settingsreg/pgsrc"
 	"strings"
 )
 
@@ -53,7 +54,7 @@ func main() {
 		log.Fatalf("database: %v", err)
 	}
 	defer pool.Close()
-	settingsreg.Init(pool)
+	settingsreg.Init(pgsrc.Loader(pool))
 
 	secrets, err := secretbox.New(env("SECRETS_KEY", ""))
 	if err != nil {

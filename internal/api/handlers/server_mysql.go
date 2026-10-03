@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (h *Handler) ServerMysqlInfo(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +45,7 @@ func (h *Handler) ServerMysqlResetPassword(w http.ResponseWriter, r *http.Reques
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 
-	password := randomPassword(16)
+	password := randomPassword(intOf(settingsreg.ServersPasswordLength))
 	dbName := "srv_" + serverID[:8]
 	dbUser := dbName
 	instanceKey := strings.TrimSpace(body.MysqlInstanceKey)

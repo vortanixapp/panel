@@ -137,6 +137,9 @@ func (h *Handler) TrialCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "Пробный сервер сейчас не выдаётся")
 		return
 	}
+	if h.overUserServerLimit(ctx, w, claims.UserID, 1) {
+		return
+	}
 	if !h.allowAttempt(ctx, "trial:create:"+claims.UserID, 1, trialCreateGate) {
 		writeError(w, http.StatusTooManyRequests, "Заявка на пробный сервер уже обрабатывается — подождите несколько секунд")
 		return

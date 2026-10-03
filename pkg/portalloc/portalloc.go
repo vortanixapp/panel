@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 type Querier interface {
@@ -26,11 +27,6 @@ type Allocation struct {
 }
 
 var ErrNoFreePort = fmt.Errorf("на ноде нет свободного порта в диапазоне игры")
-
-const (
-	defaultMinPort = 27000
-	defaultMaxPort = 28999
-)
 
 func Allocate(ctx context.Context, q Querier, nodeID, gameSlug string) (Allocation, error) {
 	return AllocateOn(ctx, q, nodeID, gameSlug, "")
@@ -90,7 +86,7 @@ func blockFree(base, span int, busy map[int]bool) bool {
 }
 
 func gameRange(ctx context.Context, q Querier, gameSlug string) (int, int) {
-	minPort, maxPort := defaultMinPort, defaultMaxPort
+	minPort, maxPort := int(settingsreg.ServersPortMin.Int()), int(settingsreg.ServersPortMax.Int())
 	slugs := gamecatalog.Slugs(gameSlug)
 	var lo, hi int
 	err := q.QueryRow(ctx, `

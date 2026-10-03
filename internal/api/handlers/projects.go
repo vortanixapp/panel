@@ -8,12 +8,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
 	projectNameMax    = 64
 	projectCommentMax = 240
-	projectsPerUser   = 30
 )
 
 type projectRow struct {
@@ -151,7 +152,7 @@ func (h *Handler) ProjectCreate(w http.ResponseWriter, r *http.Request) {
 	_ = h.dbOf(r.Context()).QueryRow(r.Context(), `
 		SELECT COUNT(*)::int FROM core.projects WHERE user_id = $1::uuid
 	`, claims.UserID).Scan(&count)
-	if count >= projectsPerUser {
+	if count >= intOf(settingsreg.ServersMaxProjects) {
 		writeCodedError(w, http.StatusConflict, "projects_limit", "Достигнут предел числа проектов")
 		return
 	}

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/backupname"
 	"github.com/vortanixapp/panel/pkg/cronexpr"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const serverNameMax = 100
@@ -85,10 +87,10 @@ func (h *Handler) PatchServer(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetServerLogs(w http.ResponseWriter, r *http.Request) {
 	serverID := chi.URLParam(r, "id")
-	tail := 200
+	tail := intOf(settingsreg.ServersLogsTail)
 	if q := r.URL.Query().Get("tail"); q != "" {
 		if n, err := strconv.Atoi(q); err == nil && n > 0 {
-			tail = n
+			tail = min(n, intOf(settingsreg.ServersLogsTailMax))
 		}
 	}
 	result, ok := h.agentCommandForServer(w, r, serverID, "logs", map[string]any{"tail": tail})
@@ -220,8 +222,12 @@ func (h *Handler) ServerCronCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "Расписание: "+err.Error())
 		return
 	}
-	if len(body.Command) > 2000 || strings.ContainsAny(body.Command, "\r\n") {
-		writeError(w, http.StatusUnprocessableEntity, "Команда должна быть одной строкой не длиннее 2000 символов")
+	if limit := intOf(settingsreg.ServersCronCommandMax); len(body.Command) > limit || strings.ContainsAny(body.Command, "\r\n") {
+		writeError(w, http.StatusUnprocessableEntity, fmt.Sprintf("Команда должна быть одной строкой не длиннее %d символов", limit))
+		return
+	}
+	if h.overServerLimit(r.Context(), w, "core.server_cron_jobs", "", id, settingsreg.ServersMaxCronJobs,
+		"Достигнут предел числа заданий cron для сервера") {
 		return
 	}
 	var cid string
@@ -343,6 +349,10 @@ func (h *Handler) ServerFirewallCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Protocol == "" {
 		body.Protocol = "tcp"
+	}
+	if h.overServerLimit(r.Context(), w, "core.server_firewall_rules", "", serverID, settingsreg.ServersMaxFirewallRules,
+		"Достигнут предел числа правил файрвола для сервера") {
+		return
 	}
 	var rid string
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
@@ -533,6 +543,10 @@ func (h *Handler) ServerFriendsAdd(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "email required")
 		return
 	}
+	if h.overServerLimit(r.Context(), w, "core.server_friends", "", id, settingsreg.ServersMaxFriends,
+		"Достигнут предел числа друзей сервера") {
+		return
+	}
 	var uid string
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `SELECT id FROM core.users WHERE email = $1`, body.Email).Scan(&uid)
 	if err != nil {
@@ -651,6 +665,11 @@ func (h *Handler) ServerBackupCreate(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
+	}
+
+	if h.overServerLimit(r.Context(), w, "core.server_backups", " AND source = 'manual' AND status <> 'failed'", id,
+		settingsreg.ServersMaxManualBackups, "Достигнут предел числа ручных копий сервера — удалите ненужные") {
+		return
 	}
 
 	var bid string

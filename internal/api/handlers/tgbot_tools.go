@@ -433,7 +433,7 @@ func (u *botUI) actionBackupMake(serverID string) {
 		return
 	}
 	u.show("⏳ "+u.t("notify.bot.backup_working"), nil)
-	bg, cancel := u.detach(backupWait + 2*time.Minute)
+	bg, cancel := u.detach(backupWait() + 2*time.Minute)
 	go func() {
 		defer cancel()
 		name := "tg-" + time.Now().Format("20060102-1504")
@@ -538,7 +538,7 @@ func (u *botUI) actionBackupRestore(serverID string, idx int) {
 		return
 	}
 	u.show("⏳ "+u.t("notify.bot.restore_working"), nil)
-	bg, cancel := u.detach(restoreWait + 2*time.Minute)
+	bg, cancel := u.detach(restoreWait() + 2*time.Minute)
 	go func() {
 		defer cancel()
 		err := bg.h.restoreServerBackup(bg.ctx, serverID, name)

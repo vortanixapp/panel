@@ -13,6 +13,7 @@ import { panelTransfer } from "./panel-transfer";
 import { projects } from "./projects";
 import { registry } from "./registry";
 import { registryBilling } from "./registry-billing";
+import { registryServers } from "./registry-servers";
 import { news } from "./news";
 import { notifications } from "./notifications";
 import { servers } from "./servers";
@@ -41,5 +42,6 @@ export const EN = {
   ...projects,
   ...registry,
   ...registryBilling,
+  ...registryServers,
   ...template,
 };

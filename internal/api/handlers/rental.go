@@ -559,6 +559,9 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	count := rentBatchCount(strconv.Itoa(body.Count))
+	if h.overUserServerLimit(r.Context(), w, claims.UserID, count) {
+		return
+	}
 	created := []map[string]any{}
 	totalCost := 0.0
 	var failStatus int

@@ -17,12 +17,12 @@ import (
 
 	"github.com/vortanixapp/panel/internal/worker/relay"
 	"github.com/vortanixapp/panel/pkg/backupname"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
 const (
-	backupTransferTimeout = 3 * time.Hour
-	nodeBackupsSubdir     = "backups"
+	nodeBackupsSubdir = "backups"
 )
 
 func (r *Runner) BackupOffsiteLoop(ctx context.Context, wake <-chan struct{}) {
@@ -210,14 +210,14 @@ func (r *Runner) uploadBackup(ctx context.Context, pl offsitePayload) error {
 	}
 	done := make(chan sshResult, 1)
 	go func() {
-		sshCfg := sshConfigFor(node, backupTransferTimeout)
+		sshCfg := sshConfigFor(node, backupTransferTimeout())
 		n, err := sshclient.StreamFrom(sshCfg,
 			fmt.Sprintf("test -f %s && cat %s", shellQuote(path), shellQuote(path)), pw)
 		_ = pw.CloseWithError(err)
 		done <- sshResult{bytes: n, err: err}
 	}()
 
-	uploadCtx, cancel := context.WithTimeout(ctx, backupTransferTimeout)
+	uploadCtx, cancel := context.WithTimeout(ctx, backupTransferTimeout())
 	defer cancel()
 	_, upErr := uploader.Upload(uploadCtx, &s3.PutObjectInput{
 		Bucket: aws.String(cfg.Bucket),
@@ -251,7 +251,7 @@ func (r *Runner) uploadBackup(ctx context.Context, pl offsitePayload) error {
 
 func (r *Runner) pruneRemoteBackups(ctx context.Context, serverID string, keep int, cfg s3Settings) {
 	if keep <= 0 {
-		keep = 7
+		keep = int(settingsreg.ServersOffsiteKeep.Int())
 	}
 	rows, err := r.db.Query(ctx, `
 		SELECT id::text, remote_key FROM core.server_backups
@@ -321,7 +321,7 @@ func (r *Runner) fetchBackup(ctx context.Context, pl offsitePayload) error {
 	backupsDir := dir + "/" + nodeBackupsSubdir
 	path := backupsDir + "/" + pl.Filename
 	cmd := fmt.Sprintf("mkdir -p %s && cat > %s", shellQuote(backupsDir), shellQuote(path))
-	written, err := sshclient.StreamTo(sshConfigFor(node, backupTransferTimeout), cmd, obj.Body)
+	written, err := sshclient.StreamTo(sshConfigFor(node, backupTransferTimeout()), cmd, obj.Body)
 	if err != nil {
 		return fmt.Errorf("запись копии на ноду: %w", err)
 	}
@@ -399,4 +399,8 @@ func (r *Runner) scheduleKeepCount(ctx context.Context, serverID string) int {
 		return 0
 	}
 	return keep
+}
+
+func backupTransferTimeout() time.Duration {
+	return settingsreg.ServersOffsiteTimeout.Duration()
 }

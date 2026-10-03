@@ -9,11 +9,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/vortanixapp/panel/internal/api/jobwake"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 var ftpSuffixRe = regexp.MustCompile(`^[a-z0-9_-]{0,12}$`)
 
-const defaultFTPAccountLimit = 1
+func defaultFTPAccountLimit() int {
+	return int(settingsreg.ServersFTPLimit.Int())
+}
 
 const ftpUsernameIDLen = 12
 
@@ -90,7 +93,7 @@ func (h *Handler) ServerFtpCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	username := ftpUsernameFor(serverID, suffix)
-	password := randomPassword(16)
+	password := randomPassword(intOf(settingsreg.ServersPasswordLength))
 
 	var accountID string
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
@@ -142,7 +145,7 @@ func (h *Handler) ServerFtpResetPassword(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	password := randomPassword(16)
+	password := randomPassword(intOf(settingsreg.ServersPasswordLength))
 	_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
 		UPDATE core.server_ftp_accounts
 		SET password = $2, status = 'pending', error_message = NULL, updated_at = now()
@@ -260,7 +263,7 @@ func (h *Handler) ftpAccountLimit(r *http.Request, serverID string) int {
 		WHERE s.id = $1
 	`, serverID).Scan(&limits)
 	if err != nil {
-		return defaultFTPAccountLimit
+		return defaultFTPAccountLimit()
 	}
 	m := map[string]any{}
 	_ = json.Unmarshal(limits, &m)
@@ -274,7 +277,7 @@ func (h *Handler) ftpAccountLimit(r *http.Request, serverID string) int {
 			return v
 		}
 	}
-	return defaultFTPAccountLimit
+	return defaultFTPAccountLimit()
 }
 
 func (h *Handler) enqueueFtpCleanup(r *http.Request, serverID, nodeID string) {

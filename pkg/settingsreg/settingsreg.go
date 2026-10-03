@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/jackc/pgx/v5"
 )
 
 type Kind string
@@ -56,9 +54,7 @@ type Setting struct {
 	Agent   bool
 }
 
-type DB interface {
-	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
-}
+type Loader func(ctx context.Context, keys []string) (map[string]string, error)
 
 var (
 	registry []*Setting
@@ -87,19 +83,29 @@ func Lookup(key string) (*Setting, bool) {
 }
 
 type snapshot struct {
-	mu      sync.Mutex
-	db      DB
-	values  map[string]string
-	loaded  time.Time
-	version uint64
+	mu     sync.Mutex
+	loader Loader
+	values map[string]string
+	loaded time.Time
 }
 
 var store = &snapshot{}
 
-func Init(db DB) {
+func Init(loader Loader) {
 	store.mu.Lock()
-	store.db = db
+	store.loader = loader
 	store.loaded = time.Time{}
+	store.mu.Unlock()
+}
+
+func SetStatic(values map[string]string) {
+	store.mu.Lock()
+	store.loader = nil
+	store.values = make(map[string]string, len(values))
+	for k, v := range values {
+		store.values[k] = v
+	}
+	store.loaded = time.Now()
 	store.mu.Unlock()
 }
 
@@ -112,10 +118,7 @@ func Invalidate() {
 func (st *snapshot) get(key string) string {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if st.db == nil {
-		return ""
-	}
-	if time.Since(st.loaded) >= cacheTTL {
+	if st.loader != nil && time.Since(st.loaded) >= cacheTTL {
 		st.refreshLocked()
 	}
 	return st.values[key]
@@ -125,10 +128,7 @@ func (st *snapshot) all() map[string]string {
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	out := map[string]string{}
-	if st.db == nil {
-		return out
-	}
-	if time.Since(st.loaded) >= cacheTTL {
+	if st.loader != nil && time.Since(st.loaded) >= cacheTTL {
 		st.refreshLocked()
 	}
 	for k, v := range st.values {
@@ -144,30 +144,16 @@ func (st *snapshot) refreshLocked() {
 	for _, s := range registry {
 		keys = append(keys, s.Key)
 	}
-	rows, err := st.db.Query(ctx, `SELECT key, value FROM core.tenant_settings WHERE key = ANY($1)`, keys)
+	next, err := st.loader(ctx, keys)
 	if err != nil {
-		st.loaded = time.Now().Add(retryAfter - cacheTTL)
-		return
-	}
-	defer rows.Close()
-	next := map[string]string{}
-	for rows.Next() {
-		var k string
-		var v []byte
-		if rows.Scan(&k, &v) == nil {
-			next[k] = rawToString(v)
-		}
-	}
-	if rows.Err() != nil {
 		st.loaded = time.Now().Add(retryAfter - cacheTTL)
 		return
 	}
 	st.values = next
 	st.loaded = time.Now()
-	st.version++
 }
 
-func rawToString(raw []byte) string {
+func RawToString(raw []byte) string {
 	if len(raw) == 0 {
 		return ""
 	}
