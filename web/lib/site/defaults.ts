@@ -93,6 +93,7 @@ const ADMIN_SIDEBAR: BuiltinItem[] = [
       { ref: "admin.games", labelKey: "nav.admin.games", url: "/admin/games", icon: "monitor" },
       { ref: "admin.tariffs", labelKey: "nav.admin.tariffs", url: "/admin/tariffs", icon: "tag" },
       { ref: "admin.jobs", labelKey: "nav.admin.jobs", url: "/admin/jobs", icon: "list-checks" },
+      { ref: "admin.performance", labelKey: "nav.admin.performance", url: "/admin/performance", icon: "chart-line" },
     ],
   },
   {

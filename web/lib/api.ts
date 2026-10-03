@@ -8021,3 +8021,24 @@ export async function fetchAdminTaskDetail(source: string, id: string) {
 export async function fetchAdminTaskEvents(limit = 50) {
   return apiFetch<{ events: AdminTaskEvent[] }>(`/v1/admin/jobs/events?limit=${limit}`);
 }
+
+export type AdminPerfSeries = {
+  name: string;
+  points: [number, number][];
+};
+
+export type AdminPerfChart = {
+  id: string;
+  unit: string;
+  series: AdminPerfSeries[];
+};
+
+export type AdminPerformance = {
+  available: boolean;
+  step?: number;
+  charts: AdminPerfChart[];
+};
+
+export async function fetchAdminPerformance(range: string) {
+  return apiFetch<AdminPerformance>(`/v1/admin/performance?range=${encodeURIComponent(range)}`);
+}

@@ -2,6 +2,7 @@ import { accountingMulti } from "./accounting-multi";
 import { adminAgents } from "./admin-agents";
 import { adminContent } from "./admin-content";
 import { adminInfra } from "./admin-infra";
+import { adminPerformance } from "./admin-performance";
 import { adminTasks } from "./admin-tasks";
 import { auth } from "./auth";
 import { billing } from "./billing";
@@ -51,6 +52,7 @@ export const RU = {
   ...adminContent,
   ...accountingMulti,
   ...adminTasks,
+  ...adminPerformance,
   ...panelTransfer,
   ...profileFields,
   ...projects,
