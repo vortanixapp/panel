@@ -42,7 +42,7 @@ func HostShell(ctx context.Context, script string) (string, error) {
 		cmd = exec.CommandContext(ctx, "sh", "-c", script)
 	} else {
 		cmd = exec.CommandContext(ctx, "docker", "run", "--rm",
-			"--privileged", "--pid", "host", "--network", "none",
+			"--privileged", "--user", "0:0", "--pid", "host", "--network", "none",
 			"--label", "vortanix.helper=host",
 			"--entrypoint", "nsenter", image,
 			"-t", "1", "-m", "-n", "--", "sh", "-c", script)
