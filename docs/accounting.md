@@ -105,3 +105,33 @@ receipts with the bank statement and provider reports.
 
 Viewing reports and documents requires the “Billing (view)” permission.
 Changing the details requires “Billing (edit)”.
+
+## Regions and countries
+
+On first installation you choose which accounting regions the panel serves:
+CIS and Russia, European Union, Europe outside the EU, United States, or any
+combination. The choice can be changed later in Settings, Accounting.
+
+- Every user has a country (chosen at registration; existing users and users
+  who signed in through social login are asked to fill it in before paying).
+  The country decides which tax rules apply.
+- Russia keeps the existing behaviour: the VAT rate from the details, 54-FZ
+  receipts, acts and reconciliation statements.
+- For other countries the Taxes tab holds a rate table (EU VAT, European VAT,
+  CIS VAT and US state sales tax). Rates are seeded but switched off: enable
+  only countries where you are registered as a taxpayer, and have the rates
+  checked by a tax advisor. Tax is carved out of the price and stored with every
+  service charge, so later rate changes do not rewrite history.
+- EU business buyers with a VAT number verified through VIES are charged under
+  the reverse-charge mechanism.
+- Buyers outside Russia get numbered invoices (INV-year-number) in their
+  language (Russian or English) and an English payment receipt.
+- The seller country on the Details tab switches the details form between the
+  Russian set (INN, KPP, OGRN, bank) and the international set (tax ID,
+  registration number, IBAN, SWIFT).
+- Reports: tax summary, EU VAT (OSS) and US sales tax CSV exports, plus a tax
+  breakdown by country on the summary.
+- Online fiscal receipts exist only for Russia. Other fiscal systems are
+  listed on the Taxes tab as not connected.
+- Legal document templates are available for the EU (GDPR), Europe outside the
+  EU and the United States; they must be reviewed by a lawyer before use.
