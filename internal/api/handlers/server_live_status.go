@@ -107,11 +107,8 @@ func (h *Handler) GetServerStatus(w http.ResponseWriter, r *http.Request) {
 
 	nodeID, nodeErr := h.serverNodeID(r.Context(), serverID)
 	if nodeErr == nil && nodeID != "" {
-		result, agentErr := h.agentCommand(r.Context(), nodeID, serverID, "game_query", map[string]any{
-			"game_id": gameID,
-			"limits":  limits,
-			"port":    port,
-		})
+		snap := h.sharedAgentStatus(r.Context(), nodeID, serverID, gameID, limits, port, runtime == "running" || status == "running")
+		result, agentErr := snap.query, snap.queryErr
 		if agentErr == nil && result != nil {
 			if _, has := result["answered"]; !has {
 				resp["answered"] = true
@@ -132,7 +129,7 @@ func (h *Handler) GetServerStatus(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if runtime == "running" || status == "running" {
-			stats, statsErr := h.agentCommand(r.Context(), nodeID, serverID, "stats", map[string]any{"limits": limits})
+			stats, statsErr := snap.stats, snap.statsErr
 			if statsErr == nil && stats != nil {
 				if v, ok := stats["uptime"].(string); ok && v != "" {
 					resp["uptime"] = v
