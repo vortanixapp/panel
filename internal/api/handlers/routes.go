@@ -327,6 +327,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/images/build-flag", h.SetImageBuildFlag)
 			r.Post("/images/build", h.BuildNodeImages)
 			r.Get("/images/log", h.ImageBuildLog)
+			r.Get("/performance", h.AdminPerformance)
 			r.Get("/jobs", h.AdminJobsList)
 			r.Get("/jobs/feed", h.AdminTaskFeed)
 			r.Get("/jobs/feed/{source}/{id}", h.AdminTaskFeedDetail)

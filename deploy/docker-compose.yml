@@ -137,9 +137,75 @@ services:
       - web
       - api
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus:/prometheus
+    depends_on:
+      - api
+      - relay
+
+  monitoring-cert:
+    image: alpine/openssl:latest
+    profiles: ["monitoring"]
+    restart: "no"
+    environment:
+      GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ ! -s /certs/cert.pem ] || [ ! -s /certs/key.pem ]; then
+          openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=vortanix-monitoring" -keyout /certs/key.pem -out /certs/cert.pem
+        fi
+        if [ -n "$$GRAFANA_ADMIN_PASSWORD" ]; then
+          printf %s "$$GRAFANA_ADMIN_PASSWORD" > /certs/admin-password
+        elif [ ! -s /certs/admin-password ]; then
+          openssl rand -hex 16 | tr -d '[:space:]' > /certs/admin-password
+        fi
+        chmod 644 /certs/cert.pem /certs/key.pem /certs/admin-password
+    volumes:
+      - monitoring-certs:/certs
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /certs/admin-password
+      GF_SERVER_PROTOCOL: https
+      GF_SERVER_CERT_FILE: /certs/cert.pem
+      GF_SERVER_CERT_KEY: /certs/key.pem
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana:/var/lib/grafana
+      - monitoring-certs:/certs:ro
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+      monitoring-cert:
+        condition: service_completed_successfully
+
 volumes:
   postgres:
   redis:
   uploads:
   caddy-data:
   caddy-config:
+  prometheus:
+  grafana:
+  monitoring-certs:

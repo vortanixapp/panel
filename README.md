@@ -40,6 +40,7 @@ licence keys and activation are not part of it.
   [docs/whmcs.md](docs/whmcs.md).
 - **Backups.** Local, and off-site to any S3-compatible storage.
 - **Telegram bot and wipes.** Notifications with action buttons, server control (power, console, backups) from Telegram, and a wipe scheduler for Rust, ARK and DayZ. See [docs/telegram-bot.md](docs/telegram-bot.md).
+- **Monitoring.** Optional Prometheus and Grafana with a ready dashboard for the API, the database and the relay. See [docs/monitoring.md](docs/monitoring.md).
 - **Updates.** The panel and the game node agents update with one button or
   automatically when a new release comes out. A database backup is taken
   before a panel update; an agent that fails to reconnect after an update

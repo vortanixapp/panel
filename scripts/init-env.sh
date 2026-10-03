@@ -101,6 +101,8 @@ put JWT_SECRET "$(openssl rand -base64 32 | tr -d '\n')"
 put SECRETS_KEY "$(openssl rand -base64 32 | tr -d '\n')"
 put INTERNAL_SECRET "$(openssl rand -base64 32 | tr -d '\n')"
 
+put GRAFANA_ADMIN_PASSWORD "$(openssl rand -hex 16)"
+
 put SITE_ADDRESS "$SITE_ADDRESS" force
 put RELAY_PUBLIC_URL "$WS" force
 put FRONTEND_URL "$BASE" force
