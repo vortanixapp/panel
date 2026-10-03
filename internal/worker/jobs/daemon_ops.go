@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/nodeevents"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
@@ -228,10 +229,10 @@ func (r *Runner) purgeDaemonJobs(ctx context.Context) {
 		DELETE FROM core.jobs
 		WHERE status IN ('completed', 'failed', 'cancelled')
 		  AND (
-			(type = 'daemon_pull' AND created_at < now() - interval '3 days')
-			OR (type = 'daemon_action' AND created_at < now() - interval '30 days')
+			(type = 'daemon_pull' AND created_at < now() - make_interval(days => $1::int))
+			OR (type = 'daemon_action' AND created_at < now() - make_interval(days => $2::int))
 		  )
-	`)
+	`, int(settingsreg.RetentionDaemonPull.Int()), int(settingsreg.RetentionDaemonAction.Int()))
 	if err != nil {
 		log.Printf("daemon: очистка старых задач: %v", err)
 		return

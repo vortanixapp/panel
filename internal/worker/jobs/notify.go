@@ -108,4 +108,5 @@ func (r *Runner) cleanupNotifications(ctx context.Context) {
 	if removed > 0 {
 		log.Printf("очистка оповещений: удалено старых %d", removed)
 	}
+	r.cleanupHistory(ctx)
 }

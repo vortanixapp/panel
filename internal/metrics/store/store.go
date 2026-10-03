@@ -118,6 +118,14 @@ func (s *Store) getMetricsFromPG(ctx context.Context, serverID string, hours int
 	return metricsquery.QueryServerMetrics(ctx, pool, serverID, hours, int(limit))
 }
 
+func (s *Store) ApplyRetentionPolicy(ctx context.Context, days int) error {
+	if _, err := s.db.Exec(ctx, `SELECT remove_retention_policy('core.server_metric_points', if_exists => true)`); err != nil {
+		return err
+	}
+	_, err := s.db.Exec(ctx, `SELECT add_retention_policy('core.server_metric_points', make_interval(days => $1::int), if_not_exists => true)`, days)
+	return err
+}
+
 func (s *Store) PurgeOlderThan(ctx context.Context, days int) (int64, error) {
 	tag, err := s.db.Exec(ctx, `
 		DELETE FROM core.server_metric_points

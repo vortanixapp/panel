@@ -6,13 +6,14 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
 	monitoringSampleInterval = time.Minute
 	monitoringSampleWorkers  = 8
 	monitoringFailThreshold  = 3
-	monitoringRetentionDays  = 45
 )
 
 type samplerTarget struct {
@@ -203,5 +204,5 @@ func (h *Handler) purgeOnlinePoints(ctx context.Context) {
 	_, _ = h.dbOf(ctx).Exec(ctx, `
 		DELETE FROM core.server_online_points
 		WHERE ts < now() - ($1::text || ' days')::interval
-	`, monitoringRetentionDays)
+	`, settingsreg.RetentionOnlinePoints.Int())
 }

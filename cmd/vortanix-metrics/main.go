@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -22,6 +21,8 @@ import (
 	"github.com/vortanixapp/panel/pkg/httpprom"
 	"github.com/vortanixapp/panel/pkg/netaddr"
 	"github.com/vortanixapp/panel/pkg/panelsecret"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
+	"github.com/vortanixapp/panel/pkg/settingsreg/pgsrc"
 )
 
 func main() {
@@ -33,7 +34,9 @@ func main() {
 	if secretErr != nil {
 		log.Fatalf("%v", secretErr)
 	}
-	retentionDays := envInt("METRICS_RETENTION_DAYS", 7)
+	if raw := os.Getenv("METRICS_RETENTION_DAYS"); raw != "" {
+		settingsreg.RetentionServerMetrics.SetDefault(raw)
+	}
 
 	ctx := context.Background()
 	pool, err := pgxpool.New(ctx, dbURL)
@@ -41,6 +44,7 @@ func main() {
 		log.Fatalf("database: %v", err)
 	}
 	defer pool.Close()
+	settingsreg.Init(pgsrc.Loader(pool))
 
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -52,7 +56,7 @@ func main() {
 	st := store.New(pool, rdb)
 	h := handlers.New(st, secret)
 
-	go retentionLoop(ctx, st, retentionDays)
+	go retentionLoop(ctx, st)
 
 	prom := httpprom.New("metrics-ingest")
 	r := chi.NewRouter()
@@ -64,7 +68,7 @@ func main() {
 
 	srv := &http.Server{Addr: netaddr.Listen(port), Handler: r}
 	go func() {
-		log.Printf("metrics-ingest listening on :%s (retention %d days)", port, retentionDays)
+		log.Printf("metrics-ingest listening on :%s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server: %v", err)
 		}
@@ -78,11 +82,9 @@ func main() {
 	_ = srv.Shutdown(shutdownCtx)
 }
 
-func retentionLoop(ctx context.Context, st *store.Store, days int) {
-	if os.Getenv("TIMESCALE_ENABLED") == "true" {
-		log.Printf("metrics retention: using TimescaleDB policy, skipping SQL purge loop")
-		return
-	}
+func retentionLoop(ctx context.Context, st *store.Store) {
+	timescale := os.Getenv("TIMESCALE_ENABLED") == "true"
+	applied := 0
 
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
@@ -90,6 +92,19 @@ func retentionLoop(ctx context.Context, st *store.Store, days int) {
 	runPurge := func() {
 		purgeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
+		days := int(settingsreg.RetentionServerMetrics.Int())
+		if timescale {
+			if days == applied {
+				return
+			}
+			if err := st.ApplyRetentionPolicy(purgeCtx, days); err != nil {
+				log.Printf("metrics retention: TimescaleDB policy not updated: %v", err)
+				return
+			}
+			applied = days
+			log.Printf("metrics retention: TimescaleDB policy set to %d days", days)
+			return
+		}
 		n, err := st.PurgeOlderThan(purgeCtx, days)
 		if err != nil {
 			log.Printf("metrics retention purge failed: %v", err)
@@ -116,16 +131,4 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
-}
-
-func envInt(key string, fallback int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(v)
-	if err != nil || n < 1 {
-		return fallback
-	}
-	return n
 }

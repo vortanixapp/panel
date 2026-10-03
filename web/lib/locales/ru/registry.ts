@@ -10,7 +10,6 @@ export const registry = {
 
   "admin.settings.reg.group.security":
     "Время жизни сессий и ссылок, лимиты попыток входа, блокировка IP и политика паролей. Значения применяются сразу, без перезапуска.",
-  "admin.settings.reg.group.retention": "",
   "admin.settings.reg.group.nodes": "",
   "admin.settings.reg.group.uploads": "",
   "admin.settings.reg.group.interface": "",

@@ -58,10 +58,12 @@ func main() {
 
 	h := handlers.New(pool, rdb, hub.New(), secret, metricsURL).
 		WithPanelURL(env("FRONTEND_URL", env("APP_URL", "")))
+	seedRetentionDefault(settingsreg.RetentionServerMetrics, "METRICS_RETENTION_DAYS")
+	seedRetentionDefault(settingsreg.RetentionNodeMetrics, "NODE_METRICS_RETENTION_DAYS")
 	if metricsURL == "" {
-		go purgeMetricPoints(ctx, pool, env("METRICS_RETENTION_DAYS", "7"))
+		go purgeMetricPoints(ctx, pool)
 	}
-	go purgeNodeData(ctx, pool, env("NODE_METRICS_RETENTION_DAYS", "8"))
+	go purgeNodeData(ctx, pool)
 	go h.RunSweeper(ctx)
 	prom := httpprom.New("agent-relay")
 	r := chi.NewRouter()
@@ -148,14 +150,17 @@ func env(key, fallback string) string {
 
 const purgeBatch = 20000
 
-func purgeNodeData(ctx context.Context, pool *pgxpool.Pool, days string) {
-	keep, err := strconv.Atoi(days)
-	if err != nil || keep <= 0 {
-		keep = 8
+func seedRetentionDefault(setting *settingsreg.Setting, envName string) {
+	if raw := strings.TrimSpace(os.Getenv(envName)); raw != "" {
+		setting.SetDefault(raw)
 	}
+}
+
+func purgeNodeData(ctx context.Context, pool *pgxpool.Pool) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 	for {
+		keep := int(settingsreg.RetentionNodeMetrics.Int())
 		purgeBatched(ctx, pool, "метрики узлов", `
 			DELETE FROM core.node_metrics WHERE id IN (
 				SELECT id FROM core.node_metrics
@@ -177,16 +182,16 @@ func purgeNodeData(ctx context.Context, pool *pgxpool.Pool, days string) {
 		purgeBatched(ctx, pool, "события узлов", `
 			DELETE FROM core.node_events WHERE id IN (
 				SELECT id FROM core.node_events
-				WHERE created_at < now() - interval '90 days'
+				WHERE created_at < now() - make_interval(days => $1)
 				LIMIT 20000)
-		`)
+		`, int(settingsreg.RetentionNodeEvents.Int()))
 		purgeBatched(ctx, pool, "задачи узлов", `
 			DELETE FROM core.node_tasks WHERE id IN (
 				SELECT id FROM core.node_tasks
 				WHERE status IN ('done', 'failed', 'expired')
-				  AND COALESCE(finished_at, updated_at) < now() - interval '30 days'
+				  AND COALESCE(finished_at, updated_at) < now() - make_interval(days => $1)
 				LIMIT 20000)
-		`)
+		`, int(settingsreg.RetentionNodeTasks.Int()))
 		select {
 		case <-ctx.Done():
 			return
@@ -215,13 +220,11 @@ func purgeBatched(ctx context.Context, pool *pgxpool.Pool, label, sql string, ar
 	}
 }
 
-func purgeMetricPoints(ctx context.Context, pool *pgxpool.Pool, days string) {
-	if n, err := strconv.Atoi(days); err != nil || n <= 0 {
-		days = "7"
-	}
+func purgeMetricPoints(ctx context.Context, pool *pgxpool.Pool) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 	for {
+		days := strconv.FormatInt(settingsreg.RetentionServerMetrics.Int(), 10)
 		purgeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		tag, err := pool.Exec(purgeCtx, `
 			DELETE FROM core.server_metric_points

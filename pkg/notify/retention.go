@@ -1,6 +1,10 @@
 package notify
 
-import "context"
+import (
+	"context"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
+)
 
 const cleanupBatch = 5000
 
@@ -11,11 +15,11 @@ func Cleanup(ctx context.Context, db DB) (int64, error) {
 			DELETE FROM core.notifications
 			WHERE id IN (
 				SELECT id FROM core.notifications
-				WHERE created_at < now() - interval '180 days'
-				   OR (read_at IS NOT NULL AND created_at < now() - interval '90 days')
+				WHERE created_at < now() - make_interval(days => $2::int)
+				   OR (read_at IS NOT NULL AND created_at < now() - make_interval(days => $3::int))
 				LIMIT $1
 			)
-		`, cleanupBatch)
+		`, cleanupBatch, int(settingsreg.RetentionNotifications.Int()), int(settingsreg.RetentionNotificationsRead.Int()))
 		if err != nil {
 			return removed, err
 		}
@@ -29,10 +33,10 @@ func Cleanup(ctx context.Context, db DB) (int64, error) {
 			DELETE FROM core.notification_deliveries
 			WHERE id IN (
 				SELECT id FROM core.notification_deliveries
-				WHERE status <> 'queued' AND created_at < now() - interval '30 days'
+				WHERE status <> 'queued' AND created_at < now() - make_interval(days => $2::int)
 				LIMIT $1
 			)
-		`, cleanupBatch)
+		`, cleanupBatch, int(settingsreg.RetentionDeliveries.Int()))
 		if err != nil {
 			return removed, err
 		}
@@ -45,10 +49,10 @@ func Cleanup(ctx context.Context, db DB) (int64, error) {
 			DELETE FROM core.mail_log
 			WHERE id IN (
 				SELECT id FROM core.mail_log
-				WHERE created_at < now() - interval '90 days'
+				WHERE created_at < now() - make_interval(days => $2::int)
 				LIMIT $1
 			)
-		`, cleanupBatch)
+		`, cleanupBatch, int(settingsreg.RetentionMailLog.Int()))
 		if err != nil {
 			return removed, err
 		}

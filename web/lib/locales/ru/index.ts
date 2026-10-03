@@ -14,6 +14,7 @@ import { projects } from "./projects";
 import { registry } from "./registry";
 import { registryBilling } from "./registry-billing";
 import { registryNotifications } from "./registry-notifications";
+import { registryRetention } from "./registry-retention";
 import { registryServers } from "./registry-servers";
 import { news } from "./news";
 import { notifications } from "./notifications";
@@ -45,5 +46,6 @@ export const RU = {
   ...registryBilling,
   ...registryServers,
   ...registryNotifications,
+  ...registryRetention,
   ...template,
 };
