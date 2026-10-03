@@ -461,6 +461,8 @@ func (h *Handler) mountProtected(r chi.Router) {
 			})
 			r.Get("/accounting/requisites", h.AdminAccountingRequisites)
 			r.Put("/accounting/requisites", h.AdminAccountingRequisitesUpdate)
+			r.Get("/accounting/tax-rates", h.AdminTaxRates)
+			r.Put("/accounting/tax-rates", h.AdminTaxRatesUpdate)
 			r.Get("/accounting/summary", h.AdminAccountingSummary)
 			r.Get("/accounting/reports/{kind}", h.AdminAccountingReport)
 			r.Get("/accounting/clients", h.AdminAccountingClients)

@@ -228,12 +228,15 @@ func (h *Handler) renewOneAuto(ctx context.Context, d dunningServer) {
 	`, walletID, price); err != nil {
 		return
 	}
-	if _, err := tx.Exec(ctx, `
+	var renewTxID string
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO core.transactions ( wallet_id, type, amount, description, source_type, source_id)
 		VALUES ( $1, 'debit', $2, $3, 'server_renew', $4::uuid)
-	`, walletID, -price, "Автопродление: "+d.name, d.id); err != nil {
+		RETURNING id::text
+	`, walletID, -price, "Автопродление: "+d.name, d.id).Scan(&renewTxID); err != nil {
 		return
 	}
+	h.recordServiceTax(ctx, tx, renewTxID, d.userID, "server_renew", price)
 	if _, err := tx.Exec(ctx, `
 		UPDATE core.servers
 		SET expires_at = GREATEST(expires_at, now()) + make_interval(days => $2::int),

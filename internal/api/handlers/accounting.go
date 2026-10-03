@@ -16,6 +16,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/regions"
 )
 
 const (
@@ -26,8 +27,8 @@ const (
 )
 
 var (
-	accountingLegalForms     = []string{"ip", "ooo", "npd", "other"}
-	accountingTaxSystems     = []string{"osn", "usn_income", "usn_income_outcome", "patent", "npd"}
+	accountingLegalForms     = []string{"ip", "ooo", "npd", "other", "company", "sole"}
+	accountingTaxSystems     = []string{"osn", "usn_income", "usn_income_outcome", "patent", "npd", "general"}
 	accountingVATRates       = []string{"none", "0", "5", "7", "10", "20", "22"}
 	accountingReceiptModes   = []string{"full_payment", "full_prepayment", "advance"}
 	accountingServiceSources = []string{"server_rent", "server_renew", "server_tariff", "server_resources"}
@@ -39,7 +40,9 @@ var (
 		"server_resources": "Изменение ресурсов игрового сервера",
 	}
 
-	kppPattern = regexp.MustCompile(`^\d{4}[\dA-Z]{2}\d{3}$`)
+	kppPattern   = regexp.MustCompile(`^\d{4}[\dA-Z]{2}\d{3}$`)
+	ibanPattern  = regexp.MustCompile(`^[A-Z0-9]{15,34}$`)
+	swiftPattern = regexp.MustCompile(`^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$`)
 
 	monthsNominative = []string{"январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"}
 	monthsGenitive   = []string{"января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"}
@@ -50,6 +53,11 @@ type accountingProfile struct {
 	LegalForm       string         `json:"legal_form"`
 	Name            string         `json:"name"`
 	FullName        string         `json:"full_name"`
+	Country         string         `json:"country"`
+	TaxID           string         `json:"tax_id"`
+	RegNumber       string         `json:"reg_number"`
+	IBAN            string         `json:"iban"`
+	SWIFT           string         `json:"swift"`
 	INN             string         `json:"inn"`
 	KPP             string         `json:"kpp"`
 	OGRN            string         `json:"ogrn"`
@@ -82,6 +90,11 @@ func (p *accountingProfile) settingFields() []accountingField {
 		{"company.legal_form", &p.LegalForm},
 		{"company.name", &p.Name},
 		{"company.full_name", &p.FullName},
+		{"company.country", &p.Country},
+		{"company.tax_id", &p.TaxID},
+		{"company.reg_number", &p.RegNumber},
+		{"company.iban", &p.IBAN},
+		{"company.swift", &p.SWIFT},
 		{"company.inn", &p.INN},
 		{"company.kpp", &p.KPP},
 		{"company.ogrn", &p.OGRN},
@@ -118,6 +131,10 @@ func (h *Handler) accountingProfile(ctx context.Context) accountingProfile {
 }
 
 func (p *accountingProfile) normalize() {
+	p.Country = regions.NormalizeCountry(p.Country)
+	if !regions.ValidCountry(p.Country) {
+		p.Country = defaultSellerCountry
+	}
 	if !slices.Contains(accountingLegalForms, p.LegalForm) {
 		p.LegalForm = ""
 	}
@@ -148,12 +165,38 @@ func (p accountingProfile) shortName() string {
 	return firstNonEmpty(p.Name, p.FullName, p.AppName)
 }
 
+func (p accountingProfile) russian() bool {
+	return p.Country == "RU"
+}
+
 func (p accountingProfile) ready() bool {
+	if !p.russian() {
+		return firstNonEmpty(p.Name, p.FullName) != "" && p.Address != "" && p.TaxID != ""
+	}
 	return p.INN != "" && firstNonEmpty(p.Name, p.FullName) != "" && p.TaxSystem != ""
 }
 
 func (p accountingProfile) partyLine() string {
 	parts := []string{firstNonEmpty(p.FullName, p.Name, p.AppName)}
+	if !p.russian() {
+		if p.RegNumber != "" {
+			parts = append(parts, "Reg. No. "+p.RegNumber)
+		}
+		if p.TaxID != "" {
+			parts = append(parts, "Tax ID "+p.TaxID)
+		}
+		if p.Address != "" {
+			parts = append(parts, p.Address)
+		}
+		if p.IBAN != "" {
+			bank := "IBAN " + p.IBAN
+			if p.SWIFT != "" {
+				bank += ", SWIFT " + p.SWIFT
+			}
+			parts = append(parts, bank)
+		}
+		return strings.Join(parts, ", ")
+	}
 	if p.INN != "" {
 		parts = append(parts, "ИНН "+p.INN)
 	}
@@ -187,6 +230,9 @@ func (p accountingProfile) receipt(email string) *payments.Receipt {
 }
 
 func (p *accountingProfile) validate() string {
+	if !p.russian() {
+		return p.validateForeign()
+	}
 	switch {
 	case p.LegalForm != "" && !slices.Contains(accountingLegalForms, p.LegalForm):
 		return "неизвестная организационно-правовая форма"
@@ -222,6 +268,30 @@ func (p *accountingProfile) validate() string {
 	return ""
 }
 
+func (p *accountingProfile) validateForeign() string {
+	switch {
+	case p.LegalForm != "" && !slices.Contains(accountingLegalForms, p.LegalForm):
+		return "неизвестная организационно-правовая форма"
+	case p.TaxSystem != "" && !slices.Contains(accountingTaxSystems, p.TaxSystem):
+		return "неизвестная система налогообложения"
+	case p.ReceiptMode != "" && !slices.Contains(accountingReceiptModes, p.ReceiptMode):
+		return "неизвестный способ расчёта в чеке"
+	case utf8.RuneCountInString(p.TaxID) > 32:
+		return "налоговый номер — не длиннее 32 символов"
+	case utf8.RuneCountInString(p.RegNumber) > 32:
+		return "регистрационный номер — не длиннее 32 символов"
+	case p.IBAN != "" && !ibanPattern.MatchString(strings.ToUpper(strings.ReplaceAll(p.IBAN, " ", ""))):
+		return "IBAN указан неверно: от 15 до 34 символов, буквы и цифры"
+	case p.SWIFT != "" && !swiftPattern.MatchString(strings.ToUpper(p.SWIFT)):
+		return "SWIFT/BIC состоит из 8 или 11 символов"
+	case p.Timezone != "" && !validTimezone(p.Timezone):
+		return "неизвестный часовой пояс"
+	case utf8.RuneCountInString(p.ReceiptItem) > 128:
+		return "название позиции в чеке — не длиннее 128 символов"
+	}
+	return ""
+}
+
 func (h *Handler) AdminAccountingRequisites(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, h.accountingRequisitesPayload(r.Context()))
 }
@@ -241,6 +311,14 @@ func (h *Handler) AdminAccountingRequisitesUpdate(w http.ResponseWriter, r *http
 		*f.value = strings.TrimSpace(*f.value)
 	}
 	body.KPP = strings.ToUpper(body.KPP)
+	body.Country = regions.NormalizeCountry(body.Country)
+	if body.Country == "" {
+		body.Country = defaultSellerCountry
+	}
+	if !regions.ValidCountry(body.Country) {
+		writeError(w, http.StatusBadRequest, "страна продавца указана неверно")
+		return
+	}
 	if msg := body.validate(); msg != "" {
 		writeError(w, http.StatusBadRequest, msg)
 		return

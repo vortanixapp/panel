@@ -839,6 +839,7 @@ func (h *Handler) debitWalletForRentSource(
 	`, walletID, -amount, desc, sourceType, nullableUUID(sourceID)).Scan(&txID); err != nil {
 		return "", err
 	}
+	h.recordServiceTax(ctx, tx, txID, claims.UserID, sourceType, amount)
 	if err := tx.Commit(ctx); err != nil {
 		return "", err
 	}

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { CountrySelect } from "@/components/accounting/country-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,11 @@ const EMPTY: AccountingRequisites = {
   legal_form: "",
   name: "",
   full_name: "",
+  country: "RU",
+  tax_id: "",
+  reg_number: "",
+  iban: "",
+  swift: "",
   inn: "",
   kpp: "",
   ogrn: "",
@@ -101,6 +107,7 @@ export function AccountingRequisitesForm() {
   }
 
   const options = query.data;
+  const russian = (form.country || "RU") === "RU";
   const individual = form.legal_form === "ip" || form.legal_form === "npd";
   const npd = form.tax_system === "npd";
 
@@ -134,6 +141,9 @@ export function AccountingRequisitesForm() {
       </div>
 
       <Section title={t("admin.accounting.section_company")}>
+        <Field label={t("admin.accounting.field.country")} hint={t("admin.accounting.field.country_hint")} wide>
+          <CountrySelect value={form.country || "RU"} onChange={(code) => setField("country", code)} />
+        </Field>
         <Field label={t("admin.accounting.field.legal_form")}>
           <Select
             value={form.legal_form || EMPTY_OPTION}
@@ -167,8 +177,17 @@ export function AccountingRequisitesForm() {
         <Field label={t("admin.accounting.field.full_name")} wide>
           {text("full_name")}
         </Field>
-        <Field label={t("admin.accounting.field.inn")}>{text("inn", { mono: true, digits: 12 })}</Field>
-        {!individual ? (
+        {!russian ? (
+          <>
+            <Field label={t("admin.accounting.field.tax_id")} hint={t("admin.accounting.field.tax_id_hint")}>
+              {text("tax_id", { mono: true })}
+            </Field>
+            <Field label={t("admin.accounting.field.reg_number")}>{text("reg_number", { mono: true })}</Field>
+          </>
+        ) : (
+          <Field label={t("admin.accounting.field.inn")}>{text("inn", { mono: true, digits: 12 })}</Field>
+        )}
+        {russian && !individual ? (
           <Field label={t("admin.accounting.field.kpp")}>
             <Input
               value={form.kpp}
@@ -178,7 +197,9 @@ export function AccountingRequisitesForm() {
             />
           </Field>
         ) : null}
-        <Field label={t("admin.accounting.field.ogrn")}>{text("ogrn", { mono: true, digits: 15 })}</Field>
+        {russian ? (
+          <Field label={t("admin.accounting.field.ogrn")}>{text("ogrn", { mono: true, digits: 15 })}</Field>
+        ) : null}
         <Field label={t("admin.accounting.field.address")} wide>
           {text("address")}
         </Field>
@@ -190,13 +211,22 @@ export function AccountingRequisitesForm() {
         <Field label={t("admin.accounting.field.bank_name")} wide>
           {text("bank_name")}
         </Field>
-        <Field label={t("admin.accounting.field.bank_bik")}>{text("bank_bik", { mono: true, digits: 9 })}</Field>
-        <Field label={t("admin.accounting.field.bank_account")}>
-          {text("bank_account", { mono: true, digits: 20 })}
-        </Field>
-        <Field label={t("admin.accounting.field.bank_corr_account")}>
-          {text("bank_corr_account", { mono: true, digits: 20 })}
-        </Field>
+        {russian ? (
+          <>
+            <Field label={t("admin.accounting.field.bank_bik")}>{text("bank_bik", { mono: true, digits: 9 })}</Field>
+            <Field label={t("admin.accounting.field.bank_account")}>
+              {text("bank_account", { mono: true, digits: 20 })}
+            </Field>
+            <Field label={t("admin.accounting.field.bank_corr_account")}>
+              {text("bank_corr_account", { mono: true, digits: 20 })}
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label={t("admin.accounting.field.iban")}>{text("iban", { mono: true })}</Field>
+            <Field label={t("admin.accounting.field.swift")}>{text("swift", { mono: true })}</Field>
+          </>
+        )}
       </Section>
 
       <Section title={t("admin.accounting.section_signer")}>
@@ -230,6 +260,7 @@ export function AccountingRequisitesForm() {
             </SelectContent>
           </Select>
         </Field>
+        {russian ? (
         <Field label={t("admin.accounting.field.vat")}>
           <Select value={form.vat || "none"} disabled={npd} onValueChange={(v) => setField("vat", v)}>
             <SelectTrigger className="w-full">
@@ -244,11 +275,15 @@ export function AccountingRequisitesForm() {
             </SelectContent>
           </Select>
         </Field>
+        ) : (
+          <p className="text-sm text-muted-foreground sm:col-span-2">{t("admin.accounting.vat_from_table")}</p>
+        )}
         <Field label={t("admin.accounting.field.timezone")} hint={t("admin.accounting.field.timezone_hint")} wide>
           {text("timezone", { placeholder: "Europe/Moscow" })}
         </Field>
       </Section>
 
+      {russian ? (
       <Section title={t("admin.accounting.section_receipts")}>
         {npd ? (
           <p className="text-sm text-muted-foreground sm:col-span-2">{t("admin.accounting.npd_hint")}</p>
@@ -276,6 +311,7 @@ export function AccountingRequisitesForm() {
         </Field>
         <p className="text-xs text-muted-foreground sm:col-span-2">{t("admin.accounting.receipts_hint")}</p>
       </Section>
+      ) : null}
 
       <Button type="submit" disabled={saveMut.isPending}>
         {t("common.save")}

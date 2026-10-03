@@ -6749,6 +6749,11 @@ export type AccountingRequisites = {
   legal_form: string;
   name: string;
   full_name: string;
+  country: string;
+  tax_id: string;
+  reg_number: string;
+  iban: string;
+  swift: string;
   inn: string;
   kpp: string;
   ogrn: string;
@@ -6785,6 +6790,27 @@ export async function saveAccountingRequisites(data: AccountingRequisites) {
   return apiFetch<AccountingRequisitesResponse>("/v1/admin/accounting/requisites", {
     method: "PUT",
     body: JSON.stringify(data),
+  });
+}
+
+export type TaxRate = {
+  id: number;
+  country: string;
+  subdivision: string;
+  label: string;
+  rate: number;
+  enabled: boolean;
+  region: string;
+};
+
+export async function fetchTaxRates() {
+  return apiFetch<{ rates: TaxRate[]; seller_country: string }>("/v1/admin/accounting/tax-rates");
+}
+
+export async function saveTaxRates(rates: { id: number; rate: number; enabled: boolean }[]) {
+  return apiFetch<{ status: string; count: number }>("/v1/admin/accounting/tax-rates", {
+    method: "PUT",
+    body: JSON.stringify({ rates }),
   });
 }
 

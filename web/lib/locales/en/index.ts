@@ -1,3 +1,4 @@
+import { accountingMulti } from "./accounting-multi";
 import { adminAgents } from "./admin-agents";
 import { adminContent } from "./admin-content";
 import { adminInfra } from "./admin-infra";
@@ -46,6 +47,7 @@ export const EN = {
   ...adminInfra,
   ...adminAgents,
   ...adminContent,
+  ...accountingMulti,
   ...adminTasks,
   ...panelTransfer,
   ...profileFields,
