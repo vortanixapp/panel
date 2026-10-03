@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { confirmAction } from "@/components/action-dialog";
+import { RegionPicker } from "@/components/accounting/region-picker";
 import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,9 @@ function validate(t: Translate, item: RegistryItem, value: string): string {
       return t("admin.settings.reg.error.range", { min: item.min, max: item.max });
     }
   }
+  if (item.kind === "multi" && text === "") {
+    return t("admin.settings.reg.error.list");
+  }
   if (item.kind === "string" && text.length > (item.max > 0 ? item.max : 500)) {
     return t("admin.settings.reg.error.length", { max: item.max > 0 ? item.max : 500 });
   }
@@ -106,6 +110,24 @@ function RegistryField({
         onCheckedChange={(checked) => onChange(checked ? "1" : "0")}
         accent={modified}
       />
+    );
+  }
+
+  if (item.kind === "multi") {
+    const options = item.options ?? [];
+    const chosen = value.split(",").filter(Boolean);
+    return (
+      <div className="flex flex-col gap-2">
+        <Label className="text-xs font-normal text-muted-foreground">{label}</Label>
+        <RegionPicker
+          value={chosen}
+          options={options}
+          label={(option) => t(`admin.settings.reg.${item.key}.option.${option}`)}
+          allLabel={t("accounting.region.all")}
+          onChange={(next) => onChange(next.join(","))}
+        />
+        {error ? <span className="text-[11px] text-destructive">{error}</span> : null}
+      </div>
     );
   }
 

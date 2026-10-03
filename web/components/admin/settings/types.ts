@@ -6,7 +6,8 @@ export type RegistryGroup =
   | "retention"
   | "nodes"
   | "uploads"
-  | "interface";
+  | "interface"
+  | "accounting";
 
 export type SettingsTab =
   | "main"
@@ -21,7 +22,7 @@ export type RegistryItem = {
   key: string;
   group: RegistryGroup;
   section: string;
-  kind: "int" | "bool" | "string" | "enum" | "intlist";
+  kind: "int" | "bool" | "string" | "enum" | "intlist" | "multi";
   default: string;
   min: number;
   max: number;

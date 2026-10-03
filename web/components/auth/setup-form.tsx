@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/password-input";
+import { RegionPicker } from "@/components/accounting/region-picker";
+import { ACCOUNTING_REGIONS } from "@/lib/accounting-regions";
 import { AuthAside, AuthShell } from "@/components/auth/auth-shell";
 import { adoptSession, bootstrapPanel } from "@/lib/api";
 import { postLoginPath } from "@/lib/auth-redirect";
@@ -29,6 +31,7 @@ function buildSchema(t: TranslateFn) {
     panelName: z.string().min(1, t("auth.setup.error_panel_required")),
     email: z.email({ error: t("auth.setup.error_email_invalid") }),
     password: z.string().min(8, t("auth.error.password_min", { n: 8 })),
+    regions: z.array(z.string()).min(1, t("auth.setup.error_regions_required")),
   });
 }
 
@@ -68,6 +71,7 @@ export function SetupForm() {
       panelName: "",
       email: "",
       password: "",
+      regions: ["cis"],
     },
   });
 
@@ -76,7 +80,12 @@ export function SetupForm() {
   async function onSubmit(values: FormValues) {
     setError("");
     try {
-      const boot = await bootstrapPanel(values.email, values.password, values.panelName);
+      const boot = await bootstrapPanel(
+        values.email,
+        values.password,
+        values.panelName,
+        values.regions
+      );
       queryClient.clear();
       adoptSession();
       window.location.replace(postLoginPath("owner"));
@@ -124,6 +133,29 @@ export function SetupForm() {
                   />
                 </FormControl>
                 <FormDescription>{t("auth.setup.panel_hint")}</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="regions"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("auth.setup.regions_label")}</FormLabel>
+                <FormControl>
+                  <RegionPicker
+                    value={field.value}
+                    options={ACCOUNTING_REGIONS}
+                    label={(option) => t(`accounting.region.${option}`)}
+                    note={(option) => t(`accounting.region.${option}.note`)}
+                    allLabel={t("accounting.region.all")}
+                    disabled={loading}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                <FormDescription>{t("auth.setup.regions_hint")}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

@@ -259,7 +259,8 @@ export async function fetchSetupStatus() {
 export async function bootstrapPanel(
   email: string,
   password: string,
-  panelName?: string
+  panelName?: string,
+  accountingRegions?: string[]
 ) {
   return apiFetch<{
     access_token: string;
@@ -271,6 +272,7 @@ export async function bootstrapPanel(
       owner_email: email,
       owner_password: password,
       panel_name: panelName,
+      accounting_regions: accountingRegions,
     }),
   });
 }

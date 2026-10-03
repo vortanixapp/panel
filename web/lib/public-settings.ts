@@ -1,4 +1,5 @@
 import { injectedBranding } from "@/lib/appearance";
+import { parseAccountingRegions } from "@/lib/accounting-regions";
 
 export type PublicSettings = {
   registrationEnabled: boolean;
@@ -22,6 +23,7 @@ export type PublicSettings = {
   activityPageSize: number;
   searchDebounceMs: number;
   cookieNoticeDays: number;
+  accountingRegions: string[];
 };
 
 export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
@@ -46,6 +48,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   activityPageSize: 100,
   searchDebounceMs: 300,
   cookieNoticeDays: 0,
+  accountingRegions: ["cis"],
 };
 
 type Raw = Record<string, unknown> | null | undefined;
@@ -92,6 +95,7 @@ export function resolvePublicSettings(raw: Raw): PublicSettings {
     activityPageSize: int(raw, "ui.activity_page_size", d.activityPageSize, 20, 500),
     searchDebounceMs: int(raw, "ui.search_debounce_ms", d.searchDebounceMs, 100, 1500),
     cookieNoticeDays: int(raw, "ui.cookie_notice_days", d.cookieNoticeDays, 0, 3650),
+    accountingRegions: parseAccountingRegions(raw?.["accounting.regions"]),
   };
 }
 

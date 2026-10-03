@@ -17,6 +17,7 @@ import { registryBilling } from "./registry-billing";
 import { registryNotifications } from "./registry-notifications";
 import { registryRetention } from "./registry-retention";
 import { registryInterface } from "./registry-interface";
+import { registryAccounting } from "./registry-accounting";
 import { registryNodes } from "./registry-nodes";
 import { registryServers } from "./registry-servers";
 import { registryUploads } from "./registry-uploads";
@@ -52,6 +53,7 @@ export const RU = {
   ...registryServers,
   ...registryNotifications,
   ...registryRetention,
+  ...registryAccounting,
   ...registryNodes,
   ...registryInterface,
   ...registryUploads,

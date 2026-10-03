@@ -15,6 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/pkg/regions"
 	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
@@ -62,9 +63,10 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 }
 
 type bootstrapRequest struct {
-	OwnerEmail    string `json:"owner_email"`
-	OwnerPassword string `json:"owner_password"`
-	PanelName     string `json:"panel_name"`
+	OwnerEmail    string   `json:"owner_email"`
+	OwnerPassword string   `json:"owner_password"`
+	PanelName     string   `json:"panel_name"`
+	Regions       []string `json:"accounting_regions"`
 }
 
 func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +120,20 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 	`, panelName); err != nil {
 		writeError(w, http.StatusInternalServerError, "Не удалось сохранить имя панели")
 		return
+	}
+	if len(req.Regions) > 0 {
+		list := regions.ParseList(strings.Join(req.Regions, ","))
+		if len(list) == 0 {
+			writeError(w, http.StatusBadRequest, "Выберите регионы бухгалтерии")
+			return
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO core.tenant_settings (key, value) VALUES ('accounting.regions', to_jsonb($1::text))
+			ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+		`, strings.Join(list, ",")); err != nil {
+			writeError(w, http.StatusInternalServerError, "Не удалось сохранить регионы бухгалтерии")
+			return
+		}
 	}
 
 	var userID string

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,6 +19,7 @@ const (
 	KindString  Kind = "string"
 	KindEnum    Kind = "enum"
 	KindIntList Kind = "intlist"
+	KindMulti   Kind = "multi"
 )
 
 const (
@@ -307,6 +309,25 @@ func (s *Setting) Normalize(input string) (string, error) {
 			}
 		}
 		return "", fmt.Errorf("недопустимый вариант")
+	case KindMulti:
+		chosen := map[string]bool{}
+		for _, part := range strings.FieldsFunc(input, func(r rune) bool { return r == ',' || r == ';' || r == ' ' }) {
+			part = strings.TrimSpace(part)
+			if !slices.Contains(s.Options, part) {
+				return "", fmt.Errorf("недопустимый вариант")
+			}
+			chosen[part] = true
+		}
+		out := make([]string, 0, len(chosen))
+		for _, o := range s.Options {
+			if chosen[o] {
+				out = append(out, o)
+			}
+		}
+		if len(out) == 0 {
+			return "", fmt.Errorf("выберите хотя бы один вариант")
+		}
+		return strings.Join(out, ","), nil
 	case KindString:
 		limit := int(s.Max)
 		if limit <= 0 || limit > maxStringSize {
@@ -355,6 +376,14 @@ func (s *Setting) Typed(raw string) any {
 		return raw == "1"
 	case KindIntList:
 		return parseList(raw)
+	case KindMulti:
+		parts := []string{}
+		for _, part := range strings.Split(raw, ",") {
+			if part = strings.TrimSpace(part); part != "" {
+				parts = append(parts, part)
+			}
+		}
+		return parts
 	}
 	return raw
 }

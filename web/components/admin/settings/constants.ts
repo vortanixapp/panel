@@ -9,6 +9,7 @@ export const REGISTRY_GROUPS: RegistryGroup[] = [
   "nodes",
   "uploads",
   "interface",
+  "accounting",
 ];
 
 export function isRegistryGroup(value: string): value is RegistryGroup {
