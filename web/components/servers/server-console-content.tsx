@@ -16,12 +16,12 @@ import {
 } from "@/components/servers/console/use-console-stream";
 import { Btn, Panel, VX_FAINT, VX_INPUT_MONO, VX_MUTED } from "@/components/vx/panel-ui";
 import { useT } from "@/hooks/use-translations";
-import { fetchServerConsoleProfile, fetchServerStatus } from "@/lib/api";
+import { useServerLiveStatus } from "@/hooks/use-server-live-status";
+import { fetchServerConsoleProfile } from "@/lib/api";
 import type { TranslateFn } from "@/lib/i18n";
 import type { PanelVariant } from "@/lib/panel-paths";
 import { cn } from "@/lib/utils";
 
-import { pollMs } from "@/lib/public-settings";
 const STATUS_DOT: Record<ConsoleStatus, string> = {
   connecting: "bg-[var(--vx-warn)]",
   connected: "bg-[var(--vx-info)]",
@@ -55,12 +55,7 @@ export function ServerConsolePanel() {
     staleTime: 10 * 60_000,
   });
 
-  const { data: live } = useQuery({
-    queryKey: ["server-console-status", id],
-    queryFn: () => fetchServerStatus(id),
-    enabled: !!id,
-    refetchInterval: pollMs(15_000),
-  });
+  const { data: live } = useServerLiveStatus(id);
 
   const stream = useConsoleStream(id, meta?.profile);
   const counts = useMemo(() => countLines(stream.lines), [stream.lines]);

@@ -91,6 +91,7 @@ func (h *Handler) GetServerStatus(w http.ResponseWriter, r *http.Request) {
 		"online_players":      0,
 		"players_online":      []any{},
 		"current_map":         "",
+		"answered":            false,
 	}
 	if live, ok := h.cache.GetServerStatus(r.Context(), serverID); ok {
 		effective := resolveEffectiveStatus(status, runtime, &live)
@@ -112,7 +113,10 @@ func (h *Handler) GetServerStatus(w http.ResponseWriter, r *http.Request) {
 			"port":    port,
 		})
 		if agentErr == nil && result != nil {
-			for _, k := range []string{"online", "max_players", "online_players", "players_online", "current_map", "runtime_status"} {
+			if _, has := result["answered"]; !has {
+				resp["answered"] = true
+			}
+			for _, k := range []string{"online", "max_players", "online_players", "players_online", "current_map", "runtime_status", "answered"} {
 				if v, ok := result[k]; ok {
 					resp[k] = v
 				}

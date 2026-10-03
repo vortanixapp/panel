@@ -48,7 +48,6 @@ import {
   fetchBilling,
   fetchServerBackups,
   fetchServerRuntime,
-  fetchServerStatus,
   listServerMapsFolder,
   previewServerRenew,
   reinstallServer,
@@ -65,10 +64,10 @@ import { dateLocaleTag, t as translate } from "@/lib/i18n";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useMe, useServerDetail, useServerMetrics } from "@/hooks/use-queries";
+import { useServerLiveStatus } from "@/hooks/use-server-live-status";
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
 
-import { pollMs } from "@/lib/public-settings";
 const OVERVIEW_BACKUPS = 3;
 
 function formatBackupSize(bytes: number): string {
@@ -149,19 +148,11 @@ export function ServerOverviewTab() {
     reason: string;
   }>({ open: false, type: "kick", name: "", reason: "" });
 
-  const { data: liveStatus } = useQuery({
-    queryKey: queryKeys.serverStatus(id),
-    queryFn: () => fetchServerStatus(id),
-    enabled: !!id,
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      const runtime = (data?.runtime_status || server?.runtime_status || "").toLowerCase();
-      const prov = (server?.provisioning_status || "").toLowerCase();
-      const transitional = ["starting", "stopping", "restarting"].includes(runtime);
-      const provisioning = ["pending", "installing", "provisioning", "reinstalling", "updating"].includes(prov);
-      return transitional || provisioning ? pollMs(3000) : pollMs(10000);
-    },
-  });
+  const { data: liveStatus, isError: liveError } = useServerLiveStatus(
+    id,
+    server?.runtime_status,
+    server?.provisioning_status
+  );
 
   const mapsFolderQuery = useQuery({
     queryKey: queryKeys.serverMapsFolder(id),
@@ -320,10 +311,13 @@ export function ServerOverviewTab() {
     ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86_400_000))
     : 0;
 
+  const liveReady = !!liveStatus || liveError;
   const playersOnline = liveStatus?.players_online ?? [];
   const onlineCount = liveStatus?.online_players ?? playersOnline.length;
-  const maxPlayers = liveStatus?.max_players ?? server.tariff?.slots ?? 0;
-  const currentMap = liveStatus?.current_map ?? server.current_map ?? "—";
+  const maxPlayers = liveStatus?.max_players || server.tariff?.slots || 0;
+  const currentMap = liveStatus?.current_map || server.current_map || "—";
+  const slotsLabel = liveReady ? `${onlineCount} / ${maxPlayers || "—"}` : "… / …";
+  const mapLabel = !running ? "—" : liveReady ? currentMap : "…";
   const renewalPeriods = server.tariff?.renewal_periods?.length
     ? server.tariff.renewal_periods
     : [15, 30, 60, 180];
@@ -378,7 +372,7 @@ export function ServerOverviewTab() {
       t("servers.overview.row_version"),
       versions.find((v) => v.id === currentVersionId)?.name || "—",
     ],
-    [t("servers.overview.row_map"), running ? currentMap || "—" : "—"],
+    [t("servers.overview.row_map"), mapLabel],
     [t("common.tariff"), server.tariff?.name || "—"],
     [t("common.location"), server.location?.name || "—"],
     [t("common.created_at"), formatDateTime(server.created_at)],
@@ -450,13 +444,13 @@ export function ServerOverviewTab() {
       <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
         <Tile
           label={t("servers.overview.tile_online")}
-          value={`${onlineCount} / ${maxPlayers || "—"}`}
+          value={slotsLabel}
           sub={
             running
               ? t("servers.overview.online_polled")
               : t("servers.overview.online_down")
           }
-          pct={maxPlayers > 0 ? (onlineCount / maxPlayers) * 100 : 0}
+          pct={liveReady && maxPlayers > 0 ? (onlineCount / maxPlayers) * 100 : 0}
         />
         <Tile
           label="CPU"
@@ -713,7 +707,7 @@ export function ServerOverviewTab() {
             title={t("servers.overview.panel_players")}
             aside={
               <span className={cn("font-mono text-[11px]", VX_FAINT)}>
-                {onlineCount} / {maxPlayers || "—"}
+                {slotsLabel}
               </span>
             }
             flush

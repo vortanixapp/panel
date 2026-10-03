@@ -20,6 +20,7 @@ type GameQueryResult struct {
 	RuntimeStatus string   `json:"runtime_status"`
 	PingMS        int      `json:"ping_ms"`
 	TPS           float64  `json:"tps"`
+	Answered      bool     `json:"answered"`
 }
 
 type Player struct {
@@ -42,7 +43,7 @@ func QueryGameServer(ctx context.Context, serverID, gameID string, limits map[st
 	basePort := PrimaryPortFromServer(port)
 	host, queryPort := QueryTarget(ctx, serverID, basePort+gamecatalog.QueryPortOffset(game), "udp")
 
-	answered := false
+	answered := !isSourceGame(game) && !isMcBedrockGame(game) && !isSampGame(game)
 	queryStart := time.Now()
 	switch {
 	case isSourceGame(game):
@@ -86,6 +87,7 @@ func QueryGameServer(ctx context.Context, serverID, gameID string, limits map[st
 		}
 	}
 
+	out.Answered = answered
 	if answered {
 		out.PingMS = int(time.Since(queryStart).Milliseconds())
 	}

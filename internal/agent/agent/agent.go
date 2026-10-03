@@ -761,7 +761,7 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 			"online": query.Online, "max_players": query.MaxPlayers,
 			"online_players": query.OnlinePlayers, "players_online": query.PlayersOnline,
 			"current_map": query.CurrentMap, "runtime_status": query.RuntimeStatus,
-			"ping_ms": query.PingMS, "tps": query.TPS,
+			"ping_ms": query.PingMS, "tps": query.TPS, "answered": query.Answered,
 		})
 		return
 	case "stats":
