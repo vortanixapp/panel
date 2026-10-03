@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -189,41 +190,50 @@ func installSteam(ctx context.Context, dataDir string, spec InstallSpec, report 
 		}
 	}
 
+	if installCacheEnabled() {
+		if installSteamFromCache(ctx, dataDir, spec, report) {
+			report(StageDone, 100, "Файлы сервера установлены", "")
+			return nil
+		}
+		report(StageSteamCMD, 0, "Кэш узла недоступен, загрузка напрямую", "")
+	}
+
 	report(StageSteamCMD, 5, "Загрузка файлов игры", "")
-	sink := newLineScanner(func(line string) {
-		if pct := steamPercent(line); pct >= 0 {
-			report(StageSteamCMD, pct, "Загрузка файлов игры", line)
-			return
-		}
-		if steamcmdNoise(line) {
-			return
-		}
-		report(StageSteamCMD, -1, "", line)
-	})
-	err := runDockerStreaming(ctx, sink, steamcmdArgs(dataDir, spec)...)
-	_ = sink.Close()
-	if err != nil {
-		report(StageSteamCMD, 5, "Повторная попытка загрузки", "")
-		retrySink := newLineScanner(func(line string) {
-			if pct := steamPercent(line); pct >= 0 {
-				report(StageSteamCMD, pct, "Загрузка файлов игры", line)
-				return
-			}
-			report(StageSteamCMD, -1, "", line)
-		})
-		retryErr := runDockerStreaming(ctx, retrySink, steamcmdArgs(dataDir, spec)...)
-		_ = retrySink.Close()
-		if retryErr != nil {
-			return fmt.Errorf("steamcmd app_update %d: %w", spec.SteamAppID, retryErr)
-		}
+	if err := runSteamcmd(ctx, dataDir, spec, true, report); err != nil {
+		return err
 	}
 	report(StageDone, 100, "Файлы сервера установлены", "")
 	return nil
 }
 
-func steamcmdArgs(dataDir string, spec InstallSpec) []string {
+func runSteamcmd(ctx context.Context, dir string, spec InstallSpec, validate bool, report ProgressFunc) error {
+	run := func() error {
+		sink := newLineScanner(func(line string) {
+			if pct := steamPercent(line); pct >= 0 {
+				report(StageSteamCMD, pct, "Загрузка файлов игры", line)
+				return
+			}
+			if steamcmdNoise(line) {
+				return
+			}
+			report(StageSteamCMD, -1, "", line)
+		})
+		err := runDockerStreaming(ctx, sink, steamcmdArgs(dir, spec, validate)...)
+		_ = sink.Close()
+		return err
+	}
+	if err := run(); err != nil {
+		report(StageSteamCMD, 5, "Повторная попытка загрузки", "")
+		if retryErr := run(); retryErr != nil {
+			return fmt.Errorf("steamcmd app_update %d: %w", spec.SteamAppID, retryErr)
+		}
+	}
+	return nil
+}
+
+func steamcmdArgs(dataDir string, spec InstallSpec, validate bool) []string {
 	app := fmt.Sprint(spec.SteamAppID)
-	args := []string{"run", "--rm"}
+	args := []string{"run", "--rm", "--cpu-shares", strconv.Itoa(backgroundCPUShares)}
 	args = append(args, hardeningArgs()...)
 	args = append(args,
 		"-v", dataDir+":/data",
@@ -236,11 +246,14 @@ func steamcmdArgs(dataDir string, spec InstallSpec) []string {
 	if spec.SteamModConfig != "" {
 		args = append(args, "+app_set_config", app, "mod", spec.SteamModConfig)
 	}
+	update := []string{"+app_update", app}
 	if spec.SteamBranch != "" {
-		args = append(args, "+app_update", app, "-beta", spec.SteamBranch, "validate")
-	} else {
-		args = append(args, "+app_update", app, "validate")
+		update = append(update, "-beta", spec.SteamBranch)
 	}
+	if validate {
+		update = append(update, "validate")
+	}
+	args = append(args, update...)
 	return append(args, "+quit")
 }
 
@@ -267,10 +280,28 @@ func installArchive(ctx context.Context, dataDir, url string, report ProgressFun
 	defer os.RemoveAll(tmpDir)
 
 	archivePath := filepath.Join(tmpDir, "archive")
-	report(StageDownload, 0, "Скачивание файлов сервера", url)
-	meta, err := download(ctx, url, archivePath, report)
-	if err != nil {
-		return err
+	var meta downloadMeta
+	borrowed := false
+	if installCacheEnabled() {
+		if cached, ok := lockedCachedArchive(url); ok {
+			defer cached.mu.Unlock()
+			archivePath, meta, borrowed = cached.path, cached.meta, true
+			report(StageDownload, 100, "Архив взят из кэша узла", url)
+		}
+	}
+	if !borrowed {
+		report(StageDownload, 0, "Скачивание файлов сервера", url)
+		var err error
+		meta, err = download(ctx, url, archivePath, report)
+		if err != nil {
+			return err
+		}
+		if installCacheEnabled() {
+			if cached, ok := lockedStoreArchive(url, archivePath, meta); ok {
+				defer cached.mu.Unlock()
+				archivePath, borrowed = cached.path, true
+			}
+		}
 	}
 
 	kind := archiveKindFromURL(url)
@@ -281,8 +312,16 @@ func installArchive(ctx context.Context, dataDir, url string, report ProgressFun
 	switch kind {
 	case archiveJar:
 		report(StageExtract, 90, "Размещение server.jar", "")
-		if err := moveFile(archivePath, filepath.Join(dataDir, "server.jar")); err != nil {
-			return err
+		target := filepath.Join(dataDir, "server.jar")
+		var jarErr error
+		if borrowed {
+			_ = os.RemoveAll(target)
+			jarErr = copyPath(archivePath, target)
+		} else {
+			jarErr = moveFile(archivePath, target)
+		}
+		if jarErr != nil {
+			return jarErr
 		}
 		report(StageDone, 100, "Файлы сервера установлены", "")
 		return nil

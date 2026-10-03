@@ -5,6 +5,9 @@ export const registryNodes = {
   "admin.settings.reg.section.nodes.presence": "Доступность узлов",
   "admin.settings.reg.section.nodes.updates": "Обновление агентов",
   "admin.settings.reg.section.nodes.agent": "Работа агента",
+  "admin.settings.reg.section.nodes.performance": "Скорость и изоляция серверов",
+  "admin.settings.reg.section.nodes.performance.description":
+    "Кэш установки на узле ускоряет создание серверов, а веса CPU и мягкий лимит памяти не дают одному серверу мешать соседям. Применяется к серверам, запущенным после изменения.",
   "admin.settings.reg.section.nodes.diagnostics": "Диагностика диска",
   "admin.settings.reg.section.nodes.diagnostics.description":
     "Пороги, при которых проверка диска на узле показывает предупреждение или ошибку.",
@@ -36,6 +39,20 @@ export const registryNodes = {
     "Docker хранит логи игрового сервера в файлах и ротирует их. Применяется к серверам, созданным или переустановленным после изменения",
   "admin.settings.reg.agent.log_max_files": "Файлов логов на сервер",
   "admin.settings.reg.agent.temp_file_age_min": "Временные файлы удаляются старше",
+
+  "admin.settings.reg.agent.install_cache": "Кэш установки игр на узле",
+  "admin.settings.reg.agent.install_cache.hint":
+    "Файлы Steam-игр и архивы скачиваются на узел один раз, новые серверы копируются из кэша (на файловых системах с reflink почти без расхода места)",
+  "admin.settings.reg.agent.install_cache_ttl_hours": "Обновлять кэш игры не чаще, чем раз в",
+  "admin.settings.reg.agent.install_cache_max_mb": "Размер кэша установки на узле",
+  "admin.settings.reg.agent.install_cache_max_mb.hint":
+    "При превышении удаляются самые давно использованные игры",
+  "admin.settings.reg.agent.cpu_fair_share": "Делить CPU по объёму памяти",
+  "admin.settings.reg.agent.cpu_fair_share.hint":
+    "Когда процессор занят, сервер с большим объёмом памяти получает больше времени. Без нагрузки ничего не меняется",
+  "admin.settings.reg.agent.memory_reserve_percent": "Мягкий лимит памяти",
+  "admin.settings.reg.agent.memory_reserve_percent.hint":
+    "Доля от лимита сервера. При нехватке памяти на узле система сначала забирает её у серверов, превысивших эту долю. 0 — выключено",
 
   "admin.settings.reg.agent.disk_warn_free_mb": "Предупреждение: свободно меньше",
   "admin.settings.reg.agent.disk_fail_free_mb": "Ошибка: свободно меньше",

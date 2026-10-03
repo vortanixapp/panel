@@ -5,6 +5,9 @@ export const registryNodes = {
   "admin.settings.reg.section.nodes.presence": "Node availability",
   "admin.settings.reg.section.nodes.updates": "Agent updates",
   "admin.settings.reg.section.nodes.agent": "Agent behaviour",
+  "admin.settings.reg.section.nodes.performance": "Server speed and isolation",
+  "admin.settings.reg.section.nodes.performance.description":
+    "The install cache on a node speeds up creating servers, and CPU weights with a soft memory limit keep one server from hurting its neighbours. Applies to servers started after the change.",
   "admin.settings.reg.section.nodes.diagnostics": "Disk diagnostics",
   "admin.settings.reg.section.nodes.diagnostics.description":
     "Thresholds at which the node disk check reports a warning or an error.",
@@ -36,6 +39,20 @@ export const registryNodes = {
     "Docker keeps game server logs in files and rotates them. Applies to servers created or reinstalled after the change",
   "admin.settings.reg.agent.log_max_files": "Log files per server",
   "admin.settings.reg.agent.temp_file_age_min": "Temporary files are removed when older than",
+
+  "admin.settings.reg.agent.install_cache": "Game install cache on the node",
+  "admin.settings.reg.agent.install_cache.hint":
+    "Steam game files and archives are downloaded to the node once and new servers are copied from the cache (almost no extra space on filesystems with reflink)",
+  "admin.settings.reg.agent.install_cache_ttl_hours": "Refresh a game cache no more often than every",
+  "admin.settings.reg.agent.install_cache_max_mb": "Install cache size on the node",
+  "admin.settings.reg.agent.install_cache_max_mb.hint":
+    "When exceeded, the least recently used games are removed",
+  "admin.settings.reg.agent.cpu_fair_share": "Share CPU by memory size",
+  "admin.settings.reg.agent.cpu_fair_share.hint":
+    "When the processor is busy, a server with more memory gets more time. Nothing changes without load",
+  "admin.settings.reg.agent.memory_reserve_percent": "Soft memory limit",
+  "admin.settings.reg.agent.memory_reserve_percent.hint":
+    "Share of the server limit. When the node runs short of memory, the system reclaims it from servers above this share first. 0 turns it off",
 
   "admin.settings.reg.agent.disk_warn_free_mb": "Warning: free space below",
   "admin.settings.reg.agent.disk_fail_free_mb": "Error: free space below",

@@ -87,6 +87,27 @@ var (
 		Kind: KindInt, Default: "60", Min: 10, Max: 1440, Unit: UnitMin, Agent: true,
 	})
 
+	AgentInstallCache = def(Setting{
+		Key: "agent.install_cache", Group: GroupNodes, Section: "performance",
+		Kind: KindBool, Default: "0", Agent: true,
+	})
+	AgentInstallCacheTTL = def(Setting{
+		Key: "agent.install_cache_ttl_hours", Group: GroupNodes, Section: "performance",
+		Kind: KindInt, Default: "12", Min: 1, Max: 720, Unit: UnitHour, Agent: true,
+	})
+	AgentInstallCacheMaxMB = def(Setting{
+		Key: "agent.install_cache_max_mb", Group: GroupNodes, Section: "performance",
+		Kind: KindInt, Default: "204800", Min: 10240, Max: 10485760, Unit: UnitMB, Agent: true,
+	})
+	AgentCPUFairShare = def(Setting{
+		Key: "agent.cpu_fair_share", Group: GroupNodes, Section: "performance",
+		Kind: KindBool, Default: "0", Agent: true,
+	})
+	AgentMemoryReservePercent = def(Setting{
+		Key: "agent.memory_reserve_percent", Group: GroupNodes, Section: "performance",
+		Kind: KindInt, Default: "0", Min: 0, Max: 95, Unit: UnitPercent, Agent: true,
+	})
+
 	AgentDiskWarnMB = def(Setting{
 		Key: "agent.disk_warn_free_mb", Group: GroupNodes, Section: "diagnostics",
 		Kind: KindInt, Default: "10240", Min: 512, Max: 1048576, Unit: UnitMB, Agent: true,
