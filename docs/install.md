@@ -221,7 +221,9 @@ With SMTP configured, registration is confirmed by email: the account is created
 after the link in the message is opened, and an attempt to register an address
 that is already taken looks the same in the response as a successful one, so the
 set of addresses in the panel cannot be enumerated. To create accounts
-immediately, set `REGISTRATION_CONFIRM_EMAIL=off` in `deploy/.env`.
+immediately, turn off "Confirm registration by email" in Admin → Settings →
+Security, or set `REGISTRATION_CONFIRM_EMAIL=off` in `deploy/.env` as the default
+before the setting is first saved.
 
 ## Game images
 
