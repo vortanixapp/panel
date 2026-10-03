@@ -17,6 +17,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/relay"
 	"github.com/vortanixapp/panel/pkg/buildinfo"
 	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/updates"
 )
 
@@ -293,9 +294,9 @@ func agentUpdateView(raw []byte) map[string]any {
 		if stamp == "" {
 			stamp, _ = st["started_at"].(string)
 		}
-		if at, err := time.Parse(time.RFC3339Nano, stamp); err == nil && time.Since(at) > updates.AgentUpdateTimeout {
+		if at, err := time.Parse(time.RFC3339Nano, stamp); err == nil && time.Since(at) > updates.AgentUpdateTimeout() {
 			st["status"] = "failed"
-			st["error"] = "агент не сообщил о результате за 15 минут"
+			st["error"] = fmt.Sprintf("агент не сообщил о результате за %d мин", int(updates.AgentUpdateTimeout().Minutes()))
 		}
 	}
 	return st
@@ -317,13 +318,13 @@ func (h *Handler) startAgentUpdate(ctx context.Context, nodeID, target, image, s
 	var online, ssh bool
 	var version string
 	err := h.dbOf(ctx).QueryRow(ctx, `
-		SELECT COALESCE(d.status = 'online' AND d.last_seen_at > now() - interval '90 seconds', false),
+		SELECT COALESCE(d.status = 'online' AND d.last_seen_at > now() - make_interval(secs => $2::int), false),
 			COALESCE(d.version, ''),
 			(COALESCE(n.ssh_host, '') <> '' AND COALESCE(n.ssh_user, '') <> '' AND COALESCE(n.ssh_password_enc, '') <> '')
 		FROM core.nodes n
 		LEFT JOIN core.node_daemons d ON d.node_id = n.id
 		WHERE n.id::text = $1
-	`, nodeID).Scan(&online, &version, &ssh)
+	`, nodeID, int(settingsreg.NodesOfflineAfter.Int())).Scan(&online, &version, &ssh)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", errors.New("локация не найдена")
 	}

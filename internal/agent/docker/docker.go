@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func runDocker(ctx context.Context, args ...string) error {
@@ -147,8 +148,6 @@ var containerCapabilities = []string{
 	"CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID", "KILL", "SETGID", "SETUID", "NET_BIND_SERVICE",
 }
 
-const defaultPidsLimit = 2048
-
 func isRconSpec(spec gamecatalog.PortSpec) bool {
 	return strings.Contains(strings.ToUpper(spec.Purpose), "RCON")
 }
@@ -161,10 +160,17 @@ func publishRconPorts() bool {
 	return false
 }
 
+func stopArgs(container string) []string {
+	if wait := settingsreg.AgentStopTimeout.Int(); wait > 0 {
+		return []string{"stop", "-t", strconv.FormatInt(wait, 10), container}
+	}
+	return []string{"stop", container}
+}
+
 func pidsLimit() string {
 	raw := strings.TrimSpace(os.Getenv("VORTANIX_PIDS_LIMIT"))
 	if raw == "" {
-		return strconv.Itoa(defaultPidsLimit)
+		return strconv.FormatInt(settingsreg.AgentPidsLimit.Int(), 10)
 	}
 	n, err := strconv.Atoi(raw)
 	if err != nil || n <= 0 {
@@ -301,7 +307,7 @@ func memoryLimit(limits map[string]any) string {
 }
 
 func Stop(ctx context.Context, serverID string) error {
-	return exec.CommandContext(ctx, "docker", "stop", ContainerName(serverID)).Run()
+	return exec.CommandContext(ctx, "docker", stopArgs(ContainerName(serverID))...).Run()
 }
 
 func Kill(ctx context.Context, serverID string) error {
@@ -356,7 +362,7 @@ func lastLogLines(ctx context.Context, cname string) string {
 
 func Destroy(ctx context.Context, serverID string) error {
 	cname := ContainerName(serverID)
-	_ = exec.CommandContext(ctx, "docker", "stop", cname).Run()
+	_ = exec.CommandContext(ctx, "docker", stopArgs(cname)...).Run()
 	return exec.CommandContext(ctx, "docker", "rm", "-f", cname).Run()
 }
 

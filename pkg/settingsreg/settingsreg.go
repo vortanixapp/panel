@@ -109,6 +109,37 @@ func SetStatic(values map[string]string) {
 	store.mu.Unlock()
 }
 
+func SetStaticTyped(values map[string]any) {
+	flat := make(map[string]string, len(values))
+	for key, value := range values {
+		switch v := value.(type) {
+		case string:
+			flat[key] = v
+		case bool:
+			if v {
+				flat[key] = "1"
+			} else {
+				flat[key] = "0"
+			}
+		case float64:
+			flat[key] = strconv.FormatInt(int64(v), 10)
+		case int:
+			flat[key] = strconv.Itoa(v)
+		case int64:
+			flat[key] = strconv.FormatInt(v, 10)
+		case []any:
+			parts := make([]string, 0, len(v))
+			for _, item := range v {
+				if n, ok := item.(float64); ok {
+					parts = append(parts, strconv.FormatInt(int64(n), 10))
+				}
+			}
+			flat[key] = strings.Join(parts, ",")
+		}
+	}
+	SetStatic(flat)
+}
+
 func Invalidate() {
 	store.mu.Lock()
 	store.loaded = time.Time{}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/dockerapi"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -81,9 +82,9 @@ func RunDiagnostics(ctx context.Context, in DiagnosticsInput, progress func(id s
 	switch {
 	case total == 0:
 		st = CheckSkip
-	case free < 2048 || pct > 95:
+	case free < settingsreg.AgentDiskFailMB.Int() || pct > float64(settingsreg.AgentDiskFailPercent.Int()):
 		st = CheckFail
-	case free < 10240 || pct > 90:
+	case free < settingsreg.AgentDiskWarnMB.Int() || pct > float64(settingsreg.AgentDiskWarnPercent.Int()):
 		st = CheckWarn
 	}
 	add(Check{ID: "disk_space", Status: st, Data: map[string]any{"path": root, "free_mb": free, "total_mb": total, "used_percent": pct}})

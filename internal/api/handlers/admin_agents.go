@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
@@ -263,7 +264,7 @@ func agentDaemonOnline(daemonStatus string, lastSeen *time.Time) bool {
 	if daemonStatus != "online" || lastSeen == nil {
 		return false
 	}
-	return time.Since(*lastSeen) < 90*time.Second
+	return time.Since(*lastSeen) < settingsreg.NodesOfflineAfter.Duration()
 }
 
 func formatLastSeenHuman(t time.Time) string {

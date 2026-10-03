@@ -32,6 +32,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/nodeevents"
 	"github.com/vortanixapp/panel/pkg/protocol"
 	"github.com/vortanixapp/panel/pkg/relaytls"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 type Agent struct {
@@ -320,6 +321,10 @@ func (a *Agent) loop() {
 			a.onWelcome(data)
 			continue
 		}
+		if messageType(data) == protocol.MsgAgentConfig {
+			a.onAgentConfig(data)
+			continue
+		}
 		a.handleCommand(data)
 	}
 }
@@ -381,7 +386,7 @@ func (a *Agent) handleBinaryMessage(data []byte) {
 }
 
 func (a *Agent) heartbeat(done <-chan struct{}) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(settingsreg.AgentHeartbeat.Duration())
 	defer ticker.Stop()
 	for {
 		select {
@@ -389,6 +394,7 @@ func (a *Agent) heartbeat(done <-chan struct{}) {
 			return
 		case <-ticker.C:
 		}
+		ticker.Reset(settingsreg.AgentHeartbeat.Duration())
 		payload := map[string]any{
 			"type":    protocol.MsgHeartbeat,
 			"node_id": a.nodeID,
@@ -413,7 +419,7 @@ func (a *Agent) heartbeat(done <-chan struct{}) {
 }
 
 func (a *Agent) metricsLoop(done <-chan struct{}) {
-	ticker := time.NewTicker(15 * time.Second)
+	ticker := time.NewTicker(settingsreg.AgentMetrics.Duration())
 	defer ticker.Stop()
 	tick := 0
 	for {
@@ -422,6 +428,7 @@ func (a *Agent) metricsLoop(done <-chan struct{}) {
 			return
 		case <-ticker.C:
 		}
+		ticker.Reset(settingsreg.AgentMetrics.Duration())
 		if !a.metricsBusy.CompareAndSwap(false, true) {
 			continue
 		}

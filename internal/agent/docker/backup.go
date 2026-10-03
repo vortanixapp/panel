@@ -67,7 +67,7 @@ func RestoreBackup(ctx context.Context, serverID, name string) error {
 	cname := ContainerName(serverID)
 	wasRunning, _ := isRunning(ctx, cname)
 	if wasRunning {
-		_ = exec.CommandContext(ctx, "docker", "stop", cname).Run()
+		_ = exec.CommandContext(ctx, "docker", stopArgs(cname)...).Run()
 	}
 	if err := extractBackup(ctx, serverID, cname, name); err != nil {
 		return err

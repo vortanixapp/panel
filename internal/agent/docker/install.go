@@ -13,11 +13,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const steamcmdImage = "steamcmd/steamcmd:latest"
 
-const installTimeout = 2 * time.Hour
+func installTimeout() time.Duration {
+	return settingsreg.AgentInstallTimeout.Duration()
+}
 
 const maxArchiveBytes = 32 << 30
 
@@ -106,7 +110,7 @@ func Install(ctx context.Context, serverID string, spec InstallSpec, report Prog
 		return nil
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, installTimeout)
+	ctx, cancel := context.WithTimeout(ctx, installTimeout())
 	defer cancel()
 
 	dataDir := serverDataDir(serverID)
@@ -152,7 +156,7 @@ func Update(ctx context.Context, serverID string, spec InstallSpec, report Progr
 	mu.Lock()
 	defer mu.Unlock()
 
-	ctx, cancel := context.WithTimeout(ctx, installTimeout)
+	ctx, cancel := context.WithTimeout(ctx, installTimeout())
 	defer cancel()
 
 	dataDir := serverDataDir(serverID)

@@ -10,10 +10,10 @@ import (
 
 	"github.com/vortanixapp/panel/internal/agent/docker"
 	"github.com/vortanixapp/panel/pkg/cronexpr"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
-	cronJobTimeout   = 10 * time.Minute
 	cronFailInterval = time.Hour
 	cronParallel     = 8
 )
@@ -198,7 +198,7 @@ func (s *cronScheduler) fire(serverID string, job docker.CronJob) {
 	}()
 	s.slots <- struct{}{}
 	defer func() { <-s.slots }()
-	ctx, cancel := context.WithTimeout(context.Background(), cronJobTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), settingsreg.AgentCronTimeout.Duration())
 	defer cancel()
 	if !s.isRunning(ctx, serverID) {
 		return

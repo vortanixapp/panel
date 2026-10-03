@@ -13,9 +13,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
-const (
-	diskLowFreeRatio = 0.1
-)
+const ()
 
 func (r *Runner) HealthWatchLoop(ctx context.Context) {
 	ticker := time.NewTicker(time.Hour)
@@ -199,7 +197,7 @@ func (r *Runner) checkNodeDiskSpace(ctx context.Context) {
 				continue
 			}
 		}
-		if total <= 0 || avail >= total*diskLowFreeRatio {
+		if total <= 0 || avail >= total*float64(settingsreg.NodesDiskLowPercent.Int())/100 {
 			continue
 		}
 		list = append(list, lowDisk{

@@ -13,6 +13,7 @@ import (
 	"github.com/vortanixapp/panel/internal/agent/docker"
 	"github.com/vortanixapp/panel/pkg/dockerapi"
 	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -164,12 +165,23 @@ func (a *Agent) onWelcome(data []byte) {
 		caps[c] = true
 	}
 	a.relayCaps.Store(caps)
+	if len(w.Config) > 0 {
+		settingsreg.SetStaticTyped(w.Config)
+	}
 	if t, err := time.Parse(time.RFC3339Nano, w.ServerTime); err == nil {
 		a.clockSkewMs.Store(time.Since(t).Milliseconds())
 	}
 	if caps[protocol.CapStateSnapshot] {
 		safeGo("state-snapshot", a.sendStateSnapshot)
 	}
+}
+
+func (a *Agent) onAgentConfig(data []byte) {
+	var msg protocol.AgentConfigMessage
+	if json.Unmarshal(data, &msg) != nil || len(msg.Values) == 0 {
+		return
+	}
+	settingsreg.SetStaticTyped(msg.Values)
 }
 
 func (a *Agent) relayHas(capability string) bool {

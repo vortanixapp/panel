@@ -10,12 +10,12 @@ import (
 	"github.com/vortanixapp/panel/pkg/buildinfo"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/updates"
 )
 
 const (
 	agentWatchInterval    = 5 * time.Minute
-	agentOutdatedGrace    = time.Hour
 	settingAgentTargetAt  = "updates.agents.target_seen"
 	agentOutdatedMaxNames = 10
 )
@@ -47,7 +47,7 @@ func (r *Runner) expireAgentUpdates(ctx context.Context) {
 		WHERE agent_update->>'status' IN ('pending', 'pulling', 'restarting')
 		  AND COALESCE(NULLIF(agent_update->>'updated_at', ''), agent_update->>'started_at')::timestamptz
 		      < now() - make_interval(secs => $1)
-	`, updates.AgentUpdateTimeout.Seconds()); err != nil {
+	`, updates.AgentUpdateTimeout().Seconds()); err != nil {
 		log.Printf("агенты: зависшие обновления не закрыты: %v", err)
 	}
 }
@@ -105,7 +105,7 @@ func (r *Runner) agentTargetAge(ctx context.Context, target string) time.Duratio
 
 func (r *Runner) notifyOutdatedAgents(ctx context.Context) {
 	target := buildinfo.Current()
-	if !updates.IsSemver(target) || r.agentTargetAge(ctx, target) < agentOutdatedGrace {
+	if !updates.IsSemver(target) || r.agentTargetAge(ctx, target) < settingsreg.NodesAgentOutdatedGrace.Duration() {
 		return
 	}
 	autoAll := r.updateSetting(ctx, updates.SettingAgentsAuto) == "1"

@@ -8,6 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -168,6 +170,10 @@ func (d *dispatcher) execute(j job) {
 }
 
 func actionTimeout(action string) time.Duration {
+	return baseActionTimeout(action) * time.Duration(settingsreg.AgentTimeoutScale.Int()) / 100
+}
+
+func baseActionTimeout(action string) time.Duration {
 	switch action {
 	case "logs", "stats", "game_query", "mysql_list_catalog":
 		return time.Minute

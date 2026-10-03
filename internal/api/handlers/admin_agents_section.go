@@ -17,12 +17,12 @@ import (
 	"github.com/vortanixapp/panel/pkg/buildinfo"
 	"github.com/vortanixapp/panel/pkg/nodeevents"
 	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 	"github.com/vortanixapp/panel/pkg/updates"
 )
 
 const (
-	agentDiskLowRatio  = 0.1
 	sshExecTimeout     = 60 * time.Second
 	sshExecOutputLimit = 256 << 10
 )
@@ -119,7 +119,7 @@ func (a agentRow) view(target string, res *nodeResources) map[string]any {
 		resources["ram_used_mb"] = res.RAMUsedMB
 		resources["disk_total_mb"] = res.DiskTotalMB
 		resources["disk_free_mb"] = res.DiskFreeMB
-		if res.DiskTotalMB > 0 && res.DiskFreeMB < res.DiskTotalMB*agentDiskLowRatio {
+		if res.DiskTotalMB > 0 && res.DiskFreeMB < res.DiskTotalMB*float64(settingsreg.NodesDiskLowPercent.Int())/100 {
 			labels = append(labels, "disk_low")
 		}
 	}

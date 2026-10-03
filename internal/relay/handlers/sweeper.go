@@ -8,6 +8,7 @@ import (
 	"github.com/vortanixapp/panel/internal/relay/events"
 	"github.com/vortanixapp/panel/pkg/nodeevents"
 	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -37,9 +38,9 @@ func (h *Handler) sweepStaleNodes(ctx context.Context) {
 	rows, err := h.db.Query(ctx, `
 		SELECT id::text FROM core.nodes
 		WHERE status = 'online'
-		  AND (last_seen_at IS NULL OR last_seen_at < now() - interval '90 seconds')
+		  AND (last_seen_at IS NULL OR last_seen_at < now() - make_interval(secs => $2::int))
 		  AND NOT (id::text = ANY($1::text[]))
-	`, h.hub.Connected())
+	`, h.hub.Connected(), int(settingsreg.NodesOfflineAfter.Int()))
 	if err != nil {
 		log.Printf("relay: поиск зависших узлов: %v", err)
 		return
@@ -69,11 +70,11 @@ func (h *Handler) sweepOfflineNotices(ctx context.Context) {
 		  AND n.status = 'offline'
 		  AND d.offline_notified_at IS NULL
 		  AND n.last_seen_at IS NOT NULL
-		  AND n.last_seen_at < now() - interval '2 minutes'
+		  AND n.last_seen_at < now() - make_interval(mins => $1::int)
 		  AND n.last_seen_at > now() - interval '1 day'
 		  AND NOT COALESCE(n.maintenance_mode, false)
 		RETURNING n.id::text, COALESCE(n.fqdn, ''), n.last_seen_at
-	`)
+	`, int(settingsreg.NodesOfflineNotify.Int()))
 	if err != nil {
 		log.Printf("relay: поиск узлов для оповещения о недоступности: %v", err)
 		return

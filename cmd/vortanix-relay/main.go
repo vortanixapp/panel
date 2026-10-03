@@ -65,6 +65,7 @@ func main() {
 	}
 	go purgeNodeData(ctx, pool)
 	go h.RunSweeper(ctx)
+	go h.RunAgentConfigPusher(ctx)
 	prom := httpprom.New("agent-relay")
 	r := chi.NewRouter()
 	r.Get("/v1/agent/connect", h.AgentConnect)

@@ -7,6 +7,7 @@ const (
 	MsgStateSnapshot = "state_snapshot"
 	MsgTaskProgress  = "task_progress"
 	MsgNodeEvent     = "node_event"
+	MsgAgentConfig   = "agent_config"
 )
 
 const (
@@ -35,6 +36,7 @@ const (
 	CapDiagnostics   = "diagnostics"
 	CapFirewallHost  = "firewall_host"
 	CapCronScheduler = "cron_scheduler"
+	CapAgentConfig   = "agent_config"
 )
 
 const (
@@ -68,10 +70,16 @@ func RequiredCap(action string) string {
 var RelayCaps = []string{CapStateSnapshot, CapTasks, CapNodeEvents}
 
 type WelcomeMessage struct {
-	Type       string   `json:"type"`
-	Proto      int      `json:"proto"`
-	Caps       []string `json:"caps"`
-	ServerTime string   `json:"server_time"`
+	Type       string         `json:"type"`
+	Proto      int            `json:"proto"`
+	Caps       []string       `json:"caps"`
+	ServerTime string         `json:"server_time"`
+	Config     map[string]any `json:"config,omitempty"`
+}
+
+type AgentConfigMessage struct {
+	Type   string         `json:"type"`
+	Values map[string]any `json:"values"`
 }
 
 type SnapshotServer struct {

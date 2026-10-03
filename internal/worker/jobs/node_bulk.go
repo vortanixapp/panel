@@ -14,11 +14,11 @@ import (
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/portalloc"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
-	bulkCommandDelay = 2 * time.Second
-	bulkMaxServers   = 1000
+	bulkMaxServers = 1000
 )
 
 func (r *Runner) NodeBulkLoop(ctx context.Context, wake <-chan struct{}) {
@@ -189,7 +189,7 @@ func (r *Runner) bulkPower(ctx context.Context, pl nodeBulkPayload) (int, int, e
 		select {
 		case <-ctx.Done():
 			return done, failed, ctx.Err()
-		case <-time.After(bulkCommandDelay):
+		case <-time.After(settingsreg.NodesBulkDelay.Duration()):
 		}
 	}
 	return done, failed, nil

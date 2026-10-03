@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/buildinfo"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -26,9 +27,11 @@ const (
 
 	DefaultAgentImage = "ghcr.io/vortanixapp/vortanix-agent:latest"
 	DefaultRepo       = "vortanixapp/panel"
-
-	AgentUpdateTimeout = 15 * time.Minute
 )
+
+func AgentUpdateTimeout() time.Duration {
+	return settingsreg.NodesAgentUpdateTimeout.Duration()
+}
 
 var errGitHubNotFound = errors.New("github: not found")
 

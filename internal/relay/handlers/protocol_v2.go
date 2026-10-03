@@ -128,6 +128,7 @@ func (h *Handler) storeHello(ctx context.Context, c *hub.AgentConn, env map[stri
 		Proto:      protocol.ProtoVersion,
 		Caps:       protocol.RelayCaps,
 		ServerTime: time.Now().UTC().Format(time.RFC3339Nano),
+		Config:     agentConfigFor(c),
 	})
 	if err := h.hub.SendCommand(c.NodeID, welcome); err != nil {
 		log.Printf("relay: приветствие узлу %s не отправлено: %v", c.NodeID, err)

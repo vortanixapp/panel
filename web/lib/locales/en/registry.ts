@@ -10,7 +10,6 @@ export const registry = {
 
   "admin.settings.reg.group.security":
     "Session and link lifetimes, sign-in attempt limits, IP blocking and the password policy. Values apply immediately, no restart needed.",
-  "admin.settings.reg.group.nodes": "",
 
   "admin.settings.reg.empty": "No settings in this section yet",
   "admin.settings.reg.reset_field": "Default",

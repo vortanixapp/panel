@@ -14,6 +14,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/protocol"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/updates"
 )
 
@@ -224,7 +225,7 @@ func (r *Runner) agentUpdateDue(ctx context.Context, nodeID string, raw []byte, 
 	}
 	switch st.Status {
 	case "pending", "pulling", "restarting":
-		if time.Since(at) > updates.AgentUpdateTimeout {
+		if time.Since(at) > updates.AgentUpdateTimeout() {
 			if _, err := r.db.Exec(ctx, `
 				UPDATE core.nodes SET agent_update = agent_update || jsonb_build_object(
 					'status', 'failed', 'error', 'агент не сообщил о результате за 15 минут',
@@ -254,9 +255,9 @@ func (r *Runner) autoUpdateAgents(ctx context.Context) {
 		JOIN core.node_daemons d ON d.node_id = n.id
 		WHERE n.agent_auto_update
 		  AND d.status = 'online'
-		  AND d.last_seen_at > now() - interval '90 seconds'
+		  AND d.last_seen_at > now() - make_interval(secs => $1::int)
 		ORDER BY n.name
-	`)
+	`, int(settingsreg.NodesOfflineAfter.Int()))
 	if err != nil {
 		log.Printf("автообновление агентов: выборка не прошла: %v", err)
 		return

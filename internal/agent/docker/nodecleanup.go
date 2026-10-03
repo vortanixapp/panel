@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/dockerapi"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -21,9 +22,11 @@ const (
 	CleanHelperContainers    = "helper_containers"
 	CleanTempFiles           = "temp_files"
 	CleanBuildCache          = "build_cache"
-
-	tempFileAge = time.Hour
 )
+
+func tempFileAge() time.Duration {
+	return settingsreg.AgentTempFileAge.Duration()
+}
 
 var tempPrefixes = []string{"vtx-archive-", "vtx-plugin-", "vtx-extract-", "vtx-bundle"}
 
@@ -181,7 +184,7 @@ func staleTempFiles() []CleanupItem {
 			continue
 		}
 		info, err := e.Info()
-		if err != nil || time.Since(info.ModTime()) < tempFileAge {
+		if err != nil || time.Since(info.ModTime()) < tempFileAge() {
 			continue
 		}
 		path := filepath.Join(dir, e.Name())
