@@ -135,6 +135,7 @@ func main() {
 	h.StartTelegramBot(samplerCtx)
 	h.StartWipeScheduler(samplerCtx)
 
+	httpprom.StartPprof()
 	prom := httpprom.New("core-api")
 	r := chi.NewRouter()
 	r.Use(prom.Handler)

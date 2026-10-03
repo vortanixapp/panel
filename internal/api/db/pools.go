@@ -13,14 +13,14 @@ type Pools struct {
 }
 
 func Connect(ctx context.Context, writeURL, readURL string) (*Pools, error) {
-	writePool, err := pgxpool.New(ctx, writeURL)
+	writePool, err := newObservedPool(ctx, "write", writeURL)
 	if err != nil {
 		return nil, fmt.Errorf("write pool: %w", err)
 	}
 	if readURL == "" || readURL == writeURL {
 		return &Pools{Write: writePool, Read: writePool}, nil
 	}
-	readPool, err := pgxpool.New(ctx, readURL)
+	readPool, err := newObservedPool(ctx, "read", readURL)
 	if err != nil {
 		writePool.Close()
 		return nil, fmt.Errorf("read pool: %w", err)
