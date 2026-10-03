@@ -1,4 +1,5 @@
 export const accountingMulti = {
+  "admin.legal.template_region": "Template region",
   "admin.accounting.tab_taxes": "Taxes",
   "admin.accounting.field.country": "Seller country",
   "admin.accounting.field.country_hint":

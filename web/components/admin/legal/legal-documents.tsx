@@ -22,6 +22,7 @@ import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { confirmAction } from "@/components/action-dialog";
+import { usePublicSettings } from "@/context/brand-provider";
 
 const KEY = ["admin-legal-documents"];
 
@@ -34,6 +35,8 @@ export function LegalDocuments() {
   const t = useT();
   const qc = useQueryClient();
   const query = useQuery({ queryKey: KEY, queryFn: fetchAdminLegalDocuments });
+  const { accountingRegions } = usePublicSettings();
+  const [templateRegion, setTemplateRegion] = useState(accountingRegions[0] ?? "cis");
   const [kind, setKind] = useState<LegalKind>("offer");
   const [loadedKind, setLoadedKind] = useState("");
   const [title, setTitle] = useState("");
@@ -67,7 +70,7 @@ export function LegalDocuments() {
   const insertTemplate = async () => {
     if (body.trim() && !await confirmAction(t("admin.legal.template_confirm"))) return;
     try {
-      const template = await fetchAdminLegalTemplate(kind);
+      const template = await fetchAdminLegalTemplate(kind, templateRegion);
       setTitle(template.title);
       setBody(template.body);
       setPreview(false);
@@ -128,6 +131,20 @@ export function LegalDocuments() {
               )}
             </div>
             <div className="flex flex-wrap gap-2">
+              {accountingRegions.length > 1 && (
+                <select
+                  className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                  value={templateRegion}
+                  onChange={(e) => setTemplateRegion(e.target.value)}
+                  aria-label={t("admin.legal.template_region")}
+                >
+                  {accountingRegions.map((id) => (
+                    <option key={id} value={id}>
+                      {t(`accounting.region.${id}`)}
+                    </option>
+                  ))}
+                </select>
+              )}
               <Button variant="outline" size="sm" onClick={() => void insertTemplate()}>
                 {t("admin.legal.insert_template")}
               </Button>

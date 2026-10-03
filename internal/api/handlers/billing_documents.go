@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/regions"
 )
 
 var billingPayerTypes = []string{"person", "ip", "company"}
@@ -28,6 +29,13 @@ type billingPayer struct {
 	KPP        string `json:"kpp"`
 	OGRN       string `json:"ogrn"`
 	Address    string `json:"address"`
+	Country    string `json:"country"`
+	TaxID      string `json:"tax_id"`
+	TaxIDOK    bool   `json:"tax_id_verified"`
+}
+
+func (p billingPayer) foreign() bool {
+	return p.Country != "" && p.Country != "RU"
 }
 
 func (p billingPayer) title() string {
@@ -58,6 +66,8 @@ func (p billingPayer) partyLine() string {
 }
 
 func (p *billingPayer) normalize() {
+	p.Country = regions.NormalizeCountry(p.Country)
+	p.TaxID = strings.TrimSpace(p.TaxID)
 	p.PayerType = strings.TrimSpace(p.PayerType)
 	p.LegalName = strings.TrimSpace(p.LegalName)
 	p.INN = strings.TrimSpace(p.INN)
@@ -66,13 +76,40 @@ func (p *billingPayer) normalize() {
 	p.Address = strings.TrimSpace(p.Address)
 	if p.PayerType == "person" {
 		p.LegalName, p.KPP, p.OGRN = "", "", ""
+		if p.foreign() {
+			p.TaxID = ""
+		}
+	}
+	if p.foreign() {
+		p.INN, p.KPP, p.OGRN = "", "", ""
 	}
 	if p.PayerType == "ip" {
 		p.KPP = ""
 	}
 }
 
+func (p billingPayer) validateForeign() string {
+	switch {
+	case !regions.ValidCountry(p.Country):
+		return "страна указана неверно"
+	case p.PayerType != "person" && p.PayerType != "company":
+		return "неизвестный тип плательщика"
+	case p.PayerType == "company" && p.LegalName == "":
+		return "укажите наименование компании"
+	case utf8.RuneCountInString(p.LegalName) > 300:
+		return "наименование — не длиннее 300 символов"
+	case utf8.RuneCountInString(p.Address) > 500:
+		return "адрес — не длиннее 500 символов"
+	case utf8.RuneCountInString(p.TaxID) > 32:
+		return "налоговый номер — не длиннее 32 символов"
+	}
+	return ""
+}
+
 func (p billingPayer) validate() string {
+	if p.foreign() {
+		return p.validateForeign()
+	}
 	switch {
 	case !slices.Contains(billingPayerTypes, p.PayerType):
 		return "неизвестный тип плательщика"
@@ -106,12 +143,15 @@ func (h *Handler) billingPayer(ctx context.Context, userID string) (billingPayer
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT u.email, COALESCE(up.first_name, ''), COALESCE(up.last_name, ''), COALESCE(up.display_name, ''),
 		       COALESCE(bp.payer_type, 'person'), COALESCE(bp.legal_name, ''), COALESCE(bp.inn, ''),
-		       COALESCE(bp.kpp, ''), COALESCE(bp.ogrn, ''), COALESCE(bp.address, '')
+		       COALESCE(bp.kpp, ''), COALESCE(bp.ogrn, ''), COALESCE(bp.address, ''),
+		       COALESCE(NULLIF(bp.country, ''), up.country, ''), COALESCE(bp.tax_id, ''),
+		       bp.tax_id_verified_at IS NOT NULL
 		FROM core.users u
 		LEFT JOIN core.user_profiles up ON up.user_id = u.id
 		LEFT JOIN core.user_billing_profiles bp ON bp.user_id = u.id
 		WHERE u.id = $1
-	`, userID).Scan(&p.Email, &first, &last, &display, &p.PayerType, &p.LegalName, &p.INN, &p.KPP, &p.OGRN, &p.Address)
+	`, userID).Scan(&p.Email, &first, &last, &display, &p.PayerType, &p.LegalName, &p.INN, &p.KPP, &p.OGRN, &p.Address,
+		&p.Country, &p.TaxID, &p.TaxIDOK)
 	p.PersonName = firstNonEmpty(strings.TrimSpace(strings.TrimSpace(last)+" "+strings.TrimSpace(first)), strings.TrimSpace(display))
 	return p, err
 }
@@ -136,24 +176,37 @@ func (h *Handler) BillingPayerUpdate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
+	ctx := r.Context()
+	if body.Country == "" {
+		body.Country = h.userCountry(ctx, claims.UserID)
+	}
 	body.normalize()
 	if msg := body.validate(); msg != "" {
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
-	ctx := r.Context()
+	var verifiedAt any
+	if body.foreign() && body.PayerType == "company" && body.TaxID != "" {
+		if valid, checked := verifyVIES(ctx, body.Country, body.TaxID); checked && valid {
+			verifiedAt = time.Now().UTC()
+		}
+	}
 	if _, err := h.dbOf(ctx).Exec(ctx, `
-		INSERT INTO core.user_billing_profiles (user_id, payer_type, legal_name, inn, kpp, ogrn, address, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+		INSERT INTO core.user_billing_profiles
+			(user_id, payer_type, legal_name, inn, kpp, ogrn, address, country, tax_id, tax_id_verified_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
 		ON CONFLICT (user_id) DO UPDATE SET
 			payer_type = EXCLUDED.payer_type, legal_name = EXCLUDED.legal_name, inn = EXCLUDED.inn,
-			kpp = EXCLUDED.kpp, ogrn = EXCLUDED.ogrn, address = EXCLUDED.address, updated_at = now()
-	`, claims.UserID, body.PayerType, body.LegalName, body.INN, body.KPP, body.OGRN, body.Address); err != nil {
+			kpp = EXCLUDED.kpp, ogrn = EXCLUDED.ogrn, address = EXCLUDED.address,
+			country = EXCLUDED.country, tax_id = EXCLUDED.tax_id,
+			tax_id_verified_at = EXCLUDED.tax_id_verified_at, updated_at = now()
+	`, claims.UserID, body.PayerType, body.LegalName, body.INN, body.KPP, body.OGRN, body.Address,
+		body.Country, body.TaxID, verifiedAt); err != nil {
 		writeError(w, http.StatusInternalServerError, "Не удалось сохранить реквизиты")
 		return
 	}
 	audit(ctx, h.dbOf(ctx), claims.UserID, "billing.payer.update", "user:"+claims.UserID, map[string]any{
-		"payer_type": body.PayerType, "inn": body.INN,
+		"payer_type": body.PayerType, "inn": body.INN, "country": body.Country, "tax_id": body.TaxID,
 	})
 	h.writeBillingDocuments(w, r, claims.UserID)
 }

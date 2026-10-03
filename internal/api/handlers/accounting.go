@@ -619,8 +619,12 @@ func rublesInWords(v float64) string {
 }
 
 func documentHTML(title, body string) string {
+	return documentHTMLLang("ru", title, "Печать / сохранить в PDF", body)
+}
+
+func documentHTMLLang(lang, title, printLabel, body string) string {
 	return `<!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
+<html lang="` + html.EscapeString(lang) + `"><head><meta charset="utf-8">
 <title>` + html.EscapeString(title) + `</title>
 <style>
   body { font-family: "Times New Roman", Georgia, serif; color: #111; margin: 32px auto; max-width: 860px; padding: 0 16px; font-size: 14px; line-height: 1.45; }
@@ -642,7 +646,7 @@ func documentHTML(title, body string) string {
   @media print { body { margin: 0; max-width: none; } .noprint { display: none; } }
 </style></head>
 <body>
-  <div class="noprint"><button onclick="window.print()">Печать / сохранить в PDF</button></div>
+  <div class="noprint"><button onclick="window.print()">` + html.EscapeString(printLabel) + `</button></div>
 ` + body + `
 </body></html>`
 }

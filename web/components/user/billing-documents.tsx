@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   fetchBillingDocuments,
+  fetchBillingInvoices,
   openBillingAct,
+  openBillingInvoice,
   openBillingReconciliation,
   saveBillingPayer,
   type BillingPayerInput,
@@ -23,6 +25,7 @@ const BUTTON =
   "rounded-full border border-[var(--vx-border-2)] px-4 py-2 text-[12.5px] text-muted-foreground transition-colors hover:border-[var(--vx-border-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
 
 const PAYER_TYPES: BillingPayerType[] = ["person", "ip", "company"];
+const FOREIGN_PAYER_TYPES: BillingPayerType[] = ["person", "company"];
 
 const EMPTY_PAYER: BillingPayerInput = {
   payer_type: "person",
@@ -31,6 +34,8 @@ const EMPTY_PAYER: BillingPayerInput = {
   kpp: "",
   ogrn: "",
   address: "",
+  country: "",
+  tax_id: "",
 };
 
 export function BillingDocuments({ currency }: { currency: string }) {
@@ -59,6 +64,8 @@ export function BillingDocuments({ currency }: { currency: string }) {
       kpp: p.kpp,
       ogrn: p.ogrn,
       address: p.address,
+      country: p.country ?? "",
+      tax_id: p.tax_id ?? "",
     });
   }, [data, dirty]);
 
@@ -97,6 +104,12 @@ export function BillingDocuments({ currency }: { currency: string }) {
   const docCurrency = data?.currency || currency;
   const months = data?.months ?? [];
   const business = payer.payer_type !== "person";
+  const foreign = !!payer.country && payer.country !== "RU";
+  const invoices = useQuery({
+    queryKey: ["billing-invoices"],
+    queryFn: fetchBillingInvoices,
+    enabled: foreign,
+  });
 
   return (
     <div className={cn(CARD, "mt-3.5 px-[26px] py-6")}>
@@ -127,7 +140,7 @@ export function BillingDocuments({ currency }: { currency: string }) {
           </p>
 
           <div className="mt-3.5 flex flex-wrap gap-[3px] rounded-full border border-[var(--vx-border-2)] bg-[var(--vx-card-2)] p-[3px]">
-            {PAYER_TYPES.map((type) => (
+            {(foreign ? FOREIGN_PAYER_TYPES : PAYER_TYPES).map((type) => (
               <button
                 key={type}
                 type="button"
@@ -156,17 +169,35 @@ export function BillingDocuments({ currency }: { currency: string }) {
                 />
               </label>
             )}
-            <label>
-              <span className={LABEL}>{t("billing.documents.inn")}</span>
-              <input
-                className={cn(INPUT, "font-mono")}
-                inputMode="numeric"
-                maxLength={12}
-                value={payer.inn}
-                onChange={(e) => update({ inn: e.target.value.replace(/\D/g, "") })}
-              />
-            </label>
-            {payer.payer_type === "company" && (
+            {foreign && business && (
+              <label>
+                <span className={LABEL}>
+                  {t("billing.documents.tax_id")}
+                  {data?.payer.tax_id_verified && payer.tax_id === data.payer.tax_id ? (
+                    <span className="ml-2 text-emerald-500">{t("billing.documents.tax_id_verified")}</span>
+                  ) : null}
+                </span>
+                <input
+                  className={cn(INPUT, "font-mono")}
+                  maxLength={32}
+                  value={payer.tax_id}
+                  onChange={(e) => update({ tax_id: e.target.value })}
+                />
+              </label>
+            )}
+            {!foreign && (
+              <label>
+                <span className={LABEL}>{t("billing.documents.inn")}</span>
+                <input
+                  className={cn(INPUT, "font-mono")}
+                  inputMode="numeric"
+                  maxLength={12}
+                  value={payer.inn}
+                  onChange={(e) => update({ inn: e.target.value.replace(/\D/g, "") })}
+                />
+              </label>
+            )}
+            {!foreign && payer.payer_type === "company" && (
               <label>
                 <span className={LABEL}>{t("billing.documents.kpp")}</span>
                 <input
@@ -177,7 +208,7 @@ export function BillingDocuments({ currency }: { currency: string }) {
                 />
               </label>
             )}
-            {business && (
+            {!foreign && business && (
               <label>
                 <span className={LABEL}>
                   {payer.payer_type === "ip"
@@ -216,6 +247,50 @@ export function BillingDocuments({ currency }: { currency: string }) {
         </form>
 
         <div className="flex flex-col gap-6">
+          {foreign && (
+            <div>
+              <div className="text-[14px] font-semibold">{t("billing.documents.invoices_title")}</div>
+              <p className="mt-1 text-[12.5px] leading-[1.45] text-muted-foreground">
+                {t("billing.documents.invoices_hint")}
+              </p>
+              {(invoices.data?.invoices ?? []).length === 0 ? (
+                <div className="mt-3 rounded-[14px] border border-dashed border-[var(--vx-border-2)] px-4 py-5 text-[13px] text-muted-foreground">
+                  {invoices.isLoading ? t("common.loading") : t("billing.documents.invoices_empty")}
+                </div>
+              ) : (
+                <div className="mt-3 flex max-h-[320px] flex-col overflow-y-auto rounded-[14px] border border-[var(--vx-border-2)]">
+                  {(invoices.data?.invoices ?? []).map((inv) => (
+                    <div
+                      key={inv.transaction_id}
+                      className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--vx-inset)] px-4 py-3 last:border-b-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-[13.5px] font-medium">{inv.description || inv.number || "—"}</div>
+                        <div className="mt-0.5 font-mono text-[11.5px] text-[var(--vx-ink-faint)]">
+                          {new Date(inv.date).toLocaleDateString()} · {money(inv.gross)} {inv.currency}
+                          {inv.tax > 0 ? ` · ${t("billing.documents.invoice_tax", { amount: money(inv.tax), currency: inv.currency })}` : ""}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={BUTTON}
+                        disabled={busy !== ""}
+                        onClick={() =>
+                          void run(`inv-${inv.transaction_id}`, async () => {
+                            await openBillingInvoice(inv.transaction_id);
+                            await invoices.refetch();
+                          })
+                        }
+                      >
+                        {t("billing.documents.invoice_open")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {!foreign && (
           <div>
             <div className="text-[14px] font-semibold">{t("billing.documents.acts_title")}</div>
             <p className="mt-1 text-[12.5px] leading-[1.45] text-muted-foreground">
@@ -276,6 +351,8 @@ export function BillingDocuments({ currency }: { currency: string }) {
             )}
           </div>
 
+          )}
+          {!foreign && (
           <div>
             <div className="text-[14px] font-semibold">
               {t("billing.documents.reconciliation_title")}
@@ -316,6 +393,7 @@ export function BillingDocuments({ currency }: { currency: string }) {
               </button>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

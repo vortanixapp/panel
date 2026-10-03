@@ -1,4 +1,5 @@
 export const accountingMulti = {
+  "admin.legal.template_region": "Регион шаблона",
   "admin.accounting.tab_taxes": "Налоги",
   "admin.accounting.field.country": "Страна продавца",
   "admin.accounting.field.country_hint":

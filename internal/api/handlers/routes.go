@@ -78,6 +78,8 @@ func (h *Handler) mountProtected(r chi.Router) {
 		r.Get("/v1/billing/documents", h.BillingDocuments)
 		r.Put("/v1/billing/payer", h.BillingPayerUpdate)
 		r.Get("/v1/billing/documents/act", h.BillingAct)
+		r.Get("/v1/billing/invoices", h.BillingInvoices)
+		r.Get("/v1/billing/invoices/{id}", h.BillingInvoice)
 		r.Get("/v1/billing/documents/reconciliation", h.BillingReconciliation)
 		r.Get("/v1/billing/payments/{id}/invoice", h.PaymentInvoice)
 		r.Get("/v1/billing/promo-codes", h.BillingPromoCodes)

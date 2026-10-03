@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/regions"
 )
 
 const legalBodyLimit = 200_000
@@ -416,7 +417,14 @@ func (h *Handler) AdminLegalTemplate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "Шаблон не найден")
 		return
 	}
-	title, body := legalTemplate(kind, h.accountingProfile(r.Context()), time.Now())
+	profile := h.accountingProfile(r.Context())
+	region := strings.TrimSpace(r.URL.Query().Get("region"))
+	if region == regions.EU || region == regions.Europe || region == regions.US {
+		title, body := legalTemplateIntl(kind, region, profile, time.Now())
+		writeJSON(w, http.StatusOK, map[string]string{"title": title, "body": body})
+		return
+	}
+	title, body := legalTemplate(kind, profile, time.Now())
 	writeJSON(w, http.StatusOK, map[string]string{"title": title, "body": body})
 }
 

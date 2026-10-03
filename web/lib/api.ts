@@ -6647,12 +6647,40 @@ export type BillingPayer = {
   kpp: string;
   ogrn: string;
   address: string;
+  country: string;
+  tax_id: string;
+  tax_id_verified: boolean;
 };
 
 export type BillingPayerInput = Pick<
   BillingPayer,
-  "payer_type" | "legal_name" | "inn" | "kpp" | "ogrn" | "address"
+  "payer_type" | "legal_name" | "inn" | "kpp" | "ogrn" | "address" | "country" | "tax_id"
 >;
+
+export type BillingInvoice = {
+  transaction_id: string;
+  date: string;
+  description: string;
+  currency: string;
+  gross: number;
+  net: number;
+  tax: number;
+  rate: number;
+  regime: string;
+  country: string;
+  number: string;
+};
+
+export async function fetchBillingInvoices() {
+  return apiFetch<{ invoices: BillingInvoice[] }>("/v1/billing/invoices?limit=100");
+}
+
+export function openBillingInvoice(transactionId: string) {
+  return openAuthorizedDocument(
+    `/v1/billing/invoices/${transactionId}`,
+    t("billing.documents.open_failed")
+  );
+}
 
 export type BillingActMonth = {
   period: string;
@@ -7153,8 +7181,9 @@ export async function publishAdminLegalDocument(
   });
 }
 
-export async function fetchAdminLegalTemplate(kind: string) {
-  return apiFetch<{ title: string; body: string }>(`/v1/admin/legal/templates/${kind}`);
+export async function fetchAdminLegalTemplate(kind: string, region?: string) {
+  const tail = region ? `?region=${encodeURIComponent(region)}` : "";
+  return apiFetch<{ title: string; body: string }>(`/v1/admin/legal/templates/${kind}${tail}`);
 }
 
 export type AdminLegalConsent = {

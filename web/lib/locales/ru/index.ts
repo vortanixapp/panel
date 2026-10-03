@@ -5,6 +5,7 @@ import { adminInfra } from "./admin-infra";
 import { adminTasks } from "./admin-tasks";
 import { auth } from "./auth";
 import { billing } from "./billing";
+import { billingForeign } from "./billing-foreign";
 import { common } from "./common";
 import { dashboard } from "./dashboard";
 import { errors } from "./errors";
@@ -39,6 +40,7 @@ export const RU = {
   ...landing,
   ...servers,
   ...billing,
+  ...billingForeign,
   ...support,
   ...news,
   ...notifications,
