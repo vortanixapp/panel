@@ -37,6 +37,7 @@ import {
   useOpenNotification,
   useUnreadCount,
 } from "@/hooks/use-notifications";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import type { NotificationGroup, NotificationPrefs } from "@/lib/api";
 import {
@@ -46,7 +47,6 @@ import {
 } from "@/lib/browser-notifications";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZE = 30;
 
 type ParamsPatch = { filter?: "all" | "unread"; group?: string; q?: string };
 
@@ -58,6 +58,7 @@ export function NotificationsPageContent() {
   const unreadOnly = searchParams.get("filter") === "unread";
   const group = searchParams.get("group") ?? "";
   const q = searchParams.get("q") ?? "";
+  const { feedPageSize, searchDebounceMs } = usePublicSettings();
   const [search, setSearch] = useState(q);
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -80,12 +81,12 @@ export function NotificationsPageContent() {
   useEffect(() => {
     const value = search.trim();
     if (value === q) return;
-    const timer = setTimeout(() => setParams({ q: value }), 300);
+    const timer = setTimeout(() => setParams({ q: value }), searchDebounceMs);
     return () => clearTimeout(timer);
-  }, [search, q, setParams]);
+  }, [search, q, setParams, searchDebounceMs]);
 
   const unread = useUnreadCount();
-  const feed = useNotificationsFeed({ group, unread: unreadOnly, q }, PAGE_SIZE);
+  const feed = useNotificationsFeed({ group, unread: unreadOnly, q }, feedPageSize);
   const actions = useNotificationActions();
   const open = useOpenNotification();
   const prefs = useNotificationPrefs();

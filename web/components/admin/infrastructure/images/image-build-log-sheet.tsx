@@ -23,6 +23,7 @@ import {
 } from "@/components/admin/infrastructure/images/image-state";
 import { useImageBuild } from "@/components/admin/infrastructure/images/build-images-dialog";
 
+import { pollMs } from "@/lib/public-settings";
 type Row = { key: string; name: string; state: AdminImageState };
 
 const ORDER = { building: 0, queued: 1, failed: 2, outdated: 3, ready: 4, missing: 5 } as const;
@@ -44,7 +45,7 @@ export function ImageBuildLogSheet({
     queryKey: queryKeys.adminImageLog(nodeId ?? ""),
     queryFn: () => fetchAdminImageLog(nodeId ?? ""),
     enabled: Boolean(nodeId),
-    refetchInterval: (query) => (node?.building || query.state.data?.completed === false ? 2000 : false),
+    refetchInterval: (query) => (node?.building || query.state.data?.completed === false ? pollMs(2000) : false),
   });
 
   const rows = useMemo<Row[]>(() => {

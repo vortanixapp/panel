@@ -24,6 +24,7 @@ import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
 import { promptAction } from "@/components/action-dialog";
 
+import { pollMs } from "@/lib/public-settings";
 const FILTERS = ["active", "pending", "failed", "manual", "sent", "skipped"] as const;
 const STATUSES: ReceiptOffset["status"][] = ["pending", "failed", "manual", "sent", "skipped"];
 
@@ -41,7 +42,7 @@ export function AccountingOffsets() {
   const query = useQuery({
     queryKey: ["admin-receipt-offsets", filter],
     queryFn: () => fetchReceiptOffsets(filter === "active" ? "" : filter),
-    refetchInterval: 30_000,
+    refetchInterval: pollMs(30_000),
   });
 
   const run = async (id: string, action: () => Promise<unknown>) => {

@@ -8,6 +8,7 @@ import { fetchServerLogs } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 export function ServerLogsTab() {
   const t = useT();
   const { id } = useParams<{ id: string }>();
@@ -15,7 +16,7 @@ export function ServerLogsTab() {
     queryKey: ["server-logs", id],
     queryFn: () => fetchServerLogs(id),
     enabled: !!id,
-    refetchInterval: 10_000,
+    refetchInterval: pollMs(10_000),
   });
 
   if (isLoading) return <Skeleton className="h-[420px] w-full rounded-[14px]" />;

@@ -20,6 +20,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 const ALL_GAMES = "all";
 
 export function MonitoringTopPageContent() {
@@ -29,7 +30,7 @@ export function MonitoringTopPageContent() {
   const { data, isLoading, isError } = useQuery({
     queryKey: queryKeys.monitoringTop(),
     queryFn: () => fetchMonitoringTop(),
-    refetchInterval: 60_000,
+    refetchInterval: pollMs(60_000),
   });
 
   const cols = {

@@ -51,6 +51,7 @@ import {
   summaryText,
 } from "@/components/admin/infrastructure/images/image-state";
 
+import { pollMs } from "@/lib/public-settings";
 type Filter = "catalog" | "auto" | "problems" | "all";
 
 const FILTERS: Filter[] = ["catalog", "auto", "problems", "all"];
@@ -65,7 +66,7 @@ export function ImagesPageContent() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: queryKeys.adminImages,
     queryFn: fetchAdminImages,
-    refetchInterval: (query) => (hasActivity(query.state.data) ? 3000 : false),
+    refetchInterval: (query) => (hasActivity(query.state.data) ? pollMs(3000) : false),
   });
 
   const scopeParam = searchParams.get("node") ?? "";

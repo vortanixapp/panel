@@ -8,6 +8,7 @@ import { useT } from "@/hooks/use-translations";
 import { fetchMailLog } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
+import { pollMs } from "@/lib/public-settings";
 const FILTERS = ["", "sent", "failed", "skipped"] as const;
 
 const TONE: Record<string, string> = {
@@ -28,7 +29,7 @@ export function MailLogTable() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-mail-log", status],
     queryFn: () => fetchMailLog(status),
-    refetchInterval: 30_000,
+    refetchInterval: pollMs(30_000),
   });
 
   const items = data?.items ?? [];

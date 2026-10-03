@@ -31,6 +31,7 @@ import { t } from "@/lib/i18n";
 import { notificationTarget } from "@/lib/notification-link";
 import { queryKeys } from "@/lib/query-keys";
 
+import { pollMs } from "@/lib/public-settings";
 export type NotificationsFilter = {
   group: string;
   unread: boolean;
@@ -60,7 +61,7 @@ export function useUnreadCount(): number {
   const query = useQuery({
     queryKey: queryKeys.notificationsUnread,
     queryFn: fetchNotificationsUnreadCount,
-    refetchInterval: 120_000,
+    refetchInterval: pollMs(120_000),
     refetchOnWindowFocus: true,
   });
   return query.data?.count ?? 0;

@@ -5,7 +5,8 @@ import { useState } from "react";
 import { ThemeProvider } from "@/context/theme-provider";
 import { FontProvider } from "@/context/font-provider";
 import { DirectionProvider } from "@/context/direction-provider";
-import { BrandProvider } from "@/context/brand-provider";
+import { BrandProvider, usePublicSettings } from "@/context/brand-provider";
+import { resolvePublicSettings } from "@/lib/public-settings";
 import { LocaleProvider } from "@/context/locale-provider";
 import { SiteProvider } from "@/context/site-provider";
 import { EditorBridgeLoader } from "@/components/site/editor-bridge/bridge-loader";
@@ -17,6 +18,11 @@ import { ActionDialogHost } from "@/components/action-dialog";
 import { AuthSessionProvider } from "@/components/auth/auth-session-provider";
 import { CookieBanner } from "@/components/legal/cookie-banner";
 import { VxRouteProgress } from "@/components/vx/loader";
+
+function AppToaster() {
+  const { toastMs } = usePublicSettings();
+  return <Toaster richColors closeButton duration={toastMs} />;
+}
 
 export function Providers({
   children,
@@ -38,7 +44,7 @@ export function Providers({
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5_000,
+            staleTime: resolvePublicSettings(branding?.settings).staleMs,
             retry: 1,
             refetchOnWindowFocus: true,
           },
@@ -57,7 +63,7 @@ export function Providers({
                   <EditorBridgeLoader />
                   <VxRouteProgress />
                   <AuthSessionProvider>{children}</AuthSessionProvider>
-                  <Toaster richColors closeButton />
+                  <AppToaster />
                   <ActionDialogHost />
                   <CookieBanner />
                 </SiteProvider>

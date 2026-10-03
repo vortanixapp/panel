@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePublicSettings } from "@/context/brand-provider";
 import { consoleWsUrl, fetchConsoleTicket } from "@/lib/api";
 import type { ConsoleProfile } from "@/lib/api";
 import {
@@ -15,7 +16,6 @@ import {
 export type ConsoleStatus = "connecting" | "connected" | "disconnected" | "error";
 
 const RETRY_STEPS = [1000, 2000, 5000, 10000, 20000];
-const BUFFER_LIMIT = 4000;
 const PENDING_LIMIT = 600;
 const FLUSH_MS = 120;
 
@@ -88,6 +88,9 @@ export function useConsoleStream(serverId: string, profile: ConsoleProfile | und
   const compiled = useMemo(() => compileProfile(profile), [profile]);
   const compiledRef = useRef(compiled);
   compiledRef.current = compiled;
+  const { consoleBufferLines } = usePublicSettings();
+  const bufferLimitRef = useRef(consoleBufferLines);
+  bufferLimitRef.current = consoleBufferLines;
 
   const [status, setStatus] = useState<ConsoleStatus>("connecting");
   const [lines, setLines] = useState<ConsoleLine[]>([]);
@@ -144,7 +147,8 @@ export function useConsoleStream(serverId: string, profile: ConsoleProfile | und
       replace.current = false;
       setLines((prev) => {
         const next = fresh ? batch : prev.concat(batch);
-        return next.length > BUFFER_LIMIT ? next.slice(next.length - BUFFER_LIMIT) : next;
+        const limit = bufferLimitRef.current;
+        return next.length > limit ? next.slice(next.length - limit) : next;
       });
     };
 

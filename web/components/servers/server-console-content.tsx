@@ -21,6 +21,7 @@ import type { TranslateFn } from "@/lib/i18n";
 import type { PanelVariant } from "@/lib/panel-paths";
 import { cn } from "@/lib/utils";
 
+import { pollMs } from "@/lib/public-settings";
 const STATUS_DOT: Record<ConsoleStatus, string> = {
   connecting: "bg-[var(--vx-warn)]",
   connected: "bg-[var(--vx-info)]",
@@ -58,7 +59,7 @@ export function ServerConsolePanel() {
     queryKey: ["server-console-status", id],
     queryFn: () => fetchServerStatus(id),
     enabled: !!id,
-    refetchInterval: 15_000,
+    refetchInterval: pollMs(15_000),
   });
 
   const stream = useConsoleStream(id, meta?.profile);

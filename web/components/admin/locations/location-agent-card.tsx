@@ -13,6 +13,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 function Meter({ label, value }: { label: string; value: number | null }) {
   const warn = value != null && value > 85;
   return (
@@ -43,7 +44,7 @@ export function LocationAgentCard({ locationId }: { locationId: string }) {
     queryKey: queryKeys.agent(locationId),
     queryFn: () => fetchAgentView(locationId),
     enabled: !!locationId,
-    refetchInterval: 15000,
+    refetchInterval: pollMs(15000),
     retry: false,
   });
   const agent = query.data?.agent_view;

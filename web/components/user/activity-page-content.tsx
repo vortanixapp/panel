@@ -29,9 +29,9 @@ import {
 } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 
-const PAGE_SIZE = 100;
 
 const CATEGORIES = [
   { key: "all", labelKey: "common.all" },
@@ -100,6 +100,7 @@ export function ActivityPageContent() {
   const [category, setCategory] = useState("all");
   const [range, setRange] = useState(1);
   const [query, setQuery] = useState("");
+  const { activityPageSize: PAGE_SIZE } = usePublicSettings();
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [exporting, setExporting] = useState(false);
   const [opened, setOpened] = useState<number | null>(null);

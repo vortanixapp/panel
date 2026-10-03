@@ -26,6 +26,7 @@ import {
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 
+import { pollMs } from "@/lib/public-settings";
 const STAGE_LABEL_KEYS: Record<string, string> = {
   queued: "admin.migrate.stage.queued",
   stopping: "admin.migrate.stage.stopping",
@@ -76,7 +77,7 @@ export function MigrateServerDialog({
     queryKey: ["server-migrations", serverId],
     queryFn: () => fetchServerMigrations(serverId),
     enabled: open,
-    refetchInterval: open ? 5_000 : false,
+    refetchInterval: open ? pollMs(5_000) : false,
   });
 
   const active = historyQuery.data?.migrations.find(

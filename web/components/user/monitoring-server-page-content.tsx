@@ -51,6 +51,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 type MonTab = "players" | "stats" | "banners" | "public" | "incidents";
 
 const TABS: { key: MonTab; labelKey: string; icon: string }[] = [
@@ -70,7 +71,7 @@ export function MonitoringServerPageContent() {
     queryKey: queryKeys.monitoringServer(id ?? ""),
     queryFn: () => fetchMonitoringServer(id!),
     enabled: !!id,
-    refetchInterval: 15_000,
+    refetchInterval: pollMs(15_000),
     refetchIntervalInBackground: false,
   });
 

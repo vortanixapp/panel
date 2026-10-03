@@ -16,6 +16,7 @@ import {
 } from "@/components/data-table/features";
 import { type ReactTable } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import {
   Table,
@@ -53,9 +54,10 @@ export function DataTable<TData extends object>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const { pageSize: defaultPageSize } = usePublicSettings();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: defaultPageSize,
   });
 
   const table = useTable({

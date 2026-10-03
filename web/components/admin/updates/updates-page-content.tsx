@@ -27,6 +27,7 @@ import { PanelStatus } from "./panel-status";
 import { agentsBusy, formatRelative, summarizeAgents } from "./update-utils";
 import { WhatsNewCard } from "./whats-new-card";
 
+import { pollMs } from "@/lib/public-settings";
 export function UpdatesPageContent() {
   const t = useT();
   const qc = useQueryClient();
@@ -44,7 +45,7 @@ export function UpdatesPageContent() {
   const agents = useQuery({
     queryKey: queryKeys.agents,
     queryFn: fetchAgents,
-    refetchInterval: (query) => (query.state.data && agentsBusy(query.state.data) ? 3000 : 30_000),
+    refetchInterval: (query) => (query.state.data && agentsBusy(query.state.data) ? pollMs(3000) : pollMs(30_000)),
   });
 
   const data = updates.data;
@@ -55,7 +56,7 @@ export function UpdatesPageContent() {
     queryKey: queryKeys.adminPanelUpdateStatus,
     queryFn: fetchAdminPanelUpdateStatus,
     enabled: watching || jobRunning,
-    refetchInterval: 2500,
+    refetchInterval: pollMs(2500),
     retry: false,
   });
 

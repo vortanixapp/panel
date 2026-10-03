@@ -43,6 +43,7 @@ import {
   supportStatusMeta,
 } from "@/components/user/support/support-parts";
 
+import { pollMs } from "@/lib/public-settings";
 function MessageBubble({
   message,
   ticketId,
@@ -130,7 +131,7 @@ export function SupportTicketPageContent() {
     queryKey: queryKeys.supportTicket(id),
     queryFn: () => fetchSupportTicket(id),
     enabled: !!id,
-    refetchInterval: 5000,
+    refetchInterval: pollMs(5000),
     refetchIntervalInBackground: false,
   });
 

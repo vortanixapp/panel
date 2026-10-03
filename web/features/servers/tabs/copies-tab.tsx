@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
 
+import { pollMs } from "@/lib/public-settings";
 type ScheduleForm = Omit<ServerBackupSchedule, "last_run_at" | "last_error">;
 
 const WEEKDAY_INDEXES = [0, 1, 2, 3, 4, 5, 6];
@@ -143,7 +144,7 @@ export function ServerCopiesTab() {
     queryKey: ["server-backups-remote", id],
     queryFn: () => fetchRemoteBackups(id),
     enabled: !!id,
-    refetchInterval: 15_000,
+    refetchInterval: pollMs(15_000),
   });
   const remote = remoteQuery.data?.backups ?? [];
   const remoteAvailable = remoteQuery.data?.available ?? false;

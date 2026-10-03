@@ -12,6 +12,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 const GROUPS = ["", "connection", "updates", "maintenance", "problems"] as const;
 
 const LEVEL_ICON = {
@@ -47,7 +48,7 @@ export function AgentEventsTab({ id }: AgentTabProps) {
     queryFn: ({ pageParam }) => fetchAgentEvents(id, group, pageParam || undefined),
     initialPageParam: 0,
     getNextPageParam: (last) => (last.has_more ? last.next_before : undefined),
-    refetchInterval: 30000,
+    refetchInterval: pollMs(30000),
   });
   const events = eventsQuery.data?.pages.flatMap((p) => p.events) ?? [];
 

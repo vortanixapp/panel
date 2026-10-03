@@ -35,6 +35,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 export function MonitoringPublicPageContent() {
   useT();
   const { id } = useParams<{ id: string }>();
@@ -44,7 +45,7 @@ export function MonitoringPublicPageContent() {
     queryKey: queryKeys.monitoringPublic(id ?? ""),
     queryFn: () => fetchPublicMonitoringServer(id!),
     enabled: !!id,
-    refetchInterval: 30_000,
+    refetchInterval: pollMs(30_000),
     refetchIntervalInBackground: false,
   });
 

@@ -51,6 +51,7 @@ import {
 } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 
+import { pollMs } from "@/lib/public-settings";
 export function useMe() {
   return useQuery({
     queryKey: queryKeys.me,
@@ -63,7 +64,7 @@ export function useMe() {
       return failureCount < 1;
     },
     staleTime: 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: pollMs(60_000),
   });
 }
 
@@ -237,7 +238,7 @@ export function useServerDetail(id: string) {
     queryKey: queryKeys.serverDetail(id),
     queryFn: () => fetchServerDetail(id),
     enabled: !!id,
-    refetchInterval: (query) => (isTransient(query.state.data) ? 2_000 : 10_000),
+    refetchInterval: (query) => (isTransient(query.state.data) ? pollMs(2_000) : pollMs(10_000)),
   });
 }
 
@@ -246,7 +247,7 @@ export function useServerMetrics(id: string, enabled = true) {
     queryKey: queryKeys.metrics(id),
     queryFn: () => fetchServerMetrics(id),
     enabled: !!id && enabled,
-    refetchInterval: 15_000,
+    refetchInterval: pollMs(15_000),
   });
 }
 

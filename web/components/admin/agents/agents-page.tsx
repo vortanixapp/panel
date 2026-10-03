@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
+import { pollMs } from "@/lib/public-settings";
 function isFilter(v: string | null): v is AgentFilter {
   return v != null && (AGENT_FILTERS as readonly string[]).includes(v);
 }
@@ -103,7 +104,7 @@ export function AgentsPage() {
     refetchInterval: (q) => {
       const rows = q.state.data?.agents ?? [];
       const busy = rows.some((r) => r.labels.includes("updating") || r.labels.includes("restarting"));
-      return busy ? 3000 : 15000;
+      return busy ? pollMs(3000) : pollMs(15000);
     },
   });
   const data = agentsQuery.data;

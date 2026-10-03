@@ -19,6 +19,7 @@ import { fetchServerInstallLog, fetchServerLogs } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 const TAILS = [200, 1000, 5000];
 
 export function AdminServerLogsTab() {
@@ -34,14 +35,14 @@ export function AdminServerLogsTab() {
     queryKey: ["server-logs", id, tail],
     queryFn: () => fetchServerLogs(id, tail),
     enabled: !!id && source === "container",
-    refetchInterval: follow && source === "container" ? 10_000 : false,
+    refetchInterval: follow && source === "container" ? pollMs(10_000) : false,
   });
 
   const installQuery = useQuery({
     queryKey: ["server-install-log", id],
     queryFn: () => fetchServerInstallLog(id),
     enabled: !!id && source === "install",
-    refetchInterval: follow && source === "install" ? 10_000 : false,
+    refetchInterval: follow && source === "install" ? pollMs(10_000) : false,
   });
 
   const active = source === "container" ? containerQuery : installQuery;

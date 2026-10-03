@@ -24,12 +24,14 @@ import {
   type AccountingClient,
 } from "@/lib/api";
 import { money, monthTitle, yearToDate } from "@/lib/accounting-period";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import { cn } from "@/lib/utils";
 
 export function AccountingClients() {
   const t = useT();
   const qc = useQueryClient();
+  const { searchDebounceMs } = usePublicSettings();
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [selected, setSelected] = useState<AccountingClient | null>(null);
@@ -38,9 +40,9 @@ export function AccountingClients() {
   const [busy, setBusy] = useState("");
 
   useEffect(() => {
-    const timer = setTimeout(() => setTerm(search.trim()), 300);
+    const timer = setTimeout(() => setTerm(search.trim()), searchDebounceMs);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, searchDebounceMs]);
 
   const clientsQuery = useQuery({
     queryKey: ["admin-accounting-clients", term],

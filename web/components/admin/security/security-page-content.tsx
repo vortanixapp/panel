@@ -24,6 +24,7 @@ import {
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
 
+import { pollMs } from "@/lib/public-settings";
 function fmtDateTime(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(localeTag());
@@ -42,7 +43,7 @@ export function SecurityPageContent() {
   const attemptsQuery = useQuery({
     queryKey: ["login-attempts", onlyFailed, applied],
     queryFn: () => fetchLoginAttempts({ failed: onlyFailed, search: applied || undefined }),
-    refetchInterval: 30_000,
+    refetchInterval: pollMs(30_000),
   });
 
   const blocksQuery = useQuery({

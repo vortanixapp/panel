@@ -9,7 +9,8 @@ const STORAGE_KEY = "vx_cookie_notice";
 
 export function CookieBanner() {
   const t = useT();
-  const { legal, ready } = useBrand();
+  const { legal, ready, settings } = useBrand();
+  const { cookieNoticeDays } = settings;
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -18,11 +19,25 @@ export function CookieBanner() {
       return;
     }
     try {
-      setVisible(window.localStorage.getItem(STORAGE_KEY) !== "1");
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (!stored) {
+        setVisible(true);
+        return;
+      }
+      if (cookieNoticeDays <= 0) {
+        setVisible(false);
+        return;
+      }
+      const acceptedAt = Number(stored);
+      const expired =
+        !Number.isFinite(acceptedAt) ||
+        acceptedAt < 1000 ||
+        Date.now() - acceptedAt > cookieNoticeDays * 24 * 60 * 60 * 1000;
+      setVisible(expired);
     } catch {
       setVisible(true);
     }
-  }, [ready, legal?.cookie_banner]);
+  }, [ready, legal?.cookie_banner, cookieNoticeDays]);
 
   if (!visible) return null;
 
@@ -31,7 +46,7 @@ export function CookieBanner() {
 
   const accept = () => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, "1");
+      window.localStorage.setItem(STORAGE_KEY, String(Date.now()));
     } catch {}
     setVisible(false);
   };

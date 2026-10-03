@@ -29,6 +29,7 @@ import {
 import { useT } from "@/hooks/use-translations";
 import { localeTag, type TranslateFn } from "@/lib/i18n";
 
+import { pollMs } from "@/lib/public-settings";
 const STATUS_OPTIONS = [
   { value: "all", labelKey: "common.all" },
   { value: "active", labelKey: "admin.jobs.filter.active" },
@@ -130,7 +131,7 @@ export function JobsPageContent() {
         search: appliedSearch || undefined,
         limit: 200,
       }),
-    refetchInterval: 10_000,
+    refetchInterval: pollMs(10_000),
   });
 
   const jobs = data?.jobs ?? [];

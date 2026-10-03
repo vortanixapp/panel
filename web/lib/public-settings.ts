@@ -13,6 +13,15 @@ export type PublicSettings = {
   supportAttachmentMb: number;
   supportAttachmentCount: number;
   supportBodyMax: number;
+  pollScalePercent: number;
+  staleMs: number;
+  consoleBufferLines: number;
+  toastMs: number;
+  pageSize: number;
+  feedPageSize: number;
+  activityPageSize: number;
+  searchDebounceMs: number;
+  cookieNoticeDays: number;
 };
 
 export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
@@ -28,6 +37,15 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   supportAttachmentMb: 8,
   supportAttachmentCount: 5,
   supportBodyMax: 20000,
+  pollScalePercent: 100,
+  staleMs: 5000,
+  consoleBufferLines: 4000,
+  toastMs: 4000,
+  pageSize: 10,
+  feedPageSize: 30,
+  activityPageSize: 100,
+  searchDebounceMs: 300,
+  cookieNoticeDays: 0,
 };
 
 type Raw = Record<string, unknown> | null | undefined;
@@ -65,10 +83,30 @@ export function resolvePublicSettings(raw: Raw): PublicSettings {
     supportAttachmentMb: int(raw, "support.attachment_mb", d.supportAttachmentMb, 1, 64),
     supportAttachmentCount: int(raw, "support.attachment_count", d.supportAttachmentCount, 1, 20),
     supportBodyMax: int(raw, "support.body_max", d.supportBodyMax, 500, 100000),
+    pollScalePercent: int(raw, "ui.poll_scale_percent", d.pollScalePercent, 25, 1000),
+    staleMs: int(raw, "ui.stale_ms", d.staleMs, 1000, 120000),
+    consoleBufferLines: int(raw, "ui.console_buffer_lines", d.consoleBufferLines, 500, 20000),
+    toastMs: int(raw, "ui.toast_ms", d.toastMs, 1000, 20000),
+    pageSize: int(raw, "ui.page_size", d.pageSize, 5, 100),
+    feedPageSize: int(raw, "ui.feed_page_size", d.feedPageSize, 10, 200),
+    activityPageSize: int(raw, "ui.activity_page_size", d.activityPageSize, 20, 500),
+    searchDebounceMs: int(raw, "ui.search_debounce_ms", d.searchDebounceMs, 100, 1500),
+    cookieNoticeDays: int(raw, "ui.cookie_notice_days", d.cookieNoticeDays, 0, 3650),
   };
 }
 
+let cachedRaw: Raw = undefined;
+let cachedSettings: PublicSettings | null = null;
+
 export function publicSettings(): PublicSettings {
   const raw = injectedBranding()?.settings;
-  return resolvePublicSettings(raw);
+  if (cachedSettings && raw === cachedRaw) return cachedSettings;
+  cachedRaw = raw;
+  cachedSettings = resolvePublicSettings(raw);
+  return cachedSettings;
+}
+
+export function pollMs(baseMs: number): number {
+  const percent = publicSettings().pollScalePercent;
+  return Math.max(1000, Math.round((baseMs * percent) / 100));
 }

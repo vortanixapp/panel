@@ -18,6 +18,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
 import { cn } from "@/lib/utils";
 
+import { pollMs } from "@/lib/public-settings";
 const SUCCESS = new Set(["completed", "success", "succeeded", "paid"]);
 const FAILURE = new Set(["failed", "cancelled"]);
 const PENDING = new Set(["pending", "processing"]);
@@ -85,7 +86,7 @@ export function BillingPaymentDialog({ id, onClose }: { id: string | null; onClo
     queryFn: () => fetchPayment(id ?? ""),
     enabled: Boolean(id),
     retry: false,
-    refetchInterval: (query) => (paymentTone(query.state.data?.status) === "pending" ? 5000 : false),
+    refetchInterval: (query) => (paymentTone(query.state.data?.status) === "pending" ? pollMs(5000) : false),
   });
 
   const tone = payment ? paymentTone(payment.status) : "other";

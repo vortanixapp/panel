@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { useNodeTask } from "@/hooks/use-node-task";
 
+import { pollMs } from "@/lib/public-settings";
 function DiskPanel({ id, agent, viewer }: AgentTabProps) {
   const t = useT();
   const [cleanupOpen, setCleanupOpen] = useState(false);
@@ -266,7 +267,7 @@ export function AgentContainersTab(props: AgentTabProps) {
   const listQuery = useQuery({
     queryKey: queryKeys.agentContainers(id),
     queryFn: () => fetchAgentContainers(id),
-    refetchInterval: 20000,
+    refetchInterval: pollMs(20000),
   });
   const powerMutation = useMutation({
     mutationFn: (p: { server: PanelServerRef; action: "start" | "stop" }) => powerServer(p.server.id, p.action),

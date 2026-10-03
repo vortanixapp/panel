@@ -68,6 +68,7 @@ import { useMe, useServerDetail, useServerMetrics } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
 
+import { pollMs } from "@/lib/public-settings";
 const OVERVIEW_BACKUPS = 3;
 
 function formatBackupSize(bytes: number): string {
@@ -158,7 +159,7 @@ export function ServerOverviewTab() {
       const prov = (server?.provisioning_status || "").toLowerCase();
       const transitional = ["starting", "stopping", "restarting"].includes(runtime);
       const provisioning = ["pending", "installing", "provisioning", "reinstalling", "updating"].includes(prov);
-      return transitional || provisioning ? 3000 : 10000;
+      return transitional || provisioning ? pollMs(3000) : pollMs(10000);
     },
   });
 

@@ -27,10 +27,12 @@ import {
   type AbuseCaseInput,
   type AbuseSource,
 } from "@/lib/api";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
+import { pollMs } from "@/lib/public-settings";
 const SOURCES: AbuseSource[] = ["rkn", "court", "police", "copyright", "abuse", "other"];
 const FILTERS = ["open", "new", "notified", "restricted", "resolved", "rejected", "all"] as const;
 
@@ -62,6 +64,7 @@ export function AbusePageContent() {
   const t = useT();
   const qc = useQueryClient();
   const [status, setStatus] = useState<string>("open");
+  const { searchDebounceMs } = usePublicSettings();
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -70,14 +73,14 @@ export function AbusePageContent() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const timer = setTimeout(() => setTerm(search.trim()), 300);
+    const timer = setTimeout(() => setTerm(search.trim()), searchDebounceMs);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, searchDebounceMs]);
 
   const listQuery = useQuery({
     queryKey: ["admin-abuse", status, term],
     queryFn: () => fetchAbuseCases(status, term),
-    refetchInterval: 60_000,
+    refetchInterval: pollMs(60_000),
   });
   const detailQuery = useQuery({
     queryKey: ["admin-abuse-case", selectedId],

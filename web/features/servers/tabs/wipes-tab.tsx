@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
 
+import { pollMs } from "@/lib/public-settings";
 const SCHEDULE_TYPES = ["weekly", "monthly", "cron", "once"] as const;
 const COUNTDOWNS = [0, 5, 15, 30, 60];
 
@@ -93,7 +94,7 @@ export function ServerWipesTab() {
     queryKey: ["server-wipes", id],
     queryFn: () => fetchServerWipes(id),
     enabled: !!id,
-    refetchInterval: (query) => (query.state.data?.active_run ? 5_000 : 30_000),
+    refetchInterval: (query) => (query.state.data?.active_run ? pollMs(5_000) : pollMs(30_000)),
   });
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ["server-wipes", id] });

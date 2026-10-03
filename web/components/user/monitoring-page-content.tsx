@@ -34,6 +34,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 type ViewMode = "table" | "cards";
 
 const ALL_GAMES = "all";
@@ -47,7 +48,7 @@ export function MonitoringPageContent() {
   const monitoring = useQuery({
     queryKey: queryKeys.monitoring,
     queryFn: fetchMonitoring,
-    refetchInterval: 15_000,
+    refetchInterval: pollMs(15_000),
     refetchIntervalInBackground: false,
   });
 

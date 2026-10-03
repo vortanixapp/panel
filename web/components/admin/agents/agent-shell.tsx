@@ -41,6 +41,7 @@ import { useT } from "@/hooks/use-translations";
 import { useNodeTask } from "@/hooks/use-node-task";
 import { wheelScrollX } from "@/lib/wheel-scroll-x";
 
+import { pollMs } from "@/lib/public-settings";
 const TABS = ["overview", "containers", "logs", "events", "diagnostics", "maintenance"] as const;
 type AgentTab = (typeof TABS)[number];
 
@@ -69,8 +70,8 @@ export function AgentShell() {
     enabled: !!id,
     refetchInterval: (q) => {
       const a = q.state.data?.agent_view;
-      if (!a) return 15000;
-      return a.labels.includes("updating") || a.labels.includes("restarting") ? 3000 : 10000;
+      if (!a) return pollMs(15000);
+      return a.labels.includes("updating") || a.labels.includes("restarting") ? pollMs(3000) : pollMs(10000);
     },
   });
 

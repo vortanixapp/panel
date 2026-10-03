@@ -10,6 +10,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 type Series = { key: string; label: string; color: string; points: AgentMetricPoint[] };
 
 const W = 720;
@@ -129,7 +130,7 @@ export function AgentMetricChart({ id }: { id: string }) {
   const metricsQuery = useQuery({
     queryKey: queryKeys.agentMetrics(id, range),
     queryFn: () => fetchAgentMetrics(id, range),
-    refetchInterval: range === "1h" ? 30000 : 120000,
+    refetchInterval: range === "1h" ? pollMs(30000) : pollMs(120000),
   });
   const s = metricsQuery.data?.series ?? {};
   const nodeSeries: Series[] = [

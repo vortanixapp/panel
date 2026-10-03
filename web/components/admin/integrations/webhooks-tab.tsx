@@ -38,6 +38,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 type HookAction = { id: string; kind: "toggle" | "delete" | "test"; active?: boolean };
 
 export function WebhooksTab() {
@@ -60,7 +61,7 @@ export function WebhooksTab() {
     queryKey: ["webhook-deliveries", deliveriesFor],
     queryFn: () => fetchWebhookDeliveries(deliveriesFor as string),
     enabled: !!deliveriesFor,
-    refetchInterval: 10_000,
+    refetchInterval: pollMs(10_000),
   });
 
   const createHookMut = useMutation({

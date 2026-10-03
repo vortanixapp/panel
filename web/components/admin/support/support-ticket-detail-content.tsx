@@ -42,6 +42,7 @@ import {
   waitingFor,
 } from "@/components/user/support/support-parts";
 
+import { pollMs } from "@/lib/public-settings";
 const CANNED = [
   {
     labelKey: "support.canned.accepted.label",
@@ -148,7 +149,7 @@ export function AdminSupportTicketDetailContent() {
     queryKey: queryKeys.supportTicket(id),
     queryFn: () => fetchSupportTicket(id),
     enabled: !!id,
-    refetchInterval: 5000,
+    refetchInterval: pollMs(5000),
   });
 
   const messages = thread?.messages ?? [];

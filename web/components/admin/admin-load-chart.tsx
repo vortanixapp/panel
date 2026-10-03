@@ -9,6 +9,7 @@ import type { TranslateFn } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 function buildRanges(t: TranslateFn) {
   return [
     { hours: 24, label: t("admin.load_chart.range_24h") },
@@ -53,7 +54,7 @@ export function AdminLoadChart({ className }: { className?: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-dashboard-series", hours, nodeId],
     queryFn: () => fetchAdminDashboardSeries({ hours, nodeId: nodeId || undefined }),
-    refetchInterval: 60_000,
+    refetchInterval: pollMs(60_000),
   });
 
   const points = data?.points ?? [];

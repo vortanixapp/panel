@@ -18,6 +18,7 @@ import {
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
 
+import { pollMs } from "@/lib/public-settings";
 export function FtpAccountsCard({ serverId }: { serverId: string }) {
   const t = useT();
   const qc = useQueryClient();
@@ -30,7 +31,7 @@ export function FtpAccountsCard({ serverId }: { serverId: string }) {
     enabled: !!serverId,
     refetchInterval: (query) =>
       query.state.data?.accounts.some((a) => a.status === "pending" || a.status === "deleting")
-        ? 2000
+        ? pollMs(2000)
         : false,
   });
 

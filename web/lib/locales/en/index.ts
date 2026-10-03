@@ -15,6 +15,7 @@ import { registry } from "./registry";
 import { registryBilling } from "./registry-billing";
 import { registryNotifications } from "./registry-notifications";
 import { registryRetention } from "./registry-retention";
+import { registryInterface } from "./registry-interface";
 import { registryServers } from "./registry-servers";
 import { registryUploads } from "./registry-uploads";
 import { news } from "./news";
@@ -48,6 +49,7 @@ export const EN = {
   ...registryServers,
   ...registryNotifications,
   ...registryRetention,
+  ...registryInterface,
   ...registryUploads,
   ...template,
 };

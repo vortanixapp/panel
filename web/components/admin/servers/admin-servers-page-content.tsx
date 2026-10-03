@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { useMe } from "@/hooks/use-queries";
 
+import { pollMs } from "@/lib/public-settings";
 type BlockTarget = { ids: string[]; name?: string };
 
 function StatCard({
@@ -67,7 +68,7 @@ export function AdminServersPageContent() {
   const serversQuery = useQuery({
     queryKey: queryKeys.adminServers,
     queryFn: fetchAdminServers,
-    refetchInterval: 15_000,
+    refetchInterval: pollMs(15_000),
   });
   const data = serversQuery.data;
   const servers = useMemo(() => data?.servers ?? [], [data]);

@@ -8,6 +8,7 @@ import { fetchServerInstallLog } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 
+import { pollMs } from "@/lib/public-settings";
 export function ServerInstallConsole({
   serverId,
   active,
@@ -21,7 +22,7 @@ export function ServerInstallConsole({
   const { data } = useQuery({
     queryKey: ["server-install-log", serverId],
     queryFn: () => fetchServerInstallLog(serverId),
-    refetchInterval: active ? 2000 : false,
+    refetchInterval: active ? pollMs(2000) : false,
     enabled: !!serverId,
   });
 
