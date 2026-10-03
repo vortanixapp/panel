@@ -27,6 +27,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"rsc.io/qr"
 )
 
@@ -41,7 +42,6 @@ var (
 const (
 	accountNameMax    = 64
 	accountContactMax = 64
-	pendingEmailTTL   = 24 * time.Hour
 )
 
 type accountFieldError string
@@ -515,7 +515,7 @@ func (h *Handler) ChangeEmail(w http.ResponseWriter, r *http.Request) {
 		UPDATE core.users
 		SET pending_email = $2, pending_email_hash = $3, pending_email_expires = now() + $4::interval
 		WHERE id = $1
-	`, claims.UserID, newEmail, hex.EncodeToString(sum[:]), pendingEmailTTL.String()); err != nil {
+	`, claims.UserID, newEmail, hex.EncodeToString(sum[:]), settingsreg.AuthEmailChangeTTL.Duration().String()); err != nil {
 		writeError(w, http.StatusInternalServerError, "Не удалось сохранить новый адрес")
 		return
 	}
@@ -563,7 +563,7 @@ func (h *Handler) ConfirmEmailChange(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Ссылка подтверждения неполная")
 		return
 	}
-	if h.tooManyAttempts(w, r, "email-change", 20, 15*time.Minute) {
+	if h.tooManyAttempts(w, r, "email-change", intOf(settingsreg.AuthSocialAttempts), attemptsWindow()) {
 		return
 	}
 	ctx := r.Context()
@@ -801,7 +801,7 @@ func (h *Handler) Enable2FA(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Введите код из приложения-аутентификатора")
 		return
 	}
-	if h.tooManyAttempts(w, r, "2fa-enable", 10, 15*time.Minute, claims.UserID) {
+	if h.tooManyAttempts(w, r, "2fa-enable", intOf(settingsreg.AuthAccountAttempts), attemptsWindow(), claims.UserID) {
 		return
 	}
 	db := h.dbOf(ctx)

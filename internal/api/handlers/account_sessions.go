@@ -7,31 +7,36 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
-const (
-	sessionRefreshTTL  = 24 * time.Hour
-	rememberRefreshTTL = 30 * 24 * time.Hour
-)
+func sessionRefreshTTL() time.Duration {
+	return settingsreg.AuthRefreshTTLSession.Duration()
+}
+
+func rememberRefreshTTL() time.Duration {
+	return settingsreg.AuthRefreshTTLRemember.Duration()
+}
 
 func refreshTTLForRemember(remember bool) time.Duration {
 	if remember {
-		return rememberRefreshTTL
+		return rememberRefreshTTL()
 	}
-	return sessionRefreshTTL
+	return sessionRefreshTTL()
 }
 
 func refreshTTLFromRemaining(remaining time.Duration, defaultTTL time.Duration) time.Duration {
 	if remaining <= 0 {
 		return 0
 	}
-	if remaining > 8*24*time.Hour {
-		return rememberRefreshTTL
+	if remaining > defaultTTL+24*time.Hour && remaining > sessionRefreshTTL() {
+		return rememberRefreshTTL()
 	}
 	if defaultTTL > 0 {
 		return defaultTTL
 	}
-	return sessionRefreshTTL
+	return sessionRefreshTTL()
 }
 
 func trustedProxyHops() int {

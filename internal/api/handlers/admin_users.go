@@ -641,8 +641,8 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "password confirmation mismatch")
 			return
 		}
-		if len(pw) < 8 {
-			writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		if passwordTooShort(pw) {
+			writeError(w, http.StatusBadRequest, passwordTooShortMessage())
 			return
 		}
 		hash, err := bcrypt.GenerateFromPassword([]byte(pw), bcrypt.DefaultCost)

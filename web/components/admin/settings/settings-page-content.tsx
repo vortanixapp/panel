@@ -9,7 +9,6 @@ import { PageShell } from "@/components/layout/page-shell";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import {
   fetchAdminSettings,
   saveAdminSettings,
@@ -21,6 +20,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { useT } from "@/hooks/use-translations";
 import {
   FILES_STORAGE_DRIVERS,
+  isRegistryGroup,
   isSettingsTab,
   MAIL_MAILERS,
   MAIL_SCHEMES,
@@ -33,10 +33,12 @@ import {
   Segmented,
   SelectField,
   SettingsCard,
+  SettingsSaveBar,
   TextAreaField,
   TextField,
   ToggleRow,
 } from "./settings-ui";
+import { RegistrySettingsPanel } from "./registry-settings-panel";
 import { SiteFilesCard } from "./site-files-card";
 import type { SettingsTab } from "./types";
 
@@ -62,6 +64,7 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
     return "main";
   });
 
+  const [registryDraft, setRegistryDraft] = useState<Record<string, string>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [baseline, setBaseline] = useState<{
     values: Record<string, string>;
@@ -237,6 +240,47 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
   const tabTitleKey = SETTINGS_TABS.find((item) => item.id === tab)?.labelKey;
   const tabTitle = tabTitleKey ? t(tabTitleKey) : t("admin.settings.title");
 
+  const header = (
+    <>
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div className="space-y-1.5">
+          <h1 className="text-[26px] leading-none font-bold tracking-tight">
+            {t("admin.settings.title")}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {t("admin.settings.subtitle")}
+          </p>
+        </div>
+        <div className="space-y-1 text-right">
+          <div className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+            {t("admin.settings.panel_version")}
+          </div>
+          <div className="font-mono text-sm">{panelVersion}</div>
+        </div>
+      </div>
+
+      <Segmented
+        items={SETTINGS_TABS.map((item) => ({
+          id: item.id,
+          label: t(item.labelKey),
+        }))}
+        value={tab}
+        onChange={changeTab}
+      />
+    </>
+  );
+
+  if (isRegistryGroup(tab)) {
+    return (
+      <RegistrySettingsPanel
+        group={tab}
+        header={header}
+        draft={registryDraft}
+        onDraftChange={setRegistryDraft}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <PageShell variant="admin">
@@ -252,31 +296,7 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
   return (
     <PageShell variant="admin">
       <div className="w-full space-y-6 pb-24">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div className="space-y-1.5">
-            <h1 className="text-[26px] leading-none font-bold tracking-tight">
-              {t("admin.settings.title")}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {t("admin.settings.subtitle")}
-            </p>
-          </div>
-          <div className="space-y-1 text-right">
-            <div className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
-              {t("admin.settings.panel_version")}
-            </div>
-            <div className="font-mono text-sm">{panelVersion}</div>
-          </div>
-        </div>
-
-        <Segmented
-          items={SETTINGS_TABS.map((item) => ({
-            id: item.id,
-            label: t(item.labelKey),
-          }))}
-          value={tab}
-          onChange={changeTab}
-        />
+        {header}
 
         {tab === "main" && (
           <div className="space-y-4">
@@ -878,43 +898,20 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
         )}
       </div>
 
-      <div className="sticky bottom-0 -mx-4 -mb-6 px-4 pt-4 pb-5">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/90 to-transparent" />
-        <div className="relative flex w-full flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card px-5 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <span
-              className={cn(
-                "size-1.5 rounded-full",
-                isDirty ? "bg-amber-500" : "bg-muted-foreground/40"
-              )}
-            />
-            <span className="text-[13px] text-muted-foreground">
-              {isDirty
-                ? t("admin.settings.dirty", { tab: tabTitle })
-                : t("admin.settings.clean", { tab: tabTitle })}
-            </span>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-9 text-[13px] text-muted-foreground"
-              onClick={reset}
-              disabled={!isDirty || saveMutation.isPending}
-            >
-              {t("admin.settings.discard")}
-            </Button>
-            <Button
-              type="button"
-              className="h-9 px-5 text-[13px]"
-              onClick={save}
-              disabled={saveMutation.isPending}
-            >
-              {saveMutation.isPending ? t("common.saving") : t("common.save")}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <SettingsSaveBar
+        dirty={isDirty}
+        message={
+          isDirty
+            ? t("admin.settings.dirty", { tab: tabTitle })
+            : t("admin.settings.clean", { tab: tabTitle })
+        }
+        saving={saveMutation.isPending}
+        discardLabel={t("admin.settings.discard")}
+        saveLabel={t("common.save")}
+        savingLabel={t("common.saving")}
+        onDiscard={reset}
+        onSave={save}
+      />
     </PageShell>
   );
 }

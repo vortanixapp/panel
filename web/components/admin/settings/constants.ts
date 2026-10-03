@@ -1,4 +1,19 @@
-import type { SettingsTab } from "./types";
+import type { RegistryGroup, SettingsTab } from "./types";
+
+export const REGISTRY_GROUPS: RegistryGroup[] = [
+  "security",
+  "billing",
+  "servers",
+  "notifications",
+  "retention",
+  "nodes",
+  "uploads",
+  "interface",
+];
+
+export function isRegistryGroup(value: string): value is RegistryGroup {
+  return (REGISTRY_GROUPS as string[]).includes(value);
+}
 
 export const SETTINGS_TABS: { id: SettingsTab; labelKey: string }[] = [
   { id: "main", labelKey: "admin.settings.tab.main" },
@@ -7,6 +22,10 @@ export const SETTINGS_TABS: { id: SettingsTab; labelKey: string }[] = [
   { id: "dockerhub", labelKey: "admin.settings.tab.dockerhub" },
   { id: "telegram", labelKey: "admin.settings.tab.telegram" },
   { id: "files", labelKey: "admin.settings.tab.files" },
+  ...REGISTRY_GROUPS.map((id) => ({
+    id: id as SettingsTab,
+    labelKey: `admin.settings.tab.${id}`,
+  })),
 ];
 
 export const MAIL_MAILERS = ["smtp", "log", "array"] as const;

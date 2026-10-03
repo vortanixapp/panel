@@ -16,6 +16,7 @@ import (
 	"github.com/pquerna/otp/totp"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -80,7 +81,7 @@ func (h *Handler) checkAccountPassword(w http.ResponseWriter, r *http.Request, u
 		writeError(w, http.StatusBadRequest, "Введите текущий пароль")
 		return false
 	}
-	if h.tooManyAttempts(w, r, "account-password", 10, 15*time.Minute, userID) {
+	if h.tooManyAttempts(w, r, "account-password", intOf(settingsreg.AuthAccountAttempts), attemptsWindow(), userID) {
 		return false
 	}
 	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
@@ -136,7 +137,7 @@ func (h *Handler) RegenerateRecoveryCodes(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "Введите код из приложения")
 		return
 	}
-	if h.tooManyAttempts(w, r, "2fa-codes", 10, 15*time.Minute, claims.UserID) {
+	if h.tooManyAttempts(w, r, "2fa-codes", intOf(settingsreg.AuthAccountAttempts), attemptsWindow(), claims.UserID) {
 		return
 	}
 	if !h.checkSecondFactor(ctx, r, claims.UserID, body.Code) {

@@ -16,12 +16,12 @@ import (
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
 	apiKeyKindAdmin    = "admin"
 	apiKeyKindPersonal = "personal"
-	personalTokenLimit = 10
 )
 
 var personalTokenScopes = []string{
@@ -197,7 +197,7 @@ func (h *Handler) ListAPITokens(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"tokens":  tokens,
 		"scopes":  personalTokenScopes,
-		"limit":   personalTokenLimit,
+		"limit":   int(settingsreg.AuthPersonalTokenLimit.Int()),
 		"enabled": h.personalTokensEnabled(ctx),
 	})
 }
@@ -283,9 +283,9 @@ func (h *Handler) CreateAPIToken(w http.ResponseWriter, r *http.Request) {
 			  AND (expires_at IS NULL OR expires_at > now())
 		) < $7::int
 		RETURNING id::text, created_at
-	`, claims.UserID, name, prefix, hash, scopesJSON, expires, personalTokenLimit).Scan(&id, &createdAt)
+	`, claims.UserID, name, prefix, hash, scopesJSON, expires, settingsreg.AuthPersonalTokenLimit.Int()).Scan(&id, &createdAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		writeError(w, http.StatusConflict, "Действующих токенов может быть не больше "+strconv.Itoa(personalTokenLimit)+" — отзовите ненужные")
+		writeError(w, http.StatusConflict, "Действующих токенов может быть не больше "+strconv.FormatInt(settingsreg.AuthPersonalTokenLimit.Int(), 10)+" — отзовите ненужные")
 		return
 	}
 	if err != nil {

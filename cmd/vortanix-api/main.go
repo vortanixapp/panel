@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/oauth"
 	"github.com/vortanixapp/panel/pkg/panelsecret"
 	"github.com/vortanixapp/panel/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 var version = "dev"
@@ -80,6 +82,11 @@ func main() {
 	}
 	cfg.JWTSecret = jwtSecret
 
+	settingsreg.Init(pools.Write)
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("REGISTRATION_CONFIRM_EMAIL"))) {
+	case "0", "false", "no", "off":
+		settingsreg.AuthRegisterConfirmEmail.SetDefault("0")
+	}
 	tokens := paneljwt.New(cfg.JWTSecret, cfg.AccessTokenTTLMin, cfg.RefreshTokenTTLDays)
 	relayClient := relay.New(cfg.RelayURL, cfg.InternalSecret)
 	closeNATS := jobwake.ConnectNATS(cfg.NATSURL)

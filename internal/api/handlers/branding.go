@@ -3,6 +3,8 @@ package handlers
 import (
 	"net/http"
 	"strings"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +30,7 @@ func (h *Handler) GetBranding(w http.ResponseWriter, r *http.Request) {
 	payload := map[string]any{
 		"whmcs":             whmcsPublicInfo(settings),
 		"legal":             h.publicLegalInfo(r.Context(), settings),
+		"settings":          settingsreg.PublicValues(),
 		"brand_name":        name,
 		"panel_name":        title,
 		"site_description":  strings.TrimSpace(settings["app.site.description"]),

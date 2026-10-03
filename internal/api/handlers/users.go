@@ -53,8 +53,8 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	if len(req.Password) < 8 {
-		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+	if passwordTooShort(req.Password) {
+		writeError(w, http.StatusBadRequest, passwordTooShortMessage())
 
 		return
 

@@ -15,6 +15,7 @@ import (
 
 	"github.com/vortanixapp/panel/internal/api/mail"
 	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +129,7 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	if h.tooManyAttempts(w, r, "forgot", 5, 15*time.Minute, req.Email) {
+	if h.tooManyAttempts(w, r, "forgot", intOf(settingsreg.AuthForgotAttempts), attemptsWindow(), req.Email) {
 		return
 	}
 	var userID string
@@ -143,7 +144,7 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	}
 	token := randomToken(32)
 	hash := sha256Hex(token)
-	expires := time.Now().Add(2 * time.Hour)
+	expires := time.Now().Add(settingsreg.AuthResetLinkTTL.Duration())
 	_, _ = h.dbOf(ctx).Exec(ctx, `
 		INSERT INTO core.password_reset_tokens (user_id, token_hash, expires_at)
 		VALUES ($1, $2, $3)
@@ -176,12 +177,12 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if req.Token == "" || len(req.NewPassword) < 8 {
-		writeError(w, http.StatusBadRequest, "token and password (8+ chars) required")
+	if req.Token == "" || passwordTooShort(req.NewPassword) {
+		writeError(w, http.StatusBadRequest, passwordTooShortMessage())
 		return
 	}
 	ctx := r.Context()
-	if h.tooManyAttempts(w, r, "reset", 10, 15*time.Minute) {
+	if h.tooManyAttempts(w, r, "reset", intOf(settingsreg.AuthResetAttempts), attemptsWindow()) {
 		return
 	}
 	hash := sha256Hex(req.Token)

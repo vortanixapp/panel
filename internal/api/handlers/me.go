@@ -29,8 +29,8 @@ func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if len(req.NewPassword) < 8 {
-		writeError(w, http.StatusBadRequest, "Пароль должен быть не короче 8 символов")
+	if passwordTooShort(req.NewPassword) {
+		writeError(w, http.StatusBadRequest, passwordTooShortMessage())
 		return
 	}
 	if len(req.NewPassword) > 72 {

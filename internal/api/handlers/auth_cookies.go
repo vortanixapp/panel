@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -17,7 +19,6 @@ const (
 	sessionsCookie = "vtx_sessions"
 	csrfHeader     = "X-CSRF-Token"
 	authPath       = "/v1/auth"
-	maxSavedLogins = 6
 )
 
 type savedLogin struct {
@@ -122,10 +123,7 @@ func (h *Handler) clearAuthCookies(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) accessTTLMinutes() int {
-	if h.accessTTLMin > 0 {
-		return h.accessTTLMin
-	}
-	return 60
+	return int(settingsreg.AuthAccessTTL.Int())
 }
 
 func cookieValue(r *http.Request, name string) string {
@@ -166,8 +164,8 @@ func (h *Handler) savedLogins(r *http.Request) []savedLogin {
 }
 
 func (h *Handler) writeSavedLogins(w http.ResponseWriter, r *http.Request, list []savedLogin, ttl time.Duration) {
-	if len(list) > maxSavedLogins {
-		list = list[:maxSavedLogins]
+	if limit := int(settingsreg.AuthMaxSavedLogins.Int()); len(list) > limit {
+		list = list[:limit]
 	}
 	value := ""
 	if len(list) > 0 {

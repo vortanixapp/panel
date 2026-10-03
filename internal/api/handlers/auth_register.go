@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -16,14 +15,12 @@ import (
 
 	"github.com/vortanixapp/panel/internal/api/mail"
 	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
-	uniformResponseFloor  = 300 * time.Millisecond
-	registerConfirmTTL    = 24 * time.Hour
-	registerMailPerHour   = 3
-	registerExistsMailTTL = time.Hour
-	localeCookie          = "vortanix-locale"
+	uniformResponseFloor = 300 * time.Millisecond
+	localeCookie         = "vortanix-locale"
 )
 
 type pendingRegistration struct {
@@ -36,8 +33,7 @@ type pendingRegistration struct {
 }
 
 func (h *Handler) registrationConfirmRequired(ctx context.Context) bool {
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("REGISTRATION_CONFIRM_EMAIL"))) {
-	case "0", "false", "no", "off":
+	if !settingsreg.AuthRegisterConfirmEmail.Bool() {
 		return false
 	}
 	cfg := h.mailerConfig(ctx)
@@ -60,7 +56,7 @@ func (h *Handler) frontendLink(r *http.Request, path string) string {
 
 func (h *Handler) registerWithConfirmation(w http.ResponseWriter, r *http.Request, started time.Time, p pendingRegistration) {
 	ctx := r.Context()
-	if !h.allowAttempt(ctx, "register:mail:"+sha256Hex(p.Email)[:16], registerMailPerHour, time.Hour) {
+	if !h.allowAttempt(ctx, "register:mail:"+sha256Hex(p.Email)[:16], intOf(settingsreg.AuthRegisterMailPerHour), time.Hour) {
 		writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте позже")
 		return
 	}
@@ -74,7 +70,7 @@ func (h *Handler) registerWithConfirmation(w http.ResponseWriter, r *http.Reques
 	loc := i18n.For(ctx, h.dbOf(ctx), cookieValue(r, localeCookie))
 	brand := h.mailBrand(ctx, r)
 	if exists {
-		if claimed, err := h.cache.Claim(ctx, "register:exists:"+sha256Hex(p.Email)[:16], registerExistsMailTTL); err != nil || claimed {
+		if claimed, err := h.cache.Claim(ctx, "register:exists:"+sha256Hex(p.Email)[:16], settingsreg.AuthExistsMailInterval.Duration()); err != nil || claimed {
 			msg := mail.RegistrationExistsEmail(loc, brand, h.frontendLink(r, "/login"))
 			msg.To = p.Email
 			h.sendMailAsync("mail.register_exists", "", p.Email, msg)
@@ -121,7 +117,7 @@ func (h *Handler) savePendingRegistration(ctx context.Context, r *http.Request, 
 			expires_at    = EXCLUDED.expires_at,
 			created_at    = now()
 	`, p.Email, p.PasswordHash, p.FirstName, p.LastName, p.ReferralCode, consents,
-		clientIP(r), agent, tokenHash, registerConfirmTTL.String())
+		clientIP(r), agent, tokenHash, settingsreg.AuthRegisterConfirmTTL.Duration().String())
 	return err
 }
 
@@ -133,7 +129,7 @@ func (h *Handler) ConfirmRegistration(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Ссылка подтверждения неполная")
 		return
 	}
-	if h.tooManyAttempts(w, r, "register-confirm", 30, 15*time.Minute) {
+	if h.tooManyAttempts(w, r, "register-confirm", intOf(settingsreg.AuthConfirmAttempts), attemptsWindow()) {
 		return
 	}
 	ctx := r.Context()

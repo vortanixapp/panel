@@ -20,6 +20,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/sshclient"
 )
 
@@ -57,9 +58,16 @@ func (h *Handler) UpdateAdminSettings(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, "invalid json")
 			return
 		}
+		for k := range body {
+			if !patchKeyAllowed(k) {
+				writeError(w, http.StatusBadRequest, "unknown setting: "+k)
+				return
+			}
+		}
 		for k, v := range body {
 			h.setTenantSettingAny(ctx, k, v)
 		}
+		settingsreg.Invalidate()
 		writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Настройки сохранены", "status": "updated"})
 		return
 	}

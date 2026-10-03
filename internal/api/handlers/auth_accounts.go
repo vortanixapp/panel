@@ -108,12 +108,12 @@ func (h *Handler) SwitchAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	access, refresh, err := h.reissueAuthTokens(r, userID, email, role, sessionID, refreshJTI, rememberRefreshTTL)
+	access, refresh, err := h.reissueAuthTokens(r, userID, email, role, sessionID, refreshJTI, rememberRefreshTTL())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
-	h.startSession(w, r, userID, email, role, access, refresh, rememberRefreshTTL)
+	h.startSession(w, r, userID, email, role, access, refresh, rememberRefreshTTL())
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":   true,
 		"user": map[string]string{"id": userID, "email": email, "role": role},

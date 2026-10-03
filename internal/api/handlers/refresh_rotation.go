@@ -9,9 +9,8 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
-
-const refreshGraceSeconds = 30
 
 type refreshAction int
 
@@ -63,7 +62,7 @@ func (h *Handler) rotateRefresh(ctx context.Context, userID, sessionID, presente
 		FROM core.user_sessions
 		WHERE id = $1 AND user_id = $2
 		FOR UPDATE
-	`, sessionID, userID, float64(refreshGraceSeconds)).Scan(&current, &previous, &st.graceOK)
+	`, sessionID, userID, float64(settingsreg.AuthRefreshGrace.Int())).Scan(&current, &previous, &st.graceOK)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", refreshOutcomeGone, nil
 	}

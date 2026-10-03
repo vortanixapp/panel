@@ -400,6 +400,8 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Get("/settings", h.GetAdminSettings)
 			r.Post("/settings", h.UpdateAdminSettings)
 			r.Patch("/settings", h.UpdateAdminSettings)
+			r.Get("/settings/registry", h.GetAdminSettingsRegistry)
+			r.Put("/settings/registry", h.UpdateAdminSettingsRegistry)
 			r.Post("/settings/test-mail", h.AdminSettingsTestMail)
 			r.Post("/settings/test-telegram", h.AdminSettingsTestTelegram)
 			r.Post("/settings/test-files-storage", h.AdminSettingsTestFilesStorage)

@@ -9,12 +9,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-)
 
-const (
-	loginFailWindow    = 15 * time.Minute
-	loginFailThreshold = 10
-	loginAutoBlockFor  = 30 * time.Minute
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (h *Handler) recordLoginAttempt(ctx context.Context, r *http.Request, userID, email, reason string, success bool) {
@@ -55,10 +51,10 @@ func (h *Handler) autoBlockIfNeeded(ctx context.Context, ip string) {
 	if h.dbOf(ctx).QueryRow(ctx, `
 		SELECT COUNT(*) FROM core.login_attempts
 		WHERE ip = $1 AND success = false AND created_at > now() - $2::interval
-	`, ip, loginFailWindow.String()).Scan(&fails) != nil {
+	`, ip, settingsreg.AuthIPBlockWindow.Duration().String()).Scan(&fails) != nil {
 		return
 	}
-	if fails < loginFailThreshold {
+	if int64(fails) < settingsreg.AuthIPBlockThreshold.Int() {
 		return
 	}
 	_, _ = h.dbOf(ctx).Exec(ctx, `
@@ -67,7 +63,7 @@ func (h *Handler) autoBlockIfNeeded(ctx context.Context, ip string) {
 		ON CONFLICT (ip) DO UPDATE
 		SET expires_at = EXCLUDED.expires_at, reason = EXCLUDED.reason
 		WHERE core.ip_blocks.auto = true
-	`, ip, strconv.Itoa(fails)+" неудачных входов подряд", loginAutoBlockFor.String())
+	`, ip, strconv.Itoa(fails)+" неудачных входов подряд", settingsreg.AuthIPBlockDuration.Duration().String())
 }
 
 func (h *Handler) staffRequires2FA(ctx context.Context) bool {

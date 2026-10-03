@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/pquerna/otp/totp"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 type challenge2FARequest struct {
@@ -28,7 +29,7 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	if h.tooManyAttempts(w, r, "2fa", 20, 15*time.Minute) {
+	if h.tooManyAttempts(w, r, "2fa", intOf(settingsreg.AuthTwoFAIPAttempts), attemptsWindow()) {
 		return
 	}
 	var pending map[string]string
@@ -37,13 +38,13 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid or expired challenge")
 		return
 	}
-	if !h.allowAttempt(ctx, "2fa:tries:"+req.Token, 5, 10*time.Minute) {
+	if !h.allowAttempt(ctx, "2fa:tries:"+req.Token, intOf(settingsreg.AuthTwoFAChallengeTries), attemptsWindow()) {
 		_ = h.cache.Delete(ctx, "2fa:"+req.Token)
 		h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "2FA: превышено число попыток", false)
 		writeError(w, http.StatusUnauthorized, "Слишком много неверных кодов — войдите заново")
 		return
 	}
-	if !h.allowAttempt(ctx, "2fa:user:"+pending["user_id"], 10, 15*time.Minute) {
+	if !h.allowAttempt(ctx, "2fa:user:"+pending["user_id"], intOf(settingsreg.AuthTwoFAUserAttempts), attemptsWindow()) {
 		_ = h.cache.Delete(ctx, "2fa:"+req.Token)
 		h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], "2FA: превышен лимит попыток для учётной записи", false)
 		writeError(w, http.StatusTooManyRequests, "Слишком много неверных кодов — попробуйте через несколько минут")
@@ -69,12 +70,12 @@ func (h *Handler) Challenge2FA(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.cache.Delete(ctx, "2fa:"+req.Token, "2fa:tries:"+req.Token)
-	access, refresh, err := h.issueAuthTokens(r, pending["user_id"], pending["email"], pending["role"], rememberRefreshTTL)
+	access, refresh, err := h.issueAuthTokens(r, pending["user_id"], pending["email"], pending["role"], rememberRefreshTTL())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
-	h.startSession(w, r, pending["user_id"], pending["email"], pending["role"], access, refresh, rememberRefreshTTL)
+	h.startSession(w, r, pending["user_id"], pending["email"], pending["role"], access, refresh, rememberRefreshTTL())
 	audit(ctx, h.dbOf(ctx), pending["user_id"], "auth.2fa", "login", nil)
 	h.recordLoginAttempt(ctx, r, pending["user_id"], pending["email"], reason, true)
 	h.notifyNewLogin(ctx, r, pending["user_id"], pending["email"])

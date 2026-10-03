@@ -1,4 +1,4 @@
-import type { AdminSettingsData } from "@/components/admin/settings/types";
+import type { AdminSettingsData, RegistryResponse } from "@/components/admin/settings/types";
 import type {
   SaveSettingsResponse,
   ServerSettingsSchema,
@@ -5116,6 +5116,17 @@ export async function saveAdminSettings(form: FormData) {
     throw new Error(data.message ?? data.error ?? "Request failed");
   }
   return data as { ok?: boolean; message?: string };
+}
+
+export async function fetchAdminSettingsRegistry() {
+  return apiFetch<RegistryResponse>("/v1/admin/settings/registry");
+}
+
+export async function saveAdminSettingsRegistry(values: Record<string, string>) {
+  return apiFetch<RegistryResponse>("/v1/admin/settings/registry", {
+    method: "PUT",
+    body: JSON.stringify({ values }),
+  });
 }
 
 export async function updateAdminSettings(settings: Record<string, unknown>) {

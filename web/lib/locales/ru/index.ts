@@ -11,6 +11,7 @@ import { layout } from "./layout";
 import { nav } from "./nav";
 import { panelTransfer } from "./panel-transfer";
 import { projects } from "./projects";
+import { registry } from "./registry";
 import { news } from "./news";
 import { notifications } from "./notifications";
 import { servers } from "./servers";
@@ -37,5 +38,6 @@ export const RU = {
   ...adminContent,
   ...panelTransfer,
   ...projects,
+  ...registry,
   ...template,
 };

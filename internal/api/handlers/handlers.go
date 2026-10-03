@@ -15,6 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (h *Handler) Routes() chi.Router {
@@ -76,8 +77,8 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "owner_email and owner_password are required")
 		return
 	}
-	if len(req.OwnerPassword) < 8 {
-		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+	if passwordTooShort(req.OwnerPassword) {
+		writeError(w, http.StatusBadRequest, passwordTooShortMessage())
 		return
 	}
 
@@ -147,12 +148,12 @@ func (h *Handler) Bootstrap(w http.ResponseWriter, r *http.Request) {
 
 	h.ensureDefaultWallet(ctx, userID)
 
-	access, refresh, err := h.issueAuthTokens(r, userID, req.OwnerEmail, "owner", rememberRefreshTTL)
+	access, refresh, err := h.issueAuthTokens(r, userID, req.OwnerEmail, "owner", rememberRefreshTTL())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
-	h.startSession(w, r, userID, req.OwnerEmail, "owner", access, refresh, rememberRefreshTTL)
+	h.startSession(w, r, userID, req.OwnerEmail, "owner", access, refresh, rememberRefreshTTL())
 
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"access_token":  access,
@@ -185,7 +186,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	req.TenantSlug = singleTenantSlug
 
 	ctx := r.Context()
-	if h.tooManyAttempts(w, r, "login", 15, time.Minute, req.Email) {
+	if h.tooManyAttempts(w, r, "login", intOf(settingsreg.AuthLoginAttempts), settingsreg.AuthLoginWindow.Duration(), req.Email) {
 		return
 	}
 	if blocked, reason := h.ipBlocked(ctx, clientIP(r)); blocked {
@@ -236,7 +237,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		_ = h.cache.SetJSON(ctx, "2fa:"+challenge, map[string]string{
 			"user_id": userID, "email": req.Email,
 			"role": role, "tenant_slug": req.TenantSlug,
-		}, 5*time.Minute)
+		}, settingsreg.AuthTwoFAChallengeTTL.Duration())
 		writeJSON(w, http.StatusOK, map[string]any{
 			"requires_2fa":     true,
 			"two_factor_token": challenge,
@@ -297,6 +298,10 @@ type registerRequest struct {
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	started := time.Now()
+	if !settingsreg.AuthRegistrationEnabled.Bool() {
+		writeCodedError(w, http.StatusForbidden, "registration_closed", "Регистрация новых пользователей временно закрыта")
+		return
+	}
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json")
@@ -307,13 +312,13 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.TenantSlug = singleTenantSlug
-	if len(req.Password) < 8 {
-		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+	if passwordTooShort(req.Password) {
+		writeError(w, http.StatusBadRequest, passwordTooShortMessage())
 		return
 	}
 
 	ctx := r.Context()
-	if h.tooManyAttempts(w, r, "register", 20, time.Hour, req.Email) {
+	if h.tooManyAttempts(w, r, "register", intOf(settingsreg.AuthRegisterPerHour), time.Hour, req.Email) {
 		return
 	}
 	consentKinds := h.legalRegistrationKinds(ctx)
@@ -358,7 +363,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if emailTaken {
-		if ip := clientIP(r); ip != "" && !h.allowAttempt(ctx, "register:dup:"+ip, 5, time.Hour) {
+		if ip := clientIP(r); ip != "" && !h.allowAttempt(ctx, "register:dup:"+ip, intOf(settingsreg.AuthRegisterDupPerHour), time.Hour) {
 			writeError(w, http.StatusTooManyRequests, "Слишком много попыток, попробуйте позже")
 			return
 		}

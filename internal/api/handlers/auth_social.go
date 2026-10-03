@@ -21,6 +21,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
 	"github.com/vortanixapp/panel/pkg/oauth"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -196,7 +197,7 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 		writeError(w, http.StatusForbidden, msg)
 		return
 	}
-	if h.tooManyAttempts(w, r, "social", 20, 15*time.Minute) {
+	if h.tooManyAttempts(w, r, "social", intOf(settingsreg.AuthSocialAttempts), attemptsWindow()) {
 		return
 	}
 
@@ -248,6 +249,10 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 				})
 				return
 			}
+			if !settingsreg.AuthRegistrationEnabled.Bool() {
+				writeCodedError(w, http.StatusForbidden, "registration_closed", "Регистрация новых пользователей временно закрыта")
+				return
+			}
 			userID, email, role, err = h.createSocialUser(ctx, email, profile)
 			if err != nil {
 				writeError(w, http.StatusInternalServerError, "failed to create user")
@@ -281,7 +286,7 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 		_ = h.cache.SetJSON(ctx, "2fa:"+challenge, map[string]string{
 			"user_id": userID, "email": email,
 			"role": role, "tenant_slug": tenantSlug,
-		}, 5*time.Minute)
+		}, settingsreg.AuthTwoFAChallengeTTL.Duration())
 		h.recordLoginAttempt(ctx, r, userID, email, "соцвход: требуется 2FA", false)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"requires_2fa":     true,
@@ -290,12 +295,12 @@ func (h *Handler) loginOrRegisterSocial(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	access, refresh, err := h.issueAuthTokens(r, userID, email, role, rememberRefreshTTL)
+	access, refresh, err := h.issueAuthTokens(r, userID, email, role, rememberRefreshTTL())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to issue tokens")
 		return
 	}
-	h.startSession(w, r, userID, email, role, access, refresh, rememberRefreshTTL)
+	h.startSession(w, r, userID, email, role, access, refresh, rememberRefreshTTL())
 	h.recordLoginAttempt(ctx, r, userID, email, "вход через "+providerKey, true)
 	redirect := "/dashboard"
 	if isStaffRole(role) {
@@ -549,7 +554,7 @@ func emailVerificationHash(email string) string {
 
 func (h *Handler) buildSignedVerifyURL(r *http.Request, userID, email string) string {
 	hash := emailVerificationHash(email)
-	expires := time.Now().Add(60 * time.Minute).Unix()
+	expires := time.Now().Add(settingsreg.AuthEmailVerifyTTL.Duration()).Unix()
 	payload := fmt.Sprintf("%s:%s:%d", userID, hash, expires)
 	mac := hmac.New(sha256.New, []byte(h.jwtSecret))
 	mac.Write([]byte("verify:" + payload))

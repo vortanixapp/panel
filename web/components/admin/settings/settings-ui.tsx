@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -290,4 +291,65 @@ function spanClass(span?: 2 | 3 | 4 | "full") {
   if (span === 2) return "sm:col-span-2";
   if (span === 3) return "sm:col-span-2 lg:col-span-3";
   return "sm:col-span-2 lg:col-span-4";
+}
+
+export function SettingsSaveBar({
+  dirty,
+  message,
+  saving,
+  discardLabel,
+  saveLabel,
+  savingLabel,
+  onDiscard,
+  onSave,
+  saveDisabled,
+  extra,
+}: {
+  dirty: boolean;
+  message: string;
+  saving: boolean;
+  discardLabel: string;
+  saveLabel: string;
+  savingLabel: string;
+  onDiscard: () => void;
+  onSave: () => void;
+  saveDisabled?: boolean;
+  extra?: React.ReactNode;
+}) {
+  return (
+    <div className="sticky bottom-0 -mx-4 -mb-6 px-4 pt-4 pb-5">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/90 to-transparent" />
+      <div className="relative flex w-full flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card px-5 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={cn(
+              "size-1.5 rounded-full",
+              dirty ? "bg-amber-500" : "bg-muted-foreground/40"
+            )}
+          />
+          <span className="text-[13px] text-muted-foreground">{message}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {extra}
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-9 text-[13px] text-muted-foreground"
+            onClick={onDiscard}
+            disabled={!dirty || saving}
+          >
+            {discardLabel}
+          </Button>
+          <Button
+            type="button"
+            className="h-9 px-5 text-[13px]"
+            onClick={onSave}
+            disabled={saving || saveDisabled}
+          >
+            {saving ? savingLabel : saveLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }

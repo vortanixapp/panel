@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-)
 
-const defaultWriteRPM = 600
+	"github.com/vortanixapp/panel/pkg/settingsreg"
+)
 
 const rateWindow = time.Minute
 
@@ -30,7 +30,7 @@ func (h *Handler) tenantWriteRateLimit(next http.Handler) http.Handler {
 			return
 		}
 
-		limit := defaultWriteRPM
+		limit := int(settingsreg.SecurityWriteRPM.Int())
 		scope := claims.UserID
 		if key, isKey := apiKeyFromContext(r.Context()); isKey {
 			scope = "key:" + key.ID
@@ -48,7 +48,7 @@ func (h *Handler) tenantWriteRateLimit(next http.Handler) http.Handler {
 		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))
 		if !allowed {
 			writeCodedError(w, http.StatusTooManyRequests, "rate_limit_exceeded",
-				"Превышена частота запросов: "+strconv.Itoa(limit)+" в минуту по вашему тарифу")
+				"Превышена частота запросов: "+strconv.Itoa(limit)+" в минуту")
 			return
 		}
 		next.ServeHTTP(w, r)

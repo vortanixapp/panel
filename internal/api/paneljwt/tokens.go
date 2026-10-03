@@ -5,6 +5,8 @@ import (
 	"time"
 
 	jwtlib "github.com/golang-jwt/jwt/v5"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -29,17 +31,17 @@ type refreshClaims struct {
 }
 
 type Manager struct {
-	secret     []byte
-	accessTTL  time.Duration
-	refreshTTL time.Duration
+	secret []byte
 }
 
 func New(secret string, accessMin, refreshDays int) *Manager {
-	return &Manager{
-		secret:     []byte(secret),
-		accessTTL:  time.Duration(accessMin) * time.Minute,
-		refreshTTL: time.Duration(refreshDays) * 24 * time.Hour,
+	if accessMin > 0 {
+		settingsreg.AuthAccessTTL.SetDefaultInt(accessMin)
 	}
+	if refreshDays > 0 {
+		settingsreg.AuthRefreshTTLDefault.SetDefaultInt(refreshDays)
+	}
+	return &Manager{secret: []byte(secret)}
 }
 
 func (m *Manager) AccessToken(userID, email, role, sessionID string) (string, error) {
@@ -52,7 +54,7 @@ func (m *Manager) AccessToken(userID, email, role, sessionID string) (string, er
 		TokenType: typeAccess,
 		RegisteredClaims: jwtlib.RegisteredClaims{
 			Subject:   userID,
-			ExpiresAt: jwtlib.NewNumericDate(now.Add(m.accessTTL)),
+			ExpiresAt: jwtlib.NewNumericDate(now.Add(settingsreg.AuthAccessTTL.Duration())),
 			IssuedAt:  jwtlib.NewNumericDate(now),
 		},
 	}
@@ -60,12 +62,12 @@ func (m *Manager) AccessToken(userID, email, role, sessionID string) (string, er
 }
 
 func (m *Manager) RefreshToken(userID, sessionID, tokenID string) (string, error) {
-	return m.RefreshTokenWithTTL(userID, sessionID, tokenID, m.refreshTTL)
+	return m.RefreshTokenWithTTL(userID, sessionID, tokenID, m.DefaultRefreshTTL())
 }
 
 func (m *Manager) RefreshTokenWithTTL(userID, sessionID, tokenID string, ttl time.Duration) (string, error) {
 	if ttl <= 0 {
-		ttl = m.refreshTTL
+		ttl = m.DefaultRefreshTTL()
 	}
 	now := time.Now()
 	claims := refreshClaims{
@@ -82,7 +84,7 @@ func (m *Manager) RefreshTokenWithTTL(userID, sessionID, tokenID string, ttl tim
 }
 
 func (m *Manager) DefaultRefreshTTL() time.Duration {
-	return m.refreshTTL
+	return settingsreg.AuthRefreshTTLDefault.Duration()
 }
 
 func (m *Manager) ParseAccess(tokenString string) (*Claims, error) {

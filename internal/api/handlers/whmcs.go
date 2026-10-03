@@ -791,7 +791,7 @@ func (h *Handler) resolveWHMCSAccount(ctx context.Context, tx pgx.Tx, c whmcsCli
 		}
 	case errors.Is(err, pgx.ErrNoRows):
 		acc.password = strings.TrimSpace(password)
-		if len(acc.password) < 8 {
+		if passwordTooShort(acc.password) {
 			acc.password = randomToken(9)
 		}
 		hash, hashErr := bcrypt.GenerateFromPassword([]byte(acc.password), bcrypt.DefaultCost)
@@ -1113,8 +1113,8 @@ func (h *Handler) WHMCSServicePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	password := strings.TrimSpace(body.Password)
-	if len(password) < 8 {
-		writeError(w, http.StatusUnprocessableEntity, "Пароль должен быть не короче 8 символов")
+	if passwordTooShort(password) {
+		writeError(w, http.StatusUnprocessableEntity, passwordTooShortMessage())
 		return
 	}
 	if s.UserID == "" {
