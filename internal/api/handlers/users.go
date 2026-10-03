@@ -21,7 +21,8 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Name string `json:"name"`
+		Name    string `json:"name"`
+		Country string `json:"country"`
 
 		Email string `json:"email"`
 
@@ -129,6 +130,12 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 		`, userID, name)
 
+	}
+	if x := (profileExtra{Country: req.Country}); x.Country != "" {
+		x.normalize()
+		if code, _ := x.validate(false); code == "" {
+			h.saveProfileExtra(r.Context(), userID, x, map[string]bool{"country": true})
+		}
 	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{

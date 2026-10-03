@@ -425,6 +425,9 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 	if h.refuseUnidentified(r.Context(), w, claims.UserID, claims.Role) {
 		return
 	}
+	if h.refuseIncompleteProfile(r.Context(), w, claims.UserID) {
+		return
+	}
 	var body struct {
 		NodeID        string `json:"node_id"`
 		LocationID    string `json:"location_id"`

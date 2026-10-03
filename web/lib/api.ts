@@ -183,6 +183,8 @@ export function authHeaders(extra: Record<string, string> = {}): Record<string, 
   return { ...(csrf ? { "X-CSRF-Token": csrf } : {}), ...extra };
 }
 
+export const PROFILE_INCOMPLETE_EVENT = "vortanix:profile-incomplete";
+
 export class ApiError extends Error {
   status: number;
   data: Record<string, unknown>;
@@ -240,6 +242,9 @@ export async function apiFetch<T>(
     }
   }
   if (!res.ok) {
+    if ((data as { code?: string }).code === "profile_incomplete" && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(PROFILE_INCOMPLETE_EVENT));
+    }
     throw new ApiError(
       data.error ?? data.message ?? "Request failed",
       res.status,
@@ -292,7 +297,7 @@ export async function register(
   email: string,
   password: string,
   tenantSlug: string,
-  profile?: { name?: string; lastName?: string },
+  profile?: { name?: string; lastName?: string; middleName?: string; country?: string },
   consents?: { terms: boolean; personalData: boolean }
 ) {
   const ref = referralCode();
@@ -310,6 +315,8 @@ export async function register(
       tenant_slug: tenantSlug,
       ...(profile?.name ? { name: profile.name } : {}),
       ...(profile?.lastName ? { last_name: profile.lastName } : {}),
+      ...(profile?.middleName ? { middle_name: profile.middleName } : {}),
+      ...(profile?.country ? { country: profile.country } : {}),
       accept_terms: Boolean(consents?.terms),
       accept_personal_data: Boolean(consents?.personalData),
       ...(ref ? { referral_code: ref } : {}),
@@ -543,6 +550,12 @@ export type AdminUserDetail = {
     id: string;
     name: string;
     last_name: string | null;
+    middle_name?: string;
+    country?: string;
+    address_line?: string;
+    city?: string;
+    region?: string;
+    postal_code?: string;
     public_id: string | null;
     email: string;
     phone: string | null;
@@ -971,6 +984,13 @@ export type AccountUser = {
   display_name?: string | null;
   first_name?: string | null;
   last_name?: string | null;
+  middle_name?: string | null;
+  country?: string | null;
+  address_line?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postal_code?: string | null;
+  profile_complete?: boolean;
   phone?: string | null;
   locale?: string;
   timezone?: string;
@@ -985,6 +1005,12 @@ export type AccountPatch = Partial<{
   display_name: string | null;
   first_name: string | null;
   last_name: string | null;
+  middle_name: string | null;
+  country: string;
+  address_line: string | null;
+  city: string | null;
+  region: string | null;
+  postal_code: string | null;
   phone: string | null;
   locale: string;
   timezone: string;

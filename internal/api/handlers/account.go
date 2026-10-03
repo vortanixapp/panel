@@ -28,6 +28,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/regions"
 	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"rsc.io/qr"
 )
@@ -70,6 +71,8 @@ func (h *Handler) accountView(ctx context.Context, r *http.Request, claims *pane
 		pendingEmail                     *string
 		displayName, firstName, lastName *string
 		phone, avatarURL                 *string
+		middleName, country, addressLine *string
+		city, region, postalCode         *string
 		locale, timezone                 string
 		prefsRaw, contactsRaw            []byte
 		avatarVersion, recoveryLeft      int
@@ -78,6 +81,7 @@ func (h *Handler) accountView(ctx context.Context, r *http.Request, claims *pane
 		SELECT u.email, u.role, u.two_factor_enabled, u.password_set, u.email_verified_at, u.created_at,
 		       u.last_login_at, u.pending_email,
 		       p.display_name, p.first_name, p.last_name, p.phone, p.avatar_url,
+		       p.middle_name, p.country, p.address_line, p.city, p.region, p.postal_code,
 		       COALESCE(p.locale, ''), COALESCE(p.timezone, ''),
 		       COALESCE(p.preferences, '{}'::jsonb), COALESCE(p.contacts, '{}'::jsonb),
 		       COALESCE(p.avatar_version, 0),
@@ -89,6 +93,7 @@ func (h *Handler) accountView(ctx context.Context, r *http.Request, claims *pane
 	`, claims.UserID).Scan(&email, &role, &twoFA, &passwordSet, &verifiedAt, &createdAt,
 		&lastLogin, &pendingEmail,
 		&displayName, &firstName, &lastName, &phone, &avatarURL,
+		&middleName, &country, &addressLine, &city, &region, &postalCode,
 		&locale, &timezone, &prefsRaw, &contactsRaw, &avatarVersion, &recoveryLeft)
 	if err != nil {
 		return nil, err
@@ -128,6 +133,13 @@ func (h *Handler) accountView(ctx context.Context, r *http.Request, claims *pane
 		"display_name":        displayName,
 		"first_name":          firstName,
 		"last_name":           lastName,
+		"middle_name":         middleName,
+		"country":             country,
+		"address_line":        addressLine,
+		"city":                city,
+		"region":              region,
+		"postal_code":         postalCode,
+		"profile_complete":    country != nil && *country != "",
 		"phone":               phone,
 		"locale":              locale,
 		"timezone":            timezone,
@@ -279,6 +291,36 @@ func (h *Handler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		add(key+" = ?", v)
+	}
+	for key, label := range map[string]string{
+		"middle_name":  "Отчество",
+		"address_line": "Адрес",
+		"city":         "Город",
+		"region":       "Регион",
+		"postal_code":  "Почтовый индекс",
+	} {
+		raw, present := body[key]
+		if !present {
+			continue
+		}
+		limit := profileFieldMax
+		if key == "postal_code" {
+			limit = profilePostalMax
+		}
+		v, err := accountText(raw, limit, label)
+		if err != nil {
+			fail(err)
+			return
+		}
+		add(key+" = ?", v)
+	}
+	if raw, present := body["country"]; present {
+		v, err := accountText(raw, 2, "Страна")
+		if err != nil || v == nil || !regions.ValidCountry(*v) {
+			fail(accountFieldError("Укажите страну из списка"))
+			return
+		}
+		add("country = ?", regions.NormalizeCountry(*v))
 	}
 	if raw, present := body["phone"]; present {
 		v, err := accountText(raw, 24, "Телефон")

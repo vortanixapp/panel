@@ -310,6 +310,7 @@ type registerRequest struct {
 	AcceptTerms        bool   `json:"accept_terms"`
 	AcceptPersonalData bool   `json:"accept_personal_data"`
 	ReferralCode       string `json:"referral_code"`
+	profileExtra
 }
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -328,6 +329,11 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.TenantSlug = singleTenantSlug
+	req.profileExtra.normalize()
+	if code, message := req.profileExtra.validate(true); code != "" {
+		writeCodedError(w, http.StatusBadRequest, code, message)
+		return
+	}
 	if passwordTooShort(req.Password) {
 		writeError(w, http.StatusBadRequest, passwordTooShortMessage())
 		return
@@ -363,6 +369,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 			PasswordHash: string(hash),
 			FirstName:    strings.TrimSpace(req.Name),
 			LastName:     strings.TrimSpace(req.LastName),
+			Profile:      req.profileExtra,
 			ReferralCode: referralCodeFrom(r, req.ReferralCode),
 			Consents:     consentKinds,
 		})
@@ -402,25 +409,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	h.recordRegistrationConsents(ctx, r, userID, consentKinds)
 	h.attachReferrer(ctx, userID, referralCodeFrom(r, req.ReferralCode))
 
-	firstName := strings.TrimSpace(req.Name)
-	lastName := strings.TrimSpace(req.LastName)
-	if firstName != "" || lastName != "" {
-		displayName := strings.TrimSpace(firstName + " " + lastName)
-		var dn, fn, ln *string
-		if displayName != "" {
-			dn = &displayName
-		}
-		if firstName != "" {
-			fn = &firstName
-		}
-		if lastName != "" {
-			ln = &lastName
-		}
-		_, _ = h.dbOf(ctx).Exec(ctx, `
-			INSERT INTO core.user_profiles (user_id, display_name, first_name, last_name, updated_at)
-			VALUES ($1, $2, $3, $4, now())
-		`, userID, dn, fn, ln)
-	}
+	_ = insertUserProfile(ctx, h.dbOf(ctx), userID, strings.TrimSpace(req.Name), strings.TrimSpace(req.LastName), req.profileExtra)
 
 	access, refresh, err := h.issueAuthTokens(r, userID, email, "user", 0)
 	if err != nil {

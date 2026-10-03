@@ -22,6 +22,7 @@ import {
   AuthError,
   AuthField,
   AuthHeading,
+  AuthSelect,
   AuthSocial,
   AuthSubmit,
   AuthSwitch,
@@ -30,13 +31,16 @@ import {
 } from "@/components/auth/auth-kit";
 import { useBrand, usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
-import type { TranslateFn } from "@/lib/i18n";
+import { localeTag, type TranslateFn } from "@/lib/i18n";
+import { sortedCountries } from "@/lib/countries";
 
 function buildSchema(t: TranslateFn, passwordMin: number) {
   return z
     .object({
       name: z.string().min(1, t("auth.error.name_required")),
       lastName: z.string().optional(),
+      middleName: z.string().optional(),
+      country: z.string().min(1, t("auth.error.country_required")),
       email: z.string().email(t("auth.error.email_invalid")),
       password: z.string().min(passwordMin, t("auth.error.password_min", { n: passwordMin })),
       passwordConfirmation: z
@@ -101,6 +105,8 @@ function RegisterFormInner() {
     defaultValues: {
       name: "",
       lastName: "",
+      middleName: "",
+      country: "",
       email: "",
       password: "",
       passwordConfirmation: "",
@@ -121,7 +127,12 @@ function RegisterFormInner() {
         values.email,
         values.password,
         tenantSlug(),
-        { name: values.name, lastName: values.lastName },
+        {
+          name: values.name,
+          lastName: values.lastName,
+          middleName: values.middleName,
+          country: values.country,
+        },
         { terms: acceptTerms, personalData: acceptPersonalData }
       );
       if (res.status === "confirmation_sent") {
@@ -230,6 +241,30 @@ function RegisterFormInner() {
             error={errors.lastName?.message}
             {...register("lastName")}
           />
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 sm:gap-3">
+          <AuthField
+            id="middle_name"
+            type="text"
+            label={t("auth.register.middle_name_label")}
+            autoComplete="additional-name"
+            error={errors.middleName?.message}
+            {...register("middleName")}
+          />
+          <AuthSelect
+            id="country"
+            label={t("auth.register.country_label")}
+            autoComplete="country"
+            error={errors.country?.message}
+            {...register("country")}
+          >
+            <option value="">{t("auth.register.country_placeholder")}</option>
+            {sortedCountries(localeTag()).map((country) => (
+              <option key={country.code} value={country.code}>
+                {country.name}
+              </option>
+            ))}
+          </AuthSelect>
         </div>
         <AuthField
           id="email"

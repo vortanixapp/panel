@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
+import { CountrySelect } from "@/components/accounting/country-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,12 @@ type WalletBalances = Record<string, number>;
 type FormState = {
   name: string;
   last_name: string;
+  middle_name: string;
+  country: string;
+  address_line: string;
+  city: string;
+  region: string;
+  postal_code: string;
   public_id: string;
   email: string;
   phone: string;
@@ -53,6 +60,12 @@ const emptyForm: FormState = {
   staff_group_id: "",
   name: "",
   last_name: "",
+  middle_name: "",
+  country: "",
+  address_line: "",
+  city: "",
+  region: "",
+  postal_code: "",
   public_id: "",
   email: "",
   phone: "",
@@ -109,6 +122,12 @@ export function UserEditContent() {
     const nextForm: FormState = {
       name: u.name || "",
       last_name: u.last_name || "",
+      middle_name: u.middle_name || "",
+      country: u.country || "",
+      address_line: u.address_line || "",
+      city: u.city || "",
+      region: u.region || "",
+      postal_code: u.postal_code || "",
       public_id: u.public_id || "",
       email: u.email || "",
       phone: u.phone || "",
@@ -171,6 +190,12 @@ export function UserEditContent() {
       const payload: Record<string, unknown> = {
         name: f.name,
         last_name: f.last_name,
+        middle_name: f.middle_name,
+        country: f.country,
+        address_line: f.address_line,
+        city: f.city,
+        region: f.region,
+        postal_code: f.postal_code,
         public_id: f.public_id,
         email: f.email,
         phone: f.phone,
@@ -272,6 +297,44 @@ export function UserEditContent() {
                   <Input
                     value={f.last_name}
                     onChange={(e) => set("last_name", e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label={t("profile.middle_name")}>
+                  <Input
+                    value={f.middle_name}
+                    onChange={(e) => set("middle_name", e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label={t("profile.country")}>
+                  <CountrySelect value={f.country} onChange={(code) => set("country", code)} />
+                </Field>
+                <Field label={t("profile.address_line")}>
+                  <Input
+                    value={f.address_line}
+                    onChange={(e) => set("address_line", e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label={t("profile.city")}>
+                  <Input
+                    value={f.city}
+                    onChange={(e) => set("city", e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label={t("profile.region")}>
+                  <Input
+                    value={f.region}
+                    onChange={(e) => set("region", e.target.value)}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label={t("profile.postal_code")}>
+                  <Input
+                    value={f.postal_code}
+                    onChange={(e) => set("postal_code", e.target.value)}
                     className={inputClass}
                   />
                 </Field>

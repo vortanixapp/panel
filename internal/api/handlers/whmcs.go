@@ -39,6 +39,20 @@ type whmcsClient struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Locale    string `json:"locale"`
+	Country   string `json:"country"`
+	Address   string `json:"address_line"`
+	City      string `json:"city"`
+	Region    string `json:"region"`
+	Postcode  string `json:"postal_code"`
+}
+
+func (c whmcsClient) profileExtra() profileExtra {
+	x := profileExtra{Country: c.Country, AddressLine: c.Address, City: c.City, Region: c.Region, PostalCode: c.Postcode}
+	x.normalize()
+	if code, _ := x.validate(false); code != "" {
+		return profileExtra{}
+	}
+	return x
 }
 
 type whmcsServiceRequest struct {
@@ -836,6 +850,17 @@ func (h *Handler) saveWHMCSProfile(ctx context.Context, userID string, c whmcsCl
 	`, userID, display, first, last, strings.ToLower(strings.TrimSpace(c.Locale))); err != nil {
 		log.Printf("whmcs: профиль пользователя %s не сохранён: %v", userID, err)
 	}
+	extra := c.profileExtra()
+	present := map[string]bool{}
+	for key, value := range map[string]string{
+		"country": extra.Country, "address_line": extra.AddressLine, "city": extra.City,
+		"region": extra.Region, "postal_code": extra.PostalCode,
+	} {
+		if value != "" {
+			present[key] = true
+		}
+	}
+	h.saveProfileExtraIfEmpty(ctx, userID, extra, present)
 }
 
 func (h *Handler) WHMCSServiceTerminate(w http.ResponseWriter, r *http.Request) {

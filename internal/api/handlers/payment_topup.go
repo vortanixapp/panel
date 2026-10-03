@@ -180,6 +180,9 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Сумма пополнения должна быть больше нуля")
 		return
 	}
+	if h.refuseIncompleteProfile(ctx, w, claims.UserID) {
+		return
+	}
 	if lower := settingsreg.BillingTopupMin.Int(); lower > 0 && body.Amount < float64(lower) {
 		writeCodedError(w, http.StatusUnprocessableEntity, "topup_below_min",
 			fmt.Sprintf("Минимальная сумма пополнения — %d", lower))

@@ -237,8 +237,9 @@ func (h *Handler) anonymizeUser(ctx context.Context, userID, actorID, source str
 	}
 	for _, stmt := range []string{
 		`UPDATE core.user_profiles SET display_name = NULL, first_name = NULL, last_name = NULL, phone = NULL,
+		        middle_name = NULL, address_line = NULL, city = NULL, region = NULL, postal_code = NULL,
 		        avatar_url = NULL, contacts = '{}'::jsonb, updated_at = now() WHERE user_id = $1`,
-		`UPDATE core.user_billing_profiles SET inn = '', address = '', updated_at = now()
+		`UPDATE core.user_billing_profiles SET inn = '', address = '', tax_id = '', updated_at = now()
 		 WHERE user_id = $1 AND payer_type = 'person'`,
 		`DELETE FROM core.user_sessions WHERE user_id = $1`,
 		`DELETE FROM core.two_factor_secrets WHERE user_id = $1`,

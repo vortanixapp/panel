@@ -218,6 +218,9 @@ func (h *Handler) HostingRentSubmit(w http.ResponseWriter, r *http.Request) {
 	if h.refuseUnidentified(r.Context(), w, claims.UserID, claims.Role) {
 		return
 	}
+	if h.refuseIncompleteProfile(r.Context(), w, claims.UserID) {
+		return
+	}
 	var body struct {
 		PlanID    string `json:"plan_id"`
 		Username  string `json:"username"`

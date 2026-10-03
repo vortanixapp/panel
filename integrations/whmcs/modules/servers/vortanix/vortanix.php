@@ -265,6 +265,11 @@ function vortanix_client_payload(array $params)
         'first_name' => (string) ($client['firstname'] ?? ''),
         'last_name' => (string) ($client['lastname'] ?? ''),
         'locale' => vortanix_panel_locale($client['language'] ?? ''),
+        'country' => strtoupper((string) ($client['countrycode'] ?? $client['country'] ?? '')),
+        'address_line' => trim((string) ($client['address1'] ?? '') . ' ' . (string) ($client['address2'] ?? '')),
+        'city' => (string) ($client['city'] ?? ''),
+        'region' => (string) ($client['state'] ?? ''),
+        'postal_code' => (string) ($client['postcode'] ?? ''),
     ];
 }
 

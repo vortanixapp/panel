@@ -236,10 +236,14 @@ func (h *Handler) adminUserDetail(ctx context.Context, userID string) (map[strin
 
 	var displayName, firstName, lastName, phone *string
 	var contactsRaw []byte
+	var extra struct{ middleName, country, addressLine, city, region, postalCode string }
 	_ = h.dbOf(ctx).QueryRow(ctx, `
-		SELECT display_name, first_name, last_name, phone, contacts
+		SELECT display_name, first_name, last_name, phone, contacts,
+		       COALESCE(middle_name, ''), COALESCE(country, ''), COALESCE(address_line, ''),
+		       COALESCE(city, ''), COALESCE(region, ''), COALESCE(postal_code, '')
 		FROM core.user_profiles WHERE user_id = $1
-	`, userID).Scan(&displayName, &firstName, &lastName, &phone, &contactsRaw)
+	`, userID).Scan(&displayName, &firstName, &lastName, &phone, &contactsRaw,
+		&extra.middleName, &extra.country, &extra.addressLine, &extra.city, &extra.region, &extra.postalCode)
 
 	contacts := parseContacts(contactsRaw)
 	name := ""
@@ -262,6 +266,12 @@ func (h *Handler) adminUserDetail(ctx context.Context, userID string) (map[strin
 		"id":                    userID,
 		"name":                  name,
 		"last_name":             lastNameStr,
+		"middle_name":           extra.middleName,
+		"country":               extra.country,
+		"address_line":          extra.addressLine,
+		"city":                  extra.city,
+		"region":                extra.region,
+		"postal_code":           extra.postalCode,
 		"public_id":             contactString(contacts, "public_id"),
 		"email":                 email,
 		"phone":                 phoneStr,
@@ -651,6 +661,11 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	profileX, profilePresent := profileExtraFromBody(body)
+	if code, message := profileX.validate(false); code != "" {
+		writeCodedError(w, http.StatusBadRequest, code, message)
+		return
+	}
 	name, _ := body["name"].(string)
 	lastName, _ := body["last_name"].(string)
 	phone, _ := body["phone"].(string)
@@ -688,6 +703,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 			contacts = EXCLUDED.contacts,
 			updated_at = now()
 	`, id, strings.TrimSpace(name), strings.TrimSpace(lastName), strings.TrimSpace(phone), contactsJSON)
+	h.saveProfileExtra(ctx, id, profileX, profilePresent)
 
 	if wallets, ok := body["wallets"].(map[string]any); ok && (id != claims.UserID || claims.Role == "owner") {
 		for _, currency := range []string{"RUB", "USD", "EUR"} {

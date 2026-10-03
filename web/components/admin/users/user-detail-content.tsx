@@ -24,6 +24,7 @@ import {
 import { userDisplayName, userInitials } from "./users-page-content";
 import { useT } from "@/hooks/use-translations";
 import { localeTag } from "@/lib/i18n";
+import { countryName } from "@/lib/countries";
 import { confirmAction, promptAction } from "@/components/action-dialog";
 
 const CURRENCIES = ["RUB", "USD", "EUR"];
@@ -358,6 +359,12 @@ export function UserDetailContent() {
             {[
               { label: t("admin.users.name"), value: user.name },
               { label: t("admin.users.last_name"), value: user.last_name },
+              { label: t("profile.middle_name"), value: user.middle_name ?? null },
+              { label: t("profile.country"), value: user.country ? countryName(user.country, localeTag()) : "" },
+              {
+                label: t("profile.address_line"),
+                value: [user.address_line, user.city, user.region, user.postal_code].filter(Boolean).join(", "),
+              },
               { label: t("admin.users.login"), value: user.public_id },
               { label: t("common.email"), value: user.email },
               { label: t("admin.users.phone"), value: user.phone },

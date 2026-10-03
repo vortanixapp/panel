@@ -370,3 +370,39 @@ export function AuthSocial({
 export function AuthSwitch({ children }: { children: ReactNode }) {
   return <p className="mt-10 text-center text-[14px] text-muted-foreground">{children}</p>;
 }
+
+export function AuthSelect({
+  id,
+  label,
+  error,
+  hint,
+  className,
+  children,
+  ...props
+}: Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "id"> & {
+  id: string;
+  label: ReactNode;
+  error?: string;
+  hint?: ReactNode;
+}) {
+  const messageId = `${id}-message`;
+  return (
+    <div className={className}>
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <label htmlFor={id} className="text-[13.5px] font-medium">
+          {label}
+        </label>
+      </div>
+      <select
+        id={id}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error || hint ? messageId : undefined}
+        className={inputClass(error)}
+        {...props}
+      >
+        {children}
+      </select>
+      <FieldMessage id={messageId} error={error} hint={hint} />
+    </div>
+  );
+}

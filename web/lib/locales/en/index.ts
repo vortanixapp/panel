@@ -11,6 +11,7 @@ import { landing } from "./landing";
 import { layout } from "./layout";
 import { nav } from "./nav";
 import { panelTransfer } from "./panel-transfer";
+import { profileFields } from "./profile-fields";
 import { projects } from "./projects";
 import { registry } from "./registry";
 import { registryBilling } from "./registry-billing";
@@ -47,6 +48,7 @@ export const EN = {
   ...adminContent,
   ...adminTasks,
   ...panelTransfer,
+  ...profileFields,
   ...projects,
   ...registry,
   ...registryBilling,

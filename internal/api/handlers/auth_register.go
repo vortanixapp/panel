@@ -28,6 +28,7 @@ type pendingRegistration struct {
 	PasswordHash string
 	FirstName    string
 	LastName     string
+	Profile      profileExtra
 	ReferralCode string
 	Consents     []string
 }
@@ -103,8 +104,9 @@ func (h *Handler) savePendingRegistration(ctx context.Context, r *http.Request, 
 	}
 	_, err := db.Exec(ctx, `
 		INSERT INTO core.pending_registrations
-			(email, password_hash, first_name, last_name, referral_code, consents, ip, user_agent, token_hash, expires_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now() + $10::interval)
+			(email, password_hash, first_name, last_name, referral_code, consents, ip, user_agent, token_hash, expires_at,
+			 middle_name, country, address_line, city, region, postal_code)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now() + $10::interval, $11, $12, $13, $14, $15, $16)
 		ON CONFLICT (email) DO UPDATE SET
 			password_hash = EXCLUDED.password_hash,
 			first_name    = EXCLUDED.first_name,
@@ -115,9 +117,16 @@ func (h *Handler) savePendingRegistration(ctx context.Context, r *http.Request, 
 			user_agent    = EXCLUDED.user_agent,
 			token_hash    = EXCLUDED.token_hash,
 			expires_at    = EXCLUDED.expires_at,
+			middle_name   = EXCLUDED.middle_name,
+			country       = EXCLUDED.country,
+			address_line  = EXCLUDED.address_line,
+			city          = EXCLUDED.city,
+			region        = EXCLUDED.region,
+			postal_code   = EXCLUDED.postal_code,
 			created_at    = now()
 	`, p.Email, p.PasswordHash, p.FirstName, p.LastName, p.ReferralCode, consents,
-		clientIP(r), agent, tokenHash, settingsreg.AuthRegisterConfirmTTL.Duration().String())
+		clientIP(r), agent, tokenHash, settingsreg.AuthRegisterConfirmTTL.Duration().String(),
+		p.Profile.MiddleName, p.Profile.Country, p.Profile.AddressLine, p.Profile.City, p.Profile.Region, p.Profile.PostalCode)
 	return err
 }
 
@@ -145,9 +154,11 @@ func (h *Handler) ConfirmRegistration(w http.ResponseWriter, r *http.Request) {
 	err = tx.QueryRow(ctx, `
 		DELETE FROM core.pending_registrations
 		WHERE token_hash = $1 AND expires_at > now()
-		RETURNING email, password_hash, first_name, last_name, referral_code, consents, ip, user_agent
+		RETURNING email, password_hash, first_name, last_name, referral_code, consents, ip, user_agent,
+		          middle_name, country, address_line, city, region, postal_code
 	`, sha256Hex(strings.TrimSpace(body.Token))).Scan(
-		&p.Email, &p.PasswordHash, &p.FirstName, &p.LastName, &p.ReferralCode, &p.Consents, &ip, &agent)
+		&p.Email, &p.PasswordHash, &p.FirstName, &p.LastName, &p.ReferralCode, &p.Consents, &ip, &agent,
+		&p.Profile.MiddleName, &p.Profile.Country, &p.Profile.AddressLine, &p.Profile.City, &p.Profile.Region, &p.Profile.PostalCode)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeError(w, http.StatusGone, "Ссылка устарела или уже использована. Зарегистрируйтесь заново")
 		return
@@ -172,14 +183,9 @@ func (h *Handler) ConfirmRegistration(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to create user")
 		return
 	}
-	if displayName := strings.TrimSpace(p.FirstName + " " + p.LastName); displayName != "" {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO core.user_profiles (user_id, display_name, first_name, last_name, updated_at)
-			VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), now())
-		`, userID, displayName, p.FirstName, p.LastName); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to create profile")
-			return
-		}
+	if err := insertUserProfile(ctx, tx, userID, p.FirstName, p.LastName, p.Profile); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to create profile")
+		return
 	}
 	if err := tx.Commit(ctx); err != nil {
 		writeError(w, http.StatusInternalServerError, "database error")

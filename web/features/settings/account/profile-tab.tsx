@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
 import { Check, ChevronsUpDown, Copy, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { AddressCard } from "./address-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -68,6 +69,7 @@ export function ProfileTab() {
       {q.data && (
         <>
           <ProfileCard user={q.data.user} />
+          <AddressCard user={q.data.user} />
           <RegionCard user={q.data.user} />
           <AccountCard user={q.data.user} />
         </>
