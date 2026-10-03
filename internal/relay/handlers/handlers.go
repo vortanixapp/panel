@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"compress/flate"
 	"context"
 	"crypto/subtle"
 	"encoding/json"
@@ -85,7 +86,7 @@ func New(db *pgxpool.Pool, rdb *redis.Client, h *hub.Hub, secret, metricsURL str
 	}
 	return &Handler{
 		db: db, redis: rdb, hub: h, waiter: hub.NewCommandWaiter(), secret: secret, metrics: mc,
-		upgr: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }},
+		upgr: websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }, EnableCompression: true},
 	}
 }
 
@@ -171,6 +172,7 @@ func (h *Handler) AgentConnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	conn.SetReadLimit(agentMessageLimit)
+	_ = conn.SetCompressionLevel(flate.BestSpeed)
 	remote := clientAddr(r)
 	log.Printf("agent connected node=%s remote=%s", nodeID, remote)
 

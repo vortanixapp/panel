@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/flate"
 	"compress/gzip"
 	"context"
 	"crypto/rand"
@@ -195,7 +196,7 @@ func (a *Agent) Run() {
 func (a *Agent) connect() error {
 	header := http.Header{}
 	header.Set("Authorization", "Bearer "+a.token)
-	dialer := &websocket.Dialer{HandshakeTimeout: handshakeTimeout}
+	dialer := &websocket.Dialer{HandshakeTimeout: handshakeTimeout, EnableCompression: true}
 	if a.relayPin != "" {
 		dialer.TLSClientConfig = pinnedTLSConfig(a.relayPin)
 	}
@@ -211,6 +212,7 @@ func (a *Agent) connect() error {
 	}
 
 	conn.SetReadLimit(agentReadLimit)
+	_ = conn.SetCompressionLevel(flate.BestSpeed)
 	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPingHandler(func(appData string) error {
 		_ = conn.SetReadDeadline(time.Now().Add(pongWait))

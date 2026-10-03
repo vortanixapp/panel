@@ -76,6 +76,10 @@ IP alike.
   `slow query ... sql=...`. The threshold is `DB_SLOW_QUERY_MS` (500 ms by
   default).
 
+## Using the numbers
+
+To act on what the charts show, see [performance-tuning.md](performance-tuning.md).
+
 ## Profiling
 
 For a CPU or memory profile of the API add `PPROF_ADDR=127.0.0.1:6060` to

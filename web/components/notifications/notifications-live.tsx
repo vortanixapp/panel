@@ -71,6 +71,7 @@ export function NotificationsLive() {
       void qc.invalidateQueries({ queryKey: queryKeys.serverStatus(id) });
       void qc.invalidateQueries({ queryKey: queryKeys.serverDetail(id) });
       void qc.invalidateQueries({ queryKey: queryKeys.serverRuntime(id) });
+      void qc.invalidateQueries({ queryKey: ["server-logs", id] });
       void qc.invalidateQueries({ queryKey: ["my-servers"] });
       void qc.invalidateQueries({ queryKey: queryKeys.adminServerCard(id) });
       void qc.invalidateQueries({ queryKey: queryKeys.adminServers, exact: true });

@@ -76,6 +76,8 @@ func (r *Runner) processOffsiteOne(ctx context.Context) bool {
 		return false
 	}
 
+	defer r.keepJobAlive(ctx, jobID)()
+
 	var pl offsitePayload
 	_ = json.Unmarshal(payload, &pl)
 	if pl.ServerID == "" || pl.Filename == "" {

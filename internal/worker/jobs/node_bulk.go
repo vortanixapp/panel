@@ -73,6 +73,8 @@ func (r *Runner) processNodeBulkOne(ctx context.Context) bool {
 		return false
 	}
 
+	defer r.keepJobAlive(ctx, jobID)()
+
 	var pl nodeBulkPayload
 	_ = json.Unmarshal(payload, &pl)
 	if pl.NodeID == "" || pl.Action == "" {

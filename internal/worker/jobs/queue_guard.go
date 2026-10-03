@@ -12,7 +12,29 @@ const (
 	staleRunningAfter = time.Hour
 
 	staleSweepInterval = 5 * time.Minute
+
+	jobKeepaliveInterval = time.Minute
 )
+
+func (r *Runner) keepJobAlive(ctx context.Context, jobID string) func() {
+	beat, stop := context.WithCancel(ctx)
+	go func() {
+		ticker := time.NewTicker(jobKeepaliveInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-beat.Done():
+				return
+			case <-ticker.C:
+				_, _ = r.db.Exec(beat, `
+					UPDATE core.jobs SET attempts = attempts
+					WHERE id = $1::uuid AND status = 'running'
+				`, jobID)
+			}
+		}
+	}()
+	return stop
+}
 
 func (r *Runner) StaleJobsLoop(ctx context.Context) {
 	ticker := time.NewTicker(staleSweepInterval)

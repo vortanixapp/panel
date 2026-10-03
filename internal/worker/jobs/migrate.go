@@ -74,6 +74,8 @@ func (r *Runner) processMigrateOne(ctx context.Context) bool {
 		return false
 	}
 
+	defer r.keepJobAlive(ctx, jobID)()
+
 	var pl migratePayload
 	_ = json.Unmarshal(payload, &pl)
 	if pl.ServerID == "" || pl.ToNodeID == "" {

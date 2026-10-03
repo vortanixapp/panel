@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +18,8 @@ import { countryName } from "@/lib/countries";
 import { cn } from "@/lib/utils";
 
 const KEY = ["admin-accounting-tax-rates"];
+const ROW_HEIGHT = 57;
+const ROW_OVERSCAN = 8;
 
 type Draft = Record<number, { rate: string; enabled: boolean }>;
 
@@ -54,6 +57,14 @@ export function AccountingTaxes() {
         )
       );
   }, [rates, region, search, accountingRegions, tag]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtual = useVirtualizer({
+    count: visible.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: ROW_OVERSCAN,
+  });
 
   const valueOf = (item: TaxRate) =>
     draft[item.id] ?? { rate: String(item.rate), enabled: item.enabled };
@@ -156,40 +167,44 @@ export function AccountingTaxes() {
             <span>{t("admin.accounting.taxes.col_rate")}</span>
             <span>{t("admin.accounting.taxes.col_enabled")}</span>
           </div>
-          <div className="max-h-[60vh] overflow-y-auto">
-            {visible.map((item) => {
-              const v = valueOf(item);
-              const bad = !Number.isFinite(Number(v.rate)) || Number(v.rate) < 0 || Number(v.rate) > 100;
-              return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "grid grid-cols-[minmax(0,1fr)_110px_80px] items-center gap-3 border-b px-4 py-2 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_140px_100px]",
-                    v.enabled && "bg-primary/5"
-                  )}
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">
-                      {countryName(item.country, tag)}
-                      {item.subdivision ? ` · ${item.subdivision}` : ""}
+          <div ref={scrollRef} className="max-h-[60vh] overflow-y-auto">
+            <div className="relative w-full" style={{ height: virtual.getTotalSize() }}>
+              {virtual.getVirtualItems().map((row) => {
+                const item = visible[row.index];
+                const v = valueOf(item);
+                const bad = !Number.isFinite(Number(v.rate)) || Number(v.rate) < 0 || Number(v.rate) > 100;
+                return (
+                  <div
+                    key={item.id}
+                    style={{ height: row.size, transform: `translateY(${row.start}px)` }}
+                    className={cn(
+                      "absolute top-0 left-0 grid w-full grid-cols-[minmax(0,1fr)_110px_80px] items-center gap-3 border-b px-4 sm:grid-cols-[minmax(0,1fr)_140px_100px]",
+                      v.enabled && "bg-primary/5"
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">
+                        {countryName(item.country, tag)}
+                        {item.subdivision ? ` · ${item.subdivision}` : ""}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{item.label}</div>
                     </div>
-                    <div className="text-xs text-muted-foreground">{item.label}</div>
+                    <Input
+                      value={v.rate}
+                      inputMode="decimal"
+                      aria-invalid={bad || undefined}
+                      className={cn("h-8 font-mono", bad && "border-destructive")}
+                      onChange={(e) => setDraftFor(item, { rate: e.target.value.replace(",", ".") })}
+                    />
+                    <Switch
+                      checked={v.enabled}
+                      onCheckedChange={(enabled) => setDraftFor(item, { enabled })}
+                      aria-label={t("admin.accounting.taxes.col_enabled")}
+                    />
                   </div>
-                  <Input
-                    value={v.rate}
-                    inputMode="decimal"
-                    aria-invalid={bad || undefined}
-                    className={cn("h-8 font-mono", bad && "border-destructive")}
-                    onChange={(e) => setDraftFor(item, { rate: e.target.value.replace(",", ".") })}
-                  />
-                  <Switch
-                    checked={v.enabled}
-                    onCheckedChange={(enabled) => setDraftFor(item, { enabled })}
-                    aria-label={t("admin.accounting.taxes.col_enabled")}
-                  />
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

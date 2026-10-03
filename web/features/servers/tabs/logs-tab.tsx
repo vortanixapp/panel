@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -24,6 +24,7 @@ import {
   parseLogLines,
   splitByQuery,
   type LogLevel,
+  type LogLine,
 } from "@/features/servers/log-utils";
 
 type LevelFilter = "all" | "warn" | "error";
@@ -48,6 +49,54 @@ const LEVEL_ROW: Record<LogLevel, string> = {
   warn: "bg-[rgba(232,160,60,0.06)]",
   info: "",
 };
+
+type LogRowProps = {
+  line: LogLine;
+  wrap: boolean;
+  showTime: boolean;
+  query: string;
+};
+
+function sameLogRow(prev: LogRowProps, next: LogRowProps) {
+  return (
+    prev.wrap === next.wrap &&
+    prev.showTime === next.showTime &&
+    prev.query === next.query &&
+    prev.line.n === next.line.n &&
+    prev.line.text === next.line.text &&
+    prev.line.level === next.line.level &&
+    prev.line.time === next.line.time
+  );
+}
+
+const LogRow = memo(function LogRow({
+  line,
+  wrap,
+  showTime,
+  query,
+}: LogRowProps) {
+  return (
+    <div className={cn("flex gap-3 px-3.5", LEVEL_ROW[line.level], LEVEL_TEXT[line.level])}>
+      <span className={cn("w-9 shrink-0 text-right tabular-nums select-none", VX_FAINT)}>{line.n}</span>
+      {showTime && line.time && (
+        <span className={cn("shrink-0 tabular-nums select-none", VX_FAINT)} title={line.time}>
+          {formatLogTime(line.time)}
+        </span>
+      )}
+      <span className={cn("min-w-0 flex-1", wrap ? "break-all whitespace-pre-wrap" : "whitespace-pre")}>
+        {splitByQuery(line.text, query).map((chunk, idx) =>
+          chunk.match ? (
+            <mark key={idx} className="rounded-[3px] bg-[rgba(232,200,60,0.35)] text-inherit">
+              {chunk.part}
+            </mark>
+          ) : (
+            <span key={idx}>{chunk.part}</span>
+          )
+        )}
+      </span>
+    </div>
+  );
+}, sameLogRow);
 
 export function ServerLogsTab() {
   const t = useT();
@@ -232,43 +281,7 @@ export function ServerLogsTab() {
               ) : (
                 <div className={cn(!wrap && "w-max min-w-full")}>
                   {shown.map((line) => (
-                    <div
-                      key={line.n}
-                      className={cn("flex gap-3 px-3.5", LEVEL_ROW[line.level], LEVEL_TEXT[line.level])}
-                    >
-                      <span
-                        className={cn(
-                          "w-9 shrink-0 text-right tabular-nums select-none",
-                          VX_FAINT
-                        )}
-                      >
-                        {line.n}
-                      </span>
-                      {showTime && line.time && (
-                        <span className={cn("shrink-0 tabular-nums select-none", VX_FAINT)} title={line.time}>
-                          {formatLogTime(line.time)}
-                        </span>
-                      )}
-                      <span
-                        className={cn(
-                          "min-w-0 flex-1",
-                          wrap ? "break-all whitespace-pre-wrap" : "whitespace-pre"
-                        )}
-                      >
-                        {splitByQuery(line.text, query).map((chunk, idx) =>
-                          chunk.match ? (
-                            <mark
-                              key={idx}
-                              className="rounded-[3px] bg-[rgba(232,200,60,0.35)] text-inherit"
-                            >
-                              {chunk.part}
-                            </mark>
-                          ) : (
-                            <span key={idx}>{chunk.part}</span>
-                          )
-                        )}
-                      </span>
-                    </div>
+                    <LogRow key={line.n} line={line} wrap={wrap} showTime={showTime} query={query} />
                   ))}
                 </div>
               )}

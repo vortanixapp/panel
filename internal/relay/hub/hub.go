@@ -163,6 +163,7 @@ func (c *AgentConn) WritePump() {
 				return
 			}
 			_ = c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
+			c.Conn.EnableWriteCompression(msg.MessageType == websocket.TextMessage)
 			if err := c.Conn.WriteMessage(msg.MessageType, msg.Data); err != nil {
 				log.Printf("write error node=%s: %v", c.NodeID, err)
 				return

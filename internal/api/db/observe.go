@@ -14,7 +14,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const defaultSlowQuery = 500 * time.Millisecond
+const (
+	defaultSlowQuery   = 500 * time.Millisecond
+	defaultMaxConns    = 16
+	defaultMinConns    = 2
+	maxConnsCeiling    = 200
+	poolConnLifetime   = time.Hour
+	poolConnIdleTime   = 15 * time.Minute
+	poolHealthInterval = time.Minute
+)
 
 var (
 	metricsOnce sync.Once
@@ -44,6 +52,30 @@ func slowThreshold() time.Duration {
 		return defaultSlowQuery
 	}
 	return time.Duration(ms) * time.Millisecond
+}
+
+func envInt(key string, fallback, min, max int) int {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < min || n > max {
+		return fallback
+	}
+	return n
+}
+
+func tunePool(cfg *pgxpool.Config, url string) {
+	if !strings.Contains(url, "pool_max_conns") {
+		cfg.MaxConns = int32(envInt("DB_MAX_CONNS", defaultMaxConns, 2, maxConnsCeiling))
+	}
+	if !strings.Contains(url, "pool_min_conns") {
+		cfg.MinConns = int32(min(envInt("DB_MIN_CONNS", defaultMinConns, 0, maxConnsCeiling), int(cfg.MaxConns)))
+	}
+	cfg.MaxConnLifetime = poolConnLifetime
+	cfg.MaxConnIdleTime = poolConnIdleTime
+	cfg.HealthCheckPeriod = poolHealthInterval
 }
 
 func queryKind(sql string) string {
@@ -158,6 +190,7 @@ func newObservedPool(ctx context.Context, name, url string) (*pgxpool.Pool, erro
 		return nil, err
 	}
 	initMetrics()
+	tunePool(cfg, url)
 	cfg.ConnConfig.Tracer = &queryTracer{pool: name, slow: slowThreshold()}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

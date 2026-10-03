@@ -41,6 +41,7 @@ licence keys and activation are not part of it.
 - **Backups.** Local, and off-site to any S3-compatible storage.
 - **Telegram bot and wipes.** Notifications with action buttons, server control (power, console, backups) from Telegram, and a wipe scheduler for Rust, ARK and DayZ. See [docs/telegram-bot.md](docs/telegram-bot.md).
 - **Monitoring.** Prometheus and Grafana come with the panel, with a ready dashboard for the API, the database and the relay, and a Performance page in the admin area. See [docs/monitoring.md](docs/monitoring.md).
+- **Node tuning.** Operating system settings that speed up game servers, see [docs/performance-tuning.md](docs/performance-tuning.md).
 - **Updates.** The panel and the game node agents update with one button or
   automatically when a new release comes out. A database backup is taken
   before a panel update; an agent that fails to reconnect after an update
