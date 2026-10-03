@@ -1,6 +1,7 @@
 import { adminAgents } from "./admin-agents";
 import { adminContent } from "./admin-content";
 import { adminInfra } from "./admin-infra";
+import { adminTasks } from "./admin-tasks";
 import { auth } from "./auth";
 import { billing } from "./billing";
 import { common } from "./common";
@@ -43,6 +44,7 @@ export const EN = {
   ...adminInfra,
   ...adminAgents,
   ...adminContent,
+  ...adminTasks,
   ...panelTransfer,
   ...projects,
   ...registry,

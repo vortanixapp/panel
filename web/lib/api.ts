@@ -3098,6 +3098,7 @@ export async function fetchServerStatus(serverId: string) {
     online: boolean;
     max_players: number;
     online_players: number;
+    answered?: boolean;
     current_map?: string;
     players_online: { name: string; score?: number; ping?: number }[];
     runtime_status: string;
@@ -7844,4 +7845,58 @@ export async function cancelWipeRun(serverId: string, runId: string) {
   return apiFetch<{ status: string }>(`/v1/servers/${serverId}/wipes/runs/${runId}/cancel`, {
     method: "POST",
   });
+}
+
+export type AdminTaskStatus = "queued" | "running" | "done" | "failed" | "cancelled";
+
+export type AdminTask = {
+  id: string;
+  source: "job" | "node_task";
+  kind: string;
+  label: string;
+  status: AdminTaskStatus;
+  target: string;
+  error?: string;
+  percent?: number;
+  message?: string;
+  stuck?: boolean;
+  attempts?: number;
+  created_at: string;
+  updated_at: string;
+  finished_at?: string;
+  duration_sec: number;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+};
+
+export type AdminTaskCounts = {
+  active: number;
+  queued: number;
+  running: number;
+  failed_24h: number;
+};
+
+export type AdminTaskEvent = {
+  id: number;
+  kind: string;
+  level: "info" | "success" | "warn" | "error";
+  node: string;
+  data: Record<string, unknown>;
+  created_at: string;
+};
+
+export async function fetchAdminTaskFeed(scope: "active" | "history", limit = 50) {
+  return apiFetch<{ tasks: AdminTask[]; counts: AdminTaskCounts }>(
+    `/v1/admin/jobs/feed?scope=${scope}&limit=${limit}`
+  );
+}
+
+export async function fetchAdminTaskDetail(source: string, id: string) {
+  return apiFetch<{ task: AdminTask; log: string[] }>(
+    `/v1/admin/jobs/feed/${source}/${id}`
+  );
+}
+
+export async function fetchAdminTaskEvents(limit = 50) {
+  return apiFetch<{ events: AdminTaskEvent[] }>(`/v1/admin/jobs/events?limit=${limit}`);
 }

@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/header";
 import { Main } from "@/components/layout/main";
 import { ProfileDropdown } from "@/components/profile-dropdown";
 import { Search } from "@/components/search";
+import { AdminTasksButton } from "@/components/admin/tasks/tasks-button";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { LanguageSwitch } from "@/components/language-switch";
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -30,6 +31,7 @@ export function PageShell({
     <>
       <Header fixed={fixed}>
         <Search className="me-auto" />
+        <AdminTasksButton />
         <NotificationsBell />
         <LanguageSwitch />
         <ThemeSwitch />
