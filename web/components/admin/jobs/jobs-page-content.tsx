@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { Badge } from "@/components/ui/badge";
+import { confirmAction } from "@/components/action-dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -121,6 +123,7 @@ export function JobsPageContent() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [cleanupDays, setCleanupDays] = useState("30");
+  const [cleanupFailed, setCleanupFailed] = useState(false);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["admin-jobs", status, type, appliedSearch],
@@ -183,7 +186,10 @@ export function JobsPageContent() {
   });
 
   const cleanupMut = useMutation({
-    mutationFn: () => cleanupAdminJobs(Number(cleanupDays) || 30),
+    mutationFn: () => {
+      const days = cleanupDays.trim() === "" ? 30 : Number(cleanupDays);
+      return cleanupAdminJobs(Number.isFinite(days) && days >= 0 ? Math.floor(days) : 30, cleanupFailed);
+    },
     onSuccess: (res) => {
       toast.success(t("admin.jobs.cleaned_count", { count: res.count }));
       invalidate();
@@ -299,19 +305,29 @@ export function JobsPageContent() {
             <div className="flex gap-2">
               <Input
                 type="number"
-                min="1"
+                min="0"
                 value={cleanupDays}
                 onChange={(e) => setCleanupDays(e.target.value)}
                 className="w-24"
               />
               <Button
                 variant="outline"
-                onClick={() => cleanupMut.mutate()}
+                onClick={async () => {
+                  if (cleanupFailed && !(await confirmAction(t("admin.jobs.cleanup_confirm")))) return;
+                  cleanupMut.mutate();
+                }}
                 disabled={cleanupMut.isPending}
               >
                 {t("admin.jobs.cleanup")}
               </Button>
             </div>
+            <label className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+              <Checkbox
+                checked={cleanupFailed}
+                onCheckedChange={(v) => setCleanupFailed(v === true)}
+              />
+              {t("admin.jobs.cleanup_failed_too")}
+            </label>
           </div>
         </div>
       </div>

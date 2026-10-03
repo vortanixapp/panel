@@ -3072,10 +3072,16 @@ export async function fetchTariffsPublic() {
   return apiFetch<{ tariffs: unknown[] }>("/v1/tariffs/public");
 }
 
-export async function fetchServerLogs(serverId: string, tail = 1000) {
-  return apiFetch<{ lines: string[] }>(
-    `/v1/servers/${serverId}/logs?tail=${encodeURIComponent(String(tail))}`
-  );
+export type ServerLogsResponse = {
+  lines: string[];
+  times?: string[];
+  incremental?: boolean;
+};
+
+export async function fetchServerLogs(serverId: string, tail = 1000, since?: string) {
+  const q = new URLSearchParams({ tail: String(tail) });
+  if (since) q.set("since", since);
+  return apiFetch<ServerLogsResponse>(`/v1/servers/${serverId}/logs?${q.toString()}`);
 }
 
 export type ServerInstallLog = {
@@ -6274,10 +6280,10 @@ export async function retryAdminFailedJobs(type?: string) {
   });
 }
 
-export async function cleanupAdminJobs(days: number) {
+export async function cleanupAdminJobs(days: number, includeFailed = false) {
   return apiFetch<{ status: string; count: number }>(`/v1/admin/jobs/cleanup`, {
     method: "POST",
-    body: JSON.stringify({ days }),
+    body: JSON.stringify({ days, include_failed: includeFailed }),
   });
 }
 

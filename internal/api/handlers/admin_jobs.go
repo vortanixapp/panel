@@ -335,8 +335,9 @@ func (h *Handler) AdminJobDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 type jobsBulkBody struct {
-	Type string `json:"type"`
-	Days int    `json:"days"`
+	Type          string `json:"type"`
+	Days          *int   `json:"days"`
+	IncludeFailed bool   `json:"include_failed"`
 }
 
 func (h *Handler) AdminJobsRetryFailed(w http.ResponseWriter, r *http.Request) {
@@ -390,8 +391,11 @@ func (h *Handler) AdminJobsCleanup(w http.ResponseWriter, r *http.Request) {
 	}
 	var body jobsBulkBody
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	days := body.Days
-	if days <= 0 {
+	days := 30
+	if body.Days != nil {
+		days = *body.Days
+	}
+	if days < 0 {
 		days = 30
 	}
 	if days > 3650 {
@@ -399,14 +403,14 @@ func (h *Handler) AdminJobsCleanup(w http.ResponseWriter, r *http.Request) {
 	}
 	tag, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		DELETE FROM core.jobs
-		WHERE status IN ('completed', 'cancelled')
+		WHERE (status IN ('completed', 'cancelled') OR ($2 AND status = 'failed'))
 		  AND created_at < now() - make_interval(days => $1::int)
-	`, days)
+	`, days, body.IncludeFailed)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "database error")
 		return
 	}
 	audit(r.Context(), h.dbOf(r.Context()), claims.UserID, "job.cleanup", "jobs",
-		map[string]any{"days": days, "count": tag.RowsAffected()})
+		map[string]any{"days": days, "include_failed": body.IncludeFailed, "count": tag.RowsAffected()})
 	writeJSON(w, http.StatusOK, map[string]any{"status": "deleted", "count": tag.RowsAffected()})
 }
