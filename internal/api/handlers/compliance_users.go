@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/vortanixapp/panel/internal/api/payments"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -225,9 +226,9 @@ func (h *Handler) anonymizeUser(ctx context.Context, userID, actorID, source str
 		UPDATE core.users
 		SET email = 'deleted-' || replace(id::text, '-', '') || '@deleted.invalid',
 		    password_hash = '!', status = 'disabled', two_factor_enabled = false,
-		    deleted_at = now(), retain_until = (now() + interval '5 years')::date
+		    deleted_at = now(), retain_until = (now() + make_interval(years => $2::int))::date
 		WHERE id = $1 AND role <> 'owner' AND deleted_at IS NULL
-	`, userID)
+	`, userID, int(settingsreg.BillingRetainYears.Int()))
 	if err != nil {
 		return err
 	}

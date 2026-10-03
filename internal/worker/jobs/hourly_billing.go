@@ -8,13 +8,12 @@ import (
 	"github.com/vortanixapp/panel/pkg/hourlybill"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
 	hourlyBillingTick  = 5 * time.Minute
 	hourlyBillingBatch = 200
-	hourlyCatchupMax   = 24
-	hourlyLowBalance   = 6
 )
 
 type hourlyServer struct {
@@ -85,8 +84,8 @@ func (r *Runner) chargeHourlyServer(ctx context.Context, s hourlyServer) {
 	if hours < 1 {
 		hours = 1
 	}
-	if hours > hourlyCatchupMax {
-		hours = hourlyCatchupMax
+	if limit := int(settingsreg.BillingHourlyCatchup.Int()); hours > limit {
+		hours = limit
 	}
 
 	for i := 0; i < hours; i++ {
@@ -202,7 +201,7 @@ func (r *Runner) warnLowHourlyBalance(ctx context.Context, s hourlyServer) {
 		return
 	}
 	hoursLeft := int(balance / s.rate)
-	if hoursLeft > hourlyLowBalance {
+	if hoursLeft > int(settingsreg.BillingHourlyLowBalance.Int()) {
 		return
 	}
 	r.notifyUser(ctx, s.userID, notify.Event{

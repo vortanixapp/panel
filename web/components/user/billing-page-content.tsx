@@ -29,6 +29,7 @@ import {
 import { BILLING_PROVIDERS } from "@/lib/billing-providers";
 import { formatAmount } from "@/lib/format";
 import { localeTag, t } from "@/lib/i18n";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
@@ -46,7 +47,6 @@ const CARD = "rounded-[20px] border border-[var(--vx-panel-line)] bg-[var(--vx-p
 const CARD_RAISED =
   "rounded-[20px] border border-[var(--vx-panel-line-strong)] bg-[var(--vx-elevated)]";
 
-const PRESETS = [500, 1000, 2000, 5000, 10000];
 
 type Filter = "all" | "in" | "out";
 
@@ -196,13 +196,14 @@ function ArrowIcon({ className }: { className?: string }) {
 
 export function BillingPageContent() {
   useT();
+  const publicSettings = usePublicSettings();
   const qc = useQueryClient();
   const router = useRouter();
   const searchParams = useSearchParams();
   const paymentId = searchParams.get("payment");
 
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
-  const [amount, setAmount] = useState(1000);
+  const [amount, setAmount] = useState(publicSettings.topupDefault);
   const [method, setMethod] = useState("");
   const [promoOpen, setPromoOpen] = useState(false);
   const [promoCode, setPromoCode] = useState("");
@@ -272,6 +273,16 @@ export function BillingPageContent() {
     mutationFn: async () => {
       if (!activeProvider) throw new Error(t("billing.topup.provider_unavailable"));
       if (!amount || amount <= 0) throw new Error(t("billing.topup.amount_required"));
+      if (publicSettings.topupMin > 0 && amount < publicSettings.topupMin) {
+        throw new Error(
+          t("billing.topup.below_min", { amount: fmtMoney(publicSettings.topupMin), symbol })
+        );
+      }
+      if (publicSettings.topupMax > 0 && amount > publicSettings.topupMax) {
+        throw new Error(
+          t("billing.topup.above_max", { amount: fmtMoney(publicSettings.topupMax), symbol })
+        );
+      }
       if (needsFreekassaMethod) throw new Error(t("billing.topup.freekassa_select"));
       return createTopup({
         walletId: activeWalletId || undefined,
@@ -464,7 +475,7 @@ export function BillingPageContent() {
               </div>
 
               <div className="mt-[18px] flex flex-wrap gap-2">
-                {PRESETS.map((v) => {
+                {publicSettings.topupPresets.map((v) => {
                   const on = amount === v;
                   return (
                     <button

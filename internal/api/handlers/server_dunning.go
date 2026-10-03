@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
@@ -18,7 +20,15 @@ const (
 	dunningSuspended = -1
 )
 
-var dunningStages = []int{1, 3, 7}
+func dunningStageDays() []int {
+	raw := settingsreg.BillingDunningStages.Ints()
+	days := make([]int, 0, len(raw))
+	for _, d := range raw {
+		days = append(days, int(d))
+	}
+	sort.Ints(days)
+	return days
+}
 
 func (h *Handler) StartServerDunningSweeper(ctx context.Context) {
 	go func() {
@@ -41,7 +51,7 @@ func (h *Handler) runDunning(ctx context.Context) {
 	defer cancel()
 
 	h.renewAutoServers(ctx)
-	for _, stage := range dunningStages {
+	for _, stage := range dunningStageDays() {
 		h.remindStage(ctx, stage)
 	}
 	h.notifySuspended(ctx)
@@ -163,10 +173,10 @@ func (h *Handler) renewAutoServers(ctx context.Context) {
 		  AND user_id IS NOT NULL
 		  AND expires_at IS NOT NULL
 		  AND suspended_at IS NULL
-		  AND expires_at <= now() + interval '1 day'
+		  AND expires_at <= now() + make_interval(hours => $1::int)
 		ORDER BY expires_at ASC
 		LIMIT 100
-	`)
+	`, int(settingsreg.BillingAutoRenewHorizon.Int()))
 	if err != nil {
 		return
 	}

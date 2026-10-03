@@ -10,6 +10,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/hosting"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const hostingExpiryInterval = 5 * time.Minute
@@ -40,7 +41,7 @@ func (h *Handler) suspendExpiredHosting(ctx context.Context) {
 		WHERE ha.id IN (
 			SELECT id FROM core.hosting_accounts
 			WHERE expires_at IS NOT NULL
-			  AND expires_at < now()
+			  AND expires_at < now() - $1::interval
 			  AND suspended_at IS NULL
 			  AND status = 'active'
 			ORDER BY expires_at ASC
@@ -50,7 +51,7 @@ func (h *Handler) suspendExpiredHosting(ctx context.Context) {
 		RETURNING ha.id::text, COALESCE(ha.user_id::text, ''),
 		          COALESCE(ha.panel_account_id, ha.username), ha.username,
 		          ha.hosting_server_id::text, ha.expires_at
-	`)
+	`, settingsreg.BillingHostingGrace.Duration().String())
 	if err != nil {
 		log.Printf("hosting expiry: query: %v", err)
 		return

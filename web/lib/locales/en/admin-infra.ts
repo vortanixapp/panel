@@ -118,7 +118,7 @@ export const adminInfra = {
 
   "admin.settings.trial.title": "Trial server",
   "admin.settings.trial.description":
-    "A free server for a few hours. It stops when the time is up and is deleted with its files three days later",
+    "A free server for a few hours. It stops when the time is up and is deleted with its files after the retention period set in Billing settings",
   "admin.settings.trial.enabled": "Hand out trial servers",
   "admin.settings.trial.enabled_hint":
     "The client gets a server without paying — once per the period below",

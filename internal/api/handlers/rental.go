@@ -20,6 +20,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/gamecatalog"
 	"github.com/vortanixapp/panel/pkg/hourlybill"
 	"github.com/vortanixapp/panel/pkg/portalloc"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +71,7 @@ func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
 				resp["calculated_cost"] = rate
 				resp["base_cost"] = rate
 				resp["total_cost"] = math.Round(rate*float64(count)*10000) / 10000
-				resp["prepaid_hours"] = hourlyPrepaidHours
+				resp["prepaid_hours"] = hourlyPrepaidHours()
 				resp["currency"] = tariffCurrency(tariffJSON)
 				writeJSON(w, http.StatusOK, resp)
 				return
@@ -110,9 +111,13 @@ func (h *Handler) RentServerForm(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-const maxRentBatch = 5
+func hourlyPrepaidHours() float64 {
+	return float64(settingsreg.BillingHourlyPrepaid.Int())
+}
 
-const hourlyPrepaidHours = 24.0
+func rentMaxDays() int {
+	return int(settingsreg.BillingRentMaxDays.Int())
+}
 
 func (h *Handler) walletCovers(ctx context.Context, userID, walletID, currency string, amount float64) bool {
 	if amount <= 0 {
@@ -137,7 +142,7 @@ func rentBatchCount(raw string) int {
 	if err != nil || count < 1 {
 		return 1
 	}
-	return min(count, maxRentBatch)
+	return min(count, intOf(settingsreg.BillingRentMaxBatch))
 }
 
 func (h *Handler) loadRentTariffs(ctx context.Context, gameID, locationID string) []map[string]any {
@@ -512,11 +517,11 @@ func (h *Handler) RentServerSubmit(w http.ResponseWriter, r *http.Request) {
 		hourlyRate = pricing.HourlyRate(tariffJSON, order)
 		rentPrice, hourlyCarry = hourlybill.Split(hourlyRate, 0)
 		count := rentBatchCount(strconv.Itoa(body.Count))
-		required := hourlyRate * hourlyPrepaidHours * float64(count)
+		required := hourlyRate * hourlyPrepaidHours() * float64(count)
 		if !h.walletCovers(r.Context(), claims.UserID, body.WalletID, currency, required) {
 			writeCodedError(w, http.StatusPaymentRequired, "hourly_min_balance",
 				fmt.Sprintf("Для почасовой аренды нужен баланс минимум на %d ч: %.2f %s",
-					int(hourlyPrepaidHours), required, currency))
+					int(hourlyPrepaidHours()), required, currency))
 			return
 		}
 	} else {
@@ -853,7 +858,7 @@ func (h *Handler) rentTariffRefusal(ctx context.Context, tariff map[string]any, 
 
 func tariffPeriodAllowed(periods []int, days int) bool {
 	if len(periods) == 0 {
-		return days >= 1 && days <= 365
+		return days >= 1 && days <= rentMaxDays()
 	}
 	for _, p := range periods {
 		if p == days {
@@ -872,7 +877,7 @@ func (h *Handler) renewPeriodAllowed(ctx context.Context, serverID string, days 
 		WHERE s.id = $1
 	`, serverID).Scan(&raw)
 	if err != nil {
-		return days >= 1 && days <= 365
+		return days >= 1 && days <= rentMaxDays()
 	}
 	return tariffPeriodAllowed(jsonIntSlice(raw), days)
 }

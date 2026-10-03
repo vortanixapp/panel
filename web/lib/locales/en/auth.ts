@@ -1,7 +1,7 @@
 export const auth = {
   "auth.error.email_invalid": "Enter a valid email",
   "auth.error.password_required": "Enter your password",
-  "auth.error.password_min": "Password must be at least 8 characters",
+  "auth.error.password_min": "Password must be at least {n} characters",
   "auth.error.password_confirm_required": "Confirm your password",
   "auth.error.passwords_mismatch": "Passwords do not match",
   "auth.error.name_required": "Enter your first name",
@@ -73,6 +73,8 @@ export const auth = {
   "auth.register.submit": "Create an account",
   "auth.register.submitting": "Creating…",
   "auth.register.have_account": "Already have an account?",
+  "auth.register.closed_title": "Registration is closed",
+  "auth.register.closed": "Creating new accounts is unavailable right now. If you already have an account, sign in.",
   "auth.register.login_link": "Sign in",
   "auth.register.failed": "Registration failed. Please try again.",
   "auth.register.social_failed": "Social registration failed. Please try again.",
@@ -86,7 +88,7 @@ export const auth = {
   "auth.forgot.send_failed": "Could not send the request",
 
   "auth.reset.title": "New password",
-  "auth.reset.subtitle": "Choose a password at least 8 characters long.",
+  "auth.reset.subtitle": "Choose a password at least {n} characters long.",
   "auth.reset.login_link": "Sign in",
   "auth.reset.password_label": "New password",
   "auth.reset.confirm_label": "Confirmation",

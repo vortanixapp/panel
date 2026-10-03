@@ -10,11 +10,11 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
-	balanceLowHorizon = 5 * 24 * time.Hour
-	diskLowFreeRatio  = 0.1
+	diskLowFreeRatio = 0.1
 )
 
 func (r *Runner) HealthWatchLoop(ctx context.Context) {
@@ -110,7 +110,7 @@ func (r *Runner) checkLowBalances(ctx context.Context) {
 		) w ON true
 		WHERE d.amount > 0 AND COALESCE(w.balance, 0) < d.amount
 		LIMIT 500
-	`, fmt.Sprintf("%d hours", int(balanceLowHorizon.Hours())))
+	`, fmt.Sprintf("%d hours", int(settingsreg.BillingBalanceLowDays.Duration().Hours())))
 	if err != nil {
 		log.Printf("health: проверка баланса не выполнена: %v", err)
 		return

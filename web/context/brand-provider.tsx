@@ -12,6 +12,11 @@ import {
 import type { Branding } from "@/lib/api";
 import { setFavicon } from "@/lib/appearance";
 import {
+  DEFAULT_PUBLIC_SETTINGS,
+  resolvePublicSettings,
+  type PublicSettings,
+} from "@/lib/public-settings";
+import {
   BRAND_LOGO_URL,
   BRAND_NAME,
   normalizeBrandName,
@@ -34,6 +39,7 @@ type BrandState = {
   links: Record<string, string>;
   whmcs: WhmcsLinks | null;
   legal: NonNullable<Branding["legal"]> | null;
+  settings: PublicSettings;
   ready: boolean;
   refresh: () => Promise<void>;
 };
@@ -50,6 +56,7 @@ const BrandContext = createContext<BrandState>({
   links: EMPTY,
   whmcs: null,
   legal: null,
+  settings: DEFAULT_PUBLIC_SETTINGS,
   ready: false,
   refresh: async () => undefined,
 });
@@ -106,6 +113,7 @@ export function BrandProvider({
           }
         : null,
       legal: branding?.legal ?? null,
+      settings: resolvePublicSettings(branding?.settings),
       ready,
       refresh,
     }),
@@ -117,4 +125,8 @@ export function BrandProvider({
 
 export function useBrand() {
   return useContext(BrandContext);
+}
+
+export function usePublicSettings(): PublicSettings {
+  return useContext(BrandContext).settings;
 }

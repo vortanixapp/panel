@@ -28,17 +28,17 @@ import {
   PasswordField,
   SOCIAL_BUTTONS,
 } from "@/components/auth/auth-kit";
-import { useBrand } from "@/context/brand-provider";
+import { useBrand, usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 
-function buildSchema(t: TranslateFn) {
+function buildSchema(t: TranslateFn, passwordMin: number) {
   return z
     .object({
       name: z.string().min(1, t("auth.error.name_required")),
       lastName: z.string().optional(),
       email: z.string().email(t("auth.error.email_invalid")),
-      password: z.string().min(8, t("auth.error.password_min")),
+      password: z.string().min(passwordMin, t("auth.error.password_min", { n: passwordMin })),
       passwordConfirmation: z
         .string()
         .min(1, t("auth.error.password_confirm_required")),
@@ -55,6 +55,28 @@ const docLinkClass = "text-foreground underline underline-offset-4 decoration-fo
 
 export function RegisterForm() {
   const t = useT();
+  const { registrationEnabled } = usePublicSettings();
+  if (!registrationEnabled) {
+    return (
+      <>
+        <AuthHeading
+          title={t("auth.register.closed_title")}
+          subtitle={t("auth.register.closed")}
+        />
+        <AuthSwitch>
+          {t("auth.register.have_account")}{" "}
+          <Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+            {t("auth.register.login_link")}
+          </Link>
+        </AuthSwitch>
+      </>
+    );
+  }
+  return <RegisterFormInner />;
+}
+
+function RegisterFormInner() {
+  const t = useT();
   const router = useRouter();
   const [error, setError] = useState("");
   const [configured, setConfigured] = useState<string[]>([]);
@@ -62,6 +84,7 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [sentTo, setSentTo] = useState("");
   const { legal } = useBrand();
+  const { passwordMinLength } = usePublicSettings();
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptPersonalData, setAcceptPersonalData] = useState(false);
   const needTerms = Boolean(legal?.registration.terms);
@@ -74,7 +97,7 @@ export function RegisterForm() {
     watch,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(buildSchema(t)),
+    resolver: zodResolver(buildSchema(t, passwordMinLength)),
     defaultValues: {
       name: "",
       lastName: "",

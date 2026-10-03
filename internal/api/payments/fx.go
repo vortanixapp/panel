@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 type Rates struct {
@@ -47,10 +49,13 @@ func (r *Rates) Subset(codes []string) map[string]float64 {
 	return out
 }
 
-const (
-	ratesFreshFor  = 6 * time.Hour
-	ratesUsableFor = 72 * time.Hour
-)
+func ratesFreshFor() time.Duration {
+	return settingsreg.BillingFXFresh.Duration()
+}
+
+func ratesUsableFor() time.Duration {
+	return settingsreg.BillingFXStale.Duration()
+}
 
 type rateSource struct {
 	mu       sync.Mutex
@@ -67,7 +72,7 @@ func CurrentRates(ctx context.Context) (*Rates, error) {
 func (s *rateSource) get(ctx context.Context) (*Rates, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.cached != nil && time.Since(s.cached.FetchedAt) < ratesFreshFor {
+	if s.cached != nil && time.Since(s.cached.FetchedAt) < ratesFreshFor() {
 		return s.cached, nil
 	}
 	fresh, err := s.fetch(ctx)
@@ -75,7 +80,7 @@ func (s *rateSource) get(ctx context.Context) (*Rates, error) {
 		s.cached = fresh
 		return fresh, nil
 	}
-	if s.cached != nil && time.Since(s.cached.FetchedAt) < ratesUsableFor {
+	if s.cached != nil && time.Since(s.cached.FetchedAt) < ratesUsableFor() {
 		return s.cached, nil
 	}
 	return nil, fmt.Errorf("курсы валют недоступны: %w", err)

@@ -731,7 +731,7 @@ func (Lava) CreateCheckout(ctx context.Context, cfg map[string]any, in CheckoutI
 		"hookUrl":    in.NotifyURL,
 		"successUrl": in.ReturnURL,
 		"failUrl":    in.FailURL,
-		"expire":     300,
+		"expire":     invoiceExpireSeconds(),
 		"comment":    truncate(in.Description, 255),
 	})
 	var out struct {
@@ -822,7 +822,7 @@ func (Enot) CreateCheckout(ctx context.Context, cfg map[string]any, in CheckoutI
 		"success_url": in.ReturnURL,
 		"fail_url":    in.FailURL,
 		"comment":     truncate(in.Description, 255),
-		"expire":      300,
+		"expire":      invoiceExpireSeconds(),
 	}
 	if in.Email != "" {
 		body["email"] = in.Email

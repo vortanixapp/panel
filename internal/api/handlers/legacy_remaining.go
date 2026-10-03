@@ -154,7 +154,7 @@ func (h *Handler) ServerRenew(w http.ResponseWriter, r *http.Request) {
 		UPDATE core.servers
 		SET expires_at = GREATEST(COALESCE(expires_at, now()), now()) + make_interval(days => $2),
 		    suspended_at = NULL,
-		    rental_period_days = LEAST(GREATEST($2::int, 1), 365),
+		    rental_period_days = LEAST(GREATEST($2::int, 1), `+strconv.Itoa(rentMaxDays())+`),
 		    dunning_stage = 0,
 		    dunning_for = NULL
 		WHERE id = $1
@@ -547,7 +547,7 @@ func (h *Handler) AdminListServers(w http.ResponseWriter, r *http.Request) {
 		SELECT COUNT(*),
 		       COUNT(*) FILTER (WHERE status = 'running' OR runtime_status = 'running'),
 		       COUNT(*) FILTER (WHERE expires_at IS NOT NULL AND expires_at >= now()
-		                          AND expires_at < now() + interval '7 days'),
+		                          AND expires_at < now() + `+expiringSoonSQL()+`),
 		       COUNT(*) FILTER (WHERE is_blocked),
 		       COUNT(*) FILTER (WHERE provisioning_status = 'failed')
 		FROM core.servers

@@ -15,6 +15,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/payments"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func firstNonEmpty(vals ...string) string {
@@ -177,6 +178,16 @@ func (h *Handler) CreateTopup(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Amount <= 0 {
 		writeError(w, http.StatusBadRequest, "Сумма пополнения должна быть больше нуля")
+		return
+	}
+	if lower := settingsreg.BillingTopupMin.Int(); lower > 0 && body.Amount < float64(lower) {
+		writeCodedError(w, http.StatusUnprocessableEntity, "topup_below_min",
+			fmt.Sprintf("Минимальная сумма пополнения — %d", lower))
+		return
+	}
+	if upper := settingsreg.BillingTopupMax.Int(); upper > 0 && body.Amount > float64(upper) {
+		writeCodedError(w, http.StatusUnprocessableEntity, "topup_above_max",
+			fmt.Sprintf("Максимальная сумма пополнения — %d", upper))
 		return
 	}
 

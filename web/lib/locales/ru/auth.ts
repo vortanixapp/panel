@@ -1,7 +1,7 @@
 export const auth = {
   "auth.error.email_invalid": "Введите корректный email",
   "auth.error.password_required": "Введите пароль",
-  "auth.error.password_min": "Пароль должен быть не короче 8 символов",
+  "auth.error.password_min": "Пароль должен быть не короче {n} символов",
   "auth.error.password_confirm_required": "Подтвердите пароль",
   "auth.error.passwords_mismatch": "Пароли не совпадают",
   "auth.error.name_required": "Введите имя",
@@ -73,6 +73,8 @@ export const auth = {
   "auth.register.submit": "Создать аккаунт",
   "auth.register.submitting": "Создание…",
   "auth.register.have_account": "Уже есть аккаунт?",
+  "auth.register.closed_title": "Регистрация закрыта",
+  "auth.register.closed": "Создание новых аккаунтов сейчас недоступно. Если у вас уже есть аккаунт, войдите в него.",
   "auth.register.login_link": "Войти",
   "auth.register.failed": "Ошибка регистрации. Попробуйте снова.",
   "auth.register.social_failed": "Ошибка регистрации через соцсеть. Попробуйте снова.",
@@ -86,7 +88,7 @@ export const auth = {
   "auth.forgot.send_failed": "Не удалось отправить запрос",
 
   "auth.reset.title": "Новый пароль",
-  "auth.reset.subtitle": "Придумайте пароль не короче 8 символов.",
+  "auth.reset.subtitle": "Придумайте пароль не короче {n} символов.",
   "auth.reset.login_link": "Войти",
   "auth.reset.password_label": "Новый пароль",
   "auth.reset.confirm_label": "Подтверждение",

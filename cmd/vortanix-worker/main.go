@@ -20,6 +20,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/netaddr"
 	"github.com/vortanixapp/panel/pkg/panelsecret"
 	"github.com/vortanixapp/panel/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"strings"
 )
 
@@ -52,6 +53,7 @@ func main() {
 		log.Fatalf("database: %v", err)
 	}
 	defer pool.Close()
+	settingsreg.Init(pool)
 
 	secrets, err := secretbox.New(env("SECRETS_KEY", ""))
 	if err != nil {

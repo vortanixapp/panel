@@ -43,11 +43,11 @@ import {
   slotRange,
   tariffRange,
 } from "@/lib/tariff-pricing";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import { useLocationPing } from "@/hooks/use-location-ping";
 
 const PERIODS = [15, 30, 60, 180] as const;
-const MAX_SERVERS = 5;
 const HOURS_PER_MONTH = 720;
 
 type PriceUnit = "hour" | "day" | "month";
@@ -196,6 +196,7 @@ function Section({
 
 export function RentServerPageContent() {
   useT();
+  const { rentMaxBatch: MAX_SERVERS } = usePublicSettings();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [gameId, setGameId] = useState("");

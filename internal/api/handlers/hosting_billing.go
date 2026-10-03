@@ -54,7 +54,7 @@ func (h *Handler) loadHostingPlanPricing(ctx context.Context, planID string) (ho
 }
 
 func hostingPeriodAllowed(allowed []int, period int) bool {
-	if period < 1 || period > 365 {
+	if period < 1 || period > rentMaxDays() {
 		return false
 	}
 	if len(allowed) == 0 {

@@ -26,6 +26,7 @@ import (
 	"github.com/vortanixapp/panel/pkg/panelsecret"
 	"github.com/vortanixapp/panel/pkg/relaytls"
 	"github.com/vortanixapp/panel/pkg/secretbox"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func main() {
@@ -45,6 +46,7 @@ func main() {
 		log.Fatalf("database: %v", err)
 	}
 	defer pool.Close()
+	settingsreg.Init(pool)
 
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {

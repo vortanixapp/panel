@@ -23,7 +23,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
+
+func invoiceExpireSeconds() int {
+	return int(settingsreg.BillingInvoiceExpire.Int()) * 60
+}
 
 var httpClient = &http.Client{Timeout: 25 * time.Second}
 

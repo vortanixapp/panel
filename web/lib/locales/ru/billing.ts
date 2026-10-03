@@ -154,6 +154,8 @@ export const billing = {
   "billing.topup.create_error": "Ошибка создания платежа",
   "billing.topup.provider_unavailable": "Платёжная система недоступна",
   "billing.topup.amount_required": "Укажите сумму пополнения",
+  "billing.topup.below_min": "Минимальная сумма пополнения — {amount} {symbol}",
+  "billing.topup.above_max": "Максимальная сумма пополнения — {amount} {symbol}",
   "billing.topup.my_topups": "Мои пополнения",
   "billing.topup.last_20": "Последние 20",
   "billing.topup.bonus_suffix": "бонус",

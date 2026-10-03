@@ -43,7 +43,7 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		WHERE true`+ownerFilter+`
 		  AND expires_at IS NOT NULL
 		  AND expires_at >= now()
-		  AND expires_at < now() + interval '7 days'
+		  AND expires_at < now() + `+expiringSoonSQL()+`
 	`, args...).Scan(&expiringSoon)
 
 	var nextChargeText string
@@ -391,7 +391,7 @@ func (h *Handler) AdminDashboard(w http.ResponseWriter, r *http.Request) {
 		SELECT COUNT(*) FROM core.servers
 		WHERE expires_at IS NOT NULL
 		  AND expires_at >= now()
-		  AND expires_at < now() + interval '7 days'
+		  AND expires_at < now() + `+expiringSoonSQL()+`
 	`).Scan(&expiring)
 	_ = db.QueryRow(ctx, `
 		SELECT COUNT(*) FROM core.servers

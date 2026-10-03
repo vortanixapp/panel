@@ -102,7 +102,7 @@ func (h *Handler) AdminDailyBonus(w http.ResponseWriter, r *http.Request) {
 		"stats": map[string]any{
 			"spins_24h": spinsDay, "spins_7d": spinsWeek, "players_7d": players, "balance_7d": round2(balanceWeek),
 		},
-		"cooldown_hours": int(bonusCooldown / time.Hour),
+		"cooldown_hours": int(bonusCooldown() / time.Hour),
 	})
 }
 

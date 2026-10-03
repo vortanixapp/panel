@@ -154,6 +154,8 @@ export const billing = {
   "billing.topup.create_error": "Could not create the payment",
   "billing.topup.provider_unavailable": "Payment system unavailable",
   "billing.topup.amount_required": "Enter a top-up amount",
+  "billing.topup.below_min": "The minimum top-up is {amount} {symbol}",
+  "billing.topup.above_max": "The maximum top-up is {amount} {symbol}",
   "billing.topup.my_topups": "My top-ups",
   "billing.topup.last_20": "Last 20",
   "billing.topup.bonus_suffix": "bonus",

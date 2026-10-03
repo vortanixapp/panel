@@ -22,6 +22,7 @@ import { PasswordInput } from "@/components/password-input";
 import { TelegramLoginButton } from "@/components/auth/telegram-login-button";
 import { ACCOUNT_KEY, useAccountQuery } from "@/hooks/use-account";
 import { useChangePassword } from "@/hooks/use-queries";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import {
   disable2FA,
@@ -214,6 +215,7 @@ function passwordScore(value: string): number {
 
 function PasswordCard({ user }: { user: AccountUser }) {
   const t = useT();
+  const { passwordMinLength } = usePublicSettings();
   const qc = useQueryClient();
   const change = useChangePassword();
   const [current, setCurrent] = useState("");
@@ -232,8 +234,8 @@ function PasswordCard({ user }: { user: AccountUser }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (next.length < 8) {
-      toast.error(t("settings.password.min"));
+    if (next.length < passwordMinLength) {
+      toast.error(t("settings.password.min", { n: passwordMinLength }));
       return;
     }
     if (next !== confirm) {
@@ -295,7 +297,7 @@ function PasswordCard({ user }: { user: AccountUser }) {
               ))}
             </div>
             <p className="text-[12px] text-muted-foreground">
-              {labels[score]} · {t("settings.password.tips")}
+              {labels[score]} · {t("settings.password.tips", { n: passwordMinLength })}
             </p>
           </div>
         )}

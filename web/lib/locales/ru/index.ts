@@ -12,6 +12,7 @@ import { nav } from "./nav";
 import { panelTransfer } from "./panel-transfer";
 import { projects } from "./projects";
 import { registry } from "./registry";
+import { registryBilling } from "./registry-billing";
 import { news } from "./news";
 import { notifications } from "./notifications";
 import { servers } from "./servers";
@@ -39,5 +40,6 @@ export const RU = {
   ...panelTransfer,
   ...projects,
   ...registry,
+  ...registryBilling,
   ...template,
 };

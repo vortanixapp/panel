@@ -26,3 +26,7 @@ func attemptsWindow() time.Duration {
 func intOf(s *settingsreg.Setting) int {
 	return int(s.Int())
 }
+
+func expiringSoonSQL() string {
+	return fmt.Sprintf("make_interval(days => %d)", settingsreg.BillingExpiringSoonDays.Int())
+}

@@ -28,7 +28,7 @@ function buildSchema(t: TranslateFn) {
   return z.object({
     panelName: z.string().min(1, t("auth.setup.error_panel_required")),
     email: z.email({ error: t("auth.setup.error_email_invalid") }),
-    password: z.string().min(8, t("auth.error.password_min")),
+    password: z.string().min(8, t("auth.error.password_min", { n: 8 })),
   });
 }
 

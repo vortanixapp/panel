@@ -12,6 +12,7 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (r *Runner) ExpiryLoop(ctx context.Context) {
@@ -49,11 +50,11 @@ func (r *Runner) suspendExpiredServers(ctx context.Context) {
 		       name, game_id, limits, status, expires_at
 		FROM core.servers
 		WHERE expires_at IS NOT NULL
-		  AND expires_at < now()
+		  AND expires_at < now() - $1::interval
 		  AND suspended_at IS NULL
 		ORDER BY expires_at ASC
 		LIMIT 200
-	`)
+	`, settingsreg.BillingServerGrace.Duration().String())
 	if err != nil {
 		return
 	}
@@ -120,25 +121,27 @@ func (r *Runner) suspendServer(ctx context.Context, s expiredServer) {
 	log.Printf("expiry: server %s (%s) suspended", s.id, s.name)
 }
 
-const trialKeepAfterSuspend = 72 * time.Hour
-
 func (r *Runner) cleanupTrialServers(ctx context.Context) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id::text, node_id::text, COALESCE(user_id::text, ''), name
+		SELECT id::text, node_id::text, COALESCE(user_id::text, ''), name, is_trial
 		FROM core.servers
-		WHERE is_trial = true
-		  AND suspended_at IS NOT NULL
-		  AND suspended_at < now() - $1::interval
+		WHERE suspended_at IS NOT NULL
+		  AND ((is_trial = true AND suspended_at < now() - $1::interval)
+		    OR (is_trial = false AND $2::int > 0
+		        AND suspended_at < now() - make_interval(days => $2::int)))
 		LIMIT 50
-	`, trialKeepAfterSuspend.String())
+	`, settingsreg.BillingTrialKeepHours.Duration().String(), int(settingsreg.BillingServerDeleteDays.Int()))
 	if err != nil {
 		return
 	}
-	type doomed struct{ id, nodeID, userID, name string }
+	type doomed struct {
+		id, nodeID, userID, name string
+		trial                    bool
+	}
 	list := []doomed{}
 	for rows.Next() {
 		var d doomed
-		if rows.Scan(&d.id, &d.nodeID, &d.userID, &d.name) == nil {
+		if rows.Scan(&d.id, &d.nodeID, &d.userID, &d.name, &d.trial) == nil {
 			list = append(list, d)
 		}
 	}
@@ -164,10 +167,14 @@ func (r *Runner) cleanupTrialServers(ctx context.Context) {
 			continue
 		}
 		if d.userID != "" {
+			prefix := "notify.server_deleted"
+			if d.trial {
+				prefix = "notify.trial_deleted"
+			}
 			r.notifyUser(ctx, d.userID, notify.Event{
 				Kind:  notify.KindServerDeleted,
-				Title: i18n.Key("notify.trial_deleted.title"),
-				Body:  i18n.Key("notify.trial_deleted.body", i18n.Params{"name": d.name}),
+				Title: i18n.Key(prefix + ".title"),
+				Body:  i18n.Key(prefix+".body", i18n.Params{"name": d.name}),
 				Meta:  map[string]any{"server_name": d.name},
 			})
 		}

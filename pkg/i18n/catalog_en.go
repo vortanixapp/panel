@@ -150,6 +150,8 @@ var catalogEN = map[string]string{
 	"notify.server_days_granted.body":    "The rental of the server “{name}” was extended by {days} days free of charge. The new end date is {date}.",
 	"notify.trial_started.title":         "Trial server is starting",
 	"notify.trial_started.body":          "The server “{name}” runs for {hours} h. After that it stops — renew the rental to keep it.",
+	"notify.server_deleted.title":        "Server deleted",
+	"notify.server_deleted.body":         "The server “{name}” and its files were deleted because the rental was not renewed. You can rent a new server at any time.",
 	"notify.trial_deleted.title":         "Trial server deleted",
 	"notify.trial_deleted.body":          "The trial server “{name}” and its files were deleted because the rental was not renewed. You can rent a new server at any time.",
 	"notify.backup_ready.title":          "Backup ready",

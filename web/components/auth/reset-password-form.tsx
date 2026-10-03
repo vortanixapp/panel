@@ -8,13 +8,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { AuthError, AuthHeading, AuthSubmit, AuthSwitch, PasswordField } from "@/components/auth/auth-kit";
 import { resetPassword } from "@/lib/api";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 
-function buildSchema(t: TranslateFn) {
+function buildSchema(t: TranslateFn, passwordMin: number) {
   return z
     .object({
-      password: z.string().min(8, t("auth.error.password_min")),
+      password: z.string().min(passwordMin, t("auth.error.password_min", { n: passwordMin })),
       confirm: z.string(),
     })
     .refine((v) => v.password === v.confirm, {
@@ -27,13 +28,14 @@ type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 export function ResetPasswordForm() {
   const t = useT();
+  const { passwordMinLength } = usePublicSettings();
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [error, setError] = useState("");
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(buildSchema(t)),
+    resolver: zodResolver(buildSchema(t, passwordMinLength)),
     defaultValues: { password: "", confirm: "" },
   });
 
@@ -56,7 +58,7 @@ export function ResetPasswordForm() {
 
   return (
     <>
-      <AuthHeading title={t("auth.reset.title")} subtitle={t("auth.reset.subtitle")} />
+      <AuthHeading title={t("auth.reset.title")} subtitle={t("auth.reset.subtitle", { n: passwordMinLength })} />
       <AuthError message={error} />
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
         <PasswordField

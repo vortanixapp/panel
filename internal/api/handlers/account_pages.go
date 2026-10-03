@@ -18,6 +18,7 @@ import (
 	"github.com/vortanixapp/panel/internal/api/payments"
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 var auditCategories = []struct {
@@ -341,7 +342,9 @@ func bonusPromoCode() string {
 	return "BONUS-" + string(out)
 }
 
-const bonusCooldown = 24 * time.Hour
+func bonusCooldown() time.Duration {
+	return settingsreg.BillingBonusCooldown.Duration()
+}
 
 var errBonusCooldown = errors.New("бонус уже получен")
 
@@ -474,10 +477,10 @@ func (h *Handler) DailyBonusIndex(w http.ResponseWriter, r *http.Request) {
 	last := h.lastSpinAt(ctx, claims.UserID)
 	streak, days := h.bonusStreak(ctx, claims.UserID)
 
-	canSpin := len(prizes) > 0 && (last == nil || time.Since(*last) >= bonusCooldown)
+	canSpin := len(prizes) > 0 && (last == nil || time.Since(*last) >= bonusCooldown())
 	var nextAt any
-	if last != nil && time.Since(*last) < bonusCooldown {
-		nextAt = last.Add(bonusCooldown).UTC().Format(time.RFC3339)
+	if last != nil && time.Since(*last) < bonusCooldown() {
+		nextAt = last.Add(bonusCooldown()).UTC().Format(time.RFC3339)
 	}
 
 	week := make([]map[string]any, 0, 7)
@@ -513,10 +516,10 @@ func (h *Handler) DailyBonusSpin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	if last := h.lastSpinAt(ctx, claims.UserID); last != nil {
-		if wait := bonusCooldown - time.Since(*last); wait > 0 {
+		if wait := bonusCooldown() - time.Since(*last); wait > 0 {
 			writeJSON(w, http.StatusTooManyRequests, map[string]any{
 				"error":        "bonus already claimed",
-				"next_spin_at": last.Add(bonusCooldown).UTC().Format(time.RFC3339),
+				"next_spin_at": last.Add(bonusCooldown()).UTC().Format(time.RFC3339),
 			})
 			return
 		}
@@ -533,7 +536,7 @@ func (h *Handler) DailyBonusSpin(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, errBonusCooldown) {
 		writeJSON(w, http.StatusTooManyRequests, map[string]any{
 			"error":        "bonus already claimed",
-			"next_spin_at": time.Now().Add(bonusCooldown).UTC().Format(time.RFC3339),
+			"next_spin_at": time.Now().Add(bonusCooldown()).UTC().Format(time.RFC3339),
 		})
 		return
 	}
@@ -566,7 +569,7 @@ func (h *Handler) DailyBonusSpin(w http.ResponseWriter, r *http.Request) {
 		"credited":     credited,
 		"promo_code":   promoCode,
 		"streak":       streak,
-		"next_spin_at": time.Now().Add(bonusCooldown).UTC().Format(time.RFC3339),
+		"next_spin_at": time.Now().Add(bonusCooldown()).UTC().Format(time.RFC3339),
 	})
 }
 
@@ -609,7 +612,7 @@ func (h *Handler) grantBonusPrize(
 			SELECT 1 FROM core.daily_bonus_spins
 			WHERE user_id = $1 AND created_at > now() - make_interval(secs => $2::float8)
 		)
-	`, userID, bonusCooldown.Seconds()).Scan(&recent); err != nil {
+	`, userID, bonusCooldown().Seconds()).Scan(&recent); err != nil {
 		return 0, "", err
 	}
 	if recent {

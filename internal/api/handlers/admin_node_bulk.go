@@ -47,8 +47,8 @@ func (h *Handler) AdminNodeBulkAction(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "message required")
 		return
 	}
-	if action == "extend" && (body.Days <= 0 || body.Days > 365) {
-		writeError(w, http.StatusBadRequest, "days must be between 1 and 365")
+	if action == "extend" && (body.Days <= 0 || body.Days > rentMaxDays()) {
+		writeError(w, http.StatusBadRequest, "days must be between 1 and "+strconv.Itoa(rentMaxDays()))
 		return
 	}
 	ctx := r.Context()

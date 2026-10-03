@@ -37,6 +37,7 @@ export type BrandingPayload = {
   icon_url?: string;
   primary_color: string;
   user_menu_variant?: "default" | "screenshot";
+  settings?: Record<string, unknown>;
   appearance?: PublicAppearance;
   whmcs?: {
     order_url: string;

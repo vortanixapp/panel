@@ -150,6 +150,8 @@ var catalogRU = map[string]string{
 	"notify.server_days_granted.body":    "Аренда сервера «{name}» продлена на {days} дн. без списания. Новая дата окончания — {date}.",
 	"notify.trial_started.title":         "Пробный сервер запускается",
 	"notify.trial_started.body":          "Сервер «{name}» работает {hours} ч. После этого он остановится — продлите аренду, чтобы оставить его себе.",
+	"notify.server_deleted.title":        "Сервер удалён",
+	"notify.server_deleted.body":         "Сервер «{name}» удалён вместе с файлами: аренда не продлевалась. Новый сервер можно арендовать в любой момент.",
 	"notify.trial_deleted.title":         "Пробный сервер удалён",
 	"notify.trial_deleted.body":          "Пробный сервер «{name}» удалён вместе с файлами: аренда не продлевалась. Новый сервер можно арендовать в любой момент.",
 	"notify.backup_ready.title":          "Резервная копия готова",

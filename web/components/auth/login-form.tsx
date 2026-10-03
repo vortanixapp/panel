@@ -30,6 +30,7 @@ import {
   PasswordField,
   SOCIAL_BUTTONS,
 } from "@/components/auth/auth-kit";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import type { TranslateFn } from "@/lib/i18n";
 
@@ -45,6 +46,7 @@ type FormValues = z.infer<ReturnType<typeof buildSchema>>;
 
 export function LoginForm() {
   const t = useT();
+  const { registrationEnabled } = usePublicSettings();
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
@@ -217,12 +219,14 @@ export function LoginForm() {
         onTelegram={handleTelegramAuth}
       />
 
-      <AuthSwitch>
-        {t("auth.login.no_account")}{" "}
-        <Link href="/register" className="font-medium text-foreground underline-offset-4 hover:underline">
-          {t("auth.login.create_account")}
-        </Link>
-      </AuthSwitch>
+      {registrationEnabled ? (
+        <AuthSwitch>
+          {t("auth.login.no_account")}{" "}
+          <Link href="/register" className="font-medium text-foreground underline-offset-4 hover:underline">
+            {t("auth.login.create_account")}
+          </Link>
+        </AuthSwitch>
+      ) : null}
     </>
   );
 }
