@@ -12,12 +12,16 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
-const (
-	telegramLinkTTL     = 10 * time.Minute
-	notificationTestGap = 30 * time.Second
-)
+func telegramLinkTTL() time.Duration {
+	return settingsreg.NotifyTelegramLinkTTL.Duration()
+}
+
+func notificationTestGap() time.Duration {
+	return settingsreg.NotifyTestGap.Duration()
+}
 
 var telegramChatIDPattern = regexp.MustCompile(`^(-?\d{1,20}|@[A-Za-z][A-Za-z0-9_]{4,31})$`)
 
@@ -338,7 +342,7 @@ func (h *Handler) NotificationChannelTest(w http.ResponseWriter, r *http.Request
 
 	if h.cache != nil {
 		key := "notify:test:" + claims.UserID + ":" + string(channel)
-		if claimed, err := h.cache.Claim(ctx, key, notificationTestGap); err == nil && !claimed {
+		if claimed, err := h.cache.Claim(ctx, key, notificationTestGap()); err == nil && !claimed {
 			writeError(w, http.StatusTooManyRequests, "too_many_requests")
 			return
 		}
@@ -386,7 +390,7 @@ func (h *Handler) NotificationTelegramLink(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	code := base64.RawURLEncoding.EncodeToString(buf)
-	if err := h.cache.SetJSON(ctx, telegramLinkKey(code), telegramLink{UserID: claims.UserID}, telegramLinkTTL); err != nil {
+	if err := h.cache.SetJSON(ctx, telegramLinkKey(code), telegramLink{UserID: claims.UserID}, telegramLinkTTL()); err != nil {
 		writeError(w, http.StatusInternalServerError, "cache error")
 		return
 	}
@@ -394,7 +398,7 @@ func (h *Handler) NotificationTelegramLink(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, map[string]any{
 		"code":       code,
 		"url":        "https://t.me/" + username + "?start=" + code,
-		"expires_at": time.Now().Add(telegramLinkTTL).UTC().Format(time.RFC3339),
+		"expires_at": time.Now().Add(telegramLinkTTL()).UTC().Format(time.RFC3339),
 	})
 }
 

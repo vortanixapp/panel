@@ -18,14 +18,14 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const (
-	botPollSeconds   = 25
-	botStateTTL      = 10 * time.Minute
-	botActionsPerMin = 40
-	botOffsetKey     = "telegram.bot.offset"
-	botLinkDoneTTL   = 5 * time.Minute
+	botPollSeconds = 25
+	botStateTTL    = 10 * time.Minute
+	botOffsetKey   = "telegram.bot.offset"
+	botLinkDoneTTL = 5 * time.Minute
 )
 
 var (
@@ -320,7 +320,7 @@ func (h *Handler) botPrepare(ctx context.Context, bot notify.TelegramBot, chat n
 		ui.showControlOff()
 		return ui, false
 	}
-	if !h.allowAttempt(ctx, "tgbot:rate:"+strconv.FormatInt(from.ID, 10), botActionsPerMin, time.Minute) {
+	if !h.allowAttempt(ctx, "tgbot:rate:"+strconv.FormatInt(from.ID, 10), intOf(settingsreg.NotifyBotActionsPerMin), time.Minute) {
 		ui.answer(ui.t("notify.bot.rate"), true)
 		return ui, false
 	}

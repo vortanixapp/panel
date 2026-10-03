@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/vortanixapp/panel/pkg/i18n"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 const LiveChannel = "vx_notifications"
@@ -170,8 +171,8 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		       COALESCE(c.discord_webhook, ''),
 		       COALESCE(c.routes, '{}'::jsonb),
 		       COALESCE(c.quiet_enabled, false),
-		       COALESCE(c.quiet_from, 1380),
-		       COALESCE(c.quiet_to, 480),
+		       COALESCE(c.quiet_from, $2::int),
+		       COALESCE(c.quiet_to, $3::int),
 		       COALESCE(c.quiet_critical, true),
 		       COALESCE(NULLIF(p.timezone, ''), NULLIF(c.quiet_tz, ''), ''),
 		       COALESCE((SELECT s.value #>> '{}' FROM core.tenant_settings s
@@ -185,7 +186,7 @@ func LoadRecipient(ctx context.Context, db DB, userID string) (Recipient, error)
 		LEFT JOIN core.user_notification_channels c
 		       ON c.user_id = u.id
 		WHERE u.id = $1
-	`, userID).Scan(&r.Email, &r.Locale, &r.Prefs.Email, &r.Prefs.Telegram,
+	`, userID, int(settingsreg.NotifyQuietFromHour.Int())*60, int(settingsreg.NotifyQuietToHour.Int())*60).Scan(&r.Email, &r.Locale, &r.Prefs.Email, &r.Prefs.Telegram,
 		&r.Prefs.Discord, &r.Prefs.TelegramChatID, &r.Prefs.DiscordWebhook, &routes,
 		&r.Quiet.Enabled, &r.Quiet.From, &r.Quiet.To, &r.Quiet.Critical, &r.Quiet.TimeZone,
 		&r.StatusEmail, &r.TelegramControl)

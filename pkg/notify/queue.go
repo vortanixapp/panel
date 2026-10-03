@@ -8,16 +8,22 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
-const (
-	MaxAttempts       = 5
-	mailLogErrorLimit = 500
-)
+const mailLogErrorLimit = 500
+
+func maxAttempts() int {
+	return int(settingsreg.NotifyMaxAttempts.Int())
+}
 
 func backoff(attempt int) time.Duration {
-	const max = 30 * time.Minute
-	d := time.Minute
+	max := settingsreg.NotifyBackoffMax.Duration()
+	d := settingsreg.NotifyBackoffBase.Duration()
+	if d > max {
+		return max
+	}
 	for i := 1; i < attempt; i++ {
 		d *= 2
 		if d >= max {
@@ -98,7 +104,7 @@ func drainOne(ctx context.Context, pool *pgxpool.Pool, cfg Config) (found, deliv
 			WHERE id = $1::uuid
 		`, d.ID, attempts, sendErr.Error())
 
-	case attempts >= MaxAttempts:
+	case attempts >= maxAttempts():
 		_, err = tx.Exec(ctx, `
 			UPDATE core.notification_deliveries
 			SET status = 'failed', attempts = $2, last_error = $3

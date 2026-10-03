@@ -14,15 +14,12 @@ import (
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/netaddr"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
-const (
-	webhookTimeout     = 10 * time.Second
-	webhookMaxAttempts = 6
-	webhookInterval    = 30 * time.Second
-)
+const webhookInterval = 30 * time.Second
 
-var webhookClient = netaddr.OutboundClient(webhookTimeout)
+var webhookClient = netaddr.OutboundClient(10 * time.Second)
 
 func (r *Runner) WebhookLoop(ctx context.Context) {
 	ticker := time.NewTicker(webhookInterval)
@@ -48,6 +45,7 @@ type webhookDelivery struct {
 }
 
 func (r *Runner) deliverWebhooks(ctx context.Context) {
+	webhookClient.Timeout = settingsreg.NotifyWebhookTimeout.Duration()
 	rows, err := r.db.Query(ctx, `
 		UPDATE core.webhook_deliveries d
 		SET next_retry_at = now() + interval '2 minutes'
@@ -96,7 +94,7 @@ func (r *Runner) deliverOne(ctx context.Context, d webhookDelivery) {
 		return
 	}
 
-	if attempts >= webhookMaxAttempts {
+	if attempts >= int(settingsreg.NotifyWebhookAttempts.Int()) {
 		_, _ = r.db.Exec(ctx, `
 			UPDATE core.webhook_deliveries
 			SET status = 'failed', attempts = $2, response_code = $3, error = $4
@@ -115,7 +113,7 @@ func (r *Runner) deliverOne(ctx context.Context, d webhookDelivery) {
 }
 
 func postWebhook(ctx context.Context, d webhookDelivery) (*int, error) {
-	reqCtx, cancel := context.WithTimeout(ctx, webhookTimeout)
+	reqCtx, cancel := context.WithTimeout(ctx, settingsreg.NotifyWebhookTimeout.Duration())
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, d.url, bytes.NewReader(d.payload))

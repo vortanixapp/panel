@@ -11,12 +11,10 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/mailer"
 	"github.com/vortanixapp/panel/pkg/mailtpl"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
-const (
-	mailingSendTimeout = 30 * time.Second
-	mailLogErrorLimit  = 500
-)
+const mailLogErrorLimit = 500
 
 func (r *Runner) MailingLoop(ctx context.Context, wake <-chan struct{}) {
 	ticker := time.NewTicker(30 * time.Second)
@@ -55,11 +53,11 @@ func (r *Runner) processMailingOne(ctx context.Context) bool {
 	err = tx.QueryRow(ctx, `
 		SELECT id::text, payload
 		FROM core.jobs
-		WHERE type = 'send_mailing' AND status = 'pending' AND attempts < 5
+		WHERE type = 'send_mailing' AND status = 'pending' AND attempts < $1::int
 		ORDER BY created_at ASC
 		LIMIT 1
 		FOR UPDATE SKIP LOCKED
-	`).Scan(&jobID, &payload)
+	`, int(settingsreg.NotifyMailingAttempts.Int())).Scan(&jobID, &payload)
 	if err != nil {
 		return false
 	}
@@ -130,7 +128,7 @@ func (r *Runner) processMailingOne(ctx context.Context) bool {
 	for _, rec := range recipients {
 		letter := msg
 		letter.To = rec.email
-		sendCtx, cancel := context.WithTimeout(ctx, mailingSendTimeout)
+		sendCtx, cancel := context.WithTimeout(ctx, settingsreg.NotifyMailingSendTimeout.Duration())
 		sendErr := cfg.Send(sendCtx, letter)
 		cancel()
 		status, failure := "sent", ""
@@ -149,6 +147,12 @@ func (r *Runner) processMailingOne(ctx context.Context) bool {
 			`, pl.MailingID, rec.id, rec.email, failure)
 		}
 		r.logMail(ctx, cfg, "mailing", rec.id, rec.email, subject, status, failure)
+		if perMinute := int(settingsreg.NotifyMailingPerMinute.Int()); perMinute > 0 {
+			select {
+			case <-ctx.Done():
+			case <-time.After(time.Minute / time.Duration(perMinute)):
+			}
+		}
 	}
 
 	r.finishMailing(ctx, jobID, pl.MailingID, len(recipients), sent)
