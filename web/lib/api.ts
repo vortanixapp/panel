@@ -8039,6 +8039,28 @@ export type AdminPerformance = {
   charts: AdminPerfChart[];
 };
 
+export type AdminMonitoringInfo = {
+  prometheus: {
+    ready: boolean;
+    internal_url: string;
+    retention: string;
+    retention_size: string;
+    targets: { job: string; state: string; error?: string }[];
+  };
+  grafana: {
+    ready: boolean;
+    url: string;
+    port: string;
+    login: string;
+    password: string;
+    password_source: string;
+  };
+};
+
+export async function fetchAdminMonitoringInfo() {
+  return apiFetch<AdminMonitoringInfo>("/v1/admin/settings/monitoring");
+}
+
 export async function fetchAdminPerformance(range: string) {
   return apiFetch<AdminPerformance>(`/v1/admin/performance?range=${encodeURIComponent(range)}`);
 }

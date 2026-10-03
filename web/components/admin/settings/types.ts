@@ -16,6 +16,7 @@ export type SettingsTab =
   | "dockerhub"
   | "telegram"
   | "files"
+  | "monitoring"
   | RegistryGroup;
 
 export type RegistryItem = {

@@ -1,5 +1,41 @@
 export const adminPerformance = {
   "nav.admin.performance": "Производительность",
+  "admin.settings.tab.monitoring": "Мониторинг",
+  "admin.settings.monitoring.grafana_title": "Grafana",
+  "admin.settings.monitoring.grafana_description":
+    "Графики и произвольные запросы. Открывается по IP машины, домен не нужен.",
+  "admin.settings.monitoring.prometheus_title": "Prometheus",
+  "admin.settings.monitoring.prometheus_description":
+    "Собирает метрики API, базы данных и relay. Наружу не публикуется.",
+  "admin.settings.monitoring.running": "Работает",
+  "admin.settings.monitoring.down": "Недоступен",
+  "admin.settings.monitoring.address": "Адрес",
+  "admin.settings.monitoring.open": "Открыть",
+  "admin.settings.monitoring.login": "Логин",
+  "admin.settings.monitoring.password": "Пароль",
+  "admin.settings.monitoring.show": "Показать",
+  "admin.settings.monitoring.hide": "Скрыть",
+  "admin.settings.monitoring.copy": "Копировать",
+  "admin.settings.monitoring.copied": "Скопировано",
+  "admin.settings.monitoring.no_password": "Пароль не создан: служба Grafana ещё не запускалась",
+  "admin.settings.monitoring.cert_hint":
+    "Сертификат самоподписанный: браузер один раз предупредит, продолжайте, соединение зашифровано.",
+  "admin.settings.monitoring.firewall_hint": "Если на сервере есть файрвол, откройте порт {port}.",
+  "admin.settings.monitoring.password_hint":
+    "Показан пароль, с которым Grafana создана. Если вы сменили его в самой Grafana, здесь он не изменится.",
+  "admin.settings.monitoring.internal_address": "Внутренний адрес",
+  "admin.settings.monitoring.retention": "Хранение метрик",
+  "admin.settings.monitoring.retention_value": "{time} или не больше {size}",
+  "admin.settings.monitoring.retention_hint":
+    "Меняется переменными PROMETHEUS_RETENTION и PROMETHEUS_RETENTION_SIZE в deploy/.env и перезапуском prometheus.",
+  "admin.settings.monitoring.targets": "Откуда собираются метрики",
+  "admin.settings.monitoring.no_targets": "Цели сбора пока не определены",
+  "admin.settings.monitoring.target_up": "отвечает",
+  "admin.settings.monitoring.target_down": "не отвечает",
+  "admin.settings.monitoring.queries_hint":
+    "Запросы к Prometheus выполняются в Grafana (раздел Explore) и на странице «Производительность».",
+  "admin.settings.monitoring.open_performance": "Страница «Производительность»",
+  "admin.settings.monitoring.load_failed": "Не удалось получить сведения о мониторинге",
   "admin.perf.title": "Производительность",
   "admin.perf.range.1h": "1 час",
   "admin.perf.range.6h": "6 часов",
@@ -15,7 +51,7 @@ export const adminPerformance = {
   "admin.perf.unavailable_body":
     "Графики берутся из Prometheus. Запустите мониторинг командой ниже, данные появятся через минуту-две.",
   "admin.perf.unavailable_command":
-    "docker compose -f deploy/docker-compose.yml --profile monitoring up -d",
+    "docker compose -f deploy/docker-compose.yml up -d",
   "admin.perf.section.api": "API",
   "admin.perf.section.db": "База данных",
   "admin.perf.section.runtime": "Процесс API",

@@ -1,5 +1,41 @@
 export const adminPerformance = {
   "nav.admin.performance": "Performance",
+  "admin.settings.tab.monitoring": "Monitoring",
+  "admin.settings.monitoring.grafana_title": "Grafana",
+  "admin.settings.monitoring.grafana_description":
+    "Charts and ad-hoc queries. Opens on the machine IP, no domain needed.",
+  "admin.settings.monitoring.prometheus_title": "Prometheus",
+  "admin.settings.monitoring.prometheus_description":
+    "Collects metrics of the API, the database and the relay. Not published to the internet.",
+  "admin.settings.monitoring.running": "Running",
+  "admin.settings.monitoring.down": "Unavailable",
+  "admin.settings.monitoring.address": "Address",
+  "admin.settings.monitoring.open": "Open",
+  "admin.settings.monitoring.login": "Login",
+  "admin.settings.monitoring.password": "Password",
+  "admin.settings.monitoring.show": "Show",
+  "admin.settings.monitoring.hide": "Hide",
+  "admin.settings.monitoring.copy": "Copy",
+  "admin.settings.monitoring.copied": "Copied",
+  "admin.settings.monitoring.no_password": "No password yet: Grafana has not started",
+  "admin.settings.monitoring.cert_hint":
+    "The certificate is self-signed: the browser warns once, continue, the connection is encrypted.",
+  "admin.settings.monitoring.firewall_hint": "If the server has a firewall, open port {port}.",
+  "admin.settings.monitoring.password_hint":
+    "This is the password Grafana was created with. If you changed it in Grafana itself, it does not change here.",
+  "admin.settings.monitoring.internal_address": "Internal address",
+  "admin.settings.monitoring.retention": "Metrics retention",
+  "admin.settings.monitoring.retention_value": "{time} or at most {size}",
+  "admin.settings.monitoring.retention_hint":
+    "Change it with PROMETHEUS_RETENTION and PROMETHEUS_RETENTION_SIZE in deploy/.env and restart prometheus.",
+  "admin.settings.monitoring.targets": "Metric sources",
+  "admin.settings.monitoring.no_targets": "No scrape targets yet",
+  "admin.settings.monitoring.target_up": "responding",
+  "admin.settings.monitoring.target_down": "not responding",
+  "admin.settings.monitoring.queries_hint":
+    "Prometheus queries run in Grafana (Explore) and on the Performance page.",
+  "admin.settings.monitoring.open_performance": "Performance page",
+  "admin.settings.monitoring.load_failed": "Could not load monitoring details",
   "admin.perf.title": "Performance",
   "admin.perf.range.1h": "1 hour",
   "admin.perf.range.6h": "6 hours",
@@ -15,7 +51,7 @@ export const adminPerformance = {
   "admin.perf.unavailable_body":
     "The charts come from Prometheus. Start monitoring with the command below, data appears in a minute or two.",
   "admin.perf.unavailable_command":
-    "docker compose -f deploy/docker-compose.yml --profile monitoring up -d",
+    "docker compose -f deploy/docker-compose.yml up -d",
   "admin.perf.section.api": "API",
   "admin.perf.section.db": "Database",
   "admin.perf.section.runtime": "API process",

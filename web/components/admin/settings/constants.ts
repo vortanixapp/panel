@@ -23,6 +23,7 @@ export const SETTINGS_TABS: { id: SettingsTab; labelKey: string }[] = [
   { id: "dockerhub", labelKey: "admin.settings.tab.dockerhub" },
   { id: "telegram", labelKey: "admin.settings.tab.telegram" },
   { id: "files", labelKey: "admin.settings.tab.files" },
+  { id: "monitoring", labelKey: "admin.settings.tab.monitoring" },
   ...REGISTRY_GROUPS.map((id) => ({
     id: id as SettingsTab,
     labelKey: `admin.settings.tab.${id}`,

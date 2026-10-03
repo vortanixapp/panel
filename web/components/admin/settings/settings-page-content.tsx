@@ -39,6 +39,7 @@ import {
   ToggleRow,
 } from "./settings-ui";
 import { RegistrySettingsPanel } from "./registry-settings-panel";
+import { MonitoringSettings } from "./monitoring-settings";
 import { SiteFilesCard } from "./site-files-card";
 import type { SettingsTab } from "./types";
 
@@ -561,6 +562,8 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
           </SettingsCard>
         )}
 
+        {tab === "monitoring" && <MonitoringSettings />}
+
         {tab === "dockerhub" && (
           <SettingsCard
             title="Docker Hub"
@@ -898,20 +901,22 @@ export function SettingsPageContent({ initialTab }: SettingsPageContentProps) {
         )}
       </div>
 
-      <SettingsSaveBar
-        dirty={isDirty}
-        message={
-          isDirty
-            ? t("admin.settings.dirty", { tab: tabTitle })
-            : t("admin.settings.clean", { tab: tabTitle })
-        }
-        saving={saveMutation.isPending}
-        discardLabel={t("admin.settings.discard")}
-        saveLabel={t("common.save")}
-        savingLabel={t("common.saving")}
-        onDiscard={reset}
-        onSave={save}
-      />
+      {tab !== "monitoring" && (
+        <SettingsSaveBar
+          dirty={isDirty}
+          message={
+            isDirty
+              ? t("admin.settings.dirty", { tab: tabTitle })
+              : t("admin.settings.clean", { tab: tabTitle })
+          }
+          saving={saveMutation.isPending}
+          discardLabel={t("admin.settings.discard")}
+          saveLabel={t("common.save")}
+          savingLabel={t("common.saving")}
+          onDiscard={reset}
+          onSave={save}
+        />
+      )}
     </PageShell>
   );
 }
