@@ -18,6 +18,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocale } from "@/context/locale-provider";
 import { useAccountQuery, useSetAccount } from "@/hooks/use-account";
+import { usePublicSettings } from "@/context/brand-provider";
 import { useT } from "@/hooks/use-translations";
 import {
   deleteAccountAvatar,
@@ -48,7 +49,6 @@ import {
   useUnsavedGuard,
 } from "./ui";
 
-const AVATAR_MAX = 4 * 1024 * 1024;
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 type NameForm = { first_name: string; last_name: string; display_name: string };
@@ -78,6 +78,7 @@ export function ProfileTab() {
 
 function ProfileCard({ user }: { user: AccountUser }) {
   const t = useT();
+  const { avatarMb } = usePublicSettings();
   const setAccount = useSetAccount();
   const [form, setForm] = useState<NameForm>(() => namesOf(user));
   const [base, setBase] = useState<NameForm>(() => namesOf(user));
@@ -136,8 +137,8 @@ function ProfileCard({ user }: { user: AccountUser }) {
       toast.error(t("settings.profile.avatar_type"));
       return;
     }
-    if (file.size > AVATAR_MAX) {
-      toast.error(t("settings.profile.avatar_too_big"));
+    if (file.size > avatarMb * 1024 * 1024) {
+      toast.error(t("settings.profile.avatar_too_big", { n: avatarMb }));
       return;
     }
     upload.mutate(file);
@@ -195,7 +196,7 @@ function ProfileCard({ user }: { user: AccountUser }) {
               </Button>
             )}
           </div>
-          <p className="text-[12px] text-muted-foreground">{t("settings.profile.avatar_hint")}</p>
+          <p className="text-[12px] text-muted-foreground">{t("settings.profile.avatar_hint", { n: avatarMb })}</p>
         </div>
         <input
           ref={fileRef}

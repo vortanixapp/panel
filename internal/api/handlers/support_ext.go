@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/vortanixapp/panel/internal/api/paneljwt"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (h *Handler) SupportCreateForm(w http.ResponseWriter, r *http.Request) {
@@ -49,17 +50,16 @@ func defaultSupportDepartments() []map[string]any {
 	}
 }
 
-const (
-	supportAttachmentMaxBytes = 8 << 20
-	supportAttachmentDir      = "support"
-	supportAttachmentMaxCount = 5
-	supportTicketFilesMax     = 25
-	supportUserDailyBytesMax  = 100 << 20
-	supportSubjectMax         = 200
-	supportBodyMax            = 20000
-	supportNewPerHour         = 10
-	supportReplyPerWindow     = 30
-)
+const supportAttachmentDir = "support"
+
+func supportAttachmentMaxBytes() int64 { return settingsreg.SupportAttachmentMB.Bytes() }
+func supportAttachmentMaxCount() int   { return intOf(settingsreg.SupportAttachmentCount) }
+func supportTicketFilesMax() int       { return intOf(settingsreg.SupportTicketFilesMax) }
+func supportUserDailyBytesMax() int64  { return settingsreg.SupportDailyMB.Bytes() }
+func supportSubjectMax() int           { return intOf(settingsreg.SupportSubjectMax) }
+func supportBodyMax() int              { return intOf(settingsreg.SupportBodyMax) }
+func supportNewPerHour() int           { return intOf(settingsreg.SupportNewPerHour) }
+func supportReplyPerWindow() int       { return intOf(settingsreg.SupportReplyPerWindow) }
 
 var supportAttachmentTypes = map[string]string{
 	".png":  "image/png",
@@ -105,8 +105,8 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, supportAttachmentMaxBytes+(1<<20))
-	if err := r.ParseMultipartForm(supportAttachmentMaxBytes); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, supportAttachmentMaxBytes()+(1<<20))
+	if err := r.ParseMultipartForm(supportAttachmentMaxBytes()); err != nil {
 		writeError(w, http.StatusBadRequest, "Файл больше 8 МБ или повреждённая форма")
 		return
 	}
@@ -118,7 +118,7 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusBadRequest, "file required")
 		return
 	}
-	if len(headers) > supportAttachmentMaxCount {
+	if len(headers) > supportAttachmentMaxCount() {
 		writeError(w, http.StatusBadRequest, "Не больше 5 файлов за раз")
 		return
 	}
@@ -130,11 +130,11 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 			       (SELECT COALESCE(SUM(size_bytes), 0) FROM core.support_message_attachments
 			        WHERE user_id = $2::uuid AND created_at > now() - interval '1 day')
 		`, ticketID, claims.UserID).Scan(&inTicket, &userDaily)
-		if inTicket+len(headers) > supportTicketFilesMax {
+		if inTicket+len(headers) > supportTicketFilesMax() {
 			writeError(w, http.StatusTooManyRequests, "В обращении уже слишком много вложений")
 			return
 		}
-		if userDaily >= supportUserDailyBytesMax {
+		if userDaily >= supportUserDailyBytesMax() {
 			writeError(w, http.StatusTooManyRequests, "Достигнут суточный лимит загрузки файлов — повторите завтра")
 			return
 		}
@@ -160,7 +160,7 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 	}
 
 	for _, header := range headers {
-		if header.Size > supportAttachmentMaxBytes {
+		if header.Size > supportAttachmentMaxBytes() {
 			cleanup()
 			writeError(w, http.StatusRequestEntityTooLarge, "Файл больше 8 МБ")
 			return
@@ -188,7 +188,7 @@ func (h *Handler) UploadSupportAttachment(w http.ResponseWriter, r *http.Request
 			writeError(w, http.StatusInternalServerError, "failed to save file")
 			return
 		}
-		written, copyErr := io.Copy(out, io.LimitReader(file, supportAttachmentMaxBytes))
+		written, copyErr := io.Copy(out, io.LimitReader(file, supportAttachmentMaxBytes()))
 		closeErr := out.Close()
 		_ = file.Close()
 		if copyErr != nil || closeErr != nil {

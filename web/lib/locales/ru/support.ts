@@ -93,7 +93,9 @@ export const support = {
     "Что делали, что ожидали и что произошло. Приложите номер услуги и время события.",
   "support.create.attachments": "Вложения",
   "support.create.pick_files": "Нажмите, чтобы выбрать файлы",
-  "support.create.file_types": "png, jpg, txt, log, json, zip, pdf · до 8 МБ",
+  "support.create.file_types": "png, jpg, txt, log, json, zip, pdf · до {n} МБ",
+  "support.create.file_too_big": "Файл больше {n} МБ",
+  "support.create.too_many_files": "Можно прикрепить не больше {n} файлов",
   "support.create.remove_file": "Убрать {name}",
   "support.create.created": "Обращение создано",
   "support.create.created_with_failed":

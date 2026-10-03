@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Ban, ImageIcon, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { usePublicSettings } from "@/context/brand-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,6 @@ import type { LText } from "@/lib/site/types";
 import { safeImageUrl, safeUrl, safeVideoUrl } from "@/lib/site/url";
 import { cn } from "@/lib/utils";
 
-const UPLOAD_LIMIT = 5 * 1024 * 1024;
 
 export function FieldShell({
   label,
@@ -173,6 +173,7 @@ export function ImageField({
   onChange: (next: string) => void;
 }) {
   const { t } = useEditor();
+  const { siteAssetMb } = usePublicSettings();
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft, last] = useDraft(value.startsWith("branding/") ? "" : value);
@@ -180,8 +181,8 @@ export function ImageField({
   const valid = safeImageUrl(draft.trim());
 
   const upload = async (file: File) => {
-    if (file.size > UPLOAD_LIMIT) {
-      toast.error(t("template.field.upload_too_big"));
+    if (file.size > siteAssetMb * 1024 * 1024) {
+      toast.error(t("template.field.upload_too_big", { n: siteAssetMb }));
       return;
     }
     setBusy(true);

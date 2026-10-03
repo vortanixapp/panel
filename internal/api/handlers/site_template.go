@@ -16,12 +16,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 	"github.com/vortanixapp/panel/pkg/sitetpl"
 )
 
 const (
 	siteVersionsKept   = 50
-	siteAssetSize      = 5 << 20
 	siteNoteLimit      = 300
 	sitePublicCacheTTL = 5 * time.Second
 )
@@ -645,6 +645,7 @@ func (h *Handler) AdminTemplateUploadAsset(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	ctx := r.Context()
+	siteAssetSize := settingsreg.UploadsSiteAssetMB.Bytes()
 	r.Body = http.MaxBytesReader(w, r.Body, siteAssetSize+(1<<20))
 	if err := r.ParseMultipartForm(siteAssetSize); err != nil {
 		writeError(w, http.StatusBadRequest, "Файл больше 5 МБ или повреждён")

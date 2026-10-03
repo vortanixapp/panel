@@ -233,7 +233,7 @@ export const template = {
   "template.field.upload": "Загрузить",
   "template.field.remove": "Убрать",
   "template.field.image_url": "Или ссылка на картинку https://…",
-  "template.field.upload_too_big": "Файл больше 5 МБ",
+  "template.field.upload_too_big": "Файл больше {n} МБ",
   "template.field.upload_failed": "Не удалось загрузить файл",
   "template.field.icon_search": "Найти иконку",
   "template.field.no_icon": "Без иконки",

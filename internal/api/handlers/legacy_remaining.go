@@ -25,6 +25,7 @@ import (
 
 	"github.com/vortanixapp/panel/pkg/i18n"
 	"github.com/vortanixapp/panel/pkg/notify"
+	"github.com/vortanixapp/panel/pkg/settingsreg"
 )
 
 func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
@@ -380,7 +381,7 @@ func (h *Handler) ServerFilesUpload(w http.ResponseWriter, r *http.Request) {
 	if !h.authorizeServerAction(w, r, claims, serverID, "files_upload") {
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxServerUploadBytes)
+	r.Body = http.MaxBytesReader(w, r.Body, settingsreg.UploadsServerFileMB.Bytes())
 	if err := r.ParseMultipartForm(64 << 20); err != nil {
 		writeError(w, http.StatusRequestEntityTooLarge, "Файл больше 256 МБ: загрузите его по SFTP")
 		return
@@ -441,8 +442,6 @@ func (h *Handler) ServerFilesUpload(w http.ResponseWriter, r *http.Request) {
 		},
 	})
 }
-
-const maxServerUploadBytes = 256 << 20
 
 func (h *Handler) ServerFilesDownload(w http.ResponseWriter, r *http.Request) {
 	r, cancelTransfer := extendTransfer(w, r)

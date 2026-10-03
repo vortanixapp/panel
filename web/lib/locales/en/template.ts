@@ -233,7 +233,7 @@ export const template = {
   "template.field.upload": "Upload",
   "template.field.remove": "Remove",
   "template.field.image_url": "Or an image link https://…",
-  "template.field.upload_too_big": "The file is larger than 5 MB",
+  "template.field.upload_too_big": "The file is larger than {n} MB",
   "template.field.upload_failed": "Could not upload the file",
   "template.field.icon_search": "Find an icon",
   "template.field.no_icon": "No icon",

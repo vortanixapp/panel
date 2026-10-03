@@ -8,6 +8,11 @@ export type PublicSettings = {
   topupMax: number;
   topupDefault: number;
   topupPresets: number[];
+  avatarMb: number;
+  siteAssetMb: number;
+  supportAttachmentMb: number;
+  supportAttachmentCount: number;
+  supportBodyMax: number;
 };
 
 export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
@@ -18,6 +23,11 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   topupMax: 0,
   topupDefault: 1000,
   topupPresets: [500, 1000, 2000, 5000, 10000],
+  avatarMb: 4,
+  siteAssetMb: 5,
+  supportAttachmentMb: 8,
+  supportAttachmentCount: 5,
+  supportBodyMax: 20000,
 };
 
 type Raw = Record<string, unknown> | null | undefined;
@@ -50,6 +60,11 @@ export function resolvePublicSettings(raw: Raw): PublicSettings {
     topupMax: int(raw, "billing.topup_max", d.topupMax, 0, 100000000),
     topupDefault: int(raw, "billing.topup_default", d.topupDefault, 1, 100000000),
     topupPresets: list(raw, "billing.topup_presets", d.topupPresets),
+    avatarMb: int(raw, "uploads.avatar_mb", d.avatarMb, 1, 20),
+    siteAssetMb: int(raw, "uploads.site_asset_mb", d.siteAssetMb, 1, 32),
+    supportAttachmentMb: int(raw, "support.attachment_mb", d.supportAttachmentMb, 1, 64),
+    supportAttachmentCount: int(raw, "support.attachment_count", d.supportAttachmentCount, 1, 20),
+    supportBodyMax: int(raw, "support.body_max", d.supportBodyMax, 500, 100000),
   };
 }
 

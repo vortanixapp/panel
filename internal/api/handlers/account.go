@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	netmail "net/mail"
@@ -632,9 +633,10 @@ func (h *Handler) UploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, (4<<20)+(1<<20))
-	if err := r.ParseMultipartForm(4 << 20); err != nil {
-		writeError(w, http.StatusRequestEntityTooLarge, "Файл больше 4 МБ или повреждён")
+	avatarBytes := settingsreg.UploadsAvatarMB.Bytes()
+	r.Body = http.MaxBytesReader(w, r.Body, avatarBytes+(1<<20))
+	if err := r.ParseMultipartForm(avatarBytes); err != nil {
+		writeError(w, http.StatusRequestEntityTooLarge, fmt.Sprintf("Файл больше %d МБ или повреждён", settingsreg.UploadsAvatarMB.Int()))
 		return
 	}
 	file, header, err := r.FormFile("avatar")

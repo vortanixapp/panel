@@ -93,7 +93,9 @@ export const support = {
     "What you did, what you expected and what happened. Add the service number and the time of the event.",
   "support.create.attachments": "Attachments",
   "support.create.pick_files": "Click to choose files",
-  "support.create.file_types": "png, jpg, txt, log, json, zip, pdf · up to 8 MB",
+  "support.create.file_types": "png, jpg, txt, log, json, zip, pdf · up to {n} MB",
+  "support.create.file_too_big": "The file is larger than {n} MB",
+  "support.create.too_many_files": "You can attach at most {n} files",
   "support.create.remove_file": "Remove {name}",
   "support.create.created": "Ticket created",
   "support.create.created_with_failed":

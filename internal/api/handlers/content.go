@@ -98,11 +98,11 @@ func (h *Handler) CreateSupportTicket(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "Укажите тему и текст обращения")
 		return
 	}
-	if utf8.RuneCountInString(body.Subject) > supportSubjectMax || utf8.RuneCountInString(body.Body) > supportBodyMax {
+	if utf8.RuneCountInString(body.Subject) > supportSubjectMax() || utf8.RuneCountInString(body.Body) > supportBodyMax() {
 		writeError(w, http.StatusUnprocessableEntity, "Тема или текст обращения слишком длинные")
 		return
 	}
-	if !h.allowAttempt(ctx, "support:new:"+claims.UserID, supportNewPerHour, time.Hour) {
+	if !h.allowAttempt(ctx, "support:new:"+claims.UserID, supportNewPerHour(), time.Hour) {
 		writeError(w, http.StatusTooManyRequests, "Слишком много обращений за час — попробуйте позже")
 		return
 	}
@@ -249,11 +249,11 @@ func (h *Handler) ReplySupportTicket(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Нужен текст сообщения")
 		return
 	}
-	if utf8.RuneCountInString(body.Body) > supportBodyMax {
+	if utf8.RuneCountInString(body.Body) > supportBodyMax() {
 		writeError(w, http.StatusUnprocessableEntity, "Сообщение слишком длинное")
 		return
 	}
-	if !staff && !h.allowAttempt(ctx, "support:reply:"+claims.UserID, supportReplyPerWindow, 10*time.Minute) {
+	if !staff && !h.allowAttempt(ctx, "support:reply:"+claims.UserID, supportReplyPerWindow(), 10*time.Minute) {
 		writeError(w, http.StatusTooManyRequests, "Слишком много сообщений — попробуйте через несколько минут")
 		return
 	}

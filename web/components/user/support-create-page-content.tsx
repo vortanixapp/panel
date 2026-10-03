@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { usePublicSettings } from "@/context/brand-provider";
 import { BookOpen, FileText, Paperclip, Send, Timer, X } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import {
@@ -23,8 +24,6 @@ import {
   departmentName,
   formatMinutes,
 } from "@/components/user/support/support-parts";
-
-const BODY_LIMIT = 4000;
 
 const TEMPLATES = [
   {
@@ -59,6 +58,11 @@ const TEMPLATES = [
 
 export function SupportCreatePageContent() {
   const t = useT();
+  const {
+    supportBodyMax: BODY_LIMIT,
+    supportAttachmentMb,
+    supportAttachmentCount,
+  } = usePublicSettings();
   const router = useRouter();
   const qc = useQueryClient();
 
@@ -284,7 +288,7 @@ export function SupportCreatePageContent() {
                 <Paperclip className="h-4 w-4 text-muted-foreground" />
                 <span className="text-[13px]">{t("support.create.pick_files")}</span>
                 <span className="text-[11.5px] text-muted-foreground/70">
-                  {t("support.create.file_types")}
+                  {t("support.create.file_types", { n: supportAttachmentMb })}
                 </span>
               </button>
               <input
@@ -294,7 +298,18 @@ export function SupportCreatePageContent() {
                 className="hidden"
                 onChange={(e) => {
                   const picked = Array.from(e.target.files ?? []);
-                  if (picked.length) setFiles((prev) => [...prev, ...picked]);
+                  const limit = supportAttachmentMb * 1024 * 1024;
+                  const accepted = picked.filter((f) => f.size <= limit);
+                  if (accepted.length < picked.length) {
+                    toast.error(t("support.create.file_too_big", { n: supportAttachmentMb }));
+                  }
+                  if (accepted.length) {
+                    const merged = [...files, ...accepted];
+                    if (merged.length > supportAttachmentCount) {
+                      toast.error(t("support.create.too_many_files", { n: supportAttachmentCount }));
+                    }
+                    setFiles(merged.slice(0, supportAttachmentCount));
+                  }
                   e.target.value = "";
                 }}
               />
