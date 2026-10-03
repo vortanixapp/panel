@@ -107,14 +107,26 @@ func (a *applier) run(ctx context.Context) error {
 	}
 
 	say("Загрузка образов %s", a.version)
-	if err := a.pullImages(ctx); err != nil {
+	skipMonitoring, err := a.pullImages(ctx)
+	if err != nil {
 		restoreEnv()
 		git.restore()
 		return err
 	}
 
 	say("Перезапуск служб")
-	if out, err := a.compose(ctx, true, "up", "-d"); err != nil {
+	upArgs := []string{"up", "-d"}
+	if skipMonitoring {
+		services, err := a.coreServices(ctx)
+		if err != nil {
+			restoreEnv()
+			git.restore()
+			return err
+		}
+		say("Образы мониторинга не загрузились, он остаётся как есть, панель обновляется без него")
+		upArgs = append(upArgs, services...)
+	}
+	if out, err := a.compose(ctx, true, upArgs...); err != nil {
 		return fmt.Errorf("службы не перезапустились: %s. %s", tail(out, err), a.backupHint())
 	}
 	if git.caddyChanged {
@@ -169,20 +181,57 @@ func (a *applier) composeArgs(args ...string) []string {
 	return append(full, args...)
 }
 
-func (a *applier) pullImages(ctx context.Context) error {
+var monitoringServices = map[string]bool{"prometheus": true, "monitoring-cert": true, "grafana": true}
+
+var monitoringImagePrefixes = []string{"prom/prometheus", "grafana/grafana", "alpine/openssl"}
+
+func isMonitoringImage(ref string) bool {
+	for _, prefix := range monitoringImagePrefixes {
+		if strings.HasPrefix(ref, prefix+":") || ref == prefix {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *applier) coreServices(ctx context.Context) ([]string, error) {
+	cmd := exec.CommandContext(ctx, "docker", a.composeArgs("config", "--services")...)
+	cmd.Dir = a.workDir
+	cmd.Env = minimalEnv()
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	stdout, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("список служб не получен: %s", tail(stderr.String(), err))
+	}
+	services := []string{}
+	for _, name := range strings.Fields(string(stdout)) {
+		if name != "" && !monitoringServices[name] {
+			services = append(services, name)
+		}
+	}
+	return services, nil
+}
+
+func (a *applier) pullImages(ctx context.Context) (bool, error) {
 	out, err := a.compose(ctx, false, "pull", "--quiet", "--ignore-pull-failures")
 	if err != nil {
-		return fmt.Errorf("образы версии %s не загрузились, панель осталась на прежней версии: %s", a.version, tail(out, err))
+		return false, fmt.Errorf("образы версии %s не загрузились, панель осталась на прежней версии: %s", a.version, tail(out, err))
 	}
 	images, err := a.composeImages(ctx)
 	if err != nil {
-		return fmt.Errorf("список образов версии %s не получен, панель осталась на прежней версии: %s", a.version, err)
+		return false, fmt.Errorf("список образов версии %s не получен, панель осталась на прежней версии: %s", a.version, err)
 	}
 	missing := []string{}
+	skipMonitoring := false
 	for _, ref := range images {
 		if _, err := a.docker.InspectImage(ctx, ref); err != nil {
 			if !dockerapi.IsNotFound(err) {
-				return fmt.Errorf("docker недоступен: %w", err)
+				return false, fmt.Errorf("docker недоступен: %w", err)
+			}
+			if isMonitoringImage(ref) {
+				skipMonitoring = true
+				continue
 			}
 			missing = append(missing, ref)
 		}
@@ -192,13 +241,13 @@ func (a *applier) pullImages(ctx context.Context) error {
 		if reason == "" {
 			reason = "реестр не отдал образы"
 		}
-		return fmt.Errorf("образы версии %s не загрузились (%s), панель осталась на прежней версии: %s",
+		return false, fmt.Errorf("образы версии %s не загрузились (%s), панель осталась на прежней версии: %s",
 			a.version, strings.Join(missing, ", "), reason)
 	}
 	if reason := tail(out, nil); reason != "" {
 		say("Часть образов не обновилась, остаются уже загруженные: %s", reason)
 	}
-	return nil
+	return skipMonitoring, nil
 }
 
 var imageRefPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._\-/]*(:[A-Za-z0-9_.\-]+)?(@sha256:[a-f0-9]{64})?$`)

@@ -2,41 +2,59 @@
 
 [English](monitoring.md) · [Русский](monitoring.ru.md)
 
-Optional Prometheus and Grafana next to the panel. They show how the API, the
+Prometheus and Grafana next to the panel. They show how the API, the
 database and the relay behave under load, so slow spots are found by numbers
-instead of guesses. Nothing starts unless you ask for it.
+instead of guesses. It works out of the box.
 
-## Start
+## It runs out of the box
 
-```bash
-docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.images.yml --profile monitoring up -d
-```
+Prometheus and Grafana are part of the panel stack: they start with the panel and
+update together with it, nothing is enabled by hand. On an existing panel they
+appear after the update that brings them (the updater starts the new services
+itself). If their images cannot be downloaded, the panel is still updated and
+monitoring is left as it is.
+
+They use up to about 0.9 GB of memory together (limits 512 MB and 384 MB) and a
+couple of GB of disk for metrics (`PROMETHEUS_RETENTION_SIZE`).
+
+## Where to find the access details
+
+**Administration → Settings → Monitoring** shows everything in one place: the
+Grafana address (built from the address you opened the panel on, so it works on a
+domain and on an IP), the login, the password with show and copy buttons, the
+state of Grafana and Prometheus, the retention and which services the metrics
+are collected from.
 
 Grafana listens on port `3001` of the machine (`GRAFANA_PORT`), so no domain is
 needed. Open `https://<machine IP>:3001`. The certificate is generated on the
 first start and is self-signed, so the browser warns once: continue, the
 connection is encrypted anyway. Open port 3001 in the firewall if there is one.
+To keep Grafana off the internet set `GRAFANA_BIND=127.0.0.1` in `deploy/.env`
+and use an SSH tunnel (`ssh -L 3001:127.0.0.1:3001 user@host`).
 
-Log in as `admin`. The password is `GRAFANA_ADMIN_PASSWORD` from `deploy/.env`
-(`scripts/init-env.sh` generates it). If it is empty, a random one is created,
-show it with:
-
-```bash
-docker compose -f deploy/docker-compose.yml exec grafana cat /certs/admin-password
-```
-
-Grafana asks for it only on the very first start. To change it later use the
-Grafana profile page. The dashboard **Vortanix: обзор** is installed
-automatically.
+The login is `admin`. The password is `GRAFANA_ADMIN_PASSWORD` from `deploy/.env`
+(`scripts/init-env.sh` generates it); if it is empty, a random one is created. It
+is applied on the very first start of Grafana, later it is changed in the Grafana
+profile page and the panel keeps showing the initial one. The dashboard
+**Vortanix: обзор** is installed automatically.
 
 Prometheus is not published at all, it is reachable only inside the Docker
 network, because it has no login of its own. Any query can be run in Grafana:
-**Explore**, data source Prometheus. Metrics are kept for 15 days, change it with
-`PROMETHEUS_RETENTION`.
+**Explore**, data source Prometheus. Retention is `PROMETHEUS_RETENTION` (15 days)
+and `PROMETHEUS_RETENTION_SIZE` (2 GB), whichever is reached first.
 
 The same key charts are also in the panel itself: **Administration →
 Performance**. They need no extra port or password and work on a domain and on an
 IP alike.
+
+## Updates and moving the panel
+
+- **Updates.** Monitoring is updated together with the panel. The configuration
+  (`deploy/monitoring`) comes with the release files, as the rest of `deploy`.
+  Metrics and Grafana settings are kept in Docker volumes and survive updates.
+- **Moving the panel.** The database, uploads and secrets are moved, monitoring
+  data is not: on the new machine the charts start from zero and the Grafana
+  password is generated again (see [panel-transfer.md](panel-transfer.md)).
 
 ## What the dashboard shows
 

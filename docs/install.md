@@ -37,7 +37,7 @@ fail.
 
 | Machine | Minimum | Recommended |
 |---|---|---|
-| Panel | 2 GB RAM, 2 cores, 20 GB disk | 4 GB RAM, 4 cores, 40 GB SSD |
+| Panel | 2 GB RAM, 2 cores, 20 GB disk (monitoring takes up to 0.9 GB more) | 4 GB RAM, 4 cores, 40 GB SSD |
 | Game node | as required by the games | one machine per high-load game |
 
 Building the panel images from source requires 4 GB of RAM regardless of the
@@ -58,7 +58,9 @@ Without a domain the panel operates over the machine's IP address and plain
 HTTP. That mode is acceptable for evaluation only: user credentials are
 transmitted in clear text.
 
-**Network access.** The panel machine requires inbound ports 80 and 443. A game
+**Network access.** The panel machine requires inbound ports 80 and 443. Port
+3001 is needed only to open Grafana (monitoring, see [monitoring.md](monitoring.md));
+the panel works without it. A game
 node requires no inbound ports for the panel — the agent establishes an
 outbound connection. Only the ports used by the game servers themselves need to
 be opened, plus 19999/TCP: the agent answers latency probes from the buyer's

@@ -33,6 +33,8 @@ Not transferred:
 - the Redis cache — rebuilt on the new machine;
 - the Let's Encrypt certificate — issued again for the new address;
 - game server files — they stay on the game nodes;
+- monitoring data (Prometheus history and Grafana settings) — on the new machine
+  the charts start from zero and `GRAFANA_ADMIN_PASSWORD` is generated again;
 - `POSTGRES_PASSWORD` and `INTERNAL_SECRET` — these are machine-local
   passwords; the new machine keeps the ones generated during its install.
 
@@ -43,7 +45,8 @@ not transferred: `scripts/init-env.sh` sets them on the new machine.
 
 - Debian or Ubuntu, x86_64 or aarch64;
 - SSH access as `root` or as a user with passwordless `sudo`;
-- free ports 80 and 443, plus 8443 when the panel runs by IP address;
+- free ports 80 and 443, plus 8443 when the panel runs by IP address, and 3001 if
+  Grafana should be opened;
 - free space of at least three times the transferred data plus 5 GB;
 - a domain whose A record will point to this machine, when the panel runs on a
   domain.

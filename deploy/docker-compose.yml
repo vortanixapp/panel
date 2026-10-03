@@ -54,6 +54,7 @@ services:
         COMPONENT: vortanix-api
     volumes:
       - uploads:/app/uploads
+      - monitoring-auth:/monitoring:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
       interval: 10s
@@ -139,12 +140,13 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.5.0
-    profiles: ["monitoring"]
     restart: unless-stopped
+    mem_limit: 512m
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-2GB}
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus:/prometheus
@@ -154,7 +156,6 @@ services:
 
   monitoring-cert:
     image: alpine/openssl:latest
-    profiles: ["monitoring"]
     restart: "no"
     environment:
       GRAFANA_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-}
@@ -166,20 +167,21 @@ services:
           openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=vortanix-monitoring" -keyout /certs/key.pem -out /certs/cert.pem
         fi
         if [ -n "$$GRAFANA_ADMIN_PASSWORD" ]; then
-          printf %s "$$GRAFANA_ADMIN_PASSWORD" > /certs/admin-password
-        elif [ ! -s /certs/admin-password ]; then
-          openssl rand -hex 16 | tr -d '[:space:]' > /certs/admin-password
+          printf %s "$$GRAFANA_ADMIN_PASSWORD" > /auth/admin-password
+        elif [ ! -s /auth/admin-password ]; then
+          openssl rand -hex 16 | tr -d '[:space:]' > /auth/admin-password
         fi
-        chmod 644 /certs/cert.pem /certs/key.pem /certs/admin-password
+        chmod 644 /certs/cert.pem /certs/key.pem /auth/admin-password
     volumes:
       - monitoring-certs:/certs
+      - monitoring-auth:/auth
 
   grafana:
     image: grafana/grafana:12.1.0
-    profiles: ["monitoring"]
     restart: unless-stopped
+    mem_limit: 384m
     environment:
-      GF_SECURITY_ADMIN_PASSWORD__FILE: /certs/admin-password
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /auth/admin-password
       GF_SERVER_PROTOCOL: https
       GF_SERVER_CERT_FILE: /certs/cert.pem
       GF_SERVER_CERT_KEY: /certs/key.pem
@@ -188,10 +190,11 @@ services:
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
     ports:
-      - "${GRAFANA_PORT:-3001}:3000"
+      - "${GRAFANA_BIND:-0.0.0.0}:${GRAFANA_PORT:-3001}:3000"
     volumes:
       - grafana:/var/lib/grafana
       - monitoring-certs:/certs:ro
+      - monitoring-auth:/auth:ro
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
@@ -209,3 +212,4 @@ volumes:
   prometheus:
   grafana:
   monitoring-certs:
+  monitoring-auth:

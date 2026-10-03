@@ -412,6 +412,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/settings/test-telegram", h.AdminSettingsTestTelegram)
 			r.Post("/settings/test-files-storage", h.AdminSettingsTestFilesStorage)
 			r.Get("/settings/readiness", h.AdminCutoverReadiness)
+			r.Get("/settings/monitoring", h.AdminMonitoringInfo)
 			r.Get("/settings/appearance", h.GetAdminAppearance)
 			r.Post("/settings/appearance", h.UpdateAdminAppearance)
 			r.Post("/settings/appearance/assets/{kind}", h.UploadAdminAppearanceAsset)

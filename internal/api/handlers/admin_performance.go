@@ -57,12 +57,13 @@ type perfChartResult struct {
 
 func perfCharts(window string) []perfChart {
 	api := `service="core-api"`
+	apiLatency := `service="core-api",route!~".*/stream"`
 	relay := `service="agent-relay"`
 	return []perfChart{
 		{id: "api_rps", unit: "reqps", queries: []perfQuery{{expr: fmt.Sprintf(`sum(rate(http_requests_total{%s}[%s]))`, api, window)}}},
 		{id: "api_routes_rps", unit: "reqps", queries: []perfQuery{{expr: fmt.Sprintf(`topk(8, sum by (route) (rate(http_requests_total{%s}[%s])))`, api, window), labels: []string{"route"}}}},
-		{id: "api_p95", unit: "s", queries: []perfQuery{{expr: fmt.Sprintf(`histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{%s}[%s])))`, api, window)}}},
-		{id: "api_routes_p95", unit: "s", queries: []perfQuery{{expr: fmt.Sprintf(`topk(8, histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{%s}[%s]))))`, api, window), labels: []string{"route"}}}},
+		{id: "api_p95", unit: "s", queries: []perfQuery{{expr: fmt.Sprintf(`histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{%s}[%s])))`, apiLatency, window)}}},
+		{id: "api_routes_p95", unit: "s", queries: []perfQuery{{expr: fmt.Sprintf(`topk(8, histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{%s}[%s]))))`, apiLatency, window), labels: []string{"route"}}}},
 		{id: "api_5xx", unit: "reqps", queries: []perfQuery{{expr: fmt.Sprintf(`sum(rate(http_requests_total{%s,status=~"5.."}[%s]))`, api, window)}}},
 		{id: "db_p95", unit: "s", queries: []perfQuery{{expr: fmt.Sprintf(`histogram_quantile(0.95, sum by (le, pool) (rate(db_query_duration_seconds_bucket[%s])))`, window), labels: []string{"pool"}}}},
 		{id: "db_slow", unit: "perMin", queries: []perfQuery{{expr: fmt.Sprintf(`sum by (pool) (rate(db_slow_queries_total[%s])) * 60`, window), labels: []string{"pool"}}}},
