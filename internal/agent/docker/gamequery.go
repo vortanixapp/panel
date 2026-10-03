@@ -170,7 +170,19 @@ func readPropsValue(ctx context.Context, serverID, path, key string) string {
 	return strings.TrimSpace(value)
 }
 
+var currentMapCache = newTTLCache[string](30 * time.Second)
+
 func readCurrentMap(ctx context.Context, serverID, gameID string) string {
+	key := serverID + ":" + gameID
+	if value, ok := currentMapCache.get(key); ok {
+		return value
+	}
+	value := readCurrentMapNow(ctx, serverID, gameID)
+	currentMapCache.set(key, value)
+	return value
+}
+
+func readCurrentMapNow(ctx context.Context, serverID, gameID string) string {
 	game := normalizeGame(gameID)
 	if isMcJavaGame(game) || isMcBedrockGame(game) {
 		return readPropsValue(ctx, serverID, "/data/server.properties", "level-name")

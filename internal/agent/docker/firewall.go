@@ -140,6 +140,17 @@ func dropJumpsScript(chain string) string {
 
 func containerIP(ctx context.Context, serverID string) (string, error) {
 	cname := ContainerName(serverID)
+	if info, err := engineInspect(ctx, cname); err == nil {
+		if !info.Running {
+			return "", errContainerNotRunning
+		}
+		if len(info.IPs) == 0 {
+			return "", fmt.Errorf("у контейнера нет адреса в сети Docker")
+		}
+		return info.IPs[0], nil
+	} else if errors.Is(err, errNoContainer) {
+		return "", errContainerNotRunning
+	}
 	out, err := exec.CommandContext(ctx, "docker", "inspect", "-f",
 		"{{.State.Running}} {{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}", cname).Output()
 	if err != nil {

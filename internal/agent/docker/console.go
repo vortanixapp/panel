@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os/exec"
@@ -12,7 +13,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
+
+const statsShareTTL = 4 * time.Second
 
 type Stats struct {
 	CPUPct      float64
@@ -26,6 +31,11 @@ type Stats struct {
 
 func CollectStats(ctx context.Context, serverID string) (Stats, error) {
 	cname := ContainerName(serverID)
+	if shared, ok := recentStats(ctx, statsShareTTL)[cname]; ok {
+		st := shared
+		st.StartedAt, st.Uptime = containerStartedAt(ctx, cname)
+		return st, nil
+	}
 	out, err := exec.CommandContext(ctx, "docker", "stats", cname, "--no-stream", "--format", "{{json .}}").Output()
 	if err != nil {
 		return Stats{}, err
@@ -56,7 +66,19 @@ var statsCache struct {
 	at     time.Time
 }
 
+var statsFlight singleflight.Group
+
 func collectAllStats(ctx context.Context) (map[string]Stats, error) {
+	value, err, _ := statsFlight.Do("all", func() (any, error) {
+		return collectAllStatsNow(context.WithoutCancel(ctx))
+	})
+	if err != nil {
+		return nil, err
+	}
+	return value.(map[string]Stats), nil
+}
+
+func collectAllStatsNow(ctx context.Context) (map[string]Stats, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, "docker", "stats", "--no-stream", "--format", "{{json .}}").Output()
@@ -127,16 +149,26 @@ func ServerIDFromContainer(name string) string {
 	return raw[0:8] + "-" + raw[8:12] + "-" + raw[12:16] + "-" + raw[16:20] + "-" + raw[20:32]
 }
 
+var diskUsedCache = newTTLCache[int](60 * time.Second)
+
+func cachedDiskUsedMB(ctx context.Context, serverID string) int {
+	if used, ok := diskUsedCache.get(serverID); ok {
+		return used
+	}
+	used := DiskQuotaUsedMB(ctx, serverID)
+	if used <= 0 {
+		used = serverDiskUsedMB(ctx, serverID)
+	}
+	diskUsedCache.set(serverID, used)
+	return used
+}
+
 func CollectStatsExtended(ctx context.Context, serverID string, diskLimitMB int) (Stats, error) {
 	st, err := CollectStats(ctx, serverID)
 	if err != nil {
 		st = Stats{}
 	}
-	if used := DiskQuotaUsedMB(ctx, serverID); used > 0 {
-		st.DiskUsedMB = used
-	} else {
-		st.DiskUsedMB = serverDiskUsedMB(ctx, serverID)
-	}
+	st.DiskUsedMB = cachedDiskUsedMB(ctx, serverID)
 	if diskLimitMB > 0 {
 		st.DiskTotalMB = diskLimitMB
 	}
@@ -144,11 +176,20 @@ func CollectStatsExtended(ctx context.Context, serverID string, diskLimitMB int)
 }
 
 func containerStartedAt(ctx context.Context, cname string) (startedAt, uptime string) {
-	out, err := exec.CommandContext(ctx, "docker", "inspect", cname, "--format", "{{.State.StartedAt}}").Output()
-	if err != nil {
+	if info, err := engineInspect(ctx, cname); err == nil {
+		if !info.Running {
+			return "", ""
+		}
+		startedAt = info.StartedAt
+	} else if errors.Is(err, errNoContainer) {
 		return "", ""
+	} else {
+		out, err := exec.CommandContext(ctx, "docker", "inspect", cname, "--format", "{{.State.StartedAt}}").Output()
+		if err != nil {
+			return "", ""
+		}
+		startedAt = strings.TrimSpace(string(out))
 	}
-	startedAt = strings.TrimSpace(string(out))
 	if startedAt == "" || startedAt == "0001-01-01T00:00:00Z" {
 		return "", ""
 	}

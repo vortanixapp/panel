@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -126,14 +127,59 @@ func buildRunArgs(serverID, gameID string, limits map[string]any, image string, 
 		"--log-opt", "max-file=" + strconv.FormatInt(settingsreg.AgentLogMaxFiles.Int(), 10),
 	}
 	args = append(args, hardeningArgs()...)
+	shares := IntFromPayload(limits["cpu_shares"])
 	if cpu := cpuLimit(limits); cpu != "" {
 		args = append(args, "--cpus", cpu)
-	} else if shares := IntFromPayload(limits["cpu_shares"]); shares >= 2 {
+	} else if shares >= 2 {
 		args = append(args, "--cpu-shares", strconv.Itoa(shares))
+	}
+	if shares < 2 {
+		if weight := fairCPUShares(limits); weight > 0 {
+			args = append(args, "--cpu-shares", strconv.Itoa(weight))
+		}
+	}
+	if reserve := memoryReservationMB(limits); reserve > 0 {
+		args = append(args, "--memory-reservation", fmt.Sprintf("%dm", reserve))
 	}
 	args = append(args, gameRunOptions(serverID, gameID, limits, primaryPort, bindIP)...)
 	args = append(args, image)
 	return args
+}
+
+const (
+	minCPUShares        = 2
+	maxCPUShares        = 262144
+	defaultMemoryMB     = 512
+	minReservePercent   = 10
+	minMemoryReserveMB  = 16
+	backgroundCPUShares = 128
+)
+
+func fairCPUShares(limits map[string]any) int {
+	if !settingsreg.AgentCPUFairShare.Bool() {
+		return 0
+	}
+	mb := memoryMB(limits)
+	if mb <= 0 {
+		mb = defaultMemoryMB
+	}
+	return min(max(mb, minCPUShares), maxCPUShares)
+}
+
+func memoryReservationMB(limits map[string]any) int {
+	percent := int(settingsreg.AgentMemoryReservePercent.Int())
+	if percent < minReservePercent || percent > 95 {
+		return 0
+	}
+	mb := memoryMB(limits)
+	if mb <= 0 {
+		mb = defaultMemoryMB
+	}
+	reserve := mb * percent / 100
+	if reserve < minMemoryReserveMB || reserve >= mb {
+		return 0
+	}
+	return reserve
 }
 
 func hardeningArgs() []string {
@@ -375,11 +421,19 @@ func Status(ctx context.Context, serverID string) string {
 
 func DetailedStatus(ctx context.Context, serverID string) string {
 	cname := ContainerName(serverID)
-	out, err := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}}", cname).Output()
-	if err != nil {
+	var state string
+	if info, err := engineInspect(ctx, cname); err == nil {
+		state = info.Status
+	} else if errors.Is(err, errNoContainer) {
 		return "stopped"
+	} else {
+		out, err := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}}", cname).Output()
+		if err != nil {
+			return "stopped"
+		}
+		state = strings.TrimSpace(string(out))
 	}
-	switch strings.TrimSpace(string(out)) {
+	switch state {
 	case "running":
 		return "running"
 	case "restarting", "dead", "exited":
@@ -390,6 +444,11 @@ func DetailedStatus(ctx context.Context, serverID string) string {
 }
 
 func isRunning(ctx context.Context, name string) (bool, error) {
+	if info, err := engineInspect(ctx, name); err == nil {
+		return info.Running, nil
+	} else if errors.Is(err, errNoContainer) {
+		return false, err
+	}
 	out, err := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Running}}", name).Output()
 	if err != nil {
 		return false, err
