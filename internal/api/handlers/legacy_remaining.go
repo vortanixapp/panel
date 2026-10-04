@@ -244,10 +244,11 @@ func (h *Handler) ServerAutoStart(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	_, err := h.dbOf(r.Context()).Exec(r.Context(), `
-		UPDATE core.servers SET auto_start = $2, config = config || jsonb_build_object('auto_start', $2)
+		UPDATE core.servers SET auto_start = $2::boolean, config = COALESCE(config, '{}'::jsonb) || jsonb_build_object('auto_start', $2::boolean)
 		WHERE id = $1
 	`, serverID, body.Enabled)
 	if err != nil {
+		log.Printf("server %s: auto_start update failed: %v", serverID, err)
 		writeError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
