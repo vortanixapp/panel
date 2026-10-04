@@ -3355,25 +3355,45 @@ export async function toggleServerCronJob(serverId: string, jobId: string, enabl
   });
 }
 
+export type FirewallRule = {
+  id: string;
+  protocol: string;
+  port_from: number;
+  port_to?: number;
+  enabled: boolean;
+  action: "allow" | "deny";
+  source: string;
+};
+
+export type FirewallPort = {
+  port: number;
+  protocol: string;
+  purpose: string;
+  primary: boolean;
+};
+
 export async function fetchServerFirewall(serverId: string) {
   return apiFetch<{
-    rules: {
-      id: string;
-      protocol: string;
-      port_from: number;
-      enabled: boolean;
-    }[];
+    rules: FirewallRule[];
+    ports: FirewallPort[];
+    conn_limit: number;
   }>(`/v1/servers/${serverId}/firewall/list`, { method: "POST" });
 }
 
 export async function createServerFirewallRule(
   serverId: string,
-  protocol: string,
-  portFrom: number
+  rule: { protocol: string; port_from: number; action: "allow" | "deny"; source: string }
 ) {
   return apiFetch<{ id: string }>(`/v1/servers/${serverId}/firewall/create`, {
     method: "POST",
-    body: JSON.stringify({ protocol, port_from: portFrom }),
+    body: JSON.stringify(rule),
+  });
+}
+
+export async function setServerFirewallLimit(serverId: string, connLimit: number) {
+  return apiFetch<{ conn_limit: number }>(`/v1/servers/${serverId}/firewall/limit`, {
+    method: "POST",
+    body: JSON.stringify({ conn_limit: connLimit }),
   });
 }
 

@@ -422,3 +422,20 @@ func PosterURL(code string) string {
 	}
 	return "/games/" + g.Key + ".svg"
 }
+
+func AgentAtLeast(agentVersion, minimum string) bool {
+	have, ok := parseVersion(agentVersion)
+	if !ok {
+		return true
+	}
+	want, ok := parseVersion(minimum)
+	if !ok {
+		return true
+	}
+	for i := range have {
+		if have[i] != want[i] {
+			return have[i] > want[i]
+		}
+	}
+	return true
+}

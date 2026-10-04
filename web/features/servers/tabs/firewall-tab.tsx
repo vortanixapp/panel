@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import {
   Btn,
   EmptyState,
   Panel,
+  VX_FAINT,
   VX_INPUT_MONO,
   VX_ROW_LINE,
   VX_SELECT,
@@ -21,18 +22,28 @@ import {
   createServerFirewallRule,
   deleteServerFirewallRule,
   fetchServerFirewall,
+  setServerFirewallLimit,
   toggleServerFirewallRule,
+  type FirewallPort,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { confirmAction } from "@/components/action-dialog";
 
+const IPV4 = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+
+function portKey(p: FirewallPort) {
+  return `${p.protocol}:${p.port}`;
+}
+
 export function ServerFirewallTab() {
   const t = useT();
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const [protocol, setProtocol] = useState("tcp");
-  const [port, setPort] = useState("");
+  const [action, setAction] = useState<"deny" | "allow">("deny");
+  const [portChoice, setPortChoice] = useState("");
+  const [source, setSource] = useState("");
+  const [limitInput, setLimitInput] = useState("0");
 
   const { data, isLoading } = useQuery({
     queryKey: ["server-firewall", id],
@@ -40,135 +51,243 @@ export function ServerFirewallTab() {
     enabled: !!id,
   });
 
+  const ports = data?.ports ?? [];
+  const rules = data?.rules ?? [];
+  const connLimit = data?.conn_limit ?? 0;
+
+  useEffect(() => {
+    setLimitInput(String(connLimit));
+  }, [connLimit]);
+
+  useEffect(() => {
+    if (!portChoice && ports.length > 0) setPortChoice(portKey(ports[0]));
+  }, [ports, portChoice]);
+
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ["server-firewall", id] });
+
+  const selected = ports.find((p) => portKey(p) === portChoice);
+  const trimmedSource = source.trim();
+  const sourceInvalid = trimmedSource !== "" && !IPV4.test(trimmedSource);
+  const needsSource = action === "allow" && trimmedSource === "";
+  const closesPrimary = action === "deny" && trimmedSource === "" && !!selected?.primary;
+  const cannotAdd = !selected || sourceInvalid || needsSource || closesPrimary;
+
   const createMutation = useMutation({
-    mutationFn: () => createServerFirewallRule(id, protocol, parseInt(port, 10)),
+    mutationFn: () =>
+      createServerFirewallRule(id, {
+        protocol: selected?.protocol ?? "tcp",
+        port_from: selected?.port ?? 0,
+        action,
+        source: trimmedSource,
+      }),
     onSuccess: () => {
       toast.success(t("servers.firewall.rule_added"));
-      setPort("");
-      void queryClient.invalidateQueries({ queryKey: ["server-firewall", id] });
+      setSource("");
+      refresh();
     },
     onError: (err) =>
-      toast.error(
-        err instanceof Error ? err.message : t("servers.firewall.create_error")
-      ),
+      toast.error(err instanceof Error ? err.message : t("servers.firewall.create_error")),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (ruleId: string) => deleteServerFirewallRule(id, ruleId),
     onSuccess: () => {
       toast.success(t("servers.firewall.rule_deleted"));
-      void queryClient.invalidateQueries({ queryKey: ["server-firewall", id] });
+      refresh();
     },
     onError: (err) =>
-      toast.error(
-        err instanceof Error ? err.message : t("servers.firewall.delete_error")
-      ),
+      toast.error(err instanceof Error ? err.message : t("servers.firewall.delete_error")),
   });
 
   const toggleMutation = useMutation({
     mutationFn: ({ ruleId, enabled }: { ruleId: string; enabled: boolean }) =>
       toggleServerFirewallRule(id, ruleId, enabled),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["server-firewall", id] }),
+    onSuccess: refresh,
     onError: (err) =>
-      toast.error(
-        err instanceof Error ? err.message : t("servers.firewall.update_error")
-      ),
+      toast.error(err instanceof Error ? err.message : t("servers.firewall.update_error")),
+  });
+
+  const limitMutation = useMutation({
+    mutationFn: (value: number) => setServerFirewallLimit(id, value),
+    onSuccess: () => {
+      toast.success(t("servers.firewall.limit_saved"));
+      refresh();
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : t("servers.firewall.update_error")),
   });
 
   if (isLoading) return <Skeleton className="h-[320px] w-full rounded-[14px]" />;
 
-  const rules = data?.rules ?? [];
-  const portNum = parseInt(port, 10);
-  const invalid = !port || Number.isNaN(portNum) || portNum < 1 || portNum > 65535;
+  const limitValue = parseInt(limitInput, 10);
+  const limitInvalid = Number.isNaN(limitValue) || limitValue < 0 || limitValue > 1000;
 
   return (
-    <Panel
-      title={t("servers.firewall.title")}
-      aside={
-        <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-[18px]">
+      <Panel title={t("servers.firewall.title")}>
+        <p className={cn("mb-3 text-[12.5px] leading-[1.5]", VX_FAINT)}>
+          {t("servers.firewall.intro")}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
           <select
-            className={cn(VX_SELECT, "h-[30px] rounded-[8px] text-[12px]")}
-            value={protocol}
-            onChange={(e) => setProtocol(e.target.value)}
+            className={cn(VX_SELECT, "h-[34px] rounded-[8px] text-[12.5px]")}
+            value={action}
+            onChange={(e) => setAction(e.target.value as "deny" | "allow")}
           >
-            <option value="tcp">TCP</option>
-            <option value="udp">UDP</option>
+            <option value="deny">{t("servers.firewall.action_deny")}</option>
+            <option value="allow">{t("servers.firewall.action_allow")}</option>
+          </select>
+          <select
+            className={cn(VX_SELECT, "h-[34px] min-w-[200px] rounded-[8px] text-[12.5px]")}
+            value={portChoice}
+            onChange={(e) => setPortChoice(e.target.value)}
+            disabled={ports.length === 0}
+          >
+            {ports.length === 0 && <option value="">{t("servers.firewall.no_ports")}</option>}
+            {ports.map((p) => (
+              <option key={portKey(p)} value={portKey(p)}>
+                {p.protocol.toUpperCase()} {p.port}
+                {p.purpose ? ` · ${p.purpose}` : ""}
+              </option>
+            ))}
           </select>
           <input
-            className={cn(VX_INPUT_MONO, "h-[30px] w-[110px] rounded-[8px] text-[12px]")}
-            value={port}
-            onChange={(e) => setPort(e.target.value)}
-            inputMode="numeric"
-            placeholder="25565"
+            className={cn(VX_INPUT_MONO, "h-[34px] min-w-[220px] flex-1 rounded-[8px] text-[12.5px]")}
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            placeholder={
+              action === "allow"
+                ? t("servers.firewall.source_allow_placeholder")
+                : t("servers.firewall.source_deny_placeholder")
+            }
           />
           <Btn
             size="sm"
             tone="primary"
             onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending || invalid}
+            disabled={createMutation.isPending || cannotAdd}
           >
             {t("common.add")}
           </Btn>
         </div>
-      }
-      flush
-    >
-      <div className={VX_TBL_WRAP}>
-        <table className="vx-tbl vx-tbl-flat w-full table-fixed border-collapse text-left">
-          <thead>
-            <tr>
-              <th className={cn(VX_TBL_TH, "w-[110px]")}>{t("servers.firewall.col_protocol")}</th>
-              <th className={cn(VX_TBL_TH, "w-[110px]")}>{t("servers.firewall.col_port")}</th>
-              <th className={VX_TBL_TH}>{t("servers.firewall.col_enabled")}</th>
-              <th className={cn(VX_TBL_TH, "w-[80px]")} />
-            </tr>
-          </thead>
-          <tbody>
-            {rules.length === 0 ? (
+        {(sourceInvalid || needsSource || closesPrimary) && (
+          <p className="mt-2 text-[12px] text-[var(--vx-danger)]">
+            {sourceInvalid
+              ? t("servers.firewall.source_invalid")
+              : needsSource
+                ? t("servers.firewall.source_required")
+                : t("servers.firewall.primary_warning")}
+          </p>
+        )}
+        {action === "allow" && selected?.primary && !sourceInvalid && !needsSource && (
+          <p className={cn("mt-2 text-[12px]", VX_FAINT)}>{t("servers.firewall.primary_allow_note")}</p>
+        )}
+      </Panel>
+
+      <Panel title={t("servers.firewall.rules_title")} flush>
+        <div className={VX_TBL_WRAP}>
+          <table className="vx-tbl vx-tbl-flat w-full table-fixed border-collapse text-left">
+            <thead>
               <tr>
-                <td colSpan={4}>
-                  <EmptyState>{t("servers.firewall.empty")}</EmptyState>
-                </td>
+                <th className={cn(VX_TBL_TH, "w-[150px]")}>{t("servers.firewall.col_action")}</th>
+                <th className={cn(VX_TBL_TH, "w-[90px]")}>{t("servers.firewall.col_protocol")}</th>
+                <th className={cn(VX_TBL_TH, "w-[110px]")}>{t("servers.firewall.col_port")}</th>
+                <th className={VX_TBL_TH}>{t("servers.firewall.col_source")}</th>
+                <th className={cn(VX_TBL_TH, "w-[90px]")}>{t("servers.firewall.col_enabled")}</th>
+                <th className={cn(VX_TBL_TH, "w-[80px]")} />
               </tr>
-            ) : (
-              rules.map((rule) => (
-                <tr
-                  key={rule.id}
-                  className={cn("font-mono text-[12px] last:border-b-0", VX_ROW_LINE)}
-                >
-                  <td className={VX_TBL_TD} data-cell="lead">
-                    {rule.protocol.toUpperCase()}
-                  </td>
-                  <td className={VX_TBL_TD} data-cell="full">
-                    {rule.port_from}
-                  </td>
-                  <td className={VX_TBL_TD} data-label={t("servers.firewall.col_enabled")}>
-                    <Toggle
-                      label={t("servers.firewall.rule_toggle")}
-                      checked={rule.enabled}
-                      disabled={toggleMutation.isPending}
-                      onChange={(enabled) => toggleMutation.mutate({ ruleId: rule.id, enabled })}
-                    />
-                  </td>
-                  <td className={cn(VX_TBL_TD, "text-right")} data-cell="actions">
-                    <button
-                      type="button"
-                      disabled={deleteMutation.isPending}
-                      onClick={async () => {
-                        if (!await confirmAction(t("servers.firewall.delete_confirm"))) return;
-                        deleteMutation.mutate(rule.id);
-                      }}
-                      className="font-sans text-[11.5px] text-[var(--vx-danger)] transition-opacity hover:opacity-80 disabled:opacity-40"
-                    >
-                      {t("common.delete")}
-                    </button>
+            </thead>
+            <tbody>
+              {rules.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <EmptyState>{t("servers.firewall.empty")}</EmptyState>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </Panel>
+              ) : (
+                rules.map((rule) => (
+                  <tr
+                    key={rule.id}
+                    className={cn("font-mono text-[12px] last:border-b-0", VX_ROW_LINE)}
+                  >
+                    <td className={VX_TBL_TD} data-cell="lead">
+                      <span
+                        className={cn(
+                          "font-sans text-[12px]",
+                          rule.action === "allow"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-[var(--vx-danger)]"
+                        )}
+                      >
+                        {rule.action === "allow"
+                          ? t("servers.firewall.badge_allow")
+                          : t("servers.firewall.badge_deny")}
+                      </span>
+                    </td>
+                    <td className={VX_TBL_TD}>{rule.protocol.toUpperCase()}</td>
+                    <td className={VX_TBL_TD}>
+                      {rule.port_to && rule.port_to > rule.port_from
+                        ? `${rule.port_from}–${rule.port_to}`
+                        : rule.port_from}
+                    </td>
+                    <td className={VX_TBL_TD}>
+                      {rule.source || t("servers.firewall.source_any")}
+                    </td>
+                    <td className={VX_TBL_TD} data-label={t("servers.firewall.col_enabled")}>
+                      <Toggle
+                        label={t("servers.firewall.rule_toggle")}
+                        checked={rule.enabled}
+                        disabled={toggleMutation.isPending}
+                        onChange={(enabled) => toggleMutation.mutate({ ruleId: rule.id, enabled })}
+                      />
+                    </td>
+                    <td className={cn(VX_TBL_TD, "text-right")} data-cell="actions">
+                      <button
+                        type="button"
+                        disabled={deleteMutation.isPending}
+                        onClick={async () => {
+                          if (!(await confirmAction(t("servers.firewall.delete_confirm")))) return;
+                          deleteMutation.mutate(rule.id);
+                        }}
+                        className="font-sans text-[11.5px] text-[var(--vx-danger)] transition-opacity hover:opacity-80 disabled:opacity-40"
+                      >
+                        {t("common.delete")}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <Panel title={t("servers.firewall.limit_title")}>
+        <p className={cn("mb-3 text-[12.5px] leading-[1.5]", VX_FAINT)}>
+          {t("servers.firewall.limit_hint")}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className={cn(VX_INPUT_MONO, "h-[34px] w-[120px] rounded-[8px] text-[12.5px]")}
+            value={limitInput}
+            onChange={(e) => setLimitInput(e.target.value)}
+            inputMode="numeric"
+          />
+          <Btn
+            size="sm"
+            tone="primary"
+            onClick={() => limitMutation.mutate(limitValue)}
+            disabled={limitMutation.isPending || limitInvalid || limitValue === connLimit}
+          >
+            {t("common.save")}
+          </Btn>
+          <span className={cn("text-[12px]", VX_FAINT)}>
+            {connLimit > 0
+              ? t("servers.firewall.limit_on", { count: connLimit })
+              : t("servers.firewall.limit_off")}
+          </span>
+        </div>
+      </Panel>
+    </div>
   );
 }

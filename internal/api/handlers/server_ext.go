@@ -327,68 +327,6 @@ func (h *Handler) ServerCronToggle(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
-func (h *Handler) ServerFirewallList(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if _, ok := h.authorizeServerTab(w, r, id, "firewall_list"); !ok {
-		return
-	}
-	rows, _ := h.dbOf(r.Context()).Query(r.Context(), `SELECT id::text, protocol, port_from, enabled FROM core.server_firewall_rules WHERE server_id = $1`, id)
-	defer func() {
-		if rows != nil {
-			rows.Close()
-		}
-	}()
-	list := []map[string]any{}
-	if rows != nil {
-		for rows.Next() {
-			var rid, proto string
-			var port int
-			var en bool
-			if rows.Scan(&rid, &proto, &port, &en) == nil {
-				list = append(list, map[string]any{"id": rid, "protocol": proto, "port_from": port, "enabled": en})
-			}
-		}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"rules": list})
-}
-
-func (h *Handler) ServerFirewallCreate(w http.ResponseWriter, r *http.Request) {
-	serverID := chi.URLParam(r, "id")
-	if _, ok := h.authorizeServerTab(w, r, serverID, "firewall_create"); !ok {
-		return
-	}
-	var body struct {
-		Protocol string `json:"protocol"`
-		PortFrom int    `json:"port_from"`
-		PortTo   *int   `json:"port_to"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.PortFrom < 1 {
-		writeError(w, http.StatusBadRequest, "invalid rule")
-		return
-	}
-	if body.Protocol == "" {
-		body.Protocol = "tcp"
-	}
-	if h.overServerLimit(r.Context(), w, "core.server_firewall_rules", "", serverID, settingsreg.ServersMaxFirewallRules,
-		"Достигнут предел числа правил файрвола для сервера") {
-		return
-	}
-	var rid string
-	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		INSERT INTO core.server_firewall_rules (server_id, protocol, port_from, port_to)
-		VALUES ($1, $2, $3, $4) RETURNING id::text
-	`, serverID, body.Protocol, body.PortFrom, body.PortTo).Scan(&rid)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "create failed")
-		return
-	}
-	if !h.syncFirewallForServerHTTP(w, r, serverID) {
-		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `DELETE FROM core.server_firewall_rules WHERE id = $1 AND server_id = $2`, rid, serverID)
-		return
-	}
-	writeJSON(w, http.StatusCreated, map[string]string{"id": rid})
-}
-
 func (h *Handler) ServerFirewallDelete(w http.ResponseWriter, r *http.Request) {
 	serverID := chi.URLParam(r, "id")
 	if _, ok := h.authorizeServerTab(w, r, serverID, "firewall_delete"); !ok {
@@ -398,13 +336,13 @@ func (h *Handler) ServerFirewallDelete(w http.ResponseWriter, r *http.Request) {
 		ID string `json:"id"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
-	var proto string
+	var proto, action, source string
 	var portFrom int
 	var portTo *int
 	var enabled bool
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		SELECT protocol, port_from, port_to, enabled FROM core.server_firewall_rules WHERE id = $1 AND server_id = $2
-	`, body.ID, serverID).Scan(&proto, &portFrom, &portTo, &enabled)
+		SELECT protocol, port_from, port_to, enabled, action, COALESCE(source, '') FROM core.server_firewall_rules WHERE id = $1 AND server_id = $2
+	`, body.ID, serverID).Scan(&proto, &portFrom, &portTo, &enabled, &action, &source)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "rule not found")
 		return
@@ -416,9 +354,9 @@ func (h *Handler) ServerFirewallDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	if !h.syncFirewallForServerHTTP(w, r, serverID) {
 		_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
-			INSERT INTO core.server_firewall_rules (id, server_id, protocol, port_from, port_to, enabled)
-			VALUES ($1, $2, $3, $4, $5, $6)
-		`, body.ID, serverID, proto, portFrom, portTo, enabled)
+			INSERT INTO core.server_firewall_rules (id, server_id, protocol, port_from, port_to, enabled, action, source)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''))
+		`, body.ID, serverID, proto, portFrom, portTo, enabled, action, source)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})

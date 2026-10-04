@@ -36,7 +36,7 @@ func (h *Handler) loadCronJobs(ctx context.Context, serverID string) ([]map[stri
 
 func (h *Handler) loadFirewallRules(ctx context.Context, serverID string) ([]map[string]any, error) {
 	rows, err := h.dbOf(ctx).Query(ctx, `
-		SELECT id::text, protocol, port_from, port_to, enabled
+		SELECT id::text, protocol, port_from, port_to, enabled, action, COALESCE(source, '')
 		FROM core.server_firewall_rules WHERE server_id = $1 ORDER BY created_at
 	`, serverID)
 	if err != nil {
@@ -46,15 +46,16 @@ func (h *Handler) loadFirewallRules(ctx context.Context, serverID string) ([]map
 
 	list := make([]map[string]any, 0)
 	for rows.Next() {
-		var id, protocol string
+		var id, protocol, action, source string
 		var portFrom int
 		var portTo *int
 		var enabled bool
-		if err := rows.Scan(&id, &protocol, &portFrom, &portTo, &enabled); err != nil {
+		if err := rows.Scan(&id, &protocol, &portFrom, &portTo, &enabled, &action, &source); err != nil {
 			return nil, err
 		}
 		item := map[string]any{
 			"id": id, "protocol": protocol, "port_from": portFrom, "enabled": enabled,
+			"action": action, "source": source,
 		}
 		if portTo != nil {
 			item["port_to"] = *portTo
@@ -233,7 +234,13 @@ func (h *Handler) pushFirewallState(ctx context.Context, nodeID, serverID string
 	if err != nil {
 		return err
 	}
-	_, err = h.agentCommand(ctx, nodeID, serverID, protocol.ActionFirewallSync, map[string]any{"rules": rules})
+	connLimit, limitPorts := h.firewallConnLimit(ctx, serverID)
+	if msg := h.firewallAgentTooOld(ctx, nodeID, rules, connLimit); msg != "" {
+		return errors.New(msg)
+	}
+	_, err = h.agentCommand(ctx, nodeID, serverID, protocol.ActionFirewallSync, map[string]any{
+		"rules": rules, "conn_limit": connLimit, "limit_ports": limitPorts,
+	})
 	return err
 }
 

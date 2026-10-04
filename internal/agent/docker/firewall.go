@@ -17,7 +17,16 @@ type FirewallRule struct {
 	PortFrom int    `json:"port_from"`
 	PortTo   *int   `json:"port_to"`
 	Enabled  bool   `json:"enabled"`
+	Action   string `json:"action"`
+	Source   string `json:"source"`
 }
+
+type FirewallLimit struct {
+	ConnLimit  int   `json:"conn_limit"`
+	LimitPorts []int `json:"limit_ports"`
+}
+
+const maxConnLimit = 100000
 
 var errContainerNotRunning = errors.New("контейнер сервера не запущен")
 
@@ -38,7 +47,7 @@ func firewallLock(serverID string) func() {
 	return mu.Unlock
 }
 
-func SyncFirewall(ctx context.Context, serverID string, rules []FirewallRule) error {
+func SyncFirewall(ctx context.Context, serverID string, rules []FirewallRule, limit FirewallLimit) error {
 	for _, r := range rules {
 		if _, err := ruleProtocol(r); err != nil {
 			return err
@@ -46,8 +55,20 @@ func SyncFirewall(ctx context.Context, serverID string, rules []FirewallRule) er
 		if r.PortFrom < 0 || r.PortFrom > 65535 || (r.PortTo != nil && (*r.PortTo < 0 || *r.PortTo > 65535)) {
 			return errors.New("порты правила вне диапазона 0–65535")
 		}
+		if _, err := ruleSource(r); err != nil {
+			return err
+		}
 	}
-	if err := writeStateFile(serverID, stateFirewallFile, map[string]any{"rules": rules}); err != nil {
+	if limit.ConnLimit < 0 || limit.ConnLimit > maxConnLimit {
+		return errors.New("лимит подключений вне допустимого диапазона")
+	}
+	for _, p := range limit.LimitPorts {
+		if p < 1 || p > 65535 {
+			return errors.New("порт лимита подключений вне диапазона 1–65535")
+		}
+	}
+	state := map[string]any{"rules": rules, "conn_limit": limit.ConnLimit, "limit_ports": limit.LimitPorts}
+	if err := writeStateFile(serverID, stateFirewallFile, state); err != nil {
 		return err
 	}
 	return ApplyFirewall(ctx, serverID)
@@ -55,10 +76,10 @@ func SyncFirewall(ctx context.Context, serverID string, rules []FirewallRule) er
 
 func ApplyFirewall(ctx context.Context, serverID string) error {
 	defer firewallLock(serverID)()
-	rules, _ := ReadFirewallState(serverID)
+	rules, limit := readFirewallState(serverID)
 	chain := firewallChainName(serverID)
 	enabled := enabledRules(rules)
-	if len(enabled) == 0 {
+	if len(enabled) == 0 && !limit.active() {
 		_, err := HostShell(ctx, firewallRemoveScript(chain))
 		return err
 	}
@@ -70,7 +91,7 @@ func ApplyFirewall(ctx context.Context, serverID string) error {
 	if err != nil {
 		return err
 	}
-	script, err := firewallApplyScript(chain, ip, enabled)
+	script, err := firewallApplyScript(chain, ip, enabled, limit)
 	if err != nil {
 		return err
 	}
@@ -78,9 +99,13 @@ func ApplyFirewall(ctx context.Context, serverID string) error {
 	return err
 }
 
+func (l FirewallLimit) active() bool {
+	return l.ConnLimit > 0 && len(l.LimitPorts) > 0
+}
+
 func HasFirewallRules(serverID string) bool {
-	rules, _ := ReadFirewallState(serverID)
-	return len(enabledRules(rules)) > 0
+	rules, limit := readFirewallState(serverID)
+	return len(enabledRules(rules)) > 0 || limit.active()
 }
 
 func enabledRules(rules []FirewallRule) []FirewallRule {
@@ -104,7 +129,32 @@ func ruleProtocol(r FirewallRule) (string, error) {
 	return proto, nil
 }
 
-func firewallApplyScript(chain, ip string, rules []FirewallRule) (string, error) {
+func ruleSource(r FirewallRule) (string, error) {
+	src := strings.TrimSpace(r.Source)
+	if src == "" {
+		if strings.EqualFold(strings.TrimSpace(r.Action), "allow") {
+			return "", errors.New("правило «разрешить» требует адрес источника")
+		}
+		return "", nil
+	}
+	if ip := net.ParseIP(src); ip != nil {
+		if ip.To4() == nil {
+			return "", fmt.Errorf("поддерживаются только адреса IPv4: %q", r.Source)
+		}
+		return ip.To4().String() + "/32", nil
+	}
+	ip, network, err := net.ParseCIDR(src)
+	if err != nil || ip.To4() == nil {
+		return "", fmt.Errorf("неверный адрес источника %q", r.Source)
+	}
+	return network.String(), nil
+}
+
+func isAllowRule(r FirewallRule) bool {
+	return strings.EqualFold(strings.TrimSpace(r.Action), "allow")
+}
+
+func firewallApplyScript(chain, ip string, rules []FirewallRule, limit FirewallLimit) (string, error) {
 	parsed := net.ParseIP(ip)
 	if parsed == nil || parsed.To4() == nil {
 		return "", fmt.Errorf("неверный адрес контейнера %q", ip)
@@ -114,12 +164,56 @@ func firewallApplyScript(chain, ip string, rules []FirewallRule) (string, error)
 	b.WriteString("iptables -w -N DOCKER-USER 2>/dev/null || true\n")
 	fmt.Fprintf(&b, "iptables -w -N %s 2>/dev/null || true\n", chain)
 	fmt.Fprintf(&b, "iptables -w -F %s\n", chain)
+	closed := map[string]bool{}
+	var closeOrder []string
 	for _, r := range rules {
+		if !isAllowRule(r) {
+			continue
+		}
 		proto, err := ruleProtocol(r)
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&b, "iptables -w -A %s -p %s --dport %s -j DROP\n", chain, proto, formatPortRange(r.PortFrom, r.PortTo))
+		src, err := ruleSource(r)
+		if err != nil {
+			return "", err
+		}
+		ports := formatPortRange(r.PortFrom, r.PortTo)
+		fmt.Fprintf(&b, "iptables -w -A %s -s %s -p %s --dport %s -j RETURN\n", chain, src, proto, ports)
+		key := proto + " " + ports
+		if !closed[key] {
+			closed[key] = true
+			closeOrder = append(closeOrder, key)
+		}
+	}
+	for _, key := range closeOrder {
+		proto, ports, _ := strings.Cut(key, " ")
+		fmt.Fprintf(&b, "iptables -w -A %s -p %s --dport %s -j DROP\n", chain, proto, ports)
+	}
+	for _, r := range rules {
+		if isAllowRule(r) {
+			continue
+		}
+		proto, err := ruleProtocol(r)
+		if err != nil {
+			return "", err
+		}
+		src, err := ruleSource(r)
+		if err != nil {
+			return "", err
+		}
+		match := ""
+		if src != "" {
+			match = " -s " + src
+		}
+		fmt.Fprintf(&b, "iptables -w -A %s%s -p %s --dport %s -j DROP\n", chain, match, proto, formatPortRange(r.PortFrom, r.PortTo))
+	}
+	if limit.active() {
+		for _, p := range limit.LimitPorts {
+			fmt.Fprintf(&b,
+				"iptables -w -A %s -p tcp --syn --dport %d -m connlimit --connlimit-above %d --connlimit-mask 32 -j DROP\n",
+				chain, p, limit.ConnLimit)
+		}
 	}
 	b.WriteString(dropJumpsScript(chain))
 	fmt.Fprintf(&b, "iptables -w -I DOCKER-USER 1 -d %s/32 -j %s\n", parsed.To4().String(), chain)
@@ -199,12 +293,28 @@ func DecodeFirewallRules(raw any) ([]FirewallRule, error) {
 	return rules, nil
 }
 
-func ReadFirewallState(serverID string) ([]FirewallRule, error) {
+func readFirewallState(serverID string) ([]FirewallRule, FirewallLimit) {
 	var state struct {
 		Rules []FirewallRule `json:"rules"`
+		FirewallLimit
 	}
 	if !readStateFile(serverID, stateFirewallFile, &state) {
-		return nil, nil
+		return nil, FirewallLimit{}
 	}
-	return state.Rules, nil
+	return state.Rules, state.FirewallLimit
+}
+
+func ReadFirewallState(serverID string) ([]FirewallRule, error) {
+	rules, _ := readFirewallState(serverID)
+	return rules, nil
+}
+
+func DecodeFirewallLimit(payload map[string]any) FirewallLimit {
+	limit := FirewallLimit{ConnLimit: IntFromPayload(payload["conn_limit"])}
+	if list, ok := payload["limit_ports"].([]any); ok {
+		for _, item := range list {
+			limit.LimitPorts = append(limit.LimitPorts, IntFromPayload(item))
+		}
+	}
+	return limit
 }

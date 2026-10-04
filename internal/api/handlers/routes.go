@@ -216,6 +216,7 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Post("/{id}/firewall/create", h.ServerFirewallCreate)
 			r.Post("/{id}/firewall/delete", h.ServerFirewallDelete)
 			r.Post("/{id}/firewall/toggle", h.ServerFirewallToggle)
+			r.Post("/{id}/firewall/limit", h.ServerFirewallLimit)
 			r.Get("/{id}/friends", h.ServerFriendsList)
 			r.Post("/{id}/friends/add", h.ServerFriendsAdd)
 			r.Post("/{id}/friends/remove", h.ServerFriendsRemove)

@@ -876,7 +876,7 @@ func (a *Agent) run(ctx context.Context, cmd protocol.CommandMessage) {
 			a.sendAck(cmd.ID, false, parseErr, nil)
 			return
 		}
-		execErr = docker.SyncFirewall(ctx, cmd.ServerID, rules)
+		execErr = docker.SyncFirewall(ctx, cmd.ServerID, rules, docker.DecodeFirewallLimit(cmd.Payload))
 		if execErr != nil {
 			a.firewall.report(cmd.ServerID, execErr)
 		}
