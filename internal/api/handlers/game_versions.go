@@ -15,16 +15,17 @@ import (
 
 const gameVersionColumns = `id::text, version, source_type,
 	COALESCE(archive_url, ''), COALESCE(docker_image, ''), steam_app_id, steam_branch,
-	active, sort_order, COALESCE(archive_name, ''), COALESCE(archive_size, 0)`
+	active, sort_order, COALESCE(archive_name, ''), COALESCE(archive_size, 0),
+	COALESCE(meta->>'runtime_version', '')`
 
 func scanGameVersionJSON(scan func(dest ...any) error) (map[string]any, bool) {
-	var id, name, sourceType, archiveURL, dockerImage, archiveName string
+	var id, name, sourceType, archiveURL, dockerImage, archiveName, runtimeVersion string
 	var steamAppID *int64
 	var steamBranch *string
 	var active bool
 	var sortOrder int
 	var archiveSize int64
-	if scan(&id, &name, &sourceType, &archiveURL, &dockerImage, &steamAppID, &steamBranch, &active, &sortOrder, &archiveName, &archiveSize) != nil {
+	if scan(&id, &name, &sourceType, &archiveURL, &dockerImage, &steamAppID, &steamBranch, &active, &sortOrder, &archiveName, &archiveSize, &runtimeVersion) != nil {
 		return nil, false
 	}
 	out := versionLegacyJSON(id, name, sourceType, archiveURL, dockerImage, steamAppID, steamBranch, active, sortOrder)
@@ -32,6 +33,7 @@ func scanGameVersionJSON(scan func(dest ...any) error) (map[string]any, bool) {
 		out["archive_name"] = archiveName
 		out["archive_size"] = archiveSize
 	}
+	out["runtime_version"] = runtimeVersion
 	return out, true
 }
 
@@ -96,26 +98,28 @@ func (h *Handler) resolveDockerImage(ctx context.Context, serverID string) strin
 }
 
 func (h *Handler) resolveInstallSpec(ctx context.Context, serverID string) map[string]any {
-	var sourceType, version, archiveURL, steamBranch, steamModConfig string
+	var sourceType, version, archiveURL, steamBranch, steamModConfig, gameSlug, boundRuntime string
 	var steamAppID *int64
 	err := h.dbOf(ctx).QueryRow(ctx, `
 		SELECT COALESCE(gv.source_type, ''), gv.version, COALESCE(gv.archive_url, ''),
-		       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, '')
+		       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, ''),
+		       s.game_id, COALESCE(gv.meta->>'runtime_version', '')
 		FROM core.servers s
 		JOIN core.game_versions gv ON gv.id = s.game_version_id
 		WHERE s.id = $1
-	`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
+	`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig, &gameSlug, &boundRuntime)
 	if err != nil {
 		err = h.dbOf(ctx).QueryRow(ctx, `
 			SELECT COALESCE(gv.source_type, ''), gv.version, COALESCE(gv.archive_url, ''),
-			       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, '')
+			       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, ''),
+			       s.game_id, COALESCE(gv.meta->>'runtime_version', '')
 			FROM core.servers s
 			JOIN core.games g ON g.slug = s.game_id
 			JOIN core.game_versions gv ON gv.game_id = g.id AND gv.active = true
 			WHERE s.id = $1
 			ORDER BY gv.sort_order ASC, gv.created_at DESC
 			LIMIT 1
-		`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
+		`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig, &gameSlug, &boundRuntime)
 		if err != nil {
 			return nil
 		}
@@ -138,6 +142,7 @@ func (h *Handler) resolveInstallSpec(ctx context.Context, serverID string) map[s
 	default:
 		return nil
 	}
+	h.addBoundRuntime(ctx, spec, gameSlug, boundRuntime)
 	return spec
 }
 
@@ -311,12 +316,23 @@ func (h *Handler) CreateGameVersion(w http.ResponseWriter, r *http.Request) {
 		branchPtr = &steamBranch
 	}
 
+	runtimeVersion := bodyString(body, "runtime_version")
+	if err := h.checkBoundRuntime(r.Context(), gameID, runtimeVersion); err != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	meta := map[string]any{}
+	if runtimeVersion != "" {
+		meta["runtime_version"] = runtimeVersion
+	}
+	metaJSON, _ := json.Marshal(meta)
+
 	var id string
 	err := h.dbOf(r.Context()).QueryRow(r.Context(), `
-		INSERT INTO core.game_versions ( game_id, version, source_type, archive_url, docker_image, steam_app_id, steam_branch, active, sort_order)
-		VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO core.game_versions ( game_id, version, source_type, archive_url, docker_image, steam_app_id, steam_branch, active, sort_order, meta)
+		VALUES ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
 		RETURNING id::text
-	`, gameID, name, sourceType, archivePtr, dockerPtr, steamAppID, branchPtr, active, sortOrder).Scan(&id)
+	`, gameID, name, sourceType, archivePtr, dockerPtr, steamAppID, branchPtr, active, sortOrder, string(metaJSON)).Scan(&id)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "create failed")
 		return
@@ -358,6 +374,25 @@ func (h *Handler) UpdateGameVersion(w http.ResponseWriter, r *http.Request) {
 	if err != nil || tag.RowsAffected() == 0 {
 		writeError(w, http.StatusNotFound, "version not found")
 		return
+	}
+	if raw, present := body["runtime_version"]; present {
+		runtimeVersion := strings.TrimSpace(anyString(raw))
+		if err := h.checkBoundRuntime(r.Context(), gameID, runtimeVersion); err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]any{"ok": false, "error": err.Error()})
+			return
+		}
+		if runtimeVersion == "" {
+			_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
+				UPDATE core.game_versions SET meta = COALESCE(meta, '{}'::jsonb) - 'runtime_version'
+				WHERE id = $1 AND game_id = $2
+			`, versionID, gameID)
+		} else {
+			_, _ = h.dbOf(r.Context()).Exec(r.Context(), `
+				UPDATE core.game_versions
+				SET meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object('runtime_version', $3::text)
+				WHERE id = $1 AND game_id = $2
+			`, versionID, gameID, runtimeVersion)
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -152,3 +153,60 @@ func (h *Handler) syncRuntimeSource(ctx context.Context, serverID, nodeID string
 	_, _ = h.agentCommand(ctx, nodeID, serverID, "files_write",
 		map[string]any{"path": "/" + sel.URLFile, "content": entry.URL + "\n"})
 }
+
+func (h *Handler) addBoundRuntime(ctx context.Context, spec map[string]any, gameSlug, version string) {
+	if version == "" {
+		return
+	}
+	sel, list, ok := h.runtimeSelectorOfGame(ctx, gameSlug)
+	if !ok {
+		return
+	}
+	entry, found := findRuntimeVersion(list, version)
+	if !found {
+		return
+	}
+	spec["runtime_file"] = sel.File
+	spec["runtime_version"] = entry.Version
+	if sel.URLFile != "" {
+		spec["runtime_url_file"] = sel.URLFile
+		spec["runtime_url"] = entry.URL
+	}
+}
+
+func (h *Handler) runtimeSelectorOfGame(ctx context.Context, gameSlug string) (gamecatalog.RuntimeSelector, []runtimeVersionEntry, bool) {
+	sel, ok := gamecatalog.RuntimeSelectorOf(gameSlug)
+	if !ok {
+		return gamecatalog.RuntimeSelector{}, nil, false
+	}
+	var raw []byte
+	if err := h.dbOf(ctx).QueryRow(ctx, `
+		SELECT COALESCE(meta, '{}'::jsonb) FROM core.games WHERE slug = $1
+	`, gameSlug).Scan(&raw); err != nil {
+		return sel, defaultRuntimeVersions(sel), true
+	}
+	return sel, runtimeVersionsOf(parseMetaMap(raw), sel), true
+}
+
+func (h *Handler) checkBoundRuntime(ctx context.Context, gameID, version string) error {
+	if version == "" {
+		return nil
+	}
+	var slug string
+	if err := h.dbOf(ctx).QueryRow(ctx, `SELECT slug FROM core.games WHERE id = $1::uuid`, gameID).Scan(&slug); err != nil {
+		return errRuntimeBindGame
+	}
+	_, list, ok := h.runtimeSelectorOfGame(ctx, slug)
+	if !ok {
+		return errRuntimeBindGame
+	}
+	if _, found := findRuntimeVersion(list, version); !found {
+		return errRuntimeBindVersion
+	}
+	return nil
+}
+
+var (
+	errRuntimeBindGame    = errors.New("Для этой игры привязка версии среды не поддерживается")
+	errRuntimeBindVersion = errors.New("Такой версии среды нет в списке игры")
+)

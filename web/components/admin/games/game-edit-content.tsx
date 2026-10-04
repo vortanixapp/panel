@@ -27,6 +27,7 @@ import {
   createAdminGameVersion,
   deleteAdminGameVersion,
   fetchAdminGameEdit,
+  setAdminGameVersionRuntime,
   updateAdminGame,
   uploadAdminGameVersionArchive,
   type AdminGameVersion,
@@ -170,6 +171,16 @@ export function GameEditContent() {
     },
     onError: (e: Error) => toast.error(e.message),
     onSettled: () => setUploadPercent(null),
+  });
+
+  const runtimeMut = useMutation({
+    mutationFn: (args: { versionId: string; runtimeVersion: string }) =>
+      setAdminGameVersionRuntime(id, args.versionId, args.runtimeVersion),
+    onSuccess: () => {
+      toast.success(t("admin.games.version_runtime_saved"));
+      void queryClient.invalidateQueries({ queryKey: queryKeys.adminGameEdit(id) });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteVersionMut = useMutation({
@@ -568,6 +579,33 @@ export function GameEditContent() {
                             )
                           )}
                         </p>
+                        {runtime && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {runtime.kind === "php"
+                                ? t("admin.games.version_runtime_php")
+                                : t("admin.games.version_runtime_java")}
+                            </span>
+                            <select
+                              className="h-8 rounded-md border bg-background px-2 text-xs"
+                              value={v.runtime_version ?? ""}
+                              disabled={runtimeMut.isPending}
+                              title={t("admin.games.version_runtime_hint")}
+                              onChange={(e) =>
+                                runtimeMut.mutate({ versionId: v.id, runtimeVersion: e.target.value })
+                              }
+                            >
+                              <option value="">{t("admin.games.version_runtime_none")}</option>
+                              {runtime.versions
+                                .filter((rv) => rv.enabled || rv.version === v.runtime_version)
+                                .map((rv) => (
+                                  <option key={rv.version} value={rv.version}>
+                                    {rv.version}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <Button
                         variant="ghost"

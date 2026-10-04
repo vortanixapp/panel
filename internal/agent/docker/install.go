@@ -46,6 +46,10 @@ type InstallSpec struct {
 	SteamAppID     int64
 	SteamBranch    string
 	SteamModConfig string
+	RuntimeFile    string
+	RuntimeVersion string
+	RuntimeURLFile string
+	RuntimeURL     string
 }
 
 func (s InstallSpec) HasSource() bool {
@@ -64,6 +68,10 @@ func InstallSpecFromPayload(v any) InstallSpec {
 	spec.SteamBranch, _ = m["steam_branch"].(string)
 	spec.SteamModConfig, _ = m["steam_mod_config"].(string)
 	spec.SteamAppID = int64(IntFromPayload(m["steam_app_id"]))
+	spec.RuntimeFile, _ = m["runtime_file"].(string)
+	spec.RuntimeVersion, _ = m["runtime_version"].(string)
+	spec.RuntimeURLFile, _ = m["runtime_url_file"].(string)
+	spec.RuntimeURL, _ = m["runtime_url"].(string)
 	spec.ArchiveURL = strings.TrimSpace(spec.ArchiveURL)
 	return spec
 }
@@ -169,6 +177,44 @@ func Update(ctx context.Context, serverID string, spec InstallSpec, report Progr
 }
 
 func installFromSource(ctx context.Context, dataDir string, spec InstallSpec, report ProgressFunc) error {
+	if err := installSource(ctx, dataDir, spec, report); err != nil {
+		return err
+	}
+	return writeBoundRuntime(dataDir, spec)
+}
+
+func writeBoundRuntime(dataDir string, spec InstallSpec) error {
+	if spec.RuntimeVersion == "" || spec.RuntimeFile == "" {
+		return nil
+	}
+	write := func(rel, value string) error {
+		target, err := safeJoin(dataDir, rel)
+		if err != nil {
+			return err
+		}
+		if value == "" {
+			if err := os.Remove(target); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+			return nil
+		}
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(target, []byte(value+"\n"), 0o644)
+	}
+	if err := write(spec.RuntimeFile, spec.RuntimeVersion); err != nil {
+		return fmt.Errorf("версия среды: %w", err)
+	}
+	if spec.RuntimeURLFile != "" {
+		if err := write(spec.RuntimeURLFile, spec.RuntimeURL); err != nil {
+			return fmt.Errorf("ссылка на сборку среды: %w", err)
+		}
+	}
+	return nil
+}
+
+func installSource(ctx context.Context, dataDir string, spec InstallSpec, report ProgressFunc) error {
 	switch {
 	case spec.SourceType == sourceBuildTools:
 		return installBuildTools(ctx, dataDir, spec.Version, report)

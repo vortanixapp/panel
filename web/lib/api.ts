@@ -4249,6 +4249,7 @@ export type AdminGameVersion = {
   steam_app_id?: number;
   steam_branch?: string;
   archive_name?: string;
+  runtime_version?: string;
   archive_size?: number;
   is_active: boolean;
   sort_order: number;
@@ -4358,6 +4359,13 @@ export async function uploadAdminGameVersionArchive(
     };
     xhr.send(form);
   });
+}
+
+export async function setAdminGameVersionRuntime(gameId: string, versionId: string, runtimeVersion: string) {
+  return apiFetch<{ status: string }>(
+    `/v1/admin/games/${gameId}/versions/${versionId}`,
+    { method: "PATCH", body: JSON.stringify({ runtime_version: runtimeVersion }) }
+  );
 }
 
 export async function deleteAdminGameVersion(gameId: string, versionId: string) {

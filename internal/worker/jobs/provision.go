@@ -261,26 +261,28 @@ func (r *Runner) resolveDockerImage(ctx context.Context, serverID string) string
 }
 
 func (r *Runner) resolveInstallSpec(ctx context.Context, serverID string) map[string]any {
-	var sourceType, version, archiveURL, steamBranch, steamModConfig string
+	var sourceType, version, archiveURL, steamBranch, steamModConfig, gameSlug, boundRuntime string
 	var steamAppID *int64
 	err := r.db.QueryRow(ctx, `
 		SELECT COALESCE(gv.source_type, ''), gv.version, COALESCE(gv.archive_url, ''),
-		       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, '')
+		       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, ''),
+		       s.game_id, COALESCE(gv.meta->>'runtime_version', '')
 		FROM core.servers s
 		JOIN core.game_versions gv ON gv.id = s.game_version_id
 		WHERE s.id = $1
-	`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
+	`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig, &gameSlug, &boundRuntime)
 	if err != nil {
 		err = r.db.QueryRow(ctx, `
 			SELECT COALESCE(gv.source_type, ''), gv.version, COALESCE(gv.archive_url, ''),
-			       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, '')
+			       gv.steam_app_id, COALESCE(gv.steam_branch, ''), COALESCE(gv.steam_mod_config, ''),
+			       s.game_id, COALESCE(gv.meta->>'runtime_version', '')
 			FROM core.servers s
 			JOIN core.games g ON g.slug = s.game_id
 			JOIN core.game_versions gv ON gv.game_id = g.id AND gv.active = true
 			WHERE s.id = $1
 			ORDER BY gv.sort_order ASC, gv.created_at DESC
 			LIMIT 1
-		`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig)
+		`, serverID).Scan(&sourceType, &version, &archiveURL, &steamAppID, &steamBranch, &steamModConfig, &gameSlug, &boundRuntime)
 		if err != nil {
 			return nil
 		}
@@ -302,7 +304,54 @@ func (r *Runner) resolveInstallSpec(ctx context.Context, serverID string) map[st
 	default:
 		return nil
 	}
+	r.addBoundRuntime(ctx, spec, gameSlug, boundRuntime)
 	return spec
+}
+
+func (r *Runner) addBoundRuntime(ctx context.Context, spec map[string]any, gameSlug, version string) {
+	if version == "" {
+		return
+	}
+	sel, ok := gamecatalog.RuntimeSelectorOf(gameSlug)
+	if !ok {
+		return
+	}
+	var raw []byte
+	if r.db.QueryRow(ctx, `
+		SELECT COALESCE(meta->'runtime_versions', '[]'::jsonb) FROM core.games WHERE slug = $1
+	`, gameSlug).Scan(&raw) != nil {
+		return
+	}
+	var list []struct {
+		Version string `json:"version"`
+		URL     string `json:"url"`
+	}
+	_ = json.Unmarshal(raw, &list)
+	url := ""
+	found := false
+	for _, entry := range list {
+		if entry.Version == version {
+			url, found = entry.URL, true
+			break
+		}
+	}
+	if !found {
+		for _, v := range sel.Versions {
+			if v == version {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return
+	}
+	spec["runtime_file"] = sel.File
+	spec["runtime_version"] = version
+	if sel.URLFile != "" {
+		spec["runtime_url_file"] = sel.URLFile
+		spec["runtime_url"] = url
+	}
 }
 
 func (r *Runner) serverBindIP(ctx context.Context, serverID string) string {
