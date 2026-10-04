@@ -125,6 +125,8 @@ export const servers = {
   "servers.overview.online_down": "сервер не отвечает",
   "servers.overview.server_off": "сервер выключен",
   "servers.overview.cpu_limit": "лимит {cores} ядра",
+  "servers.overview.cpu_used_of": "{used} из {cores} ядер",
+  "servers.overview.cpu_no_limit": "без лимита, занято {used} ядра",
   "servers.overview.no_limit": "лимит не задан",
   "servers.overview.ram_limit": "лимит {value} GB",
   "servers.overview.tile_disk": "Диск",

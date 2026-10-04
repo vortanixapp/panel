@@ -126,6 +126,8 @@ export const servers = {
   "servers.overview.online_down": "server is not responding",
   "servers.overview.server_off": "server is off",
   "servers.overview.cpu_limit": "limit {cores} cores",
+  "servers.overview.cpu_used_of": "{used} of {cores} cores",
+  "servers.overview.cpu_no_limit": "no limit, using {used} cores",
   "servers.overview.no_limit": "no limit set",
   "servers.overview.ram_limit": "limit {value} GB",
   "servers.overview.tile_disk": "Disk",

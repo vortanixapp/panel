@@ -64,9 +64,23 @@ func QueryGameServer(ctx context.Context, serverID, gameID string, limits map[st
 			}
 		}
 	case isMcJavaGame(game):
-		players := queryMinecraftPlayers(ctx, serverID)
-		out.PlayersOnline = players
-		out.OnlinePlayers = len(players)
+		if info, err := queryMinecraftJava(host, queryPort); err == nil && info != nil {
+			out.PlayersOnline = make([]Player, 0, len(info.Players))
+			for _, name := range info.Players {
+				out.PlayersOnline = append(out.PlayersOnline, Player{Name: name})
+			}
+			out.OnlinePlayers = max(info.NumPlayers, len(info.Players))
+			if info.MaxPlayers > 0 {
+				out.MaxPlayers = info.MaxPlayers
+			}
+			if info.Map != "" {
+				out.CurrentMap = info.Map
+			}
+		} else {
+			players := queryMinecraftPlayers(ctx, serverID)
+			out.PlayersOnline = players
+			out.OnlinePlayers = len(players)
+		}
 	case isMcBedrockGame(game):
 		if info, err := queryBedrock(host, queryPort); err == nil && info != nil {
 			answered = true

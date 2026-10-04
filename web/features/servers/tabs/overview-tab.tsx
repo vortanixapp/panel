@@ -274,10 +274,13 @@ export function ServerOverviewTab() {
       toast.error(err instanceof Error ? err.message : t("common.error")),
   });
 
+  const cpuLimit = Number(server?.limits?.cpu ?? server?.limits?.cpu_cores ?? 0);
+
   const charts = useMemo(() => {
     const tail = metrics.slice(-60);
-    return { cpu: polyline(tail.map((p) => p.cpu_pct)), ram: polyline(tail.map(memPercent)) };
-  }, [metrics]);
+    const cpuValues = tail.map((p) => (cpuLimit > 0 ? p.cpu_pct / cpuLimit : p.cpu_pct));
+    return { cpu: polyline(cpuValues), ram: polyline(tail.map(memPercent)) };
+  }, [metrics, cpuLimit]);
 
   if (!server) return null;
 
@@ -337,7 +340,9 @@ export function ServerOverviewTab() {
   const metricIsFresh = running && metricAgeMs < 90_000;
   const lastMetric = metricIsFresh ? rawLastMetric : undefined;
 
-  const cpuPct = lastMetric?.cpu_pct ?? 0;
+  const cpuRaw = lastMetric?.cpu_pct ?? 0;
+  const cpuPct = cpuLimit > 0 ? cpuRaw / cpuLimit : cpuRaw;
+  const cpuCoresUsed = (cpuRaw / 100).toFixed(2);
   const memLimit =
     lastMetric?.mem_limit_mb ?? Number(server.limits?.memory_mb ?? server.tariff?.ram_mb ?? 0);
   const memUsed = lastMetric?.mem_used_mb ?? 0;
@@ -353,7 +358,6 @@ export function ServerOverviewTab() {
     diskTotalMb > 0
       ? `${diskUsedMb > 0 ? gb(diskUsedMb) : "—"} / ${gb(diskTotalMb)} GB`
       : t("servers.overview.no_limit");
-  const cpuLimit = Number(server.limits?.cpu_cores ?? 0);
 
   const billedInWhmcs = isWhmcsBilled(server);
   const rentRows: [string, string][] = billedInWhmcs
@@ -459,8 +463,8 @@ export function ServerOverviewTab() {
             !running
               ? t("servers.overview.server_off")
               : cpuLimit > 0
-                ? t("servers.overview.cpu_limit", { cores: cpuLimit })
-                : t("servers.overview.no_limit")
+                ? t("servers.overview.cpu_used_of", { used: cpuCoresUsed, cores: cpuLimit })
+                : t("servers.overview.cpu_no_limit", { used: cpuCoresUsed })
           }
           pct={cpuPct}
         />
