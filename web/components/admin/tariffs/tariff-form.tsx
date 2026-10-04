@@ -50,6 +50,7 @@ export type TariffFormState = {
   cpu_cores: number;
   cpu_shares: string;
   ram_gb: number;
+  ram_mb: number;
   disk_gb: number;
 };
 
@@ -87,6 +88,7 @@ export const defaultTariffFormState: TariffFormState = {
   cpu_cores: 1,
   cpu_shares: "",
   ram_gb: 1,
+  ram_mb: 1024,
   disk_gb: 10,
 };
 
@@ -391,6 +393,7 @@ export function TariffForm({
                 min={0}
                 value={form.cpu_cores}
                 onChange={(e) => set("cpu_cores", +e.target.value)}
+                step={0.01}
                 required
                 className={cn(inputClass, "font-mono")}
               />
@@ -406,12 +409,17 @@ export function TariffForm({
                 className={cn(inputClass, "font-mono")}
               />
             </Field>
-            <Field label={t("admin.tariff_form.ram_gb")}>
+            <Field label={t("admin.tariff_form.ram_mb")}>
               <Input
                 type="number"
-                min={1}
-                value={form.ram_gb}
-                onChange={(e) => set("ram_gb", +e.target.value)}
+                min={64}
+                step={64}
+                value={form.ram_mb}
+                onChange={(e) => {
+                  const mb = +e.target.value;
+                  set("ram_mb", mb);
+                  set("ram_gb", Math.max(1, Math.ceil(mb / 1024)));
+                }}
                 required
                 className={cn(inputClass, "font-mono")}
               />
@@ -777,8 +785,10 @@ export function adminTariffToFormState(t: {
   disk_max?: number | null;
   disk_step?: number | null;
   cpu_cores?: number;
+  cpu_cores_f?: number;
   cpu_shares?: number | null;
   ram_gb?: number;
+  ram_mb?: number;
   disk_gb?: number;
 }): TariffFormState {
   return {
@@ -815,9 +825,10 @@ export function adminTariffToFormState(t: {
     disk_min: t.disk_min != null ? String(t.disk_min) : "",
     disk_max: t.disk_max != null ? String(t.disk_max) : "",
     disk_step: t.disk_step != null ? String(t.disk_step) : "",
-    cpu_cores: t.cpu_cores ?? 1,
+    cpu_cores: t.cpu_cores_f ?? t.cpu_cores ?? 1,
     cpu_shares: t.cpu_shares != null ? String(t.cpu_shares) : "",
     ram_gb: t.ram_gb ?? 1,
+    ram_mb: t.ram_mb ?? (t.ram_gb ?? 1) * 1024,
     disk_gb: t.disk_gb ?? 10,
   };
 }

@@ -2420,6 +2420,7 @@ export type RentTariff = {
   billing_type?: string;
   payment_mode?: "prepaid" | "hourly";
   cpu_cores?: number | null;
+  cpu_cores_f?: number | null;
   ram_gb?: number | null;
   disk_gb?: number | null;
   cpu_min?: number | null;
@@ -4396,6 +4397,7 @@ export type AdminTariff = {
   min_slots: number;
   max_slots: number;
   cpu_cores: number;
+  cpu_cores_f?: number;
   ram_gb: number;
   disk_gb: number;
   location_id?: string;
@@ -4423,6 +4425,7 @@ export type AdminTariff = {
   allow_antiddos?: boolean;
   antiddos_price?: number;
   cpu_shares?: number | null;
+  ram_mb?: number;
   discounts?: unknown;
   created_at?: string;
   updated_at?: string;
@@ -4978,6 +4981,7 @@ export async function createAdminServer(payload: {
   period?: number;
   slots?: number;
   cpu_cores?: number;
+  cpu_cores_f?: number;
   ram_gb?: number;
   disk_gb?: number;
   antiddos_enabled?: boolean;

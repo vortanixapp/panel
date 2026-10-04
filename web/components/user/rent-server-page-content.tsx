@@ -90,8 +90,8 @@ function priceLineLabel(line: RentPriceLine): string {
 
 function tariffSpecs(tariff: RentTariff): { k: string; v: string }[] {
   const specs: { k: string; v: string }[] = [];
-  if (tariff.cpu_cores) specs.push({ k: "CPU", v: `${tariff.cpu_cores}` });
-  if (tariff.ram_gb) specs.push({ k: "RAM", v: `${tariff.ram_gb} GB` });
+  if (tariff.cpu_cores) specs.push({ k: "CPU", v: `${tariff.cpu_cores_f ?? tariff.cpu_cores}` });
+  if (tariff.ram_gb) specs.push({ k: "RAM", v: tariff.ram_mb && tariff.ram_mb % 1024 !== 0 ? `${tariff.ram_mb} MB` : `${tariff.ram_gb} GB` });
   if (tariff.disk_gb) specs.push({ k: t("billing.rent.disk"), v: `${tariff.disk_gb} GB` });
   if (tariff.max_slots && tariff.billing_type !== "resources") {
     specs.push({

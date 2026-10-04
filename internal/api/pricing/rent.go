@@ -10,6 +10,8 @@ type RentOrder struct {
 	Slots           int
 	CPUCores        int
 	RAMGb           int
+	RAMMb           int
+	CPUFrac         float64
 	DiskGb          int
 	AntiddosEnabled bool
 }
@@ -80,11 +82,16 @@ func Resolve(tariff map[string]any, order RentOrder) RentOrder {
 	if billingType(tariff) == "slots" {
 		out.Slots = SlotRange(tariff).Fit(order.Slots)
 	}
+	out.CPUFrac = FractionalCPU(tariff)
+	if mb := intVal(tariff["ram_mb"]); mb > 0 && !ResourceRange(tariff, "ram").Configurable() {
+		out.RAMMb = mb
+	}
 	return out
 }
 
 func MinimalOrder(tariff map[string]any) RentOrder {
 	return RentOrder{
+		CPUFrac:  FractionalCPU(tariff),
 		Slots:    SlotRange(tariff).Min,
 		CPUCores: ResourceRange(tariff, "cpu").Min,
 		RAMGb:    ResourceRange(tariff, "ram").Min,
@@ -106,8 +113,12 @@ func MonthlyCost(tariff map[string]any, order RentOrder) float64 {
 		cpu := positive(order.CPUCores, positive(intVal(tariff["cpu_cores"]), 1))
 		ram := positive(order.RAMGb, positive(intVal(tariff["ram_gb"]), 1))
 		disk := positive(order.DiskGb, positive(intVal(tariff["disk_gb"]), 10))
+		cpuF := float64(cpu)
+		if order.CPUFrac > 0 {
+			cpuF = order.CPUFrac
+		}
 		total = floatVal(tariff["base_price_monthly"]) +
-			float64(cpu)*floatVal(tariff["price_per_cpu_core"]) +
+			cpuF*floatVal(tariff["price_per_cpu_core"]) +
 			float64(ram)*floatVal(tariff["price_per_ram_gb"]) +
 			float64(disk)*floatVal(tariff["price_per_disk_gb"])
 	default:
@@ -201,4 +212,12 @@ func boolVal(v any) bool {
 	default:
 		return false
 	}
+}
+
+func FractionalCPU(tariff map[string]any) float64 {
+	f := floatVal(tariff["cpu_cores_f"])
+	if f > 0 && f != math.Trunc(f) && !ResourceRange(tariff, "cpu").Configurable() {
+		return f
+	}
+	return 0
 }

@@ -896,19 +896,25 @@ func tariffMeetsGame(gameSlug string, order pricing.RentOrder) string {
 	}
 
 	ramMB := order.RAMGb * 1024
+	if order.RAMMb > 0 {
+		ramMB = order.RAMMb
+	}
 	diskMB := order.DiskGb * 1024
-	cpu := order.CPUCores
+	cpu := float64(order.CPUCores)
+	if order.CPUFrac > 0 {
+		cpu = order.CPUFrac
+	}
 
 	if ramMB > 0 && g.MinRAMMB > 0 && ramMB < g.MinRAMMB {
-		return fmt.Sprintf("%s требует минимум %d ГБ оперативной памяти, в тарифе — %d ГБ",
-			g.Name, g.MinRAMMB/1024, ramMB/1024)
+		return fmt.Sprintf("%s требует минимум %d МБ оперативной памяти, в тарифе — %d МБ",
+			g.Name, g.MinRAMMB, ramMB)
 	}
 	if diskMB > 0 && g.MinDiskMB > 0 && diskMB < g.MinDiskMB {
 		return fmt.Sprintf("%s требует минимум %d ГБ дискового пространства, в тарифе — %d ГБ",
 			g.Name, g.MinDiskMB/1024, diskMB/1024)
 	}
-	if cpu > 0 && g.MinCPU > 0 && float64(cpu) < g.MinCPU {
-		return fmt.Sprintf("%s требует минимум %.0f ядра процессора, в тарифе — %d",
+	if cpu > 0 && g.MinCPU > 0 && cpu < g.MinCPU {
+		return fmt.Sprintf("%s требует минимум %.0f ядра процессора, в тарифе — %g",
 			g.Name, g.MinCPU, cpu)
 	}
 

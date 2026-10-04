@@ -465,6 +465,9 @@ func limitsToRentOrder(limits map[string]any) pricing.RentOrder {
 	if order.CPUCores <= 0 {
 		order.CPUCores = int(math.Round(floatFromAny(limits["cpu"])))
 	}
+	if c := floatFromAny(limits["cpu"]); c > 0 && c != math.Trunc(c) {
+		order.CPUFrac = c
+	}
 	if order.RAMGb <= 0 {
 		if mb := intFromAny(limits["memory_mb"]); mb > 0 {
 			order.RAMGb = mb / 1024
@@ -485,6 +488,10 @@ func tariffLimits(tariff map[string]any, order pricing.RentOrder, base map[strin
 	}
 	limits["ram_gb"] = order.RAMGb
 	limits["memory_mb"] = order.RAMGb * 1024
+	if order.RAMMb > 0 {
+		limits["memory_mb"] = order.RAMMb
+		limits["ram_gb"] = max(1, (order.RAMMb+1023)/1024)
+	}
 	limits["disk_gb"] = order.DiskGb
 	limits["disk_mb"] = order.DiskGb * 1024
 	shares := intFromAny(tariff["cpu_shares"])
@@ -495,6 +502,9 @@ func tariffLimits(tariff map[string]any, order pricing.RentOrder, base map[strin
 	} else {
 		delete(limits, "cpu_shares")
 		limits["cpu"] = order.CPUCores
+		if order.CPUFrac > 0 {
+			limits["cpu"] = order.CPUFrac
+		}
 		limits["cpu_cores"] = order.CPUCores
 	}
 	if order.Slots > 0 {

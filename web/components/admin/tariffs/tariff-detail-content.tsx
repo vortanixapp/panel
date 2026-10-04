@@ -214,13 +214,13 @@ function TariffDetailView({
           <div className="grid grid-cols-2 gap-3">
             <StatCard
               label="CPU"
-              value={tariff.cpu_cores === 0 ? "∞" : String(tariff.cpu_cores)}
+              value={tariff.cpu_cores === 0 ? "∞" : String(tariff.cpu_cores_f ?? tariff.cpu_cores)}
               suffix={t("admin.tariffs.cores")}
             />
             <StatCard
               label="RAM"
-              value={String(tariff.ram_gb)}
-              suffix={t("admin.infra.unit_gb")}
+              value={tariff.ram_mb && tariff.ram_mb % 1024 !== 0 ? String(tariff.ram_mb) : String(tariff.ram_gb)}
+              suffix={tariff.ram_mb && tariff.ram_mb % 1024 !== 0 ? t("admin.infra.unit_mb") : t("admin.infra.unit_gb")}
             />
             <StatCard
               label={t("admin.dashboard.col_disk")}

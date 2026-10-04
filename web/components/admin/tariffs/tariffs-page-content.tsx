@@ -33,7 +33,8 @@ function getParams(tariff: AdminTariff, t: TranslateFn) {
       max: tariff.max_slots,
     });
   }
-  return `${tariff.cpu_cores} CPU / ${tariff.ram_gb} GB / ${tariff.disk_gb} GB`;
+  const ram = tariff.ram_mb && tariff.ram_mb % 1024 !== 0 ? `${tariff.ram_mb} MB` : `${tariff.ram_gb} GB`;
+  return `${tariff.cpu_cores_f ?? tariff.cpu_cores} CPU / ${ram} / ${tariff.disk_gb} GB`;
 }
 
 function pageWindow(current: number, last: number): number[] {

@@ -203,8 +203,10 @@ func tariffToLegacyJSON(row *tariffRow) map[string]any {
 		}
 	}
 	cpuCores := 0
+	cpuCoresF := 0.0
 	if row.CPUCores != nil {
-		cpuCores = int(*row.CPUCores)
+		cpuCores = int(math.Ceil(*row.CPUCores))
+		cpuCoresF = *row.CPUCores
 	}
 	minSlots := 1
 	maxSlots := 100
@@ -266,8 +268,10 @@ func tariffToLegacyJSON(row *tariffRow) map[string]any {
 		"min_slots":          minSlots,
 		"max_slots":          maxSlots,
 		"cpu_cores":          cpuCores,
+		"cpu_cores_f":        cpuCoresF,
 		"cpu_shares":         intPtrValue(row.CPUShares),
 		"ram_gb":             ramGB,
+		"ram_mb":             ramMBOf(row.RAMMb, ramGB),
 		"disk_gb":            diskGB,
 		"rental_periods":     jsonIntSlice(row.RentalPeriods),
 		"renewal_periods":    jsonIntSlice(row.RenewalPeriods),
@@ -516,8 +520,10 @@ type tariffPayload struct {
 	MinSlots         int
 	MaxSlots         int
 	CPUCores         int
+	CPUCoresF        float64
 	CPUShares        *int
 	RAMGb            int
+	RAMMb            int
 	DiskGb           int
 	RentalPeriods    []int
 	RenewalPeriods   []int
@@ -651,7 +657,11 @@ func parseTariffPayload(body map[string]any) (tariffPayload, string) {
 	if len(renewal) == 0 {
 		return tariffPayload{}, "renewal_periods required"
 	}
-	cpuCores := tariffBodyInt(body, "cpu_cores", 1)
+	cpuF := 1.0
+	if _, present := body["cpu_cores"]; present {
+		cpuF = math.Round(tariffBodyFloat(body, "cpu_cores")*100) / 100
+	}
+	cpuCores := int(math.Ceil(cpuF))
 	var cpuShares *int
 	if cpuCores == 0 {
 		if v := tariffBodyIntPtr(body, "cpu_shares"); v != nil {
@@ -727,8 +737,10 @@ func parseTariffPayload(body map[string]any) (tariffPayload, string) {
 		MinSlots:         minSlots,
 		MaxSlots:         maxSlots,
 		CPUCores:         cpuCores,
+		CPUCoresF:        cpuF,
 		CPUShares:        cpuShares,
 		RAMGb:            tariffBodyInt(body, "ram_gb", 1),
+		RAMMb:            tariffBodyInt(body, "ram_mb", 0),
 		DiskGb:           tariffBodyInt(body, "disk_gb", 10),
 		RentalPeriods:    rental,
 		RenewalPeriods:   renewal,
@@ -754,11 +766,16 @@ func validateTariffPayload(p tariffPayload) string {
 			return "сроки аренды и продления — от 1 до 365 дней"
 		}
 	}
-	if p.CPUCores < 0 {
+	if p.CPUCoresF < 0 {
 		return "число ядер не может быть отрицательным"
 	}
 	if p.CPUShares != nil && *p.CPUShares < 2 {
 		return "CPU shares — не меньше 2"
+	}
+	if p.RAMMb > 0 {
+		if p.RAMMb < 64 || p.RAMMb > 4194304 {
+			return "ОЗУ контейнера — от 64 МБ"
+		}
 	}
 	if p.RAMGb < 1 || p.DiskGb < 1 {
 		return "RAM и диск контейнера — не меньше 1 ГБ"
@@ -844,6 +861,7 @@ func tariffMetaFromPayload(p tariffPayload) ([]byte, float64) {
 	view := map[string]any{
 		"billing_type": p.BillingType,
 		"cpu_cores":    p.CPUCores,
+		"cpu_cores_f":  p.CPUCoresF,
 		"ram_gb":       p.RAMGb,
 		"disk_gb":      p.DiskGb,
 		"min_slots":    p.MinSlots,
@@ -895,8 +913,11 @@ func (h *Handler) CreateTariff(w http.ResponseWriter, r *http.Request) {
 		slotsMax = 100
 	}
 	ramMb := payload.RAMGb * 1024
+	if payload.RAMMb > 0 {
+		ramMb = payload.RAMMb
+	}
 	diskMb := payload.DiskGb * 1024
-	cpuCores := float64(payload.CPUCores)
+	cpuCores := payload.CPUCoresF
 	slug := slugFromTariffName(payload.Name)
 	_, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		INSERT INTO core.tariffs ( node_id, game_id, name, slug, billing_type, price_monthly,
@@ -947,8 +968,11 @@ func (h *Handler) updateTariffFromBody(w http.ResponseWriter, r *http.Request) {
 		slotsMax = 100
 	}
 	ramMb := payload.RAMGb * 1024
+	if payload.RAMMb > 0 {
+		ramMb = payload.RAMMb
+	}
 	diskMb := payload.DiskGb * 1024
-	cpuCores := float64(payload.CPUCores)
+	cpuCores := payload.CPUCoresF
 	tag, err := h.dbOf(r.Context()).Exec(r.Context(), `
 		UPDATE core.tariffs SET
 			node_id = $2, game_id = $3, name = $4, billing_type = $5, price_monthly = $6,
@@ -1004,4 +1028,11 @@ func (h *Handler) DeleteTariff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func ramMBOf(ramMb *int, ramGB int) int {
+	if ramMb != nil && *ramMb > 0 {
+		return *ramMb
+	}
+	return ramGB * 1024
 }

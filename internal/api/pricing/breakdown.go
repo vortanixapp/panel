@@ -44,7 +44,11 @@ func Breakdown(tariff map[string]any, order RentOrder, periodDays int) []Line {
 		cpu := positive(order.CPUCores, positive(intVal(tariff["cpu_cores"]), 1))
 		ram := positive(order.RAMGb, positive(intVal(tariff["ram_gb"]), 1))
 		disk := positive(order.DiskGb, positive(intVal(tariff["disk_gb"]), 10))
-		add("cpu", float64(cpu)*floatVal(tariff["price_per_cpu_core"]), cpu, floatVal(tariff["price_per_cpu_core"]))
+		cpuF := float64(cpu)
+		if order.CPUFrac > 0 {
+			cpuF = order.CPUFrac
+		}
+		add("cpu", cpuF*floatVal(tariff["price_per_cpu_core"]), cpu, floatVal(tariff["price_per_cpu_core"]))
 		add("ram", float64(ram)*floatVal(tariff["price_per_ram_gb"]), ram, floatVal(tariff["price_per_ram_gb"]))
 		add("disk", float64(disk)*floatVal(tariff["price_per_disk_gb"]), disk, floatVal(tariff["price_per_disk_gb"]))
 	default:

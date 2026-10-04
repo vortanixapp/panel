@@ -908,6 +908,7 @@ export const adminContent = {
   "admin.tariff_form.cpu_shares_hint":
     "CPU shares is available only when CPU cores = 0",
   "admin.tariff_form.ram_gb": "RAM, GB",
+  "admin.tariff_form.ram_mb": "RAM, MB (ignored when the tenant picks RAM)",
   "admin.tariff_form.disk_gb": "Disk, GB",
   "admin.tariff_form.billing_slots_hint": "The client pays per slot",
   "admin.tariff_form.billing_resources_hint":

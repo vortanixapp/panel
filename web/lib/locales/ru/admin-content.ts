@@ -903,6 +903,7 @@ export const adminContent = {
   "admin.tariff_form.cpu_shares_hint":
     "CPU shares доступен, только когда CPU cores = 0",
   "admin.tariff_form.ram_gb": "RAM, ГБ",
+  "admin.tariff_form.ram_mb": "RAM, МБ (не действует, если арендатор выбирает ОЗУ сам)",
   "admin.tariff_form.disk_gb": "Диск, ГБ",
   "admin.tariff_form.billing_slots_hint": "Клиент платит за количество слотов",
   "admin.tariff_form.billing_resources_hint":
