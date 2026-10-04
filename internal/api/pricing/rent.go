@@ -77,7 +77,7 @@ func Resolve(tariff map[string]any, order RentOrder) RentOrder {
 		DiskGb:          ResourceRange(tariff, "disk").Fit(order.DiskGb),
 		AntiddosEnabled: order.AntiddosEnabled && boolVal(tariff["allow_antiddos"]),
 	}
-	if order.Slots > 0 || billingType(tariff) == "slots" {
+	if billingType(tariff) == "slots" {
 		out.Slots = SlotRange(tariff).Fit(order.Slots)
 	}
 	return out

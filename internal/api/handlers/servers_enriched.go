@@ -384,8 +384,11 @@ func (h *Handler) enrichServerDetail(ctx context.Context, serverID string, item 
 		if diskMB != nil {
 			tariff["disk_mb"] = *diskMB
 		}
-		if slotsMax != nil {
+		itemGameID, _ := item["game_id"].(string)
+		if tariffBilling != nil && *tariffBilling == "slots" && slotsMax != nil {
 			tariff["slots"] = *slotsMax
+		} else if n := configuredSlots(itemGameID, config); n > 0 {
+			tariff["slots"] = n
 		}
 		var renewal []int
 		_ = json.Unmarshal(tariffRenewal, &renewal)

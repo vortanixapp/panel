@@ -172,7 +172,7 @@ export function ServerTariffTab() {
     mutationFn: () =>
       changeServerTariffResources(
         id,
-        { cpu_cores: cpuCores, ram_gb: ramGb, disk_gb: diskGb, slots },
+        { cpu_cores: cpuCores, ram_gb: ramGb, disk_gb: diskGb, slots: tuneSlots ? slots : 0 },
         walletId || billing?.selected_wallet?.id
       ),
     onSuccess: (data) => {
@@ -232,7 +232,7 @@ export function ServerTariffTab() {
   const resourcesPreview = useQuery({
     queryKey: ["server-tariff-resources-preview", id, cpuCores, ramGb, diskGb, slots],
     queryFn: () =>
-      previewServerTariffResources(id, { cpu_cores: cpuCores, ram_gb: ramGb, disk_gb: diskGb, slots }),
+      previewServerTariffResources(id, { cpu_cores: cpuCores, ram_gb: ramGb, disk_gb: diskGb, slots: tuneSlots ? slots : 0 }),
     enabled: !!id && showResourceSliders,
   });
 

@@ -56,6 +56,7 @@ export function slotRange(
   fallback: number
 ): TariffRange {
   if (!tariff) return { min: fallback, max: fallback, step: 1, default: fallback };
+  if (tariff.billing_type !== "slots") return { min: fallback, max: fallback, step: 1, default: fallback };
   const min = Math.max(1, num(tariff.min_slots) || 1);
   const max = Math.max(num(tariff.max_slots) || min, min);
   return { min, max, step: 1, default: min };

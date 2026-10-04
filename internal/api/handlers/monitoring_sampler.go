@@ -107,6 +107,9 @@ func (h *Handler) monitoringSampleTargets(ctx context.Context) ([]samplerTarget,
 		limits := map[string]any{}
 		_ = json.Unmarshal(limitsRaw, &limits)
 		t.Slots = limitsInt(limits, "slots")
+		if t.Slots <= 0 {
+			t.Slots = configuredSlots(t.GameID, nil)
+		}
 
 		if live, ok := h.cache.GetServerStatus(ctx, t.ServerID); ok {
 			t.Status = resolveEffectiveStatus(status, runtime, &live)

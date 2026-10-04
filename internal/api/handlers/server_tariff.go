@@ -294,7 +294,7 @@ func (h *Handler) ServerTariffResources(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
-	if body.RAMGb < 1 || body.DiskGb < 1 || body.Slots < 1 {
+	if body.RAMGb < 1 || body.DiskGb < 1 {
 		writeError(w, http.StatusBadRequest, "invalid resource values")
 		return
 	}
@@ -499,6 +499,8 @@ func tariffLimits(tariff map[string]any, order pricing.RentOrder, base map[strin
 	}
 	if order.Slots > 0 {
 		limits["slots"] = order.Slots
+	} else if bt, _ := tariff["billing_type"].(string); bt != "slots" {
+		delete(limits, "slots")
 	}
 	return limits
 }

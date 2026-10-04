@@ -177,6 +177,9 @@ func (h *Handler) loadMonitoringRows(ctx context.Context, scope monitoringScope)
 		_ = json.Unmarshal(configRaw, &config)
 
 		row.Slots = limitsInt(limits, "slots")
+		if row.Slots <= 0 {
+			row.Slots = configuredSlots(row.GameID, config)
+		}
 		row.RAMLimitMB = limitsInt(limits, "ram_mb")
 		if row.RAMLimitMB == 0 {
 			row.RAMLimitMB = limitsInt(limits, "memory_mb")
