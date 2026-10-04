@@ -584,7 +584,7 @@ func moveIntoData(extractDir, dataDir string) error {
 	if err != nil {
 		return fmt.Errorf("чтение распакованного: %w", err)
 	}
-	if len(entries) == 1 && entries[0].IsDir() {
+	if len(entries) == 1 && entries[0].IsDir() && !keptRootDirs[entries[0].Name()] {
 		src = filepath.Join(extractDir, entries[0].Name())
 		entries, err = os.ReadDir(src)
 		if err != nil {
@@ -594,6 +594,7 @@ func moveIntoData(extractDir, dataDir string) error {
 	if len(entries) == 0 {
 		return fmt.Errorf("архив пустой")
 	}
+	dropReplacedCore(entries, dataDir)
 
 	for _, e := range entries {
 		from := filepath.Join(src, e.Name())
@@ -611,6 +612,26 @@ func moveIntoData(extractDir, dataDir string) error {
 		}
 	}
 	return nil
+}
+
+var keptRootDirs = map[string]bool{"src": true}
+
+func dropReplacedCore(entries []os.DirEntry, dataDir string) {
+	hasSrc, hasPhar := false, false
+	for _, e := range entries {
+		switch {
+		case e.IsDir() && e.Name() == "src":
+			hasSrc = true
+		case !e.IsDir() && e.Name() == "PocketMine-MP.phar":
+			hasPhar = true
+		}
+	}
+	if hasSrc && !hasPhar {
+		_ = os.Remove(filepath.Join(dataDir, "PocketMine-MP.phar"))
+	}
+	if hasPhar && !hasSrc {
+		_ = os.RemoveAll(filepath.Join(dataDir, "src"))
+	}
 }
 
 func copyPath(from, to string) error {
