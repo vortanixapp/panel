@@ -212,8 +212,8 @@ export function ServerFtpTab() {
           role="button"
           tabIndex={0}
           className={cn(
-            "cursor-pointer rounded-[10px] border border-dashed p-3.5 text-[12px] transition-colors hover:border-[var(--vx-border-hover)]",
-            dragOver ? "border-[var(--vx-fg-strong)] bg-[var(--vx-veil)]" : cn("border-[var(--vx-border-2)]", VX_FAINT)
+            "cursor-pointer rounded-[14px] border border-dashed p-4 text-[12px] transition-colors hover:border-[var(--vx-border-hover)]",
+            dragOver ? "border-[var(--srv-accent)] bg-[var(--srv-accent-soft)]" : cn("border-[var(--vx-border-2)]", VX_FAINT)
           )}
           onClick={() => {
             if (!uploadingName) filePickerRef.current?.click();
@@ -245,7 +245,7 @@ export function ServerFtpTab() {
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-[var(--vx-border)]">
                 <div
-                  className="h-full bg-[var(--vx-fg-strong)] transition-[width]"
+                  className="h-full bg-[var(--srv-accent)] transition-[width]"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
@@ -253,7 +253,7 @@ export function ServerFtpTab() {
           )}
         </div>
 
-        <div className="mt-3.5 overflow-hidden rounded-[10px] border border-[var(--vx-inset)]">
+        <div className="mt-3.5 overflow-hidden rounded-[14px] border border-[var(--vx-border)]">
           {files.length === 0 ? (
             <EmptyState>{t("servers.ftp.empty")}</EmptyState>
           ) : (

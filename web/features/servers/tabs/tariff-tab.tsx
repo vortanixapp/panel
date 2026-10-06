@@ -256,6 +256,66 @@ export function ServerTariffTab() {
 
   return (
     <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-2">
+      {availableTariffs.length > 1 && (
+        <div className="lg:col-span-2">
+          <Panel title={t("servers.tariff.plans_title")} bodyClassName="p-6">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3.5">
+              {availableTariffs.map((item) => {
+                const current = String(item.id) === String(tariff?.id ?? "");
+                const specs: string[] = [];
+                const rng = (lo: number | undefined, hi: number) => (lo === undefined || lo === hi ? String(hi) : `${lo}–${hi}`);
+                if (item.cpu_max) specs.push(`CPU ${rng(item.cpu_min, item.cpu_max)}`);
+                if (item.ram_max) specs.push(`RAM ${rng(item.ram_min, item.ram_max)} GB`);
+                if (item.disk_max) specs.push(`${t("servers.tariff.slider_disk")} ${rng(item.disk_min, item.disk_max)} GB`);
+                if (item.max_slots) specs.push(`${t("servers.tariff.slider_slots")} ${rng(item.min_slots, item.max_slots)}`);
+                if (item.base_price_monthly != null) {
+                  specs.push(
+                    t("servers.tariff.price_per_month", {
+                      amount: formatAmount(item.base_price_monthly),
+                      currency: item.currency ?? "RUB",
+                    })
+                  );
+                }
+                return (
+                  <div
+                    key={String(item.id)}
+                    className={cn(
+                      "flex flex-col gap-3.5 rounded-2xl border p-5",
+                      current
+                        ? "border-[var(--srv-accent)] bg-[var(--srv-accent-soft)]"
+                        : "border-[var(--vx-border)]"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[18px] font-semibold">{item.name}</span>
+                      {current && (
+                        <span className="rounded-full bg-[var(--srv-accent-soft)] px-2.5 py-[3px] text-[11px] text-[var(--srv-accent)]">
+                          {t("servers.tariff.plan_current")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 font-mono text-[12.5px] text-[var(--vx-muted)]">
+                      {specs.map((sp) => (
+                        <span key={sp}>{sp}</span>
+                      ))}
+                    </div>
+                    <Btn
+                      className="mt-auto h-[38px] w-full"
+                      disabled={current || changeTariffMutation.isPending}
+                      onClick={() => {
+                        setSelectedTariffId(String(item.id));
+                        changeTariffMutation.mutate(String(item.id));
+                      }}
+                    >
+                      {current ? t("servers.tariff.plan_active") : t("servers.tariff.plan_switch")}
+                    </Btn>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+        </div>
+      )}
       <Panel
         title={t("servers.tariff.renew_title")}
         bodyClassName="flex flex-col gap-3.5 p-[18px]"
@@ -269,7 +329,7 @@ export function ServerTariffTab() {
               className={cn(
                 "h-[34px] rounded-[9px] border text-[12.5px] font-medium transition-colors",
                 renewPeriod === p
-                  ? "border-[var(--vx-fg-strong)] bg-[var(--vx-fg-strong)] text-[var(--vx-on-fill)]"
+                  ? "border-[var(--srv-accent)] bg-[var(--srv-accent)] text-[var(--srv-accent-on)]"
                   : "border-[var(--vx-border-2)] bg-[var(--vx-inset)] text-[var(--vx-fg)] hover:border-[var(--vx-border-strong)]"
               )}
             >
@@ -340,7 +400,7 @@ export function ServerTariffTab() {
             checked={autoRenew}
             onChange={(e) => autoRenewMutation.mutate(e.target.checked)}
             disabled={autoRenewMutation.isPending}
-            className="mt-0.5 size-4 accent-[var(--vx-fg-strong)]"
+            className="mt-0.5 size-4"
           />
           <span className="text-[12.5px]">
             {t("servers.tariff.autorenew_label")}

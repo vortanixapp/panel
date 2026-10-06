@@ -11,7 +11,7 @@ import { SettingsRawTab } from "@/components/servers/settings/settings-raw-tab";
 import { SettingsRestartPrompt } from "@/components/servers/settings/settings-restart-prompt";
 import { SettingsSectionForm } from "@/components/servers/settings/settings-section-form";
 import { SettingsStartupTab } from "@/components/servers/settings/settings-startup-tab";
-import { Btn, EmptyState, Field, Notice, Panel, SubTabs, VX_INPUT, VX_SELECT } from "@/components/vx/panel-ui";
+import { Btn, EmptyState, FormRow, Notice, Panel, SubTabs, Toggle, VX_INPUT, VX_SELECT } from "@/components/vx/panel-ui";
 import { VxInlineLoader } from "@/components/vx/loader";
 import { useDeleteServer, usePowerServer, useServerDetail } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
@@ -310,76 +310,50 @@ function ServerMetaPanel({ serverId, canEdit }: { serverId: string; canEdit: boo
   if (!server) return null;
 
   return (
-    <Panel title={t("servers.meta.title")}>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field label={t("billing.rent.comment")}>
-          <div className="flex items-center gap-2">
-            <input
-              className={cn(VX_INPUT, "h-9")}
-              value={currentComment}
-              disabled={!canEdit}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder={t("billing.rent.comment_placeholder")}
-            />
-            <Btn
-              size="sm"
-              disabled={!canEdit || comment === null || mutation.isPending}
-              onClick={() => mutation.mutate({ comment: currentComment })}
-            >
-              {t("common.save")}
-            </Btn>
-          </div>
-        </Field>
+    <Panel title={t("servers.meta.title")} bodyClassName="px-6 py-1">
+      <FormRow label={t("billing.rent.comment")}>
+        <input
+          className={cn(VX_INPUT, "h-[38px] w-[280px] max-w-full rounded-[10px] text-[13px]")}
+          value={currentComment}
+          disabled={!canEdit}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder={t("billing.rent.comment_placeholder")}
+        />
+        <Btn
+          disabled={!canEdit || comment === null || mutation.isPending}
+          onClick={() => mutation.mutate({ comment: currentComment })}
+        >
+          {t("common.save")}
+        </Btn>
+      </FormRow>
 
-        <Field label={t("billing.rent.project")}>
-          <select
-            className={cn(VX_SELECT, "h-9 w-full")}
-            value={projectId}
-            disabled={!canEdit || mutation.isPending}
-            onChange={(e) => mutation.mutate({ project_id: e.target.value })}
-          >
-            <option value="">{t("billing.rent.no_project")}</option>
-            {(projectsQuery.data?.projects ?? []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+      <FormRow label={t("billing.rent.project")}>
+        <select
+          className={cn(VX_SELECT, "h-[38px] min-w-[200px] rounded-[10px] text-[13px]")}
+          value={projectId}
+          disabled={!canEdit || mutation.isPending}
+          onChange={(e) => mutation.mutate({ project_id: e.target.value })}
+        >
+          <option value="">{t("billing.rent.no_project")}</option>
+          {(projectsQuery.data?.projects ?? []).map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </FormRow>
 
-        <div className="sm:col-span-2">
-          <button
-            type="button"
-            disabled={!canEdit || mutation.isPending}
-            onClick={() => mutation.mutate({ delete_protection: !protection })}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-[12px] border bg-[var(--vx-bg)] p-3.5 text-left transition-colors disabled:opacity-60",
-              protection
-                ? "border-[var(--vx-fg-strong)]"
-                : "border-[var(--vx-border)] hover:border-[var(--vx-border-strong)]"
-            )}
-          >
-            <span
-              className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px]",
-                protection
-                  ? "bg-[var(--vx-fg-strong)] text-[var(--vx-on-fill)]"
-                  : "bg-[var(--vx-tint)]"
-              )}
-            >
-              <i className="ri-shield-keyhole-line text-[16px]" />
-            </span>
-            <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-[13px] font-medium">
-                {t("billing.rent.delete_protection")}
-              </span>
-              <span className="text-[11.5px] leading-[1.45] text-[var(--vx-muted)]">
-                {t("billing.rent.delete_protection_note")}
-              </span>
-            </span>
-          </button>
-        </div>
-      </div>
+      <FormRow
+        label={t("billing.rent.delete_protection")}
+        hint={t("billing.rent.delete_protection_note")}
+      >
+        <Toggle
+          label={t("billing.rent.delete_protection")}
+          checked={protection}
+          disabled={!canEdit || mutation.isPending}
+          onChange={(next) => mutation.mutate({ delete_protection: next })}
+        />
+      </FormRow>
     </Panel>
   );
 }

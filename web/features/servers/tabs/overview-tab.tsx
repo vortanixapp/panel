@@ -9,6 +9,7 @@ import {
   Btn,
   EmptyState,
   Field,
+  FormRow,
   InfoRow,
   Panel,
   VX_CODE,
@@ -445,7 +446,7 @@ export function ServerOverviewTab() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
+      <div className="grid grid-cols-1 overflow-hidden rounded-[22px] border border-[var(--vx-border)] bg-[var(--vx-card)] sm:grid-cols-2 xl:grid-cols-4">
         <Tile
           label={t("servers.overview.tile_online")}
           value={slotsLabel}
@@ -469,6 +470,7 @@ export function ServerOverviewTab() {
           pct={cpuPct}
         />
         <Tile
+          tone="warn"
           label="RAM"
           value={metricsLoading ? "…" : running ? `${memPct.toFixed(1)}%` : "—"}
           sub={
@@ -479,6 +481,7 @@ export function ServerOverviewTab() {
           pct={memPct}
         />
         <Tile
+          tone="info"
           label={t("servers.overview.tile_disk")}
           value={diskTotalMb > 0 ? `${diskPct.toFixed(0)}%` : "—"}
           sub={diskSub}
@@ -486,183 +489,22 @@ export function ServerOverviewTab() {
         />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-        <div className="flex flex-col gap-[18px]">
-          <Panel title={t("servers.overview.panel_summary")} flush>
-            <div className="px-[18px] pt-1.5 pb-3.5">
-              {infoRows.map(([k, v]) => (
-                <InfoRow key={k} k={k} v={v} />
-              ))}
-            </div>
-          </Panel>
-
-          <Panel title={t("servers.overview.panel_version")}>
-            <div className="flex flex-col gap-3">
-              {versions.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    className={cn(VX_SELECT, "min-w-[150px] flex-1")}
-                    value={effectiveVersionId}
-                    onChange={(e) => setSelectedVersionId(e.target.value)}
-                    disabled={lifecycleMutation.isPending}
-                  >
-                    {versions.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                        {v.source_type ? ` · ${v.source_type}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <Btn
-                    disabled={
-                      lifecycleMutation.isPending ||
-                      !canSwitchVersion(server) ||
-                      perms.can_reinstall === false ||
-                      !effectiveVersionId ||
-                      effectiveVersionId === currentVersionId
-                    }
-                    title={
-                      !canSwitchVersion(server)
-                        ? t("servers.overview.switch_version_hint")
-                        : undefined
-                    }
-                    onClick={async () => {
-                      const message = keepData
-                        ? t("servers.overview.switch_version_keep_confirm")
-                        : t("servers.overview.switch_version_confirm");
-                      if (!(await confirmAction(message))) return;
-                      lifecycleMutation.mutate(`version:${effectiveVersionId}`);
-                    }}
-                  >
-                    {t("servers.overview.switch")}
-                  </Btn>
-                </div>
-              )}
-
-              {versions.length > 0 && (
-                <label className="flex items-start gap-2 text-[12px] leading-[1.35]">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={keepData}
-                    onChange={(e) => setKeepData(e.target.checked)}
-                    disabled={lifecycleMutation.isPending}
-                  />
-                  <span>
-                    {t("servers.overview.keep_data")}
-                    <span className={cn("block", VX_FAINT)}>
-                      {t("servers.overview.keep_data_hint")}
-                    </span>
-                  </span>
-                </label>
-              )}
-
-              {runtimeInfo?.supported && (runtimeInfo.versions?.length ?? 0) > 0 && (
-                <div className="flex flex-col gap-2">
-                  <span className={cn("text-[12px]", VX_MUTED)}>
-                    {runtimeInfo.kind === "php"
-                      ? t("servers.overview.runtime_php")
-                      : t("servers.overview.runtime_java")}
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    <select
-                      className={cn(VX_SELECT, "min-w-[150px] flex-1")}
-                      value={runtimeValue}
-                      onChange={(e) => setSelectedRuntime(e.target.value)}
-                      disabled={runtimeMutation.isPending || runtimeQuery.isLoading}
-                    >
-                      <option value="">{t("servers.overview.runtime_auto")}</option>
-                      {(runtimeInfo.versions ?? []).map((v) => (
-                        <option key={v} value={v}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
-                    <Btn
-                      disabled={
-                        runtimeMutation.isPending ||
-                        perms.can_files === false ||
-                        runtimeValue === runtimeCurrent
-                      }
-                      onClick={() => runtimeMutation.mutate(runtimeValue)}
-                    >
-                      {t("common.save")}
-                    </Btn>
-                  </div>
-                  <span className={cn("text-[11.5px]", VX_FAINT)}>
-                    {t("servers.overview.runtime_hint")}
-                  </span>
-                </div>
-              )}
-
-              {isOwner && (
-                <div className="flex items-center justify-between gap-3 rounded-[10px] border border-[var(--vx-border)] bg-[var(--vx-elevated)] px-3 py-2.5 text-[12.5px]">
-                  <span>{t("servers.overview.auto_restart")}</span>
-                  <Toggle
-                    label={t("servers.overview.auto_restart")}
-                    checked={!!server.auto_start_enabled}
-                    disabled={autoStartMutation.isPending || expired}
-                    onChange={(next) => autoStartMutation.mutate(next)}
-                  />
-                </div>
-              )}
-
-              {showChangeMap && (
-                <Btn onClick={() => setChangeMapOpen(true)} disabled={mapsFolderQuery.isFetching}>
-                  {mapsFolderQuery.isFetching
-                    ? t("servers.overview.maps_loading")
-                    : t("servers.overview.change_map")}
-                </Btn>
-              )}
-
-              {showUpdate && (
-                <Btn
-                  onClick={() => lifecycleMutation.mutate("update")}
-                  disabled={lifecycleMutation.isPending}
-                >
-                  {lifecycleMutation.isPending
-                    ? t("common.updating")
-                    : t("servers.overview.update_steam")}
-                </Btn>
-              )}
-
-              <div className="flex gap-2">
-                {showReinstall && !isInstallFailed && (
-                  <Btn
-                    className="flex-1"
-                    disabled={lifecycleMutation.isPending}
-                    onClick={async () => {
-                      if (!await confirmAction(t("servers.overview.reinstall_confirm"))) return;
-                      lifecycleMutation.mutate("reinstall");
-                    }}
-                  >
-                    {t("servers.shell.reinstall")}
-                  </Btn>
-                )}
-                {isOwner && !billedInWhmcs && (
-                  <Btn tone="primary" className="flex-1" onClick={() => setRenewOpen(true)}>
-                    {t("servers.shell.extend_rent")}
-                  </Btn>
-                )}
-                {isOwner && billedInWhmcs && server.whmcs?.manage_url && (
-                  <a
-                    href={server.whmcs.manage_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(btnClass("primary"), "flex-1")}
-                  >
-                    {t("servers.whmcs.manage")}
-                  </a>
-                )}
-              </div>
-            </div>
-          </Panel>
-        </div>
-
-        <div className="flex flex-col gap-[18px]">
+      <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-[18px]">
           <Panel
             title={t("servers.overview.panel_load")}
-            aside={<span className={cn("font-mono text-[11px]", VX_FAINT)}>CPU · RAM</span>}
+            aside={
+              <span className="flex items-center gap-4 text-[12px] text-[var(--vx-muted)]">
+                <span className="flex items-center gap-[7px]">
+                  <span className="h-[3px] w-3.5 rounded-sm bg-[var(--srv-green)]" />
+                  CPU {running && !metricsLoading ? `${cpuPct.toFixed(1)}%` : "—"}
+                </span>
+                <span className="flex items-center gap-[7px]">
+                  <span className="w-3.5 border-t-2 border-dashed border-[var(--srv-warn)]" />
+                  RAM {running && !metricsLoading ? `${memPct.toFixed(1)}%` : "—"}
+                </span>
+              </span>
+            }
           >
             {metrics.length === 0 ? (
               metricsLoading ? (
@@ -675,38 +517,213 @@ export function ServerOverviewTab() {
                 <svg
                   viewBox={`0 0 ${CHART_W} ${CHART_H}`}
                   preserveAspectRatio="none"
-                  className="block h-[150px] w-full"
+                  className="block h-[220px] w-full"
                 >
-                  <polyline
-                    points={charts.cpu}
-                    fill="none"
-                    stroke="var(--vx-fg-strong)"
-                    strokeWidth={1.6}
-                    strokeLinejoin="round"
+                  <defs>
+                    <linearGradient id="srv2-ram-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stopColor="var(--srv-warn)" stopOpacity="0.18" />
+                      <stop offset="1" stopColor="var(--srv-warn)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <g stroke="var(--vx-border)" strokeWidth="1">
+                    {[0.1, 0.35, 0.6, 0.85].map((f) => (
+                      <line key={f} x1="0" x2={CHART_W} y1={CHART_H * f} y2={CHART_H * f} />
+                    ))}
+                  </g>
+                  <polygon
+                    points={`0,${CHART_H} ${charts.ram} ${CHART_W},${CHART_H}`}
+                    fill="url(#srv2-ram-fill)"
                   />
                   <polyline
                     points={charts.ram}
                     fill="none"
-                    stroke="var(--vx-faint)"
-                    strokeWidth={1.6}
-                    strokeDasharray="5 4"
+                    stroke="var(--srv-warn)"
+                    strokeWidth={2}
+                    strokeDasharray="6 6"
                     strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <polyline
+                    points={charts.cpu}
+                    fill="none"
+                    stroke="var(--srv-green)"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
                   />
                 </svg>
-                <div
-                  className={cn(
-                    "mt-2.5 flex justify-between font-mono text-[10.5px]",
-                    "text-[var(--vx-faint)]"
-                  )}
-                >
+                <div className="mt-2 flex justify-between font-mono text-[11px] text-[var(--vx-ghost)]">
                   <span>{t("servers.overview.chart_earlier")}</span>
-                  <span>{t("servers.overview.chart_legend")}</span>
                   <span>{t("servers.overview.chart_now")}</span>
                 </div>
               </>
             )}
           </Panel>
 
+          <Panel
+            title={t("servers.overview.panel_version")}
+            aside={
+              showUpdate ? (
+                <Btn
+                  onClick={() => lifecycleMutation.mutate("update")}
+                  disabled={lifecycleMutation.isPending}
+                >
+                  {lifecycleMutation.isPending
+                    ? t("common.updating")
+                    : t("servers.overview.update_steam")}
+                </Btn>
+              ) : undefined
+            }
+            bodyClassName="px-6 py-1"
+          >
+            {versions.length > 0 && (
+              <FormRow label={t("servers.overview.row_version")}>
+                <select
+                  className={cn(VX_SELECT, "h-[38px] min-w-[170px] rounded-[10px] text-[13px]")}
+                  value={effectiveVersionId}
+                  onChange={(e) => setSelectedVersionId(e.target.value)}
+                  disabled={lifecycleMutation.isPending}
+                >
+                  {versions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                      {v.source_type ? ` · ${v.source_type}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <Btn
+                  disabled={
+                    lifecycleMutation.isPending ||
+                    !canSwitchVersion(server) ||
+                    perms.can_reinstall === false ||
+                    !effectiveVersionId ||
+                    effectiveVersionId === currentVersionId
+                  }
+                  title={
+                    !canSwitchVersion(server)
+                      ? t("servers.overview.switch_version_hint")
+                      : undefined
+                  }
+                  onClick={async () => {
+                    const message = keepData
+                      ? t("servers.overview.switch_version_keep_confirm")
+                      : t("servers.overview.switch_version_confirm");
+                    if (!(await confirmAction(message))) return;
+                    lifecycleMutation.mutate(`version:${effectiveVersionId}`);
+                  }}
+                >
+                  {t("servers.overview.switch")}
+                </Btn>
+              </FormRow>
+            )}
+
+            {versions.length > 0 && (
+              <FormRow
+                label={t("servers.overview.keep_data")}
+                hint={t("servers.overview.keep_data_hint")}
+              >
+                <Toggle
+                  label={t("servers.overview.keep_data")}
+                  checked={keepData}
+                  disabled={lifecycleMutation.isPending}
+                  onChange={setKeepData}
+                />
+              </FormRow>
+            )}
+
+            {runtimeInfo?.supported && (runtimeInfo.versions?.length ?? 0) > 0 && (
+              <FormRow
+                label={
+                  runtimeInfo.kind === "php"
+                    ? t("servers.overview.runtime_php")
+                    : t("servers.overview.runtime_java")
+                }
+                hint={t("servers.overview.runtime_hint")}
+              >
+                <select
+                  className={cn(VX_SELECT, "h-[38px] min-w-[170px] rounded-[10px] text-[13px]")}
+                  value={runtimeValue}
+                  onChange={(e) => setSelectedRuntime(e.target.value)}
+                  disabled={runtimeMutation.isPending || runtimeQuery.isLoading}
+                >
+                  <option value="">{t("servers.overview.runtime_auto")}</option>
+                  {(runtimeInfo.versions ?? []).map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+                <Btn
+                  disabled={
+                    runtimeMutation.isPending ||
+                    perms.can_files === false ||
+                    runtimeValue === runtimeCurrent
+                  }
+                  onClick={() => runtimeMutation.mutate(runtimeValue)}
+                >
+                  {t("common.save")}
+                </Btn>
+              </FormRow>
+            )}
+
+            {isOwner && (
+              <FormRow label={t("servers.overview.auto_restart")}>
+                <Toggle
+                  label={t("servers.overview.auto_restart")}
+                  checked={!!server.auto_start_enabled}
+                  disabled={autoStartMutation.isPending || expired}
+                  onChange={(next) => autoStartMutation.mutate(next)}
+                />
+              </FormRow>
+            )}
+
+            {showChangeMap && (
+              <FormRow label={t("servers.overview.row_map")}>
+                <Btn onClick={() => setChangeMapOpen(true)} disabled={mapsFolderQuery.isFetching}>
+                  {mapsFolderQuery.isFetching
+                    ? t("servers.overview.maps_loading")
+                    : t("servers.overview.change_map")}
+                </Btn>
+              </FormRow>
+            )}
+
+            <div className="flex flex-wrap gap-2.5 py-4">
+              {showReinstall && !isInstallFailed && (
+                <Btn
+                  className="h-11 min-w-[140px] flex-1 rounded-xl"
+                  disabled={lifecycleMutation.isPending}
+                  onClick={async () => {
+                    if (!await confirmAction(t("servers.overview.reinstall_confirm"))) return;
+                    lifecycleMutation.mutate("reinstall");
+                  }}
+                >
+                  {t("servers.shell.reinstall")}
+                </Btn>
+              )}
+              {isOwner && !billedInWhmcs && (
+                <Btn
+                  tone="primary"
+                  className="h-11 min-w-[140px] flex-1 rounded-xl"
+                  onClick={() => setRenewOpen(true)}
+                >
+                  {t("servers.shell.extend_rent")}
+                </Btn>
+              )}
+              {isOwner && billedInWhmcs && server.whmcs?.manage_url && (
+                <a
+                  href={server.whmcs.manage_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(btnClass("primary"), "h-11 min-w-[140px] flex-1 rounded-xl")}
+                >
+                  {t("servers.whmcs.manage")}
+                </a>
+              )}
+            </div>
+          </Panel>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-[18px]">
           <Panel
             title={t("servers.overview.panel_players")}
             aside={
@@ -716,7 +733,29 @@ export function ServerOverviewTab() {
             }
             flush
           >
-            <div className="px-[18px] pt-1.5 pb-3.5">
+            <div className="px-6 pt-1 pb-5">
+              {Math.min(Math.max(maxPlayers, onlineCount, 0), 100) > 0 && (
+                <div className="mt-3 mb-4 grid grid-cols-10 gap-1.5">
+                  {Array.from({ length: Math.min(Math.max(maxPlayers, onlineCount, 0), 100) }, (_, i) => {
+                    const p = playersOnline[i];
+                    const busy = i < onlineCount;
+                    return (
+                      <div
+                        key={i}
+                        title={p?.name}
+                        className={cn(
+                          "grid aspect-square place-items-center rounded-lg text-[11px] font-semibold uppercase",
+                          busy
+                            ? "bg-[var(--srv-accent-soft)] text-[var(--srv-accent)]"
+                            : "border border-dashed border-[var(--vx-border-2)]"
+                        )}
+                      >
+                        {busy ? (p?.name?.[0] ?? "") : ""}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               <div
                 className={cn(
                   "grid items-center gap-3 py-[9px] text-[10.5px] tracking-[0.08em] uppercase",
@@ -740,7 +779,7 @@ export function ServerOverviewTab() {
               </div>
 
               {playersOnline.length === 0 ? (
-                <EmptyState>{t("servers.overview.no_data")}</EmptyState>
+                <div className="py-1 text-center text-[var(--vx-ghost)]">{t("servers.overview.no_data")}</div>
               ) : (
                 playersOnline.map((p, idx) => (
                   <div
@@ -783,6 +822,34 @@ export function ServerOverviewTab() {
                     )}
                   </div>
                 ))
+              )}
+            </div>
+          </Panel>
+
+          <Panel title={t("servers.overview.panel_summary")} flush>
+            <div className="px-6 pt-1.5 pb-5">
+              {infoRows.map(([k, v]) => (
+                <InfoRow key={k} k={k} v={v} />
+              ))}
+              {!billedInWhmcs && expiresAt && (
+                <div className="mt-4">
+                  <div className="mb-2 flex justify-between text-[12px] text-[var(--vx-muted)]">
+                    <span>{t("servers.overview.days", { days: expired ? 0 : daysLeft })}</span>
+                    <span>{server.rental_period_days ? `/ ${server.rental_period_days}` : ""}</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-[var(--vx-border)]">
+                    <div
+                      className="h-full bg-[var(--srv-accent)] transition-[width] duration-500"
+                      style={{
+                        width: `${
+                          server.rental_period_days
+                            ? Math.max(0, Math.min(100, ((expired ? 0 : daysLeft) / server.rental_period_days) * 100))
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
           </Panel>

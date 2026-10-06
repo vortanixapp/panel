@@ -786,3 +786,146 @@ html[data-theme-switching] *::after {
     color: var(--muted-foreground);
   }
 }
+
+.srv2 {
+  --srv-accent: var(--vx-fg-strong);
+  --srv-accent-soft: var(--vx-veil-strong);
+  --srv-accent-on: var(--vx-on-fill);
+  --srv-green: oklch(0.55 0.17 135);
+  --srv-warn: oklch(0.62 0.14 70);
+  --srv-info: oklch(0.55 0.13 235);
+  --srv-violet: oklch(0.55 0.17 320);
+  --srv-radius: 22px;
+}
+.dark .srv2 {
+  --srv-green: oklch(0.87 0.18 135);
+  --srv-warn: oklch(0.87 0.15 75);
+  --srv-info: oklch(0.87 0.15 230);
+  --srv-violet: oklch(0.87 0.15 320);
+}
+.srv2 [data-spotlight] {
+  border-radius: var(--srv-radius);
+}
+.srv2 [data-spotlight] > div:first-child:not(:only-child) {
+  padding: 18px 24px;
+}
+.srv2 [data-spotlight] > div:first-child > span:first-child {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.srv2 .srv-btn-default,
+.srv2 .srv-btn-danger {
+  border-radius: 12px;
+}
+.srv2 .srv-btn-default:hover:not(:disabled) {
+  background: var(--vx-tint);
+}
+.srv2 input:not([type="checkbox"]):not([type="radio"]),
+.srv2 select,
+.srv2 textarea {
+  border-radius: 10px;
+}
+.srv2 input:focus,
+.srv2 select:focus,
+.srv2 textarea:focus {
+  border-color: var(--srv-accent);
+}
+.srv2 table th {
+  letter-spacing: 0.08em;
+}
+.srv2-glow {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 420px;
+  pointer-events: none;
+  background: radial-gradient(60% 100% at 70% 0%, var(--srv-accent-soft), transparent 70%);
+}
+@keyframes srv2-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+.srv2-ping::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: srv2-ping 2s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .srv2-ping::after {
+    animation: none;
+  }
+}
+.srv2 a[aria-current="page"] {
+  color: var(--vx-on-fill);
+}
+.srv2 a[aria-current="page"] > span.absolute {
+  background: var(--vx-fg-strong);
+  border-color: transparent;
+  border-radius: 12px;
+}
+.srv2 a[aria-current="page"] > span.relative {
+  color: var(--vx-on-fill);
+}
+.srv2 nav a,
+.srv2 [class*="h-[30px]"][class*="rounded-[8px]"] {
+  height: 38px;
+  border-radius: 12px;
+}
+.srv2 button[role="switch"] {
+  height: 24px;
+  width: 42px;
+  padding: 3px;
+}
+.srv2 button[role="switch"] > span {
+  height: 18px;
+  width: 18px;
+}
+.srv2 button[role="switch"][aria-checked="true"] {
+  background: var(--srv-accent);
+}
+.srv2 button[role="switch"][aria-checked="true"] > span {
+  margin-left: 18px;
+  background: var(--srv-accent-on);
+}
+.srv2 .vx-grow-x {
+  background: var(--srv-accent);
+}
+.srv2 .vx-tbl th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--vx-ghost);
+}
+.srv2 .vx-tbl tbody tr {
+  border-bottom: 1px solid var(--vx-border);
+}
+.srv2 .vx-tbl tbody tr:last-child {
+  border-bottom: 0;
+}
+.srv2 input[type="checkbox"] {
+  accent-color: var(--srv-accent);
+}
+.srv2 [class*="rounded-[14px]"]:not(button):not(input):not(select) {
+  border-radius: var(--srv-radius);
+}
+.srv2 section[class*="rounded-[10px]"] {
+  border-radius: var(--srv-radius);
+  padding: 20px 24px;
+}
+.srv2 .vx-console-log {
+  border-radius: 14px;
+  background: var(--vx-code);
+}
+.srv2 button[class*="rounded-[9px]"],
+.srv2 a[class*="rounded-[9px]"],
+.srv2 button[class*="rounded-[8px]"]:not([role="tab"]) {
+  border-radius: 12px;
+}

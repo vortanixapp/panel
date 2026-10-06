@@ -343,6 +343,33 @@ if [ "${SERVER_PORT:-}" != "" ]; then
   log "server-port=$SERVER_PORT server-portv6=$SERVER_PORT_V6"
 fi
 
+case "$CORE" in
+  *.php)
+    CORE_ROOT="$(dirname "$(dirname "$CORE")")"
+    if [ ! -f "$CORE_ROOT/vendor/autoload.php" ]; then
+      if [ ! -f "$CORE_ROOT/composer.json" ]; then
+        log "Source core has no vendor/ and no composer.json: upload an archive with vendor/ or use PocketMine-MP.phar" >&2
+        exit 1
+      fi
+      COMPOSER_PHAR="$DATA_DIR/.vtx/composer.phar"
+      if [ ! -f "$COMPOSER_PHAR" ]; then
+        log "Downloading Composer"
+        if ! fetch "https://getcomposer.org/download/latest-stable/composer.phar" -o "$COMPOSER_PHAR"; then
+          rm -f "$COMPOSER_PHAR"
+          log "Composer download failed" >&2
+          exit 1
+        fi
+      fi
+      log "Installing Composer dependencies into $CORE_ROOT/vendor"
+      if ! (cd "$CORE_ROOT" && COMPOSER_HOME="$DATA_DIR/.vtx/composer" COMPOSER_ALLOW_SUPERUSER=1 \
+        "$PHP_BIN" "$COMPOSER_PHAR" install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader); then
+        log "Composer install failed: upload an archive with vendor/ or use PocketMine-MP.phar" >&2
+        exit 1
+      fi
+    fi
+    ;;
+esac
+
 if [ "$INSTALLED_CORE" != "" ]; then
   log "Starting PocketMine-MP $INSTALLED_CORE on PHP $PHP_RUNNING"
 else

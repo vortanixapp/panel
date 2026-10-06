@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import {
   Btn,
   EmptyState,
+  FormRow,
   Panel,
   VX_FAINT,
   VX_INPUT_MONO,
@@ -124,65 +125,95 @@ export function ServerFirewallTab() {
 
   return (
     <div className="flex flex-col gap-[18px]">
-      <Panel title={t("servers.firewall.title")}>
-        <p className={cn("mb-3 text-[12.5px] leading-[1.5]", VX_FAINT)}>
-          {t("servers.firewall.intro")}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            className={cn(VX_SELECT, "h-[34px] rounded-[8px] text-[12.5px]")}
-            value={action}
-            onChange={(e) => setAction(e.target.value as "deny" | "allow")}
-          >
-            <option value="deny">{t("servers.firewall.action_deny")}</option>
-            <option value="allow">{t("servers.firewall.action_allow")}</option>
-          </select>
-          <select
-            className={cn(VX_SELECT, "h-[34px] min-w-[200px] rounded-[8px] text-[12.5px]")}
-            value={portChoice}
-            onChange={(e) => setPortChoice(e.target.value)}
-            disabled={ports.length === 0}
-          >
-            {ports.length === 0 && <option value="">{t("servers.firewall.no_ports")}</option>}
-            {ports.map((p) => (
-              <option key={portKey(p)} value={portKey(p)}>
-                {p.protocol.toUpperCase()} {p.port}
-                {p.purpose ? ` · ${p.purpose}` : ""}
-              </option>
-            ))}
-          </select>
-          <input
-            className={cn(VX_INPUT_MONO, "h-[34px] min-w-[220px] flex-1 rounded-[8px] text-[12.5px]")}
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
-            placeholder={
-              action === "allow"
-                ? t("servers.firewall.source_allow_placeholder")
-                : t("servers.firewall.source_deny_placeholder")
-            }
-          />
-          <Btn
-            size="sm"
-            tone="primary"
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending || cannotAdd}
-          >
-            {t("common.add")}
-          </Btn>
-        </div>
-        {(sourceInvalid || needsSource || closesPrimary) && (
-          <p className="mt-2 text-[12px] text-[var(--vx-danger)]">
-            {sourceInvalid
-              ? t("servers.firewall.source_invalid")
-              : needsSource
-                ? t("servers.firewall.source_required")
-                : t("servers.firewall.primary_warning")}
+      <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-2">
+        <Panel title={t("servers.firewall.title")} bodyClassName="px-6 py-1">
+          <p className={cn("pt-3 pb-1 text-[12.5px] leading-[1.5]", VX_FAINT)}>
+            {t("servers.firewall.intro")}
           </p>
-        )}
-        {action === "allow" && selected?.primary && !sourceInvalid && !needsSource && (
-          <p className={cn("mt-2 text-[12px]", VX_FAINT)}>{t("servers.firewall.primary_allow_note")}</p>
-        )}
-      </Panel>
+          <FormRow label={t("servers.firewall.col_action")}>
+            <select
+              className={cn(VX_SELECT, "h-[38px] rounded-[10px] text-[13px]")}
+              value={action}
+              onChange={(e) => setAction(e.target.value as "deny" | "allow")}
+            >
+              <option value="deny">{t("servers.firewall.action_deny")}</option>
+              <option value="allow">{t("servers.firewall.action_allow")}</option>
+            </select>
+          </FormRow>
+          <FormRow label={t("servers.firewall.col_port")}>
+            <select
+              className={cn(VX_SELECT, "h-[38px] min-w-[200px] rounded-[10px] text-[13px]")}
+              value={portChoice}
+              onChange={(e) => setPortChoice(e.target.value)}
+              disabled={ports.length === 0}
+            >
+              {ports.length === 0 && <option value="">{t("servers.firewall.no_ports")}</option>}
+              {ports.map((p) => (
+                <option key={portKey(p)} value={portKey(p)}>
+                  {p.protocol.toUpperCase()} {p.port}
+                  {p.purpose ? ` · ${p.purpose}` : ""}
+                </option>
+              ))}
+            </select>
+          </FormRow>
+          <FormRow label={t("servers.firewall.col_source")}>
+            <input
+              className={cn(VX_INPUT_MONO, "h-[38px] w-[240px] max-w-full rounded-[10px] text-[13px]")}
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              placeholder={
+                action === "allow"
+                  ? t("servers.firewall.source_allow_placeholder")
+                  : t("servers.firewall.source_deny_placeholder")
+              }
+            />
+          </FormRow>
+          {(sourceInvalid || needsSource || closesPrimary) && (
+            <p className="pt-3 text-[12px] text-[var(--vx-danger)]">
+              {sourceInvalid
+                ? t("servers.firewall.source_invalid")
+                : needsSource
+                  ? t("servers.firewall.source_required")
+                  : t("servers.firewall.primary_warning")}
+            </p>
+          )}
+          {action === "allow" && selected?.primary && !sourceInvalid && !needsSource && (
+            <p className={cn("pt-3 text-[12px]", VX_FAINT)}>{t("servers.firewall.primary_allow_note")}</p>
+          )}
+          <div className="flex justify-end py-4">
+            <Btn
+              tone="primary"
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending || cannotAdd}
+            >
+              {t("common.add")}
+            </Btn>
+          </div>
+        </Panel>
+
+        <Panel title={t("servers.firewall.limit_title")} bodyClassName="px-6 py-1">
+          <FormRow label={t("servers.firewall.limit_title")} hint={t("servers.firewall.limit_hint")}>
+            <input
+              className={cn(VX_INPUT_MONO, "h-[38px] w-[110px] rounded-[10px] text-[13px]")}
+              value={limitInput}
+              onChange={(e) => setLimitInput(e.target.value)}
+              inputMode="numeric"
+            />
+            <Btn
+              tone="primary"
+              onClick={() => limitMutation.mutate(limitValue)}
+              disabled={limitMutation.isPending || limitInvalid || limitValue === connLimit}
+            >
+              {t("common.save")}
+            </Btn>
+          </FormRow>
+          <p className={cn("py-3.5 text-[12.5px]", VX_FAINT)}>
+            {connLimit > 0
+              ? t("servers.firewall.limit_on", { count: connLimit })
+              : t("servers.firewall.limit_off")}
+          </p>
+        </Panel>
+      </div>
 
       <Panel title={t("servers.firewall.rules_title")} flush>
         <div className={VX_TBL_WRAP}>
@@ -213,10 +244,10 @@ export function ServerFirewallTab() {
                     <td className={VX_TBL_TD} data-cell="lead">
                       <span
                         className={cn(
-                          "font-sans text-[12px]",
+                          "inline-block rounded-full px-[11px] py-[3px] font-sans text-[12px]",
                           rule.action === "allow"
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : "text-[var(--vx-danger)]"
+                            ? "bg-[var(--srv-accent-soft)] text-[var(--srv-accent)]"
+                            : "bg-[var(--vx-danger-tint)] text-[var(--vx-danger)]"
                         )}
                       >
                         {rule.action === "allow"
@@ -259,33 +290,6 @@ export function ServerFirewallTab() {
               )}
             </tbody>
           </table>
-        </div>
-      </Panel>
-
-      <Panel title={t("servers.firewall.limit_title")}>
-        <p className={cn("mb-3 text-[12.5px] leading-[1.5]", VX_FAINT)}>
-          {t("servers.firewall.limit_hint")}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            className={cn(VX_INPUT_MONO, "h-[34px] w-[120px] rounded-[8px] text-[12.5px]")}
-            value={limitInput}
-            onChange={(e) => setLimitInput(e.target.value)}
-            inputMode="numeric"
-          />
-          <Btn
-            size="sm"
-            tone="primary"
-            onClick={() => limitMutation.mutate(limitValue)}
-            disabled={limitMutation.isPending || limitInvalid || limitValue === connLimit}
-          >
-            {t("common.save")}
-          </Btn>
-          <span className={cn("text-[12px]", VX_FAINT)}>
-            {connLimit > 0
-              ? t("servers.firewall.limit_on", { count: connLimit })
-              : t("servers.firewall.limit_off")}
-          </span>
         </div>
       </Panel>
     </div>

@@ -8,11 +8,14 @@ import {
   Btn,
   EmptyState,
   Field,
+  FormRow,
   Panel,
+  Toggle,
   VX_FAINT,
   VX_INPUT,
   VX_INSET,
   VX_MUTED,
+  VX_SELECT,
 } from "@/components/vx/panel-ui";
 import {
   Dialog,
@@ -183,99 +186,92 @@ export function ServerCopiesTab() {
     <>
       <Panel
         title={t("servers.copies.auto_title")}
-        bodyClassName="flex flex-col gap-3 px-[18px] py-3.5"
+        bodyClassName="flex flex-col px-6 py-2"
       >
         {!schedule ? (
           <Skeleton className="h-[92px] w-full rounded-[10px]" />
         ) : (
           <>
-            <label className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
+            <FormRow label={t("servers.copies.auto_enable")}>
+              <Toggle
+                label={t("servers.copies.auto_enable")}
                 checked={schedule.enabled}
-                onChange={(e) =>
-                  setSchedule({ ...schedule, enabled: e.target.checked })
-                }
-                className="size-4 accent-[var(--vx-fg-strong)]"
+                onChange={(next) => setSchedule({ ...schedule, enabled: next })}
               />
-              <span className="text-[12.5px]">
-                {t("servers.copies.auto_enable")}
-              </span>
-            </label>
+            </FormRow>
 
-            <div className="flex flex-wrap items-end gap-3">
-              <Field label={t("servers.copies.frequency")}>
+            <FormRow label={t("servers.copies.frequency")}>
+              <select
+                className={cn(VX_SELECT, "h-[38px] min-w-[150px] rounded-[10px] text-[13px]")}
+                value={schedule.frequency}
+                disabled={!schedule.enabled}
+                onChange={(e) =>
+                  setSchedule({
+                    ...schedule,
+                    frequency: e.target.value as ScheduleForm["frequency"],
+                  })
+                }
+              >
+                <option value="daily">{t("servers.copies.daily")}</option>
+                <option value="weekly">{t("servers.copies.weekly")}</option>
+              </select>
+            </FormRow>
+
+            {schedule.frequency === "weekly" && (
+              <FormRow label={t("servers.copies.weekday_label")}>
                 <select
-                  className={VX_INPUT}
-                  value={schedule.frequency}
+                  className={cn(VX_SELECT, "h-[38px] min-w-[150px] rounded-[10px] text-[13px]")}
+                  value={schedule.day_of_week}
                   disabled={!schedule.enabled}
                   onChange={(e) =>
-                    setSchedule({
-                      ...schedule,
-                      frequency: e.target.value as ScheduleForm["frequency"],
-                    })
+                    setSchedule({ ...schedule, day_of_week: Number(e.target.value) })
                   }
                 >
-                  <option value="daily">{t("servers.copies.daily")}</option>
-                  <option value="weekly">{t("servers.copies.weekly")}</option>
-                </select>
-              </Field>
-
-              {schedule.frequency === "weekly" && (
-                <Field label={t("servers.copies.weekday_label")}>
-                  <select
-                    className={VX_INPUT}
-                    value={schedule.day_of_week}
-                    disabled={!schedule.enabled}
-                    onChange={(e) =>
-                      setSchedule({ ...schedule, day_of_week: Number(e.target.value) })
-                    }
-                  >
-                    {WEEKDAY_INDEXES.map((idx) => (
-                      <option key={idx} value={idx}>
-                        {t(`servers.copies.weekday.${idx}`)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
-
-              <Field label={t("servers.copies.hour_utc")}>
-                <select
-                  className={VX_INPUT}
-                  value={schedule.hour_utc}
-                  disabled={!schedule.enabled}
-                  onChange={(e) =>
-                    setSchedule({ ...schedule, hour_utc: Number(e.target.value) })
-                  }
-                >
-                  {Array.from({ length: 24 }, (_, h) => (
-                    <option key={h} value={h}>
-                      {String(h).padStart(2, "0")}:00
+                  {WEEKDAY_INDEXES.map((idx) => (
+                    <option key={idx} value={idx}>
+                      {t(`servers.copies.weekday.${idx}`)}
                     </option>
                   ))}
                 </select>
-              </Field>
+              </FormRow>
+            )}
 
-              <Field label={t("servers.copies.keep_count")}>
-                <select
-                  className={VX_INPUT}
-                  value={schedule.keep_count}
-                  disabled={!schedule.enabled}
-                  onChange={(e) =>
-                    setSchedule({ ...schedule, keep_count: Number(e.target.value) })
-                  }
-                >
-                  {[3, 5, 7, 14, 30].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+            <FormRow label={t("servers.copies.hour_utc")}>
+              <select
+                className={cn(VX_SELECT, "h-[38px] min-w-[150px] rounded-[10px] text-[13px]")}
+                value={schedule.hour_utc}
+                disabled={!schedule.enabled}
+                onChange={(e) =>
+                  setSchedule({ ...schedule, hour_utc: Number(e.target.value) })
+                }
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>
+                    {String(h).padStart(2, "0")}:00
+                  </option>
+                ))}
+              </select>
+            </FormRow>
 
+            <FormRow label={t("servers.copies.keep_count")}>
+              <select
+                className={cn(VX_SELECT, "h-[38px] min-w-[150px] rounded-[10px] text-[13px]")}
+                value={schedule.keep_count}
+                disabled={!schedule.enabled}
+                onChange={(e) =>
+                  setSchedule({ ...schedule, keep_count: Number(e.target.value) })
+                }
+              >
+                {[3, 5, 7, 14, 30].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </FormRow>
+
+            <div className="flex justify-end pt-3">
               <Btn
-                size="sm"
                 tone="primary"
                 onClick={() => schedule && scheduleMutation.mutate(schedule)}
                 disabled={scheduleMutation.isPending}

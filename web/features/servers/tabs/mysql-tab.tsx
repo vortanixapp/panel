@@ -202,7 +202,7 @@ export function ServerMysqlTab() {
   return (
     <div className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-2">
       <Panel title={t("servers.mysql.access_title")} flush>
-        <div className="px-[18px] pt-1.5 pb-4">
+        <div className="px-6 pt-1.5 pb-5">
           {accessRows.map(([label, value]) => (
             <div
               key={label}

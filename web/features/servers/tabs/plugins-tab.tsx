@@ -10,7 +10,7 @@ import {
   Panel,
   VX_FAINT,
   VX_INPUT,
-  VX_INSET,
+  VX_ROW_LINE,
 } from "@/components/vx/panel-ui";
 import { VxInlineLoader } from "@/components/vx/loader";
 import {
@@ -75,7 +75,7 @@ export function ServerPluginsTab() {
           placeholder={t("common.search_placeholder")}
         />
       }
-      bodyClassName="flex flex-col gap-2 px-[18px] py-3.5"
+      bodyClassName="flex flex-col px-6 py-1"
     >
       {isLoading ? (
         <VxInlineLoader />
@@ -88,22 +88,38 @@ export function ServerPluginsTab() {
           <div
             key={row.id}
             className={cn(
-              "flex flex-wrap items-center justify-between gap-3 rounded-[11px] px-[15px] py-3",
-              VX_INSET
+              "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 py-[13px] last:border-b-0 sm:grid-cols-[minmax(0,1fr)_90px_120px_auto]",
+              VX_ROW_LINE
             )}
           >
             <div className="min-w-0">
-              <div className="truncate text-[12.5px] font-medium">{row.name}</div>
-              <div className={cn("mt-[3px] font-mono text-[11.5px]", VX_FAINT)}>
+              <div className="truncate text-[13.5px]">{row.name}</div>
+              <div className={cn("mt-[2px] truncate text-[11.5px] sm:hidden", VX_FAINT)}>
                 {row.category}
                 {row.version ? ` · v${row.version}` : ""}
-                {row.installed
-                  ? row.enabled
-                    ? t("servers.plugins.on")
-                    : t("servers.plugins.off")
-                  : t("servers.plugins.not_installed")}
               </div>
             </div>
+            <span className="hidden font-mono text-[12.5px] sm:block">
+              {row.version ? row.version : "—"}
+            </span>
+            <span className="hidden sm:block">
+              <span
+                className={cn(
+                  "inline-block rounded-full px-[11px] py-[3px] text-[12px]",
+                  !row.installed
+                    ? "bg-[var(--vx-tint)] text-[var(--vx-muted)]"
+                    : row.enabled
+                      ? "bg-[var(--srv-accent-soft)] text-[var(--srv-accent)]"
+                      : "bg-[var(--vx-tint)] text-[var(--vx-muted)]"
+                )}
+              >
+                {row.installed
+                  ? row.enabled
+                    ? t("servers.plugins.on").replace(/^[s·]+/, "")
+                    : t("servers.plugins.off").replace(/^[s·]+/, "")
+                  : t("servers.plugins.not_installed").replace(/^[s·]+/, "")}
+              </span>
+            </span>
             <div className="flex shrink-0 gap-2">
               {!row.installed ? (
                 <Btn

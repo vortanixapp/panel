@@ -8,6 +8,7 @@ import {
   Btn,
   EmptyState,
   Field,
+  FormRow,
   Notice,
   Panel,
   VX_FAINT,
@@ -147,29 +148,23 @@ export function ServerFriendsTab() {
 
   return (
     <div className="flex flex-col gap-[18px]">
-      <Panel title={t("servers.friends.add_title")}>
-        <div className="flex flex-wrap items-end gap-2">
-          <Field
-            label={t("servers.friends.email_label")}
-            className="min-w-[240px] flex-1"
-          >
-            <input
-              type="email"
-              className={VX_INPUT}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@example.com"
-            />
-          </Field>
+      <Panel title={t("servers.friends.add_title")} bodyClassName="px-6 py-1">
+        <FormRow label={t("servers.friends.email_label")}>
+          <input
+            type="email"
+            className={cn(VX_INPUT, "h-[38px] w-[280px] max-w-full rounded-[10px] text-[13px]")}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="user@example.com"
+          />
           <Btn
             tone="primary"
-            className="px-4"
             onClick={() => addMutation.mutate()}
             disabled={!email.trim() || addMutation.isPending}
           >
             {t("common.add")}
           </Btn>
-        </div>
+        </FormRow>
       </Panel>
 
       {friends.length === 0 ? (
@@ -216,7 +211,7 @@ export function ServerFriendsTab() {
                   </Btn>
                 </div>
               }
-              bodyClassName="grid gap-5 p-[18px] lg:grid-cols-2"
+              bodyClassName="grid gap-6 p-6 lg:grid-cols-2"
             >
               <div>
                 <div className={cn(VX_MONO_LABEL, "mb-2.5 tracking-[0.09em]")}>
@@ -266,7 +261,7 @@ function PermRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2.5 rounded-[9px] border border-[var(--vx-border)] bg-[var(--vx-elevated)] px-[11px] py-2 text-[11.5px]">
+    <div className="flex items-center justify-between gap-2.5 rounded-xl border border-[var(--vx-border)] bg-[var(--vx-elevated)] px-3.5 py-2.5 text-[12.5px]">
       <span>{label}</span>
       <Toggle label={label} checked={checked} onChange={onChange} />
     </div>

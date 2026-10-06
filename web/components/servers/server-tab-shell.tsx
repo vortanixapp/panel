@@ -107,7 +107,7 @@ export function ServerTabShell({
   if (isLoading || !server) {
     return (
       <PageShell variant={variant}>
-        <div className="font-panel space-y-4">
+        <div className="font-panel srv2 space-y-4">
           <Skeleton className="h-[132px] w-full rounded-[16px]" />
           <Skeleton className="h-[92px] w-full rounded-[14px]" />
           <Skeleton className="h-[420px] w-full rounded-[14px]" />
@@ -131,14 +131,6 @@ export function ServerTabShell({
     server.ip_address && server.port
       ? `${server.ip_address}:${server.port}`
       : server.ip_address || "—";
-
-  const subtitle = [
-    server.game?.name ? `${server.game.name} (id: ${server.game_id})` : null,
-    server.location?.name,
-    server.tariff?.name,
-  ]
-    .filter(Boolean)
-    .join(" · ");
 
   async function onPower(action: "start" | "stop" | "restart") {
     try {
@@ -178,118 +170,131 @@ export function ServerTabShell({
 
   return (
     <PageShell variant={variant}>
-      <div className="font-panel flex flex-col gap-[18px]">
-        <div className="rounded-[16px] border border-[var(--vx-border)] bg-[var(--vx-card)]">
-          <div className="flex flex-wrap items-start justify-between gap-5 px-[22px] py-5">
-            <div className="min-w-[260px]">
-              <div
+      <div className="font-panel srv2 relative flex flex-col gap-[18px]">
+        <div className="srv2-glow" aria-hidden />
+        <section className="relative flex flex-wrap items-end justify-between gap-7 pt-4 pb-2 sm:pt-6">
+          <div className="flex min-w-0 flex-col gap-3.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span
                 className={cn(
-                  "font-mono text-[10.5px] font-medium tracking-[0.1em] uppercase",
-                  VX_FAINT
+                  "inline-flex items-center gap-[9px] rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors duration-300",
+                  ["running", "active"].includes(st.category) && !expired
+                    ? "border-transparent bg-[var(--srv-accent-soft)] text-[var(--srv-accent)]"
+                    : statusTone
                 )}
               >
-                {t("servers.shell.eyebrow", { id: server.id })}
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <h1 className="m-0 text-[25px] font-medium tracking-[-0.015em]">{server.name}</h1>
                 <span
                   className={cn(
-                    "inline-flex items-center gap-[7px] rounded-full border px-[11px] py-1 text-[11.5px] font-medium transition-colors duration-300",
-                    statusTone
+                    "relative h-2 w-2 rounded-full bg-current",
+                    transitioning
+                      ? "animate-pulse"
+                      : ["running", "active"].includes(st.category) && !expired && "srv2-ping"
+                  )}
+                />
+                {statusLabel}
+                {!expired && ["running", "active"].includes(st.category) && server.uptime
+                  ? ` · ${server.uptime}`
+                  : ""}
+              </span>
+              {[server.game?.name, server.location?.name, server.tariff?.name]
+                .filter(Boolean)
+                .map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-full border border-[var(--vx-border)] px-3 py-1.5 text-[13px] text-[var(--vx-muted)]"
+                  >
+                    {chip}
+                  </span>
+                ))}
+            </div>
+            <h1 className="m-0 text-[44px] leading-none font-semibold tracking-[-0.035em] break-words sm:text-[60px] lg:text-[76px]">
+              {server.name}
+            </h1>
+            <div className={cn("font-mono text-[11px] tracking-[0.06em] break-all", VX_FAINT)}>
+              {t("servers.shell.eyebrow", { id: server.id })}
+            </div>
+          </div>
+
+          <div className="flex w-full max-w-full flex-col gap-3 md:w-[400px]">
+            <button
+              type="button"
+              onClick={copyAddress}
+              className="flex h-14 items-center justify-between gap-4 rounded-2xl border border-[var(--vx-border-2)] bg-[var(--vx-elevated)] pr-2 pl-5 font-mono text-[16px] text-[var(--vx-fg)] transition-colors hover:border-[var(--srv-accent)]"
+            >
+              <span className="truncate">{address}</span>
+              <span className="flex h-10 shrink-0 items-center gap-2 rounded-[11px] bg-[var(--srv-accent)] px-3.5 font-sans text-[13px] font-semibold text-[var(--srv-accent-on)]">
+                <i className="ri-file-copy-line text-[15px]" />
+                {t("servers.shell.copy")}
+              </span>
+            </button>
+
+            <div className="flex min-h-[44px] flex-wrap gap-2.5">
+              {transitioning ? (
+                <span
+                  className={cn(
+                    "inline-flex h-11 flex-1 cursor-default items-center justify-center gap-2 rounded-xl border border-[var(--vx-border-2)] bg-[var(--vx-elevated)] px-3.5 text-[13px] font-medium",
+                    VX_MUTED
                   )}
                 >
-                  <span
-                    className={cn(
-                      "relative h-1.5 w-1.5 rounded-full bg-current",
-                      transitioning
-                        ? "animate-pulse"
-                        : ["running", "active"].includes(st.category) && "vx-live"
-                    )}
-                  />
-                  {statusLabel}
+                  <i className="ri-loader-4-line animate-spin text-[14px]" />
+                  {st.label}…
                 </span>
-              </div>
-              {subtitle && (
-                <div className={cn("mt-[7px] text-[12.5px]", VX_MUTED)}>{subtitle}</div>
+              ) : (
+                <>
+                  {showRestart && (
+                    <Btn className="h-11 flex-1 rounded-xl" onClick={() => onPower("restart")}>
+                      <i className="ri-refresh-line text-[16px]" />
+                      {t("common.restart")}
+                    </Btn>
+                  )}
+                  {showStop && (
+                    <Btn tone="danger" className="h-11 flex-1 rounded-xl" onClick={() => onPower("stop")}>
+                      <i className="ri-shut-down-line text-[16px]" />
+                      {t("servers.shell.power_off")}
+                    </Btn>
+                  )}
+                  {showStart && (
+                    <Btn tone="primary" className="h-11 flex-1 rounded-xl" onClick={() => onPower("start")}>
+                      <i className="ri-play-line text-[16px]" />
+                      {t("common.start")}
+                    </Btn>
+                  )}
+                </>
+              )}
+              {showReinstall && (
+                <Btn
+                  tone="primary"
+                  className="h-11 flex-1 rounded-xl"
+                  disabled={reinstallMutation.isPending}
+                  onClick={() => setConfirmReinstall(true)}
+                >
+                  {t("servers.shell.reinstall")}
+                </Btn>
+              )}
+              {expired && isOwner && (
+                <Link
+                  href={serverPath(basePath, id, "/tariff")}
+                  className={cn(btnClass("primary"), "h-11 flex-1 rounded-xl")}
+                >
+                  {t("servers.shell.extend_rent")}
+                </Link>
               )}
             </div>
-
-            <div className="flex flex-col items-start gap-3 sm:items-end">
-              <button
-                type="button"
-                onClick={copyAddress}
-                className="inline-flex items-center gap-2.5 rounded-[10px] border border-[var(--vx-border-2)] bg-[var(--vx-elevated)] px-3 py-2 font-mono text-[12.5px] font-medium text-[var(--vx-fg)] transition-colors hover:border-[var(--vx-border-strong)]"
-              >
-                {address}
-                <span
-                  className={cn("font-sans text-[10.5px] tracking-[0.06em]", VX_FAINT)}
-                >
-                  {t("servers.shell.copy")}
-                </span>
-              </button>
-
-              <div className="flex min-h-[34px] flex-wrap justify-end gap-2">
-                {transitioning ? (
-                  <span
-                    className={cn(
-                      "inline-flex h-[34px] cursor-default items-center gap-2 rounded-[9px] border border-[var(--vx-border-2)] bg-[var(--vx-elevated)] px-3.5 text-[12.5px] font-medium transition-colors",
-                      VX_MUTED
-                    )}
-                  >
-                    <i className="ri-loader-4-line animate-spin text-[14px]" />
-                    {st.label}…
-                  </span>
-                ) : (
-                  <>
-                    {showRestart && (
-                      <Btn onClick={() => onPower("restart")}>
-                        {t("common.restart")}
-                      </Btn>
-                    )}
-                    {showStop && (
-                      <Btn tone="danger" onClick={() => onPower("stop")}>
-                        {t("servers.shell.power_off")}
-                      </Btn>
-                    )}
-                    {showStart && (
-                      <Btn tone="primary" onClick={() => onPower("start")}>
-                        {t("common.start")}
-                      </Btn>
-                    )}
-                  </>
-                )}
-                {showReinstall && (
-                  <Btn
-                    tone="primary"
-                    disabled={reinstallMutation.isPending}
-                    onClick={() => setConfirmReinstall(true)}
-                  >
-                    {t("servers.shell.reinstall")}
-                  </Btn>
-                )}
-                {expired && isOwner && (
-                  <Link href={serverPath(basePath, id, "/tariff")} className={btnClass("primary")}>
-                    {t("servers.shell.extend_rent")}
-                  </Link>
-                )}
-              </div>
-            </div>
           </div>
+        </section>
 
-          <div className="border-t border-[var(--vx-border)] px-3.5 py-[9px]">
-            <ResponsiveTabs
-              pillId={`server-tab-${id}`}
-              activeKey={currentKey}
-              tabs={tabs.map((tab) => ({
-                key: tab.key,
-                label: tab.label,
-                href: serverPath(basePath, id, tab.suffix),
-                disabled: isServerTabDisabled(server, tab.key),
-                disabledHint: t("servers.shell.tab_disabled"),
-              }))}
-            />
-
-          </div>
+        <div className="sticky top-2 z-[4] rounded-2xl border border-[var(--vx-border)] bg-[var(--vx-elevated)] p-1">
+          <ResponsiveTabs
+            pillId={`server-tab-${id}`}
+            activeKey={currentKey}
+            tabs={tabs.map((tab) => ({
+              key: tab.key,
+              label: tab.label,
+              href: serverPath(basePath, id, tab.suffix),
+              disabled: isServerTabDisabled(server, tab.key),
+              disabledHint: t("servers.shell.tab_disabled"),
+            }))}
+          />
         </div>
 
         <ConfirmDialog

@@ -83,6 +83,20 @@ const LogRow = memo(function LogRow({
           {formatLogTime(line.time)}
         </span>
       )}
+      <span className="w-[58px] shrink-0 select-none">
+        <span
+          className={cn(
+            "inline-block rounded-full px-2 text-[10.5px] leading-[18px] uppercase",
+            line.level === "error"
+              ? "bg-[var(--vx-danger-tint)] text-[var(--vx-danger)]"
+              : line.level === "warn"
+                ? "bg-[var(--vx-warn-tint)] text-[var(--vx-warn)]"
+                : "bg-[color-mix(in_oklab,var(--srv-info)_14%,transparent)] text-[var(--srv-info)]"
+          )}
+        >
+          {line.level}
+        </span>
+      </span>
       <span className={cn("min-w-0 flex-1", wrap ? "break-all whitespace-pre-wrap" : "whitespace-pre")}>
         {splitByQuery(line.text, query).map((chunk, idx) =>
           chunk.match ? (

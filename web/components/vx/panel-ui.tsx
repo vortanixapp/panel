@@ -51,6 +51,7 @@ const SIZE: Record<BtnSize, string> = {
 export function btnClass(tone: BtnTone = "default", size: BtnSize = "md") {
   return cn(
     "inline-flex shrink-0 items-center justify-center gap-2 border font-medium whitespace-nowrap transition-[color,background-color,border-color,transform] duration-150 disabled:cursor-not-allowed disabled:opacity-55 active:[transform:scale(0.97)] disabled:active:[transform:none]",
+    `srv-btn-${tone}`,
     TONE[tone],
     SIZE[size]
   );
@@ -211,6 +212,34 @@ export function Toggle({
   );
 }
 
+export function FormRow({
+  label,
+  hint,
+  children,
+  className,
+}: {
+  label: React.ReactNode;
+  hint?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-x-5 gap-y-2.5 py-3.5 last:border-b-0",
+        VX_ROW_LINE,
+        className
+      )}
+    >
+      <div className="min-w-0 flex-1 basis-[240px]">
+        <div className="text-[13.5px]">{label}</div>
+        {hint ? <div className={cn("mt-0.5 text-[12px]", VX_FAINT)}>{hint}</div> : null}
+      </div>
+      <div className="ml-auto flex max-w-full flex-wrap items-center gap-2">{children}</div>
+    </div>
+  );
+}
+
 export function Field({
   label,
   className,
@@ -283,20 +312,42 @@ export function Tile({
   value,
   sub,
   pct,
+  tone = "accent",
 }: {
   label: string;
   value: React.ReactNode;
   sub: React.ReactNode;
   pct: number;
+  tone?: "accent" | "warn" | "info";
 }) {
+  const r = 32;
+  const c = 2 * Math.PI * r;
+  const safe = Math.max(0, Math.min(100, Number.isFinite(pct) ? pct : 0));
+  const color = tone === "warn" ? "var(--srv-warn)" : tone === "info" ? "var(--srv-info)" : "var(--srv-green)";
   return (
-    <div data-spotlight className={cn("relative isolate rounded-[14px] px-[18px] py-4", VX_CARD)}>
-      <div className={cn(VX_MONO_LABEL, "tracking-[0.09em]")}>{label}</div>
-      <div className="mt-2.5 font-mono text-[24px] font-medium tracking-[-0.02em] text-[var(--vx-fg)]">
-        {value}
+    <div className="flex min-w-0 items-center gap-[18px] border-r border-b border-[var(--vx-border)] px-6 py-[22px] [margin:0_-1px_-1px_0]">
+      <svg width="76" height="76" viewBox="0 0 76 76" className="shrink-0">
+        <circle cx="38" cy="38" r={r} fill="none" stroke="var(--vx-border)" strokeWidth="7" />
+        <circle
+          cx="38"
+          cy="38"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="7"
+          strokeLinecap="round"
+          strokeDasharray={`${(Math.max(safe, 0.8) / 100) * c} ${c}`}
+          transform="rotate(-90 38 38)"
+          className="transition-[stroke-dasharray] duration-500"
+        />
+      </svg>
+      <div className="min-w-0">
+        <div className="text-[12px] tracking-[0.1em] text-[var(--vx-faint)] uppercase">{label}</div>
+        <div className="text-[30px] leading-[1.15] font-semibold tracking-[-0.03em] text-[var(--vx-fg-strong)]">
+          {value}
+        </div>
+        <div className="truncate font-mono text-[11.5px] text-[var(--vx-muted)]">{sub}</div>
       </div>
-      <div className={cn("mt-1 text-[11.5px]", VX_FAINT)}>{sub}</div>
-      <Bar pct={pct} className="mt-3" />
     </div>
   );
 }
