@@ -70,3 +70,6 @@ coverage/
 # Playwright
 web/playwright-report/
 web/test-results/
+
+# Сквозные тесты интерфейса хранятся в репозитории
+!web/e2e/*.spec.ts
