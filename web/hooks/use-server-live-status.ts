@@ -54,7 +54,7 @@ export function useServerLiveStatus(
       const runtime = (query.state.data?.runtime_status || runtimeStatus || "").toLowerCase();
       const prov = (provisioningStatus || "").toLowerCase();
       const busy = TRANSITIONAL.includes(runtime) || PROVISIONING.includes(prov);
-      return busy ? livePollMs(3000, 15_000) : pollMs(10000);
+      return busy ? livePollMs(3000, 15_000) : livePollMs(10_000, 60_000);
     },
   });
 }

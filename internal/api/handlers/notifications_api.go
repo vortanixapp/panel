@@ -404,6 +404,18 @@ func (h *Handler) NotificationsStream(w http.ResponseWriter, r *http.Request) {
 			}
 			flusher.Flush()
 		case msg := <-events:
+			if body, ok := strings.CutPrefix(msg, liveServerPrefix); ok {
+				if !send("server", json.RawMessage(body)) {
+					return
+				}
+				continue
+			}
+			if body, ok := strings.CutPrefix(msg, livePlayersPrefix); ok {
+				if !send("players", json.RawMessage(body)) {
+					return
+				}
+				continue
+			}
 			if topic, ok := strings.CutPrefix(msg, liveInvalidate); ok {
 				if topic == liveJobsTopic && !isAdminRole(claims.Role) {
 					continue

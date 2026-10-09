@@ -28,6 +28,21 @@ func (c *Cache) Close() error {
 	return c.rdb.Close()
 }
 
+func (c *Cache) Subscribe(ctx context.Context, channel string) (<-chan string, func()) {
+	sub := c.rdb.Subscribe(ctx, channel)
+	out := make(chan string, 64)
+	go func() {
+		defer close(out)
+		for msg := range sub.Channel() {
+			select {
+			case out <- msg.Payload:
+			default:
+			}
+		}
+	}()
+	return out, func() { _ = sub.Close() }
+}
+
 func (c *Cache) Delete(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		return nil

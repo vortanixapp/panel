@@ -8,9 +8,12 @@ export const registryRetention = {
   "admin.settings.reg.section.retention.history.description":
     "0 — хранить без ограничения. Удалённые записи восстановить нельзя; для журнала аудита и списаний проверьте требования закона.",
 
-  "admin.settings.reg.retention.server_metrics_days": "Метрики серверов",
+  "admin.settings.reg.retention.server_metrics_days": "Метрики серверов: подробные точки",
   "admin.settings.reg.retention.server_metrics_days.hint":
-    "Если включён TimescaleDB, политика хранения обновляется автоматически",
+    "Точки раз в несколько секунд, нужны для графиков за сутки. Старше этого срока остаются только усреднённые за 5 минут. Если включён TimescaleDB, политика хранения обновляется автоматически",
+  "admin.settings.reg.retention.server_metrics_rollup_days": "Метрики серверов: усреднённые за 5 минут",
+  "admin.settings.reg.retention.server_metrics_rollup_days.hint":
+    "Для графиков за неделю, месяц и квартал. Не работает вместе с TimescaleDB, там действует свой срок хранения",
   "admin.settings.reg.retention.node_metrics_days": "Метрики узлов",
   "admin.settings.reg.retention.node_events_days": "События узлов",
   "admin.settings.reg.retention.node_tasks_days": "Завершённые задачи узлов",

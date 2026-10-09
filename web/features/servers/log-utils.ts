@@ -101,3 +101,44 @@ export function downloadTextFile(name: string, content: string) {
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+const MC_COLOR = /§[0-9a-fk-orx]/gi;
+
+export function normalizeLogLine(text: string): string {
+  return stripAnsi(text).replace(MC_COLOR, "").replace(/\r/g, "").trimEnd();
+}
+
+export function dropReplayedLines(tail: string[], incoming: string[]): number {
+  const max = Math.min(tail.length, incoming.length);
+  for (let k = max; k > 0; k--) {
+    let same = true;
+    for (let i = 0; i < k; i++) {
+      if (tail[tail.length - k + i] !== incoming[i]) {
+        same = false;
+        break;
+      }
+    }
+    if (same) return k;
+  }
+  return 0;
+}
+
+export function appendStreamLines(
+  prev: ServerLogStore,
+  lines: string[],
+  times: string[],
+  tail: number
+): ServerLogStore {
+  if (lines.length === 0) return prev;
+  const withTimes = prev.times.length === prev.lines.length;
+  let nextLines = prev.lines.concat(lines);
+  let nextTimes = withTimes ? prev.times.concat(times) : [];
+  let first = prev.first;
+  const overflow = nextLines.length - tail;
+  if (overflow > 0) {
+    nextLines = nextLines.slice(overflow);
+    nextTimes = nextTimes.slice(overflow);
+    first += overflow;
+  }
+  return { lines: nextLines, times: nextTimes, first, lastTime: "" };
+}

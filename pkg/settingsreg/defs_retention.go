@@ -7,7 +7,11 @@ const (
 var (
 	RetentionServerMetrics = def(Setting{
 		Key: "retention.server_metrics_days", Group: GroupRetention, Section: "metrics",
-		Kind: KindInt, Default: "7", Min: 1, Max: 365, Unit: UnitDay,
+		Kind: KindInt, Default: "2", Min: 1, Max: 365, Unit: UnitDay,
+	})
+	RetentionServerMetricsRollup = def(Setting{
+		Key: "retention.server_metrics_rollup_days", Group: GroupRetention, Section: "metrics",
+		Kind: KindInt, Default: "90", Min: 1, Max: 730, Unit: UnitDay,
 	})
 	RetentionNodeMetrics = def(Setting{
 		Key: "retention.node_metrics_days", Group: GroupRetention, Section: "metrics",

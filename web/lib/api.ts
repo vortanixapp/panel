@@ -1640,7 +1640,25 @@ export async function checkTelegramLink(code: string) {
   });
 }
 
+export type ServerPush = {
+  server_id: string;
+  cpu_pct: number;
+  mem_used_mb: number;
+  mem_limit_mb: number;
+  ts: number;
+};
+
+export type PlayersPush = {
+  server_id: string;
+  online_players: number;
+  max_players: number;
+  players_online: unknown;
+  current_map: string;
+};
+
 export type NotificationStreamHandlers = {
+  onServer?: (push: ServerPush) => void;
+  onPlayers?: (push: PlayersPush) => void;
   onHello?: (unread: number) => void;
   onSync?: (unread: number) => void;
   onNotification?: (item: PanelNotification, unread: number) => void;
@@ -1675,6 +1693,16 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
     }
     if (event === "invalidate") {
       if (payload.topic) handlers.onInvalidate?.(payload.topic);
+      return;
+    }
+    if (event === "players") {
+      const push = payload as unknown as PlayersPush;
+      if (push.server_id) handlers.onPlayers?.(push);
+      return;
+    }
+    if (event === "server") {
+      const push = payload as unknown as ServerPush;
+      if (push.server_id) handlers.onServer?.(push);
       return;
     }
     const unread = typeof payload.unread === "number" ? payload.unread : 0;

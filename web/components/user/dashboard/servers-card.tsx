@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { pluralDays } from "@/components/user/panel-parts";
 import { useQuery } from "@tanstack/react-query";
+import { livePollMs } from "@/lib/live-link";
 import { fetchServerMetrics, powerServer, type DashboardData, type DashboardServer } from "@/lib/api";
 import { canStartServer, canStopServer, getServerStatus, getServerStatusDotClass } from "@/lib/server-status";
 import { useT } from "@/hooks/use-translations";
@@ -100,7 +101,7 @@ function LoadSpark({ serverId, running }: { serverId: string; running: boolean }
     queryFn: () => fetchServerMetrics(serverId),
     enabled: running,
     staleTime: 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: () => livePollMs(60_000, 300_000),
     retry: false,
   });
   const values = (data ?? []).slice(-48).map((p) => Math.max(0, Math.min(100, p.cpu_pct)));

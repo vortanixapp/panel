@@ -181,14 +181,14 @@ func (h *Handler) latestNodeTasks(ctx context.Context, nodeID, action string) ma
 	out := map[string]any{"running": nil, "last": nil}
 	if t, err := scanNodeTask(h.readerOf(ctx).QueryRow(ctx, `
 		SELECT `+nodeTaskColumns+` FROM core.node_tasks
-		WHERE node_id::text = $1 AND action = $2 AND status IN ('queued', 'sent', 'running')
+		WHERE node_id = $1::uuid AND action = $2 AND status IN ('queued', 'sent', 'running')
 		ORDER BY created_at DESC LIMIT 1
 	`, nodeID, action)); err == nil {
 		out["running"] = t
 	}
 	if t, err := scanNodeTask(h.readerOf(ctx).QueryRow(ctx, `
 		SELECT `+nodeTaskColumns+` FROM core.node_tasks
-		WHERE node_id::text = $1 AND action = $2 AND status IN ('done', 'failed', 'expired')
+		WHERE node_id = $1::uuid AND action = $2 AND status IN ('done', 'failed', 'expired')
 		ORDER BY created_at DESC LIMIT 1
 	`, nodeID, action)); err == nil {
 		out["last"] = t
@@ -199,7 +199,7 @@ func (h *Handler) latestNodeTasks(ctx context.Context, nodeID, action string) ma
 func (h *Handler) GetAdminAgentTask(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	task, err := scanNodeTask(h.readerOf(r.Context()).QueryRow(r.Context(), `
-		SELECT `+nodeTaskColumns+` FROM core.node_tasks WHERE node_id::text = $1 AND id::text = $2
+		SELECT `+nodeTaskColumns+` FROM core.node_tasks WHERE node_id = $1::uuid AND id = $2::uuid
 	`, id, chi.URLParam(r, "taskId")))
 	if err != nil {
 		writeError(w, http.StatusNotFound, "task not found")
@@ -266,7 +266,7 @@ func (h *Handler) startAgentTaskHTTP(w http.ResponseWriter, r *http.Request, act
 	var running string
 	_ = h.readerOf(r.Context()).QueryRow(r.Context(), `
 		SELECT id::text FROM core.node_tasks
-		WHERE node_id::text = $1 AND action = $2 AND status IN ('queued', 'sent', 'running') AND deadline_at > now()
+		WHERE node_id = $1::uuid AND action = $2 AND status IN ('queued', 'sent', 'running') AND deadline_at > now()
 		ORDER BY created_at DESC LIMIT 1
 	`, nodeID, action).Scan(&running)
 	if running != "" && action != protocol.ActionCleanupApply {

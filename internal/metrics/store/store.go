@@ -137,6 +137,10 @@ func (s *Store) PurgeOlderThan(ctx context.Context, days int) (int64, error) {
 	return tag.RowsAffected(), nil
 }
 
+func (s *Store) Maintain(ctx context.Context, rawDays, rollupDays int) (metricsquery.MaintainResult, error) {
+	return metricsquery.Maintain(ctx, s.db, rawDays, rollupDays)
+}
+
 func (s *Store) ServerExists(ctx context.Context, serverID string) (bool, error) {
 	pool, err := s.poolForServer(ctx, serverID)
 	if err != nil {

@@ -17,10 +17,11 @@ import { BalanceTile, RenewalTile, SpendTile, SupportTile } from "@/components/u
 import { useAccountQuery } from "@/hooks/use-account";
 import { useT } from "@/hooks/use-translations";
 import { fetchDailyBonus, fetchDashboard } from "@/lib/api";
+import { livePollMs } from "@/lib/live-link";
 
 export function DashboardPageContent() {
   const t = useT();
-  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: fetchDashboard, refetchInterval: 15_000 });
+  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: fetchDashboard, refetchInterval: () => livePollMs(15_000, 60_000) });
   const account = useAccountQuery();
   const bonus = useQuery({ queryKey: ["daily-bonus"], queryFn: fetchDailyBonus, retry: false });
 

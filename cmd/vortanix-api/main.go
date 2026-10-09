@@ -132,6 +132,7 @@ func main() {
 	h.StartServerDunningSweeper(samplerCtx)
 	h.StartReceiptOffsetSweeper(samplerCtx)
 	h.StartNotificationsLive(samplerCtx)
+	h.StartServerPush(samplerCtx)
 	h.StartTelegramBot(samplerCtx)
 	h.StartWipeScheduler(samplerCtx)
 

@@ -8,9 +8,12 @@ export const registryRetention = {
   "admin.settings.reg.section.retention.history.description":
     "0 keeps records forever. Deleted records cannot be restored; check legal requirements for the audit log and charges.",
 
-  "admin.settings.reg.retention.server_metrics_days": "Server metrics",
+  "admin.settings.reg.retention.server_metrics_days": "Server metrics: detailed points",
   "admin.settings.reg.retention.server_metrics_days.hint":
-    "With TimescaleDB enabled the retention policy is updated automatically",
+    "Points taken every few seconds, used for 24-hour charts. Older data is kept only as 5-minute averages. With TimescaleDB enabled the retention policy is updated automatically",
+  "admin.settings.reg.retention.server_metrics_rollup_days": "Server metrics: 5-minute averages",
+  "admin.settings.reg.retention.server_metrics_rollup_days.hint":
+    "Used for week, month and quarter charts. Not used with TimescaleDB, which has its own retention",
   "admin.settings.reg.retention.node_metrics_days": "Node metrics",
   "admin.settings.reg.retention.node_events_days": "Node events",
   "admin.settings.reg.retention.node_tasks_days": "Finished node tasks",

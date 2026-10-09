@@ -21,6 +21,16 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - log_min_duration_statement=${PG_SLOW_QUERY_MS:-500}
+      - -c
+      - log_lock_waits=on
     environment:
       POSTGRES_USER: vortanix
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}

@@ -75,6 +75,10 @@ IP alike.
 - Slow queries are counted here, the query text is in the API log as
   `slow query ... sql=...`. The threshold is `DB_SLOW_QUERY_MS` (500 ms by
   default).
+- Postgres also logs queries slower than `PG_SLOW_QUERY_MS` (500 ms): `docker compose logs postgres`.
+  The `pg_stat_statements` extension collects statistics for all queries; the heaviest ones:
+  `docker compose exec postgres psql -U vortanix -c "SELECT calls, round(mean_exec_time) AS ms, left(query, 100) FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 15"`.
+  Postgres restarts once after the update to pick up these settings.
 
 ## Using the numbers
 

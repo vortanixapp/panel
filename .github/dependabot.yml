@@ -4,7 +4,7 @@ updates:
   - package-ecosystem: gomod
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
     open-pull-requests-limit: 5
     groups:
       aws-sdk:
@@ -18,7 +18,7 @@ updates:
   - package-ecosystem: npm
     directory: /web
     schedule:
-      interval: weekly
+      interval: daily
     open-pull-requests-limit: 5
     groups:
       minor-and-patch:

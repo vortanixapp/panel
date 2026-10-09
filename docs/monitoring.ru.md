@@ -70,6 +70,10 @@ Prometheus не публикуется совсем и доступен толь
   пула», пул мал или часть запросов слишком долго держит соединение.
 - Медленные запросы здесь только считаются, текст запроса пишется в лог API как
   `slow query ... sql=...`. Порог задаёт `DB_SLOW_QUERY_MS` (по умолчанию 500 мс).
+- Postgres тоже пишет запросы дольше `PG_SLOW_QUERY_MS` (500 мс) в свой лог:
+  `docker compose logs postgres`. Расширение `pg_stat_statements` собирает статистику по всем запросам,
+  самые тяжёлые видно так: `docker compose exec postgres psql -U vortanix -c "SELECT calls, round(mean_exec_time) AS ms, left(query, 100) FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 15"`.
+  После обновления контейнер Postgres перезапустится один раз, чтобы подхватить настройки.
 
 ## Что делать с цифрами
 

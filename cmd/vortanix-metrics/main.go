@@ -105,13 +105,12 @@ func retentionLoop(ctx context.Context, st *store.Store) {
 			log.Printf("metrics retention: TimescaleDB policy set to %d days", days)
 			return
 		}
-		n, err := st.PurgeOlderThan(purgeCtx, days)
+		res, err := st.Maintain(purgeCtx, days, int(settingsreg.RetentionServerMetricsRollup.Int()))
 		if err != nil {
-			log.Printf("metrics retention purge failed: %v", err)
-			return
+			log.Printf("metrics retention failed: %v", err)
 		}
-		if n > 0 {
-			log.Printf("metrics retention: deleted %d rows older than %d days", n, days)
+		if res.RolledUp > 0 || res.RawDeleted > 0 || res.RollupDeleted > 0 {
+			log.Printf("metrics retention: rolled up %d, deleted %d points, %d rollups", res.RolledUp, res.RawDeleted, res.RollupDeleted)
 		}
 	}
 

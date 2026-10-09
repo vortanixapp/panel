@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/vortanixapp/panel/internal/relay/hub"
 	"github.com/vortanixapp/panel/pkg/httplog"
 	"github.com/vortanixapp/panel/pkg/httpprom"
+	"github.com/vortanixapp/panel/pkg/metricsquery"
 	"github.com/vortanixapp/panel/pkg/netaddr"
 	"github.com/vortanixapp/panel/pkg/panelsecret"
 	"github.com/vortanixapp/panel/pkg/relaytls"
@@ -225,17 +225,17 @@ func purgeMetricPoints(ctx context.Context, pool *pgxpool.Pool) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 	for {
-		days := strconv.FormatInt(settingsreg.RetentionServerMetrics.Int(), 10)
-		purgeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		tag, err := pool.Exec(purgeCtx, `
-			DELETE FROM core.server_metric_points
-			WHERE ts < now() - ($1::text || ' days')::interval
-		`, days)
+		purgeCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		res, err := metricsquery.Maintain(purgeCtx, pool,
+			int(settingsreg.RetentionServerMetrics.Int()),
+			int(settingsreg.RetentionServerMetricsRollup.Int()))
 		cancel()
 		if err != nil {
-			log.Printf("relay: очистка старых метрик: %v", err)
-		} else if tag.RowsAffected() > 0 {
-			log.Printf("relay: удалено %d точек метрик старше %s дней", tag.RowsAffected(), days)
+			log.Printf("relay: обслуживание метрик серверов: %v", err)
+		}
+		if res.RolledUp > 0 || res.RawDeleted > 0 || res.RollupDeleted > 0 {
+			log.Printf("relay: метрики серверов: свёрнуто %d, удалено точек %d, удалено сводок %d",
+				res.RolledUp, res.RawDeleted, res.RollupDeleted)
 		}
 		select {
 		case <-ctx.Done():

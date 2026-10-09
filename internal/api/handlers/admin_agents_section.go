@@ -298,6 +298,10 @@ var agentMetricTypes = []string{"cpu_usage", "ram_usage", "disk_usage", "agent_c
 
 func (h *Handler) GetAdminAgentMetrics(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	if _, err := uuid.Parse(id); err != nil {
+		writeError(w, http.StatusNotFound, "agent not found")
+		return
+	}
 	key := r.URL.Query().Get("range")
 	rg, ok := metricRanges[key]
 	if !ok {
@@ -314,7 +318,7 @@ func (h *Handler) GetAdminAgentMetrics(w http.ResponseWriter, r *http.Request) {
 			SELECT metric_type, date_bin(make_interval(secs => $3), measured_at, 'epoch'::timestamptz) AS at,
 				AVG(value)::float8 AS avg, MAX(value)::float8 AS max
 			FROM core.node_metrics
-			WHERE node_id::text = $1 AND metric_type = ANY($4::text[])
+			WHERE node_id = $1::uuid AND metric_type = ANY($4::text[])
 			  AND measured_at > now() - make_interval(secs => $2)
 			GROUP BY 1, 2
 		)
@@ -356,6 +360,10 @@ var agentEventGroups = map[string][]string{
 
 func (h *Handler) GetAdminAgentEvents(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	if _, err := uuid.Parse(id); err != nil {
+		writeError(w, http.StatusNotFound, "agent not found")
+		return
+	}
 	q := r.URL.Query()
 	limit, _ := strconv.Atoi(q.Get("limit"))
 	if limit <= 0 || limit > 200 {
@@ -368,7 +376,7 @@ func (h *Handler) GetAdminAgentEvents(w http.ResponseWriter, r *http.Request) {
 		SELECT e.id, e.kind, e.level, e.data, e.created_at, COALESCE(u.email, '')
 		FROM core.node_events e
 		LEFT JOIN core.users u ON u.id = e.actor_id
-		WHERE e.node_id::text = $1
+		WHERE e.node_id = $1::uuid
 		  AND ($2::bigint = 0 OR e.id < $2)
 		  AND (COALESCE(cardinality($3::text[]), 0) = 0 OR e.kind = ANY($3::text[]))
 		ORDER BY e.id DESC

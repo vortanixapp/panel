@@ -84,7 +84,7 @@ function release(ws: WebSocket) {
   ws.close();
 }
 
-export function useConsoleStream(serverId: string, profile: ConsoleProfile | undefined): ConsoleStream {
+export function useConsoleStream(serverId: string, profile: ConsoleProfile | undefined, enabled = true): ConsoleStream {
   const compiled = useMemo(() => compileProfile(profile), [profile]);
   const compiledRef = useRef(compiled);
   compiledRef.current = compiled;
@@ -137,6 +137,11 @@ export function useConsoleStream(serverId: string, profile: ConsoleProfile | und
     let attempt = 0;
     let retry = 0;
     let lastNotice = "";
+
+    if (!enabled) {
+      setStatus("disconnected");
+      return;
+    }
 
     const flush = () => {
       flushTimer.current = 0;
@@ -267,7 +272,7 @@ export function useConsoleStream(serverId: string, profile: ConsoleProfile | und
       wsRef.current = null;
       if (ws) release(ws);
     };
-  }, [serverId, push, nextId]);
+  }, [serverId, enabled, push, nextId]);
 
   const derived = useMemo(() => derive(lines), [lines]);
 

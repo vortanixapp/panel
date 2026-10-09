@@ -6,7 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { setUnreadCount, useOpenNotification } from "@/hooks/use-notifications";
 import { useMe } from "@/hooks/use-queries";
-import { subscribeNotifications, type PanelNotification } from "@/lib/api";
+import { subscribeNotifications, type PanelNotification, type PlayersPush, type ServerPush } from "@/lib/api";
+import { applyPlayersPush, applyServerPush } from "@/lib/server-push";
 import { adminTasksKey } from "@/hooks/use-admin-tasks";
 import { browserNotificationsActive } from "@/lib/browser-notifications";
 import { setLiveLinked } from "@/lib/live-link";
@@ -19,6 +20,8 @@ type LiveMessage =
   | { type: "notification"; item: PanelNotification; unread: number }
   | { type: "seen"; id: string }
   | { type: "invalidate"; topic: string }
+  | { type: "server"; push: ServerPush }
+  | { type: "players"; push: PlayersPush }
   | { type: "link"; up: boolean };
 
 const SEEN_WAIT_MS = 300;
@@ -171,6 +174,12 @@ export function NotificationsLive() {
         case "invalidate":
           queueTopic(message.topic);
           break;
+        case "server":
+          applyServerPush(qc, message.push);
+          break;
+        case "players":
+          applyPlayersPush(qc, message.push);
+          break;
         case "link":
           setLiveLinked(message.up);
           break;
@@ -190,6 +199,8 @@ export function NotificationsLive() {
         onSync: (unread) => relay({ type: "sync", unread }),
         onNotification: (item, unread) => relay({ type: "notification", item, unread }),
         onInvalidate: (topic) => relay({ type: "invalidate", topic }),
+        onServer: (push) => relay({ type: "server", push }),
+        onPlayers: (push) => relay({ type: "players", push }),
         onLink: (up) => relay({ type: "link", up }),
       });
 
