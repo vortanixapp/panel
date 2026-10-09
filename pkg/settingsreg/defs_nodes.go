@@ -99,6 +99,22 @@ var (
 		Key: "agent.install_cache_max_mb", Group: GroupNodes, Section: "performance",
 		Kind: KindInt, Default: "204800", Min: 10240, Max: 10485760, Unit: UnitMB, Agent: true,
 	})
+	AgentSandboxMode = def(Setting{
+		Key: "agent.sandbox_mode", Group: GroupNodes, Section: "sandbox",
+		Kind: KindEnum, Default: "off", Options: []string{"off", "selected", "all"}, Agent: true,
+	})
+	AgentSandboxGames = def(Setting{
+		Key: "agent.sandbox_games", Group: GroupNodes, Section: "sandbox",
+		Kind: KindString, Default: "", Max: 400, Agent: true,
+	})
+	AgentSandboxRuntime = def(Setting{
+		Key: "agent.sandbox_runtime", Group: GroupNodes, Section: "sandbox",
+		Kind: KindString, Default: "runsc", Max: 40, Agent: true,
+	})
+	AgentSandboxStrict = def(Setting{
+		Key: "agent.sandbox_strict", Group: GroupNodes, Section: "sandbox",
+		Kind: KindBool, Default: "0", Agent: true,
+	})
 	AgentCPUFairShare = def(Setting{
 		Key: "agent.cpu_fair_share", Group: GroupNodes, Section: "performance",
 		Kind: KindBool, Default: "0", Agent: true,

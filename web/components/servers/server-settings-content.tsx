@@ -21,6 +21,7 @@ import {
   saveServerSettings,
   updateServerMeta,
 } from "@/lib/api";
+import { applyServerPatch } from "@/lib/optimistic";
 import { queryKeys } from "@/lib/query-keys";
 import {
   SECTION_RAW,
@@ -298,13 +299,19 @@ function ServerMetaPanel({ serverId, canEdit }: { serverId: string; canEdit: boo
       project_id?: string;
       delete_protection?: boolean;
     }) => updateServerMeta(serverId, payload),
+    onMutate: async (payload) => ({
+      rollback: await applyServerPatch(queryClient, serverId, payload),
+    }),
     onSuccess: () => {
       toast.success(t("servers.meta.saved"));
       setComment(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.serverDetail(serverId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : t("common.save_failed")),
+    onError: (err, _payload, ctx) => {
+      ctx?.rollback();
+      toast.error(err instanceof Error ? err.message : t("common.save_failed"));
+    },
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.serverDetail(serverId) }),
   });
 
   if (!server) return null;

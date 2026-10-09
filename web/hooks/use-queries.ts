@@ -52,6 +52,7 @@ import {
 import { queryKeys } from "@/lib/query-keys";
 
 import { livePollMs } from "@/lib/live-link";
+import { applyServerPatch, POWER_PATCH } from "@/lib/optimistic";
 import { pollMs } from "@/lib/public-settings";
 export function useMe() {
   return useQuery({
@@ -295,38 +296,18 @@ export function usePowerServer() {
     mutationFn: ({ id, action }: { id: string; action: string }) =>
       powerServer(id, action),
     onMutate: async ({ id, action }) => {
-      await qc.cancelQueries({ queryKey: queryKeys.servers });
-      await qc.cancelQueries({ queryKey: queryKeys.adminServers });
-      const prev = qc.getQueryData<Server[]>(queryKeys.servers);
-      const prevAdmin = qc.getQueryData<any[]>(queryKeys.adminServers);
-      const optimistic =
-        action === "start" || action === "restart" ? "starting" : "stopping";
-      qc.setQueryData<Server[]>(queryKeys.servers, (old) =>
-        old?.map((s) => (s.id === id ? { ...s, status: optimistic } : s))
-      );
-      qc.setQueryData<any[]>(queryKeys.adminServers, (old) =>
-        old?.map((s) => (s.id === id ? { ...s, status: optimistic } : s))
-      );
-      const prevOne = qc.getQueryData<Server>(queryKeys.server(id));
-      qc.setQueryData<Server>(queryKeys.server(id), (old) =>
-        old ? { ...old, status: optimistic } : old
-      );
-      const prevDetail = qc.getQueryData<DashboardServer>(queryKeys.serverDetail(id));
-      qc.setQueryData<DashboardServer>(queryKeys.serverDetail(id), (old) =>
-        old ? { ...old, status: optimistic, runtime_status: optimistic } : old
-      );
-      return { prev, prevAdmin, prevOne, prevDetail };
+      const patch = POWER_PATCH[action];
+      const rollback = patch ? await applyServerPatch(qc, id, patch) : () => {};
+      return { rollback };
     },
-    onError: (_err, { id }, ctx) => {
-      if (ctx?.prev) qc.setQueryData(queryKeys.servers, ctx.prev);
-      if (ctx?.prevAdmin) qc.setQueryData(queryKeys.adminServers, ctx.prevAdmin);
-      if (ctx?.prevOne) qc.setQueryData(queryKeys.server(id), ctx.prevOne);
-      if (ctx?.prevDetail) qc.setQueryData(queryKeys.serverDetail(id), ctx.prevDetail);
+    onError: (_err, _vars, ctx) => {
+      ctx?.rollback();
     },
     onSettled: (_data, _err, { id }) => {
       qc.invalidateQueries({ queryKey: queryKeys.servers });
       qc.invalidateQueries({ queryKey: queryKeys.adminServers });
       qc.invalidateQueries({ queryKey: ["my-servers"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
       qc.invalidateQueries({ queryKey: queryKeys.server(id) });
       qc.invalidateQueries({ queryKey: queryKeys.serverStatus(id) });
       qc.invalidateQueries({ queryKey: queryKeys.serverDetail(id) });
@@ -358,8 +339,10 @@ export function patchServerStatus(
   qc.setQueryData<DashboardServer>(queryKeys.serverDetail(serverId), (old) =>
     old ? { ...old, status, runtime_status: status } : old
   );
-  qc.setQueryData<DashboardServer[]>(["my-servers"], (old) =>
-    old?.map((s) => (s.id === serverId ? { ...s, status, runtime_status: status } : s))
+  qc.setQueryData<{ servers: DashboardServer[] }>(["my-servers"], (old) =>
+    old && Array.isArray(old.servers)
+      ? { ...old, servers: old.servers.map((s) => (s.id === serverId ? { ...s, status, runtime_status: status } : s)) }
+      : old
   );
 }
 

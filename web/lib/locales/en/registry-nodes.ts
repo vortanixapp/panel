@@ -8,6 +8,9 @@ export const registryNodes = {
   "admin.settings.reg.section.nodes.performance": "Server speed and isolation",
   "admin.settings.reg.section.nodes.performance.description":
     "The install cache on a node speeds up creating servers, and CPU weights with a soft memory limit keep one server from hurting its neighbours. Applies to servers started after the change.",
+  "admin.settings.reg.section.nodes.sandbox": "gVisor sandbox",
+  "admin.settings.reg.section.nodes.sandbox.description":
+    "gVisor runs a game server behind its own user-space kernel, so a vulnerability in the game cannot reach the host. The node needs runsc installed; network and disk are slower, so check the games one by one. Applies to servers started after the change. The VORTANIX_SANDBOX variable on the node takes priority.",
   "admin.settings.reg.section.nodes.diagnostics": "Disk diagnostics",
   "admin.settings.reg.section.nodes.diagnostics.description":
     "Thresholds at which the node disk check reports a warning or an error.",
@@ -47,6 +50,19 @@ export const registryNodes = {
   "admin.settings.reg.agent.install_cache_max_mb": "Install cache size on the node",
   "admin.settings.reg.agent.install_cache_max_mb.hint":
     "When exceeded, the least recently used games are removed",
+  "admin.settings.reg.agent.sandbox_mode": "Sandbox mode",
+  "admin.settings.reg.agent.sandbox_mode.hint": "Off, only the games in the list, or every game except the list",
+  "admin.settings.reg.agent.sandbox_mode.option.off": "Off",
+  "admin.settings.reg.agent.sandbox_mode.option.selected": "Only games in the list",
+  "admin.settings.reg.agent.sandbox_mode.option.all": "All games except the list",
+  "admin.settings.reg.agent.sandbox_games": "Game list",
+  "admin.settings.reg.agent.sandbox_games.hint":
+    "Game codes separated by commas, for example mc-java, samp. In the \"only the list\" mode these games run under gVisor, in the \"all\" mode they are the exceptions",
+  "admin.settings.reg.agent.sandbox_runtime": "Docker runtime name",
+  "admin.settings.reg.agent.sandbox_runtime.hint": "How the runtime is named in daemon.json on the node, usually runsc",
+  "admin.settings.reg.agent.sandbox_strict": "Refuse to start without the sandbox",
+  "admin.settings.reg.agent.sandbox_strict.hint":
+    "If the node has no gVisor, the server will not start. Without this option it starts without the sandbox and the agent log shows a warning",
   "admin.settings.reg.agent.cpu_fair_share": "Share CPU by memory size",
   "admin.settings.reg.agent.cpu_fair_share.hint":
     "When the processor is busy, a server with more memory gets more time. Nothing changes without load",

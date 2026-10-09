@@ -79,6 +79,34 @@ containers to cloud metadata addresses (`169.254.0.0/16`) is blocked together
 with the ban on traffic between game servers (`VORTANIX_GAME_ISOLATION=0` turns
 both off).
 
+**gVisor sandbox (off by default).** A regular container shares the host kernel,
+so a kernel or Docker vulnerability reached from a game server can lead to the
+node. gVisor runs the server behind its own user-space kernel, which makes such
+an escape much harder. The price: network and disk are slower, and some games
+may not work at all, so enable it one game at a time.
+
+1. On the node as root: `sh scripts/install-gvisor.sh`. The script verifies the
+   checksums, installs `runsc`, registers it in Docker and starts a test
+   container. Docker does not need a restart, but set `live-restore` in
+   `/etc/docker/daemon.json` in case you restart it later.
+2. In the panel: "Admin → Settings → Nodes → gVisor sandbox". The mode "Only
+   games in the list" with a couple of game codes, for example `mc-java`, is a
+   good trial. The mode "All games except the list" enables the sandbox
+   everywhere, and the exceptions stay on the regular runtime.
+3. The sandbox applies at the next server start; running servers keep going as
+   before. Check with `docker inspect -f '{{.HostConfig.Runtime}}' vortanix-<id>`;
+   the container also has the label `vortanix.sandbox=runsc`.
+
+If the node has no gVisor, the server starts without the sandbox by default and
+the agent log shows a warning. The option "Refuse to start without the sandbox"
+makes the server fail to start in that case. For a single node the panel setting
+is overridden by the agent's `VORTANIX_SANDBOX=off|selected|all` variable.
+Install containers (SteamCMD and similar) and backups run on the regular runtime.
+
+**Rootless Docker is not supported.** The panel manages the node firewall
+(iptables), disk quotas and binding ports below 1024, which Docker cannot do
+without root. Use gVisor and the limits above instead.
+
 ## Preparing the machine
 
 ```bash

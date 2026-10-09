@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, Copy, Loader2, Play, Plus, Square, SquareTerminal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { pluralDays } from "@/components/user/panel-parts";
 import { useQuery } from "@tanstack/react-query";
 import { livePollMs } from "@/lib/live-link";
-import { fetchServerMetrics, powerServer, type DashboardData, type DashboardServer } from "@/lib/api";
+import { fetchServerMetrics, type DashboardData, type DashboardServer } from "@/lib/api";
+import { usePowerServer } from "@/hooks/use-queries";
 import { canStartServer, canStopServer, getServerStatus, getServerStatusDotClass } from "@/lib/server-status";
 import { useT } from "@/hooks/use-translations";
 import { cn } from "@/lib/utils";
@@ -121,7 +121,6 @@ function LoadSpark({ serverId, running }: { serverId: string; running: boolean }
 
 function ServerItem({ server }: { server: DashboardServer }) {
   const t = useT();
-  const qc = useQueryClient();
   const [copied, setCopied] = useState(false);
   const st = getServerStatus(server);
   const address = serverAddress(server.ip_address, server.port);
@@ -131,14 +130,23 @@ function ServerItem({ server }: { server: DashboardServer }) {
   const canStart = canStartServer(server);
   const canStop = canStopServer(server);
 
-  const power = useMutation({
-    mutationFn: (action: "start" | "stop") => powerServer(server.id, action),
-    onSuccess: (_res, action) => {
-      toast.success(action === "start" ? t("home.servers.starting", { name: server.name }) : t("home.servers.stopping", { name: server.name }));
-      void qc.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-    onError: (err) => toast.error(err instanceof Error ? err.message : t("common.error")),
-  });
+  const powerHook = usePowerServer();
+  const power = {
+    isPending: powerHook.isPending,
+    mutate: (action: "start" | "stop") =>
+      powerHook.mutate(
+        { id: server.id, action },
+        {
+          onSuccess: () =>
+            toast.success(
+              action === "start"
+                ? t("home.servers.starting", { name: server.name })
+                : t("home.servers.stopping", { name: server.name })
+            ),
+          onError: (err) => toast.error(err instanceof Error ? err.message : t("common.error")),
+        }
+      ),
+  };
 
   const copy = async () => {
     try {
@@ -156,7 +164,7 @@ function ServerItem({ server }: { server: DashboardServer }) {
   const playersText = online !== undefined ? `${online}${max ? `/${max}` : ""}` : undefined;
 
   return (
-    <div className="flex flex-col gap-3.5 rounded-2xl border bg-muted/20 p-4 transition-colors hover:border-foreground/30">
+    <div data-testid="server-card" data-server-id={server.id} className="flex flex-col gap-3.5 rounded-2xl border bg-muted/20 p-4 transition-colors hover:border-foreground/30">
       <div className="flex items-center gap-2.5">
         <GameIcon server={server} />
         <div className="min-w-0 flex-1">

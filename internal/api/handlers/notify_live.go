@@ -22,10 +22,11 @@ const (
 type notifyLive struct {
 	mu   sync.Mutex
 	subs map[string]map[chan string]struct{}
+	ring liveRing
 }
 
 func (h *Handler) StartNotificationsLive(ctx context.Context) {
-	h.live = &notifyLive{subs: map[string]map[chan string]struct{}{}}
+	h.live = &notifyLive{subs: map[string]map[chan string]struct{}{}, ring: newLiveRing()}
 	go h.live.run(ctx, h.db)
 }
 
@@ -115,6 +116,7 @@ func (l *notifyLive) listen(ctx context.Context, pool *pgxpool.Pool) (bool, erro
 	if _, err := conn.Exec(ctx, "LISTEN "+notify.LiveChannel); err != nil {
 		return false, err
 	}
+	l.markGap()
 	l.broadcast(liveSync)
 
 	for {
@@ -127,6 +129,10 @@ func (l *notifyLive) listen(ctx context.Context, pool *pgxpool.Pool) (bool, erro
 			continue
 		}
 		if userID == liveAll {
+			if topic, ok := strings.CutPrefix(msg, liveInvalidate); ok {
+				l.broadcast(stampInvalidate(topic, l.record(topic)))
+				continue
+			}
 			l.broadcast(msg)
 			continue
 		}

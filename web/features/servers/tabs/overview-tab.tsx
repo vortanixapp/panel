@@ -62,6 +62,7 @@ import {
 } from "@/lib/api";
 import { formatAmount } from "@/lib/format";
 import { dateLocaleTag, t as translate } from "@/lib/i18n";
+import { applyServerPatch } from "@/lib/optimistic";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useMe, useServerDetail, useServerMetrics } from "@/hooks/use-queries";
@@ -238,9 +239,14 @@ export function ServerOverviewTab() {
 
   const autoStartMutation = useMutation({
     mutationFn: (enabled: boolean) => setServerAutoStart(id, enabled),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.serverDetail(id) }),
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : t("common.error")),
+    onMutate: async (enabled) => ({
+      rollback: await applyServerPatch(queryClient, id, { auto_start_enabled: enabled }),
+    }),
+    onError: (err, _enabled, ctx) => {
+      ctx?.rollback();
+      toast.error(err instanceof Error ? err.message : t("common.error"));
+    },
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.serverDetail(id) }),
   });
 
   const renewMutation = useMutation({

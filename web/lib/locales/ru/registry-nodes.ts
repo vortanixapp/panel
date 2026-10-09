@@ -8,6 +8,9 @@ export const registryNodes = {
   "admin.settings.reg.section.nodes.performance": "Скорость и изоляция серверов",
   "admin.settings.reg.section.nodes.performance.description":
     "Кэш установки на узле ускоряет создание серверов, а веса CPU и мягкий лимит памяти не дают одному серверу мешать соседям. Применяется к серверам, запущенным после изменения.",
+  "admin.settings.reg.section.nodes.sandbox": "Песочница gVisor",
+  "admin.settings.reg.section.nodes.sandbox.description":
+    "gVisor запускает игровой сервер за собственным ядром в пользовательском пространстве, поэтому уязвимость в игре не даёт выйти на хост. Нужен установленный на узле runsc; сеть и диск работают медленнее, проверяйте игры по одной. Применяется к серверам, запущенным после изменения. Переменная VORTANIX_SANDBOX на ноде главнее.",
   "admin.settings.reg.section.nodes.diagnostics": "Диагностика диска",
   "admin.settings.reg.section.nodes.diagnostics.description":
     "Пороги, при которых проверка диска на узле показывает предупреждение или ошибку.",
@@ -47,6 +50,20 @@ export const registryNodes = {
   "admin.settings.reg.agent.install_cache_max_mb": "Размер кэша установки на узле",
   "admin.settings.reg.agent.install_cache_max_mb.hint":
     "При превышении удаляются самые давно использованные игры",
+  "admin.settings.reg.agent.sandbox_mode": "Режим песочницы",
+  "admin.settings.reg.agent.sandbox_mode.hint":
+    "Выключена, только для игр из списка или для всех игр, кроме списка",
+  "admin.settings.reg.agent.sandbox_mode.option.off": "Выключена",
+  "admin.settings.reg.agent.sandbox_mode.option.selected": "Только игры из списка",
+  "admin.settings.reg.agent.sandbox_mode.option.all": "Все игры, кроме списка",
+  "admin.settings.reg.agent.sandbox_games": "Список игр",
+  "admin.settings.reg.agent.sandbox_games.hint":
+    "Коды игр через запятую, например mc-java, samp. В режиме «только из списка» это игры под gVisor, в режиме «все» это исключения",
+  "admin.settings.reg.agent.sandbox_runtime": "Имя окружения Docker",
+  "admin.settings.reg.agent.sandbox_runtime.hint": "Как окружение названо в daemon.json на узле, обычно runsc",
+  "admin.settings.reg.agent.sandbox_strict": "Не запускать без песочницы",
+  "admin.settings.reg.agent.sandbox_strict.hint":
+    "Если на узле нет gVisor, сервер не запустится. Без этой опции он запустится без песочницы, а в логе агента появится предупреждение",
   "admin.settings.reg.agent.cpu_fair_share": "Делить CPU по объёму памяти",
   "admin.settings.reg.agent.cpu_fair_share.hint":
     "Когда процессор занят, сервер с большим объёмом памяти получает больше времени. Без нагрузки ничего не меняется",

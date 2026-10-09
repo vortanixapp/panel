@@ -1,7 +1,8 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { restorePersistedCache, startCachePersistence } from "@/lib/query-persist";
 import { ThemeProvider } from "@/context/theme-provider";
 import { FontProvider } from "@/context/font-provider";
 import { DirectionProvider } from "@/context/direction-provider";
@@ -51,6 +52,11 @@ export function Providers({
         },
       })
   );
+
+  useEffect(() => {
+    restorePersistedCache(queryClient);
+    return startCachePersistence(queryClient);
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>

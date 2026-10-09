@@ -15,7 +15,7 @@ import { t } from "@/lib/i18n";
 import { queryKeys } from "@/lib/query-keys";
 
 type LiveMessage =
-  | { type: "hello"; unread: number }
+  | { type: "hello"; unread: number; resumed: boolean }
   | { type: "sync"; unread: number }
   | { type: "notification"; item: PanelNotification; unread: number }
   | { type: "seen"; id: string }
@@ -145,7 +145,7 @@ export function NotificationsLive() {
     const handle = (message: LiveMessage) => {
       switch (message.type) {
         case "hello": {
-          if (helloSeen) {
+          if (helloSeen && !message.resumed) {
             invalidateTopic("jobs");
             void qc.invalidateQueries({ queryKey: queryKeys.servers });
             void qc.invalidateQueries({ queryKey: ["my-servers"] });
@@ -195,7 +195,7 @@ export function NotificationsLive() {
     };
     const startStream = () =>
       subscribeNotifications({
-        onHello: (unread) => relay({ type: "hello", unread }),
+        onHello: (unread, resumed) => relay({ type: "hello", unread, resumed }),
         onSync: (unread) => relay({ type: "sync", unread }),
         onNotification: (item, unread) => relay({ type: "notification", item, unread }),
         onInvalidate: (topic) => relay({ type: "invalidate", topic }),

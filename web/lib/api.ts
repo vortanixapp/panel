@@ -6,6 +6,7 @@ import type {
 } from "@/lib/game-settings/types";
 import { csrfToken, currentAccount } from "@/lib/accounts";
 import { getCookie } from "@/lib/cookies";
+import { clearPersistedCache } from "@/lib/query-persist";
 import { runtimeConfig } from "@/lib/runtime-config";
 import { t, type BaseLocale } from "@/lib/i18n";
 import type {
@@ -114,6 +115,7 @@ export function stopAuthRefreshLoop() {
 }
 
 function dropSession() {
+  clearPersistedCache();
   stopAuthRefreshLoop();
   sessionExpiresAt = 0;
 }
@@ -175,6 +177,7 @@ export async function logout() {
     await apiFetch<{ status: string }>("/v1/auth/logout", { method: "POST" });
   } finally {
     dropSession();
+    clearPersistedCache();
   }
 }
 
@@ -1659,7 +1662,7 @@ export type PlayersPush = {
 export type NotificationStreamHandlers = {
   onServer?: (push: ServerPush) => void;
   onPlayers?: (push: PlayersPush) => void;
-  onHello?: (unread: number) => void;
+  onHello?: (unread: number, resumed: boolean) => void;
   onSync?: (unread: number) => void;
   onNotification?: (item: PanelNotification, unread: number) => void;
   onInvalidate?: (topic: string) => void;
@@ -1670,6 +1673,8 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
   const controller = new AbortController();
   let stopped = false;
   let delay = 1_000;
+  let lastInvalidate = 0;
+  let lastNotification = "";
 
   const wait = (ms: number) =>
     new Promise<void>((resolve) => {
@@ -1684,14 +1689,22 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
       );
     });
 
-  const dispatch = (event: string, data: string) => {
-    let payload: { unread?: number; item?: PanelNotification; topic?: string };
+  const dispatch = (event: string, data: string, id: string) => {
+    let payload: {
+      unread?: number;
+      item?: PanelNotification;
+      topic?: string;
+      resumed?: boolean;
+      at?: number;
+    };
     try {
-      payload = JSON.parse(data) as { unread?: number; item?: PanelNotification; topic?: string };
+      payload = JSON.parse(data) as typeof payload;
     } catch {
       return;
     }
     if (event === "invalidate") {
+      const stamp = Number(id);
+      if (stamp > lastInvalidate) lastInvalidate = stamp;
       if (payload.topic) handlers.onInvalidate?.(payload.topic);
       return;
     }
@@ -1706,9 +1719,15 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
       return;
     }
     const unread = typeof payload.unread === "number" ? payload.unread : 0;
-    if (event === "hello") handlers.onHello?.(unread);
-    else if (event === "sync") handlers.onSync?.(unread);
-    else if (event === "notification" && payload.item) handlers.onNotification?.(payload.item, unread);
+    if (event === "hello") {
+      if (typeof payload.at === "number" && payload.at > lastInvalidate) lastInvalidate = payload.at;
+      handlers.onHello?.(unread, payload.resumed === true);
+    } else if (event === "sync") {
+      handlers.onSync?.(unread);
+    } else if (event === "notification" && payload.item) {
+      if (id) lastNotification = id;
+      handlers.onNotification?.(payload.item, unread);
+    }
   };
 
   const run = async () => {
@@ -1718,7 +1737,10 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
       try {
         if (!(await ensureValidSession())) return;
         const res = await fetch(`${API_URL}/v1/notifications/stream`, {
-          headers: authHeaders({ Accept: "text/event-stream" }),
+          headers: authHeaders({
+            Accept: "text/event-stream",
+            ...(lastInvalidate > 0 ? { "Last-Event-ID": `${lastInvalidate}|${lastNotification}` } : {}),
+          }),
           credentials: "include",
           cache: "no-store",
           signal: controller.signal,
@@ -1737,14 +1759,16 @@ export function subscribeNotifications(handlers: NotificationStreamHandlers): ()
             const chunk = buffer.slice(0, sep);
             buffer = buffer.slice(sep + 2);
             let event = "message";
+            let id = "";
             const data: string[] = [];
             for (const line of chunk.split("\n")) {
               if (line.startsWith("event: ")) event = line.slice(7).trim();
+              else if (line.startsWith("id: ")) id = line.slice(4).trim();
               else if (line.startsWith("data: ")) data.push(line.slice(6));
             }
             if (data.length > 0) {
               received = true;
-              dispatch(event, data.join("\n"));
+              dispatch(event, data.join("\n"), id);
             }
             sep = buffer.indexOf("\n\n");
           }

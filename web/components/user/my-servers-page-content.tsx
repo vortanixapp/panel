@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { MoreHorizontal, Plus, RotateCw, Search, Square, Play } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/page-shell";
@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { fetchMyServers, powerServer, type DashboardServer } from "@/lib/api";
+import { fetchMyServers, type DashboardServer } from "@/lib/api";
+import { usePowerServer } from "@/hooks/use-queries";
 import { useT } from "@/hooks/use-translations";
 import { AnimatedNumber } from "@/components/vx/motion";
 import { localeTag } from "@/lib/i18n";
@@ -52,7 +53,6 @@ function statusAccent(category: string) {
 
 export function MyServersPageContent() {
   const t = useT();
-  const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ServerStatusCategory | "all">(
@@ -108,12 +108,13 @@ export function MyServersPageContent() {
     setSort("name-asc");
   }
 
+  const power = usePowerServer();
+
   async function serverAction(id: string, action: string) {
     setActionLoading(id);
     try {
-      await powerServer(id, action);
+      await power.mutateAsync({ id, action });
       toast.success(t("servers.list.command_sent", { action }));
-      await queryClient.invalidateQueries({ queryKey: ["my-servers"] });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("common.error"));
     } finally {

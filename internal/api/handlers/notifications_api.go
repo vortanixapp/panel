@@ -369,10 +369,15 @@ func (h *Handler) NotificationsStream(w http.ResponseWriter, r *http.Request) {
 	events, cancel := h.live.subscribe(claims.UserID)
 	defer cancel()
 
-	send := func(event string, payload any) bool {
+	sendID := func(id, event string, payload any) bool {
 		b, err := json.Marshal(payload)
 		if err != nil {
 			return false
+		}
+		if id != "" {
+			if _, err := fmt.Fprintf(w, "id: %s\n", id); err != nil {
+				return false
+			}
 		}
 		if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, b); err != nil {
 			return false
@@ -380,10 +385,63 @@ func (h *Handler) NotificationsStream(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 		return true
 	}
+	send := func(event string, payload any) bool { return sendID("", event, payload) }
 
 	db := h.dbOf(ctx)
-	if !send("hello", map[string]int{"unread": h.notificationsUnread(ctx, db, claims.UserID)}) {
+	helloAt := h.live.now()
+	resumeMS, resumeCursor := parseLiveCursor(r.Header.Get("Last-Event-ID"))
+	missed, resumed := h.live.since(resumeMS)
+	if !send("hello", map[string]any{
+		"unread":  h.notificationsUnread(ctx, db, claims.UserID),
+		"resumed": resumed,
+		"at":      helloAt,
+	}) {
 		return
+	}
+
+	var l *i18n.Localizer
+	if resumed {
+		seen := map[string]bool{}
+		for _, ev := range missed {
+			if ev.topic == liveJobsTopic && !isAdminRole(claims.Role) {
+				continue
+			}
+			if seen[ev.topic] {
+				continue
+			}
+			seen[ev.topic] = true
+			if !sendID(strconv.FormatInt(ev.ms, 10), "invalidate", map[string]string{"topic": ev.topic}) {
+				return
+			}
+		}
+	}
+	if afterAt, afterID := parseNotificationCursor(resumeCursor); afterAt != nil {
+		loc := i18n.ForUser(ctx, db, claims.UserID)
+		l = &loc
+		rows, err := db.Query(ctx, `
+			SELECT `+notificationColumns+`
+			FROM core.notifications n
+			WHERE n.user_id = $1
+			  AND (n.created_at, n.id) > ($2::timestamptz, $3::uuid)
+			  AND n.created_at > now() - make_interval(secs => $4)
+			ORDER BY n.created_at, n.id
+			LIMIT $5
+		`, claims.UserID, afterAt, afterID, liveReplayMaxAge.Seconds(), liveReplayMaxItems)
+		if err == nil {
+			var items []notificationItem
+			for rows.Next() {
+				if item, err := scanNotification(rows, loc); err == nil {
+					items = append(items, item)
+				}
+			}
+			rows.Close()
+			unread := h.notificationsUnread(ctx, db, claims.UserID)
+			for _, item := range items {
+				if !sendID(notificationCursor(item), "notification", map[string]any{"item": item, "unread": unread}) {
+					return
+				}
+			}
+		}
 	}
 
 	cycle := time.NewTimer(notificationsStreamCycle)
@@ -391,7 +449,6 @@ func (h *Handler) NotificationsStream(w http.ResponseWriter, r *http.Request) {
 	ping := time.NewTicker(notificationsStreamPing)
 	defer ping.Stop()
 
-	var l *i18n.Localizer
 	for {
 		select {
 		case <-ctx.Done():
@@ -416,11 +473,16 @@ func (h *Handler) NotificationsStream(w http.ResponseWriter, r *http.Request) {
 				}
 				continue
 			}
-			if topic, ok := strings.CutPrefix(msg, liveInvalidate); ok {
+			if rest, ok := strings.CutPrefix(msg, liveInvalidate); ok {
+				topic, ms := splitStamp(rest)
 				if topic == liveJobsTopic && !isAdminRole(claims.Role) {
 					continue
 				}
-				if !send("invalidate", map[string]string{"topic": topic}) {
+				id := ""
+				if ms > 0 {
+					id = strconv.FormatInt(ms, 10)
+				}
+				if !sendID(id, "invalidate", map[string]string{"topic": topic}) {
 					return
 				}
 				continue
@@ -437,7 +499,7 @@ func (h *Handler) NotificationsStream(w http.ResponseWriter, r *http.Request) {
 					WHERE n.id = $1::uuid AND n.user_id = $2
 				`, msg, claims.UserID), *l)
 				if err == nil {
-					if !send("notification", map[string]any{"item": item, "unread": unread}) {
+					if !sendID(notificationCursor(item), "notification", map[string]any{"item": item, "unread": unread}) {
 						return
 					}
 					continue

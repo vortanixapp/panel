@@ -89,7 +89,11 @@ func Start(ctx context.Context, serverID, name, gameID string, limits map[string
 	}
 	ApplyDiskQuota(ctx, serverID, diskLimitMB(limits))
 
-	args := buildRunArgs(serverID, gameID, limits, image, primaryPort, bindIP)
+	sandbox, err := resolveSandbox(ctx, gameID)
+	if err != nil {
+		return err
+	}
+	args := withSandbox(buildRunArgs(serverID, gameID, limits, image, primaryPort, bindIP), sandbox)
 	if gameID == "test" || gameID == "" {
 		args = append(args, "sleep", "infinity")
 	}
