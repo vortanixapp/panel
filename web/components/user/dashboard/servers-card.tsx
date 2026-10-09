@@ -7,7 +7,8 @@ import { ArrowRight, Check, Copy, Loader2, Play, Plus, Square, SquareTerminal } 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { pluralDays } from "@/components/user/panel-parts";
-import { powerServer, type DashboardData, type DashboardServer } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { fetchServerMetrics, powerServer, type DashboardData, type DashboardServer } from "@/lib/api";
 import { canStartServer, canStopServer, getServerStatus, getServerStatusDotClass } from "@/lib/server-status";
 import { useT } from "@/hooks/use-translations";
 import { cn } from "@/lib/utils";
@@ -19,16 +20,16 @@ export function ServersCard({ d }: { d: DashboardData }) {
   const more = d.total_servers - servers.length;
 
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-5 py-3.5 sm:px-6">
-        <h2 className="text-[15px] font-semibold">{t("home.servers.title")}</h2>
+    <section className="srv2-rise overflow-hidden rounded-[22px] border bg-card" style={{ animationDelay: "300ms" }}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-6 py-[18px]">
+        <h2 className="text-[16px] font-semibold">{t("home.servers.title")}</h2>
         {d.total_servers > 0 && (
           <span className="font-mono text-[12px] text-muted-foreground">
             {t("home.servers.running", { running: d.active_servers, total: d.total_servers })}
           </span>
         )}
         {d.total_servers > 0 && (
-          <Link href="/servers" className="group ms-auto inline-flex items-center gap-1.5 text-[13px] font-medium text-primary">
+          <Link href="/servers" className="group ms-auto inline-flex items-center gap-1.5 text-[13px] font-medium">
             {t("home.servers.all")}
             <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
@@ -37,14 +38,24 @@ export function ServersCard({ d }: { d: DashboardData }) {
       {servers.length === 0 ? (
         <Onboarding />
       ) : (
-        <ul className="divide-y">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3.5 p-[18px]">
           {servers.map((server) => (
             <ServerItem key={server.id} server={server} />
           ))}
-        </ul>
+          <Link
+            href="/rent-server"
+            className="flex min-h-[150px] flex-col items-center justify-center gap-2.5 rounded-2xl border border-dashed p-4 text-center text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+          >
+            <span className="srv2-float grid size-10 place-items-center rounded-full bg-muted text-foreground">
+              <Plus className="size-5" />
+            </span>
+            {t("home.servers.add")}
+            <span className="text-[12px] text-muted-foreground/70">{t("home.servers.add_hint")}</span>
+          </Link>
+        </div>
       )}
       {more > 0 && (
-        <div className="border-t px-5 py-3 text-[12.5px] sm:px-6">
+        <div className="border-t px-6 py-3 text-[12.5px]">
           <Link href="/servers" className="text-muted-foreground hover:text-foreground">
             {t("home.servers.more", { count: more })}
           </Link>
@@ -66,20 +77,44 @@ function GameIcon({ server }: { server: DashboardServer }) {
   );
 }
 
-function Meter({ label, value }: { label: string; value?: number }) {
+function Meter({ label, value, text }: { label: string; value?: number; text?: string }) {
   if (value === undefined || value === null || !Number.isFinite(value)) return null;
   const pct = Math.max(0, Math.min(100, value));
   return (
-    <span className="inline-flex items-center gap-1.5 font-mono text-[11.5px] text-muted-foreground">
-      {label}
-      <span className="h-1 w-10 overflow-hidden rounded-full bg-muted">
-        <span
-          className={cn("block h-full rounded-full", pct >= 90 ? "bg-rose-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500")}
+    <div className="min-w-0 font-mono">
+      <div className="text-[10px] tracking-[0.1em] text-muted-foreground/70 uppercase">{label}</div>
+      <div className="mt-0.5 mb-1.5 text-[14px] text-foreground">{text ?? `${Math.round(pct)}%`}</div>
+      <div className="h-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full", pct >= 90 ? "bg-rose-500" : pct >= 70 ? "bg-amber-500" : "bg-foreground/70")}
           style={{ width: `${pct}%` }}
         />
-      </span>
-      {Math.round(pct)}%
-    </span>
+      </div>
+    </div>
+  );
+}
+
+function LoadSpark({ serverId, running }: { serverId: string; running: boolean }) {
+  const { data } = useQuery({
+    queryKey: ["dashboard-spark", serverId],
+    queryFn: () => fetchServerMetrics(serverId),
+    enabled: running,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    retry: false,
+  });
+  const values = (data ?? []).slice(-48).map((p) => Math.max(0, Math.min(100, p.cpu_pct)));
+  const W = 200;
+  const H = 44;
+  const pts = values.length > 1 ? values : [0, 0];
+  const line = pts
+    .map((v, i) => `${i === 0 ? "M" : "L"}${((i / (pts.length - 1)) * W).toFixed(1)} ${(H - 4 - (v / 100) * (H - 10)).toFixed(1)}`)
+    .join("");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block h-11 w-full text-foreground/70" aria-hidden>
+      <path d={`${line}L${W} ${H}L0 ${H}Z`} fill="currentColor" opacity="0.12" />
+      <path d={line} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
   );
 }
 
@@ -114,47 +149,40 @@ function ServerItem({ server }: { server: DashboardServer }) {
     }
   };
 
+  const online = server.online_players;
+  const max = server.max_players;
+  const playersPct = online !== undefined && max ? (online / max) * 100 : undefined;
+  const playersText = online !== undefined ? `${online}${max ? `/${max}` : ""}` : undefined;
+
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_150px_130px_176px]">
-      <div className="flex min-w-0 flex-1 basis-64 items-center gap-3">
+    <div className="flex flex-col gap-3.5 rounded-2xl border bg-muted/20 p-4 transition-colors hover:border-foreground/30">
+      <div className="flex items-center gap-2.5">
         <GameIcon server={server} />
-        <div className="min-w-0">
-          <Link href={`/servers/${server.id}`} className="block truncate text-[14.5px] font-medium hover:underline">
+        <div className="min-w-0 flex-1">
+          <Link href={`/servers/${server.id}`} className="block truncate font-semibold hover:underline">
             {server.name}
           </Link>
-          <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 text-[12.5px] text-muted-foreground">
-            <span className="truncate">
-              {[server.game?.name, server.location?.city || server.location?.name].filter(Boolean).join(" · ") || "—"}
-            </span>
-            {address && (
-              <button
-                type="button"
-                onClick={() => void copy()}
-                className="inline-flex items-center gap-1 font-mono hover:text-foreground"
-                title={t("home.servers.copy")}
-              >
-                {address}
-                {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-              </button>
-            )}
+          <div className="truncate text-[12px] text-muted-foreground">
+            {[server.game?.name, server.location?.city || server.location?.name].filter(Boolean).join(" · ") || "—"}
           </div>
         </div>
-      </div>
-
-      <div className="flex min-w-[140px] flex-col gap-1.5 max-sm:basis-full lg:min-w-0">
-        <span className="inline-flex items-center gap-2 text-[13px]">
-          <span className={cn("relative size-1.5 rounded-full", getServerStatusDotClass(st), st.category === "running" && "vx-live")} />
+        <span className="inline-flex items-center gap-[7px] text-[12px]">
+          <span className={cn("relative size-[7px] rounded-full", getServerStatusDotClass(st), st.category === "running" && "vx-live")} />
           {st.label}
         </span>
-        {(server.cpu_percent !== undefined || server.ram_percent !== undefined) && (
-          <span className="flex flex-wrap gap-x-3 gap-y-1">
-            <Meter label="CPU" value={server.cpu_percent} />
-            <Meter label="RAM" value={server.ram_percent} />
-          </span>
-        )}
       </div>
 
-      <div className="min-w-[120px] text-[12.5px] lg:min-w-0">
+      <LoadSpark serverId={server.id} running={st.category === "running"} />
+
+      {(server.cpu_percent !== undefined || server.ram_percent !== undefined || playersText) && (
+        <div className="grid grid-cols-3 gap-2.5">
+          <Meter label="CPU" value={server.cpu_percent} />
+          <Meter label="RAM" value={server.ram_percent} />
+          <Meter label={t("home.servers.players")} value={playersPct ?? (online !== undefined ? 0 : undefined)} text={playersText} />
+        </div>
+      )}
+
+      <div className="text-[12.5px]">
         {server.billing_source === "whmcs" ? (
           <span className="text-muted-foreground">{t("home.servers.whmcs")}</span>
         ) : days === null ? (
@@ -162,55 +190,65 @@ function ServerItem({ server }: { server: DashboardServer }) {
         ) : expired ? (
           <span className="font-medium text-rose-600 dark:text-rose-400">{t("home.servers.expired")}</span>
         ) : (
-          <>
-            <div className={cn(expiring ? "font-medium text-amber-600 dark:text-amber-500" : "text-foreground")}>
-              {t("home.servers.until", { date: shortDate(server.expires_at) })}
-            </div>
-            <div className="text-muted-foreground">
-              {server.auto_renew ? t("home.servers.auto") : t("home.servers.left", { days: pluralDays(days) })}
-            </div>
-          </>
+          <span className={cn(expiring ? "font-medium text-amber-600 dark:text-amber-500" : "text-muted-foreground")}>
+            {t("home.servers.until", { date: shortDate(server.expires_at) })} ·{" "}
+            {server.auto_renew ? t("home.servers.auto") : t("home.servers.left", { days: pluralDays(days) })}
+          </span>
         )}
       </div>
 
-      <div className="ms-auto flex items-center justify-end gap-1.5">
-        {(expiring || expired) && server.billing_source !== "whmcs" && (
-          <Button asChild size="sm" variant={expired ? "default" : "outline"} className="h-8">
-            <Link href={`/servers/${server.id}/tariff`}>{t("home.servers.renew")}</Link>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+        <button
+          type="button"
+          onClick={() => void copy()}
+          className="inline-flex min-w-0 items-center gap-1.5 truncate font-mono text-[12px] text-muted-foreground hover:text-foreground"
+          title={t("home.servers.copy")}
+        >
+          {address}
+          {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+        </button>
+        <div className="flex items-center gap-1.5">
+          {(expiring || expired) && server.billing_source !== "whmcs" && (
+            <Button asChild size="sm" variant={expired ? "default" : "outline"} className="h-8">
+              <Link href={`/servers/${server.id}/tariff`}>{t("home.servers.renew")}</Link>
+            </Button>
+          )}
+          {canStart ? (
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8 text-emerald-600 hover:text-emerald-600 dark:text-emerald-400"
+              title={t("home.servers.start")}
+              aria-label={t("home.servers.start")}
+              disabled={power.isPending || server.is_blocked}
+              onClick={() => power.mutate("start")}
+            >
+              {power.isPending ? <Loader2 className="animate-spin" /> : <Play />}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-8 text-rose-600 hover:text-rose-600 dark:text-rose-400"
+              title={t("home.servers.stop")}
+              aria-label={t("home.servers.stop")}
+              disabled={power.isPending || !canStop}
+              onClick={() => power.mutate("stop")}
+            >
+              {power.isPending ? <Loader2 className="animate-spin" /> : <Square />}
+            </Button>
+          )}
+          <Button asChild variant="outline" size="icon" className="size-8" title={t("home.servers.console")}>
+            <Link href={`/servers/${server.id}/console`} aria-label={t("home.servers.console")}>
+              <SquareTerminal />
+            </Link>
           </Button>
-        )}
-        {canStart ? (
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-8 text-emerald-600 hover:text-emerald-600 dark:text-emerald-400"
-            title={t("home.servers.start")}
-            aria-label={t("home.servers.start")}
-            disabled={power.isPending || server.is_blocked}
-            onClick={() => power.mutate("start")}
-          >
-            {power.isPending ? <Loader2 className="animate-spin" /> : <Play />}
+          <Button asChild size="sm" variant="outline" className="h-8">
+            <Link href={`/servers/${server.id}`}>{t("home.servers.manage")}</Link>
           </Button>
-        ) : (
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-8 text-rose-600 hover:text-rose-600 dark:text-rose-400"
-            title={t("home.servers.stop")}
-            aria-label={t("home.servers.stop")}
-            disabled={power.isPending || !canStop}
-            onClick={() => power.mutate("stop")}
-          >
-            {power.isPending ? <Loader2 className="animate-spin" /> : <Square />}
-          </Button>
-        )}
-        <Button asChild variant="outline" size="icon" className="size-8" title={t("home.servers.console")}>
-          <Link href={`/servers/${server.id}/console`} aria-label={t("home.servers.console")}>
-            <SquareTerminal />
-          </Link>
-        </Button>
+        </div>
       </div>
-    </li>
+    </div>
   );
 }
 

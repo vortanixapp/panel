@@ -12,37 +12,44 @@ import { amountText, currencySymbol, daysUntil, money, moneyPrecise, shortDate }
 function Tile({
   label,
   icon,
+  accent,
   tone,
+  delay = 0,
   footer,
   children,
 }: {
   label: string;
   icon: string;
+  accent: string;
   tone?: "warning" | "danger";
+  delay?: number;
   footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const color = tone === "danger" ? "var(--vx-danger)" : tone === "warning" ? "var(--vx-warn)" : accent;
   return (
-    <div data-spotlight className="relative isolate flex h-full min-h-[168px] flex-col bg-card px-5 py-4">
+    <div
+      data-spotlight
+      style={{ animationDelay: `${delay}ms` }}
+      className="srv2-rise relative isolate flex h-full min-h-[200px] flex-col gap-1.5 overflow-hidden rounded-[20px] border bg-card px-5 py-[18px] transition-colors hover:border-[var(--vx-border-strong)]"
+    >
+      <div
+        className="pointer-events-none absolute -top-10 -right-10 size-[120px] rounded-full opacity-[0.12]"
+        style={{ background: `radial-gradient(closest-side, ${color}, transparent)` }}
+      />
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-[10.5px] tracking-wider text-muted-foreground uppercase">{label}</span>
-        <i
-          className={cn(
-            icon,
-            "text-[17px]",
-            tone === "warning" ? "text-amber-500" : tone === "danger" ? "text-rose-500" : "text-muted-foreground"
-          )}
-        />
+        <span className="font-mono text-[11px] tracking-[0.12em] text-muted-foreground uppercase">{label}</span>
+        <i className={cn(icon, "text-[17px]")} style={{ color }} />
       </div>
-      <div className="mt-3 min-w-0 flex-1">{children}</div>
-      {footer && <div className="mt-3 text-[12.5px]">{footer}</div>}
+      <div className="min-w-0 flex-1">{children}</div>
+      {footer && <div className="mt-1 text-[13px]">{footer}</div>}
     </div>
   );
 }
 
 function TileLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="group inline-flex items-center gap-1.5 font-medium text-primary">
+    <Link href={href} className="group inline-flex items-center gap-1.5 font-medium text-foreground">
       {children}
       <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
     </Link>
@@ -61,6 +68,8 @@ export function BalanceTile({ d }: { d: DashboardData }) {
     <Tile
       label={t("home.balance.title")}
       icon="ri-wallet-3-line"
+      accent="var(--vx-muted)"
+      delay={100}
       tone={low ? "warning" : undefined}
       footer={<TileLink href="/billing#topup">{t("home.balance.topup")}</TileLink>}
     >
@@ -68,7 +77,7 @@ export function BalanceTile({ d }: { d: DashboardData }) {
         <AnimatedNumber
           value={Number(d.balance) || 0}
           format={(value) => amountText(value, digits)}
-          className="text-[30px] leading-none font-semibold tracking-tight tabular-nums"
+          className="text-[36px] leading-[1.2] font-semibold tracking-[-0.03em] tabular-nums"
         />
         <span className="text-[15px] font-medium text-muted-foreground">{currencySymbol(d.balance_currency)}</span>
       </div>
@@ -101,6 +110,8 @@ export function RenewalTile({ d }: { d: DashboardData }) {
     <Tile
       label={t("home.renewal.title")}
       icon="ri-calendar-event-line"
+      accent="var(--vx-muted)"
+      delay={160}
       tone={tone}
       footer={
         renewal ? (
@@ -114,7 +125,7 @@ export function RenewalTile({ d }: { d: DashboardData }) {
         <>
           <div
             className={cn(
-              "text-[24px] leading-none font-semibold tracking-tight",
+              "text-[30px] leading-[1.2] font-semibold tracking-[-0.03em]",
               tone === "danger" && "text-rose-600 dark:text-rose-400",
               tone === "warning" && "text-amber-600 dark:text-amber-500"
             )}
@@ -132,7 +143,7 @@ export function RenewalTile({ d }: { d: DashboardData }) {
         </>
       ) : (
         <>
-          <div className="text-[24px] leading-none font-semibold tracking-tight text-muted-foreground">—</div>
+          <div className="text-[30px] leading-[1.2] font-semibold tracking-[-0.03em] text-muted-foreground">—</div>
           <p className="mt-2 text-[12.5px] text-muted-foreground">{t("home.renewal.none")}</p>
         </>
       )}
@@ -147,12 +158,12 @@ export function SpendTile({ d }: { d: DashboardData }) {
   const peak = Math.max(1, ...days.map((day) => day.debit));
   const monthly = d.monthly_spend ?? 0;
   return (
-    <Tile label={t("home.spend.title")} icon="ri-line-chart-line" footer={<TileLink href="/billing">{t("home.spend.history")}</TileLink>}>
-      <div className="text-[24px] leading-none font-semibold tracking-tight tabular-nums">
+    <Tile label={t("home.spend.title")} icon="ri-line-chart-line" accent="var(--vx-muted)" delay={220} footer={<TileLink href="/billing">{t("home.spend.history")}</TileLink>}>
+      <div className="text-[30px] leading-[1.2] font-semibold tracking-[-0.03em] tabular-nums">
         {moneyPrecise(spending?.debit ?? 0, spending?.currency || d.balance_currency)}
       </div>
       {days.length > 0 && (
-        <div className="mt-3 flex h-8 items-end gap-[2px]" aria-hidden>
+        <div className="mt-3 flex h-[26px] items-end gap-[3px]" aria-hidden>
           {days.map((day) => (
             <span
               key={day.date}
@@ -179,6 +190,8 @@ export function SupportTile({ d }: { d: DashboardData }) {
     <Tile
       label={t("home.support.title")}
       icon="ri-customer-service-2-line"
+      accent="var(--vx-muted)"
+      delay={280}
       footer={
         open > 0 ? (
           <TileLink href="/support">{t("home.support.open_list")}</TileLink>
@@ -187,7 +200,7 @@ export function SupportTile({ d }: { d: DashboardData }) {
         )
       }
     >
-      <div className="text-[30px] leading-none font-semibold tracking-tight tabular-nums">{open}</div>
+      <div className="text-[36px] leading-[1.2] font-semibold tracking-[-0.03em] tabular-nums">{open}</div>
       <p className="mt-2 text-[12.5px] text-muted-foreground">
         {open > 0 ? t("home.support.open_hint") : t("home.support.none")}
       </p>

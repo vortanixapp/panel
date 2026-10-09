@@ -345,4 +345,25 @@ export const dashboard = {
 
   "home.news.title": "Новости",
   "home.news.all": "Все новости",
+
+  "home.live.title": "Игроки на всех серверах",
+  "home.live.hint": "Обновляется в реальном времени",
+  "home.live.online": "{count} онлайн",
+  "home.live.earlier": "раньше",
+  "home.live.now": "сейчас",
+
+  "home.spend30.title": "Расходы за 30 дней",
+  "home.spend30.empty": "Расходов за этот период не было",
+
+  "home.quick.title": "Быстрый старт",
+  "home.quick.topup": "Пополните баланс",
+  "home.quick.rent": "Арендуйте сервер",
+  "home.quick.email": "Подтвердите почту",
+  "home.quick.invite": "Пригласите друга",
+  "home.quick.support": "Изучите базу знаний",
+
+  "home.servers.add": "Добавить сервер",
+  "home.servers.add_hint": "запуск примерно за минуту",
+  "home.servers.manage": "Управлять",
+  "home.servers.players": "Игроки",
 };

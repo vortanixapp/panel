@@ -929,3 +929,60 @@ html[data-theme-switching] *::after {
 .srv2 button[class*="rounded-[8px]"]:not([role="tab"]) {
   border-radius: 12px;
 }
+@keyframes srv2-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes srv2-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@keyframes srv2-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+  60%,
+  100% {
+    transform: translateX(220%);
+  }
+}
+@keyframes srv2-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.srv2-rise {
+  animation: srv2-rise 0.7s both;
+}
+.srv2-float {
+  animation: srv2-float 3s ease-in-out infinite;
+}
+.srv2-sheen {
+  animation: srv2-sheen 3.5s infinite;
+}
+.srv2-glow-dot {
+  animation: srv2-glow 1.4s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .srv2-rise,
+  .srv2-float,
+  .srv2-sheen,
+  .srv2-glow-dot {
+    animation: none;
+  }
+}

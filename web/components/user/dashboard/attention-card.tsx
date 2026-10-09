@@ -146,14 +146,21 @@ export function AttentionCard({ items }: { items: AttentionItem[] }) {
   const t = useT();
   if (items.length === 0) return null;
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card">
+    <section
+      className={cn(
+        "srv2-rise overflow-hidden rounded-[18px] border bg-card",
+        items[0].tone === "danger" && "border-rose-500/35",
+        items[0].tone === "warning" && "border-amber-500/35"
+      )}
+      style={{ animationDelay: "80ms" }}
+    >
       <div className="border-b px-5 py-3.5 sm:px-6">
-        <h2 className="text-[15px] font-semibold">{t("home.attention.title")}</h2>
+        <h2 className="text-[16px] font-semibold">{t("home.attention.title")}</h2>
       </div>
       <ul className="divide-y">
         {items.map((item) => (
           <li key={item.id} className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-5 py-3.5 sm:px-6">
-            <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl text-[17px]", TONE[item.tone])}>
+            <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl text-[18px]", TONE[item.tone])}>
               <i className={item.icon} />
             </span>
             <div className="min-w-0 flex-1 basis-56">

@@ -345,4 +345,25 @@ export const dashboard = {
 
   "home.news.title": "News",
   "home.news.all": "All news",
+
+  "home.live.title": "Players on all servers",
+  "home.live.hint": "Updates in real time",
+  "home.live.online": "{count} online",
+  "home.live.earlier": "earlier",
+  "home.live.now": "now",
+
+  "home.spend30.title": "Spending, last 30 days",
+  "home.spend30.empty": "No spending in this period",
+
+  "home.quick.title": "Quick start",
+  "home.quick.topup": "Top up your balance",
+  "home.quick.rent": "Rent a server",
+  "home.quick.email": "Confirm your email",
+  "home.quick.invite": "Invite a friend",
+  "home.quick.support": "Browse the knowledge base",
+
+  "home.servers.add": "Add a server",
+  "home.servers.add_hint": "ready in about a minute",
+  "home.servers.manage": "Manage",
+  "home.servers.players": "Players",
 };

@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { pluralDays } from "@/components/user/panel-parts";
 import { AttentionCard, buildAttention } from "@/components/user/dashboard/attention-card";
 import { dayPart } from "@/components/user/dashboard/dashboard-utils";
+import { LiveCard, QuickStartCard, SpendCard } from "@/components/user/dashboard/extra-cards";
 import { ServersCard } from "@/components/user/dashboard/servers-card";
 import { BonusCard, NewsCard, RecentCard } from "@/components/user/dashboard/side-cards";
 import { BalanceTile, RenewalTile, SpendTile, SupportTile } from "@/components/user/dashboard/stat-tiles";
@@ -19,7 +20,7 @@ import { fetchDailyBonus, fetchDashboard } from "@/lib/api";
 
 export function DashboardPageContent() {
   const t = useT();
-  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: fetchDashboard });
+  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: fetchDashboard, refetchInterval: 15_000 });
   const account = useAccountQuery();
   const bonus = useQuery({ queryKey: ["daily-bonus"], queryFn: fetchDailyBonus, retry: false });
 
@@ -75,23 +76,25 @@ export function DashboardPageContent() {
 
   return (
     <PageShell variant="user">
-      <div className="font-panel w-full space-y-6 pb-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0 space-y-1.5">
-            <h1 className="text-[26px] leading-tight font-bold tracking-tight">{greeting}</h1>
-            <p className="text-[13.5px] text-muted-foreground">{summary}</p>
+      <div className="font-panel srv2 relative w-full space-y-5 pb-10">
+        <div className="srv2-glow" aria-hidden />
+        <div className="srv2-rise relative flex flex-wrap items-end justify-between gap-5">
+          <div className="min-w-0">
+            <h1 className="text-[28px] leading-[1.1] font-semibold tracking-[-0.03em] sm:text-[38px]">{greeting}</h1>
+            <p className="mt-2 text-[14px] text-muted-foreground">{summary}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
+          <div className="flex flex-wrap gap-2.5">
+            <Button asChild variant="outline" className="h-10 rounded-[10px]">
               <Link href="/billing#topup">
                 <Wallet />
                 {t("home.topup")}
               </Link>
             </Button>
-            <Button asChild>
+            <Button asChild className="relative h-10 overflow-hidden rounded-[10px] font-semibold">
               <Link href="/rent-server">
                 <Plus />
                 {t("home.rent")}
+                <span className="srv2-sheen pointer-events-none absolute inset-y-0 w-2/5 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
               </Link>
             </Button>
           </div>
@@ -99,42 +102,46 @@ export function DashboardPageContent() {
 
         {attention.length > 0 && (
           <EditableSection id="dashboard.next_steps">
-            <div>
+            <div className="relative">
               <AttentionCard items={attention} />
             </div>
           </EditableSection>
         )}
 
-        <div className="vx-stagger grid grid-cols-1 gap-px overflow-hidden rounded-2xl border bg-border sm:grid-cols-2 xl:grid-cols-4">
+        <div className="relative grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-3.5">
           <EditableSection id="dashboard.balance">
-            <div className="bg-card">
+            <div>
               <BalanceTile d={d} />
             </div>
           </EditableSection>
           <EditableSection id="dashboard.next_charge">
-            <div className="bg-card">
+            <div>
               <RenewalTile d={d} />
             </div>
           </EditableSection>
           <EditableSection id="dashboard.spend">
-            <div className="bg-card">
+            <div>
               <SpendTile d={d} />
             </div>
           </EditableSection>
           <EditableSection id="dashboard.support">
-            <div className="bg-card">
+            <div>
               <SupportTile d={d} />
             </div>
           </EditableSection>
         </div>
 
-        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] xl:grid-rows-[auto_1fr]">
-          <EditableSection id="dashboard.servers">
-            <div className="min-w-0 xl:col-start-1 xl:row-start-1">
-              <ServersCard d={d} />
-            </div>
-          </EditableSection>
-          <div className="min-w-0 space-y-6 xl:col-start-2 xl:row-span-2 xl:row-start-1">
+        <div className="relative grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="flex min-w-0 flex-col gap-5">
+            <EditableSection id="dashboard.servers">
+              <div className="min-w-0">
+                <ServersCard d={d} />
+              </div>
+            </EditableSection>
+            {d.total_servers > 0 && <LiveCard d={d} />}
+            <SpendCard d={d} />
+          </div>
+          <div className="flex min-w-0 flex-col gap-5">
             {bonus.data && !bonus.data.prizes_disabled && (
               <EditableSection id="dashboard.bonus">
                 <div>
@@ -147,14 +154,15 @@ export function DashboardPageContent() {
                 <RecentCard d={d} />
               </div>
             </EditableSection>
+            <QuickStartCard d={d} account={user} />
+            {d.news.length > 0 && (
+              <EditableSection id="dashboard.news">
+                <div className="min-w-0">
+                  <NewsCard news={d.news} />
+                </div>
+              </EditableSection>
+            )}
           </div>
-          {d.news.length > 0 && (
-            <EditableSection id="dashboard.news">
-              <div className="min-w-0 xl:col-start-1 xl:row-start-2">
-                <NewsCard news={d.news} />
-              </div>
-            </EditableSection>
-          )}
         </div>
       </div>
     </PageShell>

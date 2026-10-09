@@ -16,10 +16,10 @@ import { moneyPrecise, relativeTime } from "./dashboard-utils";
 
 function CardHeader({ title, href, link }: { title: string; href?: string; link?: string }) {
   return (
-    <div className="flex items-center gap-3 border-b px-5 py-3.5">
-      <h2 className="text-[15px] font-semibold">{title}</h2>
+    <div className="flex items-center gap-3 border-b px-5 py-4">
+      <h2 className="text-[16px] font-semibold">{title}</h2>
       {href && link && (
-        <Link href={href} className="group ms-auto inline-flex items-center gap-1.5 text-[13px] font-medium text-primary">
+        <Link href={href} className="group ms-auto inline-flex items-center gap-1.5 text-[13px] font-medium">
           {link}
           <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
         </Link>
@@ -38,6 +38,7 @@ export function BonusCard({ bonus }: { bonus: DailyBonusResponse }) {
     return () => window.clearInterval(timer);
   }, [bonus.can_spin, bonus.next_spin_at]);
 
+  const [deg, setDeg] = useState(0);
   const spin = useMutation({
     mutationFn: spinDailyBonus,
     onSuccess: (res) => {
@@ -53,29 +54,46 @@ export function BonusCard({ bonus }: { bonus: DailyBonusResponse }) {
   const left = remaining && remaining !== "00:00:00" ? remaining : "";
 
   return (
-    <section className="relative isolate overflow-hidden rounded-2xl border bg-card" data-spotlight>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-amber-500/[0.08] to-transparent" />
-      <div className="relative px-5 py-4">
-        <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            <Gift className="size-[18px]" />
-          </span>
+    <section
+      className="srv2-rise relative isolate overflow-hidden rounded-[22px] border border-amber-500/30 bg-card"
+      style={{ animationDelay: "300ms" }}
+      data-spotlight
+    >
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/[0.12] to-transparent" />
+      <div className="relative px-[22px] py-5">
+        <div className="flex items-center gap-3.5">
+          <div className="relative size-24 shrink-0">
+            <div className="absolute top-[-6px] left-1/2 z-[2] -ml-[7px] h-0 w-0 border-x-[7px] border-t-[14px] border-x-transparent border-t-foreground" />
+            <div
+              className="size-24 rounded-full border-[3px] border-card shadow-[0_0_0_1px_var(--border),0_0_28px_rgba(245,158,11,0.25)]"
+              style={{
+                background:
+                  "repeating-conic-gradient(rgba(245,158,11,0.75) 0deg 45deg, var(--muted) 45deg 90deg)",
+                transform: `rotate(${deg}deg)`,
+                transition: "transform 4s cubic-bezier(.12,.7,.1,1)",
+              }}
+            />
+            <div className="absolute inset-9 rounded-full border bg-card" />
+          </div>
           <div className="min-w-0">
-            <h2 className="text-[15px] font-semibold">{t("home.bonus.title")}</h2>
+            <h2 className="text-[16px] font-semibold">{t("home.bonus.title")}</h2>
             {bonus.streak > 0 && (
               <p className="text-[12px] text-muted-foreground">{t("home.bonus.streak", { days: pluralDays(bonus.streak) })}</p>
             )}
+            <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+              {bonus.can_spin ? t("home.bonus.available") : t("home.bonus.done")}
+            </p>
           </div>
         </div>
-        <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-          {bonus.can_spin ? t("home.bonus.available") : t("home.bonus.done")}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2.5">
           <Button
             size="sm"
             disabled={!bonus.can_spin || spin.isPending}
-            onClick={() => spin.mutate()}
-            className={cn(bonus.can_spin && "bg-amber-500 text-white hover:bg-amber-500/90")}
+            onClick={() => {
+              setDeg((value) => value + 1440 + Math.round(Math.random() * 300));
+              spin.mutate();
+            }}
+            className={cn("rounded-full", bonus.can_spin && "bg-amber-500 text-white hover:bg-amber-500/90")}
           >
             {spin.isPending && <Loader2 className="animate-spin" />}
             {bonus.can_spin ? t("home.bonus.spin") : left ? t("home.bonus.next", { time: left }) : t("home.bonus.tomorrow")}
@@ -93,7 +111,7 @@ export function RecentCard({ d }: { d: DashboardData }) {
   const t = useT();
   const items = d.recent_transactions.slice(0, 6);
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card">
+    <section className="srv2-rise overflow-hidden rounded-[22px] border bg-card" style={{ animationDelay: "400ms" }}>
       <CardHeader title={t("home.recent.title")} href="/billing" link={t("home.recent.all")} />
       {items.length === 0 ? (
         <div className="px-5 py-8 text-center">
@@ -105,10 +123,10 @@ export function RecentCard({ d }: { d: DashboardData }) {
             const credit = tx.type === "credit";
             const amount = Math.abs(Number(tx.amount) || 0);
             return (
-              <li key={tx.id} className="flex items-center gap-3 px-5 py-3">
+              <li key={tx.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/30">
                 <span
                   className={cn(
-                    "grid size-8 shrink-0 place-items-center rounded-lg text-[13px] font-semibold",
+                    "grid size-8 shrink-0 place-items-center rounded-full text-[14px] font-semibold",
                     credit ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"
                   )}
                 >
@@ -140,35 +158,21 @@ export function NewsCard({ news }: { news: DashboardNews[] }) {
   const t = useT();
   if (news.length === 0) return null;
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card">
+    <section className="srv2-rise overflow-hidden rounded-[22px] border bg-card" style={{ animationDelay: "600ms" }}>
       <CardHeader title={t("home.news.title")} href="/news" link={t("home.news.all")} />
-      <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-3">
+      <div className="px-5 pb-2">
         {news.slice(0, 3).map((item) => (
           <Link
             key={item.id}
             href={`/news/${item.slug || item.id}`}
-            className="group flex flex-col bg-card p-4 transition-colors hover:bg-muted/30"
+            className="block border-b py-[11px] last:border-b-0 hover:opacity-80"
           >
-            {item.image ? (
-              <div className="mb-3 aspect-[16/9] overflow-hidden rounded-xl border bg-muted">
-                <img
-                  src={item.image}
-                  alt=""
-                  className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                />
-              </div>
-            ) : (
-              <span className="mb-3 grid size-9 place-items-center rounded-xl bg-muted text-muted-foreground">
-                <i className="ri-newspaper-line text-[17px]" />
-              </span>
-            )}
-            <div className="text-[11.5px] text-muted-foreground">
+            <div className="font-mono text-[11px] text-muted-foreground">
               {item.published_at
                 ? new Date(item.published_at).toLocaleDateString(localeTag(), { day: "numeric", month: "long" })
                 : "—"}
             </div>
-            <h3 className="mt-1 line-clamp-2 text-[14px] leading-snug font-semibold">{item.title}</h3>
-            {item.excerpt && <p className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">{item.excerpt}</p>}
+            <div className="mt-[3px] line-clamp-2 text-[13.5px] leading-snug">{item.title}</div>
           </Link>
         ))}
       </div>
