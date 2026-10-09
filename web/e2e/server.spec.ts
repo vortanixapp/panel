@@ -33,7 +33,16 @@ test.describe("страница игрового сервера", () => {
   for (const tab of tabs) {
     test(`вкладка «${tab.name}» открывается и показывает данные`, async ({ page, signedIn }) => {
       await page.goto(base);
-      await page.getByRole("link", { name: tab.name, exact: true }).first().click();
+      const link = page.getByRole("link", { name: tab.name, exact: true }).first();
+      try {
+        await link.waitFor({ timeout: 10_000 });
+      } catch (error) {
+        const tree = await page.locator("body").ariaSnapshot();
+        throw new Error(`Ссылка «${tab.name}» не найдена. Адрес: ${page.url()}\n${tree.slice(0, 3500)}`, {
+          cause: error,
+        });
+      }
+      await link.click();
       await expect(page).toHaveURL(new RegExp(`${base}${tab.suffix}$`));
       await expect(page.getByText(tab.marker).first()).toBeVisible();
       expect(signedIn.misses).toEqual([]);
