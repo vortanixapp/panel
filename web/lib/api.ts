@@ -3893,6 +3893,14 @@ export type AgentResources = {
   disk_free_mb?: number;
 };
 
+export type AgentSandbox = {
+  runtime: string;
+  available: boolean;
+  runtimes: string[];
+  mode: string;
+  installer: boolean;
+};
+
 export type AgentRow = {
   id: string;
   name: string;
@@ -3919,6 +3927,7 @@ export type AgentRow = {
   connected_at?: string;
   remote_addr?: string;
   rtt_ms?: number;
+  sandbox?: AgentSandbox;
 };
 
 export type AgentsSummary = Record<
@@ -4181,6 +4190,16 @@ export async function fetchAgentDiagnostics(id: string) {
 
 export async function startAgentDiagnostics(id: string) {
   return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/diagnostics`, { method: "POST", body: "{}" });
+}
+
+export async function fetchAgentSandbox(id: string) {
+  return apiFetch<NodeTaskPair<{ output?: string; sandbox?: AgentSandbox }> & { supported: boolean; online: boolean }>(
+    `/v1/admin/daemons/${id}/sandbox`
+  );
+}
+
+export async function installAgentSandbox(id: string) {
+  return apiFetch<StartedTask>(`/v1/admin/daemons/${id}/sandbox/install`, { method: "POST", body: "{}" });
 }
 
 export async function restartAgent(id: string, force = false) {

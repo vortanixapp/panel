@@ -61,7 +61,7 @@ test.describe("мгновенная реакция интерфейса", () => 
     await page.waitForTimeout(2200);
 
     signedIn.delay("/v1/dashboard", 6000);
-    await page.reload();
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page.getByRole("link", { name: "Survival Craft" })).toBeVisible({ timeout: 3000 });
     expect(signedIn.misses).toEqual([]);
   });

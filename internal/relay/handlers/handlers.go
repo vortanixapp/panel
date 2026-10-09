@@ -743,7 +743,7 @@ func (h *Handler) saveDaemonState(ctx context.Context, c *hub.AgentConn, env map
 	version, _ := env["version"].(string)
 	var stats any
 	snapshot := map[string]any{}
-	for _, key := range []string{"host", "agent", "servers", "queue"} {
+	for _, key := range []string{"host", "agent", "servers", "queue", "sandbox"} {
 		if part, ok := env[key].(map[string]any); ok && len(part) > 0 {
 			snapshot[key] = part
 		}

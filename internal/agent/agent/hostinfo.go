@@ -26,6 +26,7 @@ var agentCaps = []string{
 	protocol.CapDiskUsage,
 	protocol.CapCleanup,
 	protocol.CapDiagnostics,
+	protocol.CapSandbox,
 	protocol.CapAgentConfig,
 }
 

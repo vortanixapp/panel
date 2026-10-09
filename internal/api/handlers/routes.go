@@ -320,6 +320,8 @@ func (h *Handler) mountProtected(r chi.Router) {
 			r.Get("/daemons/{id}/cleanup", h.GetAdminAgentCleanup)
 			r.Post("/daemons/{id}/cleanup/preview", h.PostAdminAgentCleanupPreview)
 			r.Post("/daemons/{id}/cleanup/apply", h.PostAdminAgentCleanupApply)
+			r.Get("/daemons/{id}/sandbox", h.GetAdminAgentSandbox)
+			r.Post("/daemons/{id}/sandbox/install", h.PostAdminAgentSandboxInstall)
 			r.Get("/daemons/{id}/diagnostics", h.GetAdminAgentDiagnostics)
 			r.Post("/daemons/{id}/diagnostics", h.PostAdminAgentDiagnostics)
 			r.Get("/daemons/{id}/tasks/{taskId}", h.GetAdminAgentTask)

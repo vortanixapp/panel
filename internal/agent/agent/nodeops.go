@@ -55,6 +55,8 @@ func (a *Agent) routeNodeOp(cmd protocol.CommandMessage) bool {
 		a.disp.serial("node:ctl", job{id: cmd.ID, action: cmd.Action, timeout: 5 * time.Minute, run: run})
 	case protocol.ActionCleanupApply:
 		a.disp.serial("node:ctl", job{id: cmd.ID, action: cmd.Action, timeout: 30 * time.Minute, run: run})
+	case protocol.ActionSandboxInstall:
+		a.disp.serial("node:sandbox", job{id: cmd.ID, action: cmd.Action, timeout: 15 * time.Minute, run: run})
 	case protocol.ActionDiagnostics:
 		a.disp.serial("node:diag", job{id: cmd.ID, action: cmd.Action, timeout: 5 * time.Minute, run: run})
 	default:
@@ -100,6 +102,17 @@ func (a *Agent) nodeOp(ctx context.Context, cmd protocol.CommandMessage) {
 			return
 		}
 		a.sendAck(cmd.ID, true, nil, v2(map[string]any{"result": res}))
+
+	case protocol.ActionSandboxInstall:
+		a.taskProgress(cmd.ID, map[string]any{"stage": "install"})
+		output, err := docker.InstallSandbox(ctx)
+		facts := docker.CollectSandboxFacts(ctx)
+		result := v2(map[string]any{"output": output, "sandbox": facts})
+		if err != nil {
+			a.sendAck(cmd.ID, false, err, result)
+			return
+		}
+		a.sendAck(cmd.ID, facts.Available, nil, result)
 
 	case protocol.ActionDiagnostics:
 		_, self := a.collectFacts(ctx)

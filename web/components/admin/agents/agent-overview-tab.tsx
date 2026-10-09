@@ -1,6 +1,7 @@
 "use client";
 
 import { InfoRow, Panel, Tile } from "@/components/vx/panel-ui";
+import { SandboxBadge } from "@/components/admin/agents/sandbox-install";
 import { AgentMetricChart } from "@/components/admin/agents/agent-metric-chart";
 import type { AgentTabProps } from "@/components/admin/agents/agent-shell";
 import { diskUsedPct, formatDateTime, formatDuration, formatMB, pct } from "@/lib/agents";
@@ -33,6 +34,7 @@ export function AgentOverviewTab({ id, agent }: AgentTabProps) {
     [t("admin.agents.fact.cgroup"), f.docker?.cgroup ? `v${f.docker.cgroup} · ${f.docker.cgroup_driver ?? ""}` : "—"],
     [t("admin.agents.fact.storage"), f.docker?.storage_driver || "—"],
     [t("admin.agents.fact.memory_limit"), f.docker?.memory_limit == null ? "—" : f.docker.memory_limit ? yes : no],
+    [t("admin.agents.sandbox.title"), <SandboxBadge key="sandbox" node={agent} />],
     [t("admin.agents.fact.image"), f.agent?.image || "—"],
     [t("admin.agents.fact.container"), f.agent?.container_name || "—"],
     [t("admin.agents.fact.restart_policy"), f.agent?.restart_policy || "—"],

@@ -27,6 +27,7 @@ var nodeTaskDeadlines = map[string]time.Duration{
 	protocol.ActionCleanupApply:   35 * time.Minute,
 	protocol.ActionDiagnostics:    6 * time.Minute,
 	protocol.ActionAgentRestart:   3 * time.Minute,
+	protocol.ActionSandboxInstall: 20 * time.Minute,
 }
 
 type agentLink struct {

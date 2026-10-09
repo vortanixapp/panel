@@ -72,6 +72,14 @@ func scanAgentRow(row pgx.Row) (agentRow, error) {
 	return a, err
 }
 
+func statsSection(raw []byte, section string) map[string]any {
+	var stats map[string]map[string]any
+	if json.Unmarshal(raw, &stats) != nil {
+		return nil
+	}
+	return stats[section]
+}
+
 func statsNumber(raw []byte, section, key string) (float64, bool) {
 	var stats map[string]map[string]any
 	if json.Unmarshal(raw, &stats) != nil {
@@ -138,6 +146,9 @@ func (a agentRow) view(target string, res *nodeResources) map[string]any {
 	}
 	if secs, ok := agentUptimeSeconds(online, a.StartedAt, a.ConnectedAt); ok {
 		item["uptime_sec"] = secs
+	}
+	if sandbox := statsSection(a.StatsRaw, "sandbox"); sandbox != nil {
+		item["sandbox"] = sandbox
 	}
 	if v, ok := statsNumber(a.StatsRaw, "host", "uptime_sec"); ok && online {
 		item["host_uptime_sec"] = v

@@ -14,6 +14,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useT } from "@/hooks/use-translations";
 import { ApiError, fetchAdminSettingsRegistry, saveAdminSettingsRegistry } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
+import { SandboxNodes, sandboxWarnings } from "./sandbox-nodes";
+import type { AgentsList } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   FieldGrid,
@@ -277,12 +279,33 @@ export function RegistrySettingsPanel({ group, header, draft, onDraftChange }: P
     },
   });
 
-  const save = () => {
+  const sandboxValue = (key: string, fallback: string) => {
+    const item = items.find((entry) => entry.key === key);
+    return item ? valueOf(item) : fallback;
+  };
+
+  const save = async () => {
     const values: Record<string, string> = {};
     changed.forEach((item) => {
       const next = draft[item.key].trim();
       values[item.key] = next === item.default ? "" : next;
     });
+    if (changed.some((item) => item.key.startsWith("agent.sandbox_"))) {
+      const nodes = queryClient.getQueryData<AgentsList>(queryKeys.agents)?.agents ?? [];
+      const warnings = sandboxWarnings(
+        t,
+        nodes,
+        sandboxValue("agent.sandbox_mode", "off"),
+        sandboxValue("agent.sandbox_strict", "0") === "1"
+      );
+      if (warnings.length > 0) {
+        const ok = await confirmAction(t("admin.agents.sandbox.confirm_text", { details: warnings.join(" ") }), {
+          title: t("admin.agents.sandbox.confirm_title"),
+          confirmText: t("admin.agents.sandbox.confirm_save"),
+        });
+        if (!ok) return;
+      }
+    }
     saveMutation.mutate(values);
   };
 
@@ -376,6 +399,12 @@ export function RegistrySettingsPanel({ group, header, draft, onDraftChange }: P
                       ))}
                     </FieldGrid>
                   ) : null}
+                  {group === "nodes" && section === "sandbox" ? (
+                    <SandboxNodes
+                      mode={sandboxValue("agent.sandbox_mode", "off")}
+                      strict={sandboxValue("agent.sandbox_strict", "0") === "1"}
+                    />
+                  ) : null}
                 </div>
               </SettingsCard>
             );
@@ -400,7 +429,7 @@ export function RegistrySettingsPanel({ group, header, draft, onDraftChange }: P
           onDraftChange(next);
           setServerErrors({});
         }}
-        onSave={save}
+        onSave={() => void save()}
         saveDisabled={!dirty || hasErrors}
         extra={
           <Button

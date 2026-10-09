@@ -407,6 +407,9 @@ func (a *Agent) heartbeat(done <-chan struct{}) {
 			self.UptimeSec = int64(time.Since(a.startedAt).Seconds())
 			payload["agent"] = self
 		}
+		hbCtx, hbCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		payload["sandbox"] = docker.CollectSandboxFacts(hbCtx)
+		hbCancel()
 		running, queued := a.disp.stats()
 		payload["queue"] = map[string]any{"running": running, "queued": queued}
 		payload["servers"] = map[string]any{

@@ -30,6 +30,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { useT } from "@/hooks/use-translations";
 import { useNodeTask } from "@/hooks/use-node-task";
+import { AgentSandboxPanel } from "@/components/admin/agents/sandbox-install";
 
 function errText(e: unknown) {
   return agentErrorText(apiErrorCode(e), e instanceof Error ? e.message : "");
@@ -95,6 +96,7 @@ export function AgentMaintenanceTab({ id, agent, viewer }: AgentTabProps) {
 
   return (
     <div className="grid gap-[18px] lg:grid-cols-2">
+      <AgentSandboxPanel id={id} agent={agent} canWrite={viewer.can_write} />
       <Panel title={t("admin.agents.maint.update_title")}>
         <InfoRow k={t("admin.agents.maint.current")} v={agent.version || "—"} />
         <InfoRow k={t("admin.agents.maint.target")} v={agent.target_version || "—"} />

@@ -19,6 +19,7 @@ const (
 	ActionCleanupPreview = "cleanup_preview"
 	ActionCleanupApply   = "cleanup_apply"
 	ActionDiagnostics    = "diagnostics"
+	ActionSandboxInstall = "sandbox_install"
 )
 
 const (
@@ -34,6 +35,7 @@ const (
 	CapDiskUsage     = "disk_usage"
 	CapCleanup       = "cleanup"
 	CapDiagnostics   = "diagnostics"
+	CapSandbox       = "sandbox"
 	CapFirewallHost  = "firewall_host"
 	CapCronScheduler = "cron_scheduler"
 	CapAgentConfig   = "agent_config"
@@ -61,6 +63,7 @@ var requiredCaps = map[string]string{
 	ActionCleanupPreview: CapCleanup,
 	ActionCleanupApply:   CapCleanup,
 	ActionDiagnostics:    CapDiagnostics,
+	ActionSandboxInstall: CapSandbox,
 }
 
 func RequiredCap(action string) string {

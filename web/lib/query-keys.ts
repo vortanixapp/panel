@@ -90,6 +90,7 @@ export const queryKeys = {
   adminAgentLogs: (id: string) => ["admin-agent", id, "logs"] as const,
   adminAgentServers: (id: string) => ["admin-agent", id, "servers"] as const,
   agents: ["agents"] as const,
+  agentSandbox: (id: string) => ["agents", id, "sandbox"] as const,
   agent: (id: string) => ["agents", id] as const,
   agentMetrics: (id: string, range: string) => ["agents", id, "metrics", range] as const,
   agentEvents: (id: string, group: string) => ["agents", id, "events", group] as const,

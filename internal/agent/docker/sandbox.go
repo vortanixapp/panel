@@ -8,11 +8,13 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/vortanixapp/panel/pkg/settingsreg"
+	"github.com/vortanixapp/panel/scripts"
 )
 
 const (
@@ -137,4 +139,42 @@ func withSandbox(args []string, runtime string) []string {
 	out := make([]string, 0, len(args)+4)
 	out = append(out, args[0], "--runtime", runtime, "--label", "vortanix.sandbox="+runtime)
 	return append(out, args[1:]...)
+}
+
+type SandboxFacts struct {
+	Runtime   string   `json:"runtime"`
+	Available bool     `json:"available"`
+	Runtimes  []string `json:"runtimes"`
+	Mode      string   `json:"mode"`
+	Installer bool     `json:"installer"`
+}
+
+func CollectSandboxFacts(ctx context.Context) SandboxFacts {
+	checkCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	defer cancel()
+	name := sandboxRuntime()
+	found := installedRuntimes(checkCtx)
+	names := make([]string, 0, len(found))
+	for runtimeName := range found {
+		names = append(names, runtimeName)
+	}
+	sort.Strings(names)
+	return SandboxFacts{
+		Runtime:   name,
+		Available: found[name],
+		Runtimes:  names,
+		Mode:      sandboxMode(),
+		Installer: true,
+	}
+}
+
+const sandboxInstallOutputLimit = 4000
+
+func InstallSandbox(ctx context.Context) (string, error) {
+	out, err := HostShell(ctx, scripts.InstallGVisor)
+	resetSandboxCache()
+	if len(out) > sandboxInstallOutputLimit {
+		out = out[len(out)-sandboxInstallOutputLimit:]
+	}
+	return out, err
 }

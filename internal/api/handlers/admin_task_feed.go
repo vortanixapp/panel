@@ -28,6 +28,7 @@ var nodeTaskLabels = map[string]string{
 	protocol.ActionCleanupPreview: "Предпросмотр очистки",
 	protocol.ActionCleanupApply:   "Очистка ноды",
 	protocol.ActionDiagnostics:    "Диагностика ноды",
+	protocol.ActionSandboxInstall: "Установка gVisor",
 	protocol.ActionAgentUpdate:    "Обновление агента",
 }
 

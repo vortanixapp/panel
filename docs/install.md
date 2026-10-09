@@ -85,11 +85,15 @@ node. gVisor runs the server behind its own user-space kernel, which makes such
 an escape much harder. The price: network and disk are slower, and some games
 may not work at all, so enable it one game at a time.
 
-1. On the node as root: `sh scripts/install-gvisor.sh`. The script adds the
-   official gVisor apt repository (Debian and Ubuntu), installs a current `runsc`,
-   registers it in Docker and starts a test
-   container. Docker does not need a restart, but set `live-restore` in
-   `/etc/docker/daemon.json` in case you restart it later.
+1. Install gVisor on the **game node** (not on the panel machine). The easiest way
+   is the panel: "Admin → Settings → Nodes → gVisor sandbox" lists every node and
+   whether it has gVisor, and the "Install gVisor" button installs it on the node
+   itself through the agent (the node's "Maintenance" tab has the same button).
+   It needs Debian or Ubuntu and an updated agent; servers are not restarted.
+   Manually on the node as root: `sh scripts/install-gvisor.sh`. The script adds
+   the official gVisor apt repository, installs a current `runsc`, registers it in
+   Docker and starts a test container. Docker does not need a restart, but set
+   `live-restore` in `/etc/docker/daemon.json` in case you restart it later.
 2. In the panel: "Admin → Settings → Nodes → gVisor sandbox". The mode "Only
    games in the list" with a couple of game codes, for example `mc-java`, is a
    good trial. The mode "All games except the list" enables the sandbox
