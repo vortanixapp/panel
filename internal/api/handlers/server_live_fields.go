@@ -3,8 +3,21 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 )
+
+const (
+	liveStatsTimeout = 1500 * time.Millisecond
+	liveStatsTTL     = 20 * time.Second
+)
+
+type liveStatsEntry struct {
+	at     time.Time
+	result map[string]any
+}
+
+var liveStatsCache sync.Map
 
 func (h *Handler) deriveProvisioningProgress(ctx context.Context, serverID, provStatus, serverStatus string) map[string]any {
 	var cached map[string]any
@@ -100,8 +113,25 @@ func (h *Handler) enrichServerLiveFields(ctx context.Context, serverID string, i
 		return
 	}
 	limits, _ := item["limits"].(map[string]any)
-	result, agentErr := h.agentCommand(ctx, nodeID, serverID, "stats", map[string]any{"limits": limits})
-	if agentErr != nil || result == nil {
+	var result map[string]any
+	fresh := false
+	if cached, ok := liveStatsCache.Load(serverID); ok {
+		if entry := cached.(liveStatsEntry); time.Since(entry.at) < liveStatsTTL {
+			result = entry.result
+			fresh = true
+		}
+	}
+	if !fresh {
+		statsCtx, cancel := context.WithTimeout(ctx, liveStatsTimeout)
+		defer cancel()
+		fetched, agentErr := h.agentCommand(statsCtx, nodeID, serverID, "stats", map[string]any{"limits": limits})
+		liveStatsCache.Store(serverID, liveStatsEntry{at: time.Now(), result: fetched})
+		if agentErr != nil || fetched == nil {
+			return
+		}
+		result = fetched
+	}
+	if result == nil {
 		return
 	}
 	if uptime == "" {
