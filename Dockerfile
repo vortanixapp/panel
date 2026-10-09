@@ -14,6 +14,7 @@ COPY cmd ./cmd
 COPY internal ./internal
 COPY pkg ./pkg
 COPY integrations ./integrations
+COPY scripts ./scripts
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags "-s -w -X main.version=${VORTANIX_VERSION} -X github.com/vortanixapp/panel/pkg/buildinfo.Version=${VORTANIX_VERSION}" \
