@@ -1,7 +1,20 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { SERVER_A } from "./support/data";
 
 const base = `/servers/${SERVER_A}`;
+
+async function openTab(page: Page, name: string) {
+  const link = page.getByRole("link", { name, exact: true }).first();
+  const menuTrigger = page.getByRole("button", { name: "Основное" });
+  await expect(link.or(menuTrigger)).toBeVisible();
+  if (await link.isVisible()) {
+    await link.click();
+    return;
+  }
+  await menuTrigger.click();
+  await page.getByRole("menuitem", { name, exact: true }).click();
+}
 
 test.describe("страница игрового сервера", () => {
   test("шапка показывает имя, статус и адрес", async ({ page, signedIn }) => {
@@ -33,16 +46,7 @@ test.describe("страница игрового сервера", () => {
   for (const tab of tabs) {
     test(`вкладка «${tab.name}» открывается и показывает данные`, async ({ page, signedIn }) => {
       await page.goto(base);
-      const link = page.getByRole("link", { name: tab.name, exact: true }).first();
-      try {
-        await link.waitFor({ timeout: 10_000 });
-      } catch (error) {
-        const tree = await page.locator("body").ariaSnapshot();
-        throw new Error(`Ссылка «${tab.name}» не найдена. Адрес: ${page.url()}\n${tree.slice(0, 3500)}`, {
-          cause: error,
-        });
-      }
-      await link.click();
+      await openTab(page, tab.name);
       await expect(page).toHaveURL(new RegExp(`${base}${tab.suffix}$`));
       await expect(page.getByText(tab.marker).first()).toBeVisible();
       expect(signedIn.misses).toEqual([]);
@@ -67,6 +71,20 @@ test.describe("страница игрового сервера", () => {
     await page.getByRole("button", { name: /копировать/i }).first().click();
     await expect(page.getByText("Адрес скопирован")).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("45.93.200.222:25565");
+    expect(signedIn.misses).toEqual([]);
+  });
+
+  test("в узком окне вкладки собираются в выпадающий список", async ({ page, signedIn }) => {
+    await page.setViewportSize({ width: 820, height: 900 });
+    await page.goto(base);
+    const trigger = page.getByRole("button", { name: "Основное" });
+    await expect(trigger).toBeVisible();
+    await expect(page.getByRole("link", { name: "Логи", exact: true })).toHaveCount(0);
+
+    await trigger.click();
+    await page.getByRole("menuitem", { name: "Логи", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${base}/logs$`));
+    await expect(page.getByText("Failed to save player data").first()).toBeVisible();
     expect(signedIn.misses).toEqual([]);
   });
 });
