@@ -85,8 +85,9 @@ node. gVisor runs the server behind its own user-space kernel, which makes such
 an escape much harder. The price: network and disk are slower, and some games
 may not work at all, so enable it one game at a time.
 
-1. On the node as root: `sh scripts/install-gvisor.sh`. The script verifies the
-   checksums, installs `runsc`, registers it in Docker and starts a test
+1. On the node as root: `sh scripts/install-gvisor.sh`. The script adds the
+   official gVisor apt repository (Debian and Ubuntu), installs a current `runsc`,
+   registers it in Docker and starts a test
    container. Docker does not need a restart, but set `live-restore` in
    `/etc/docker/daemon.json` in case you restart it later.
 2. In the panel: "Admin → Settings → Nodes → gVisor sandbox". The mode "Only
